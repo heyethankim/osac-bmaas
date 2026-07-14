@@ -1,0 +1,283 @@
+/* Tenant admin / user shell — masthead, sidebar, page chrome (from OSAC demo) */
+
+.tenant-shell-page.pf-v6-c-page {
+  --pf-v6-c-page__sidebar--BorderInlineEndWidth: 0;
+  --pf-v6-c-page__sidebar--BoxShadow: none;
+  --pf-v6-c-page__main-container--BorderColor: transparent;
+}
+
+.tenant-shell-page__main.osac-page-main-section.pf-v6-c-page__main-section {
+  --pf-v6-c-page__main-section--PaddingInlineStart: calc(
+    var(--pf-t--global--spacer--lg) + var(--pf-t--global--spacer--xs)
+  );
+  --pf-v6-c-page__main-section--PaddingInlineEnd: calc(
+    var(--pf-t--global--spacer--lg) + var(--pf-t--global--spacer--xs)
+  );
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.osac-shell-sidebar-inner {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  width: 100%;
+  gap: var(--pf-t--global--spacer--md);
+  min-width: 0;
+}
+
+.osac-shell-sidebar-footer {
+  margin-top: auto;
+  align-self: stretch;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-block: var(--pf-t--global--spacer--sm);
+}
+
+.osac-shell-sidebar-sticker {
+  width: 100%;
+  max-width: 8rem;
+  display: flex;
+  justify-content: center;
+}
+
+.osac-shell-sidebar-sticker__label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.45rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 0.2rem;
+  background: #ee00ea;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.015em;
+  white-space: nowrap;
+}
+
+.osac-app-shell-nav.pf-v6-c-nav {
+  --pf-v6-c-nav--PaddingInlineStart: var(--pf-t--global--spacer--xs);
+  --pf-v6-c-nav--PaddingInlineEnd: var(--pf-t--global--spacer--xs);
+  --pf-v6-c-nav__link--PaddingInlineStart: calc(
+    var(--pf-t--global--spacer--md) + var(--pf-t--global--spacer--xs)
+  );
+  --pf-v6-c-nav__link--PaddingInlineEnd: calc(
+    var(--pf-t--global--spacer--md) + var(--pf-t--global--spacer--xs)
+  );
+}
+
+.osac-app-shell-nav .pf-v6-c-nav__group-title {
+  font-size: var(--pf-t--global--font--size--body--sm);
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.northstar-masthead-content.pf-v6-c-masthead__content {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--pf-t--global--spacer--md);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.northstar-masthead-content__spacer {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.northstar-masthead-search {
+  flex: 0 1 28rem;
+  width: min(28rem, 100%);
+  max-width: min(28rem, 100%);
+  min-width: 0;
+  margin-inline-start: 0;
+}
+
+.northstar-masthead-search .pf-v6-c-text-input-group {
+  width: 100%;
+  min-width: 0;
+  --pf-v6-c-text-input-group__text-input--MinWidth: 0;
+}
+
+.northstar-masthead-search .pf-v6-c-text-input-group__main {
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.northstar-masthead-search .pf-v6-c-text-input-group__main.pf-m-icon {
+  min-width: 0;
+}
+
+.northstar-masthead-search .pf-v6-c-text-input-group__text {
+  min-width: 0;
+}
+
+.northstar-masthead-utilities-toolbar.pf-v6-c-toolbar {
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 100%;
+  margin-inline-start: auto;
+}
+
+.osac-masthead-account-menu-toggle {
+  max-width: min(22rem, 100%);
+}
+
+.osac-masthead-account-toggle {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: var(--pf-t--global--spacer--xs);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.osac-masthead-account-toggle__name {
+  font-weight: var(--pf-t--global--font--weight--body--default);
+  color: var(--pf-t--global--text--color--regular);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.osac-masthead-account-toggle__role-label {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.osac-masthead-tenant-trust-strip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  min-width: 0;
+  max-width: min(22rem, 100%);
+  margin-inline-end: 0;
+}
+
+.osac-masthead-tenant-trust-strip__residency {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.osac-masthead-region-flag {
+  flex-shrink: 0;
+  font-size: 1.125rem;
+  line-height: 1;
+}
+
+.osac-masthead-region-line {
+  font-size: var(--pf-t--global--font--size--body--sm);
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+  line-height: 1.3;
+  color: var(--pf-t--global--text--color--regular);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.osac-masthead-tenant-trust-strip__compliance {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.25rem;
+}
+
+.pf-v6-c-masthead__main .pf-v6-c-masthead__logo.northstar-masthead-logo {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  max-width: min(100%, 22rem);
+  max-height: var(--pf-v6-c-masthead__logo--MaxHeight);
+  height: auto;
+}
+
+.pf-v6-c-masthead__main .pf-v6-c-masthead__logo.northstar-masthead-logo .pf-v6-c-masthead__brand {
+  display: flex;
+  align-items: center;
+  align-self: auto;
+  line-height: 0;
+  padding-block-end: 0;
+}
+
+.pf-v6-c-masthead__main .pf-v6-c-masthead__logo.northstar-masthead-logo > * {
+  max-height: var(--pf-v6-c-masthead__logo--MaxHeight);
+}
+
+.northstar-masthead-brand {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  max-height: var(--pf-v6-c-masthead__logo--MaxHeight, 2.375rem);
+}
+
+.northstar-masthead-brand__mark {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.northstar-masthead-brand__ring {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 2px solid #eb0000;
+  box-sizing: border-box;
+  color: #eb0000;
+}
+
+.northstar-masthead-brand__star {
+  width: 55%;
+  height: 55%;
+  display: block;
+}
+
+.northstar-masthead-brand__text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  line-height: 1;
+  gap: 0.1rem;
+}
+
+.northstar-masthead-brand__line1 {
+  font-size: 0.5625rem;
+  font-weight: 300;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--pf-t--global--text--color--regular);
+  opacity: 0.92;
+}
+
+.northstar-masthead-brand__line2 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--pf-t--global--text--color--regular);
+}

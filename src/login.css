@@ -1,0 +1,720 @@
+.northstar-login {
+  position: relative;
+  margin-inline: 0;
+  max-width: none;
+  min-height: 100dvh;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: linear-gradient(
+    105deg,
+    #8f0000 0%,
+    #c40000 28%,
+    #eb0000 55%,
+    #ff3b2e 88%,
+    #ff6b4a 100%
+  );
+  color: #fff;
+}
+
+.northstar-login__bokeh {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.northstar-login__bokeh-dot {
+  position: absolute;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 18%);
+}
+
+.northstar-login__bokeh-dot--a {
+  width: min(42vw, 22rem);
+  height: min(42vw, 22rem);
+  left: -8%;
+  top: 12%;
+  filter: blur(2px);
+}
+
+.northstar-login__bokeh-dot--b {
+  width: min(28vw, 14rem);
+  height: min(28vw, 14rem);
+  left: 22%;
+  bottom: 18%;
+  background: rgb(255 255 255 / 12%);
+}
+
+.northstar-login__bokeh-dot--c {
+  width: min(20vw, 10rem);
+  height: min(20vw, 10rem);
+  right: 8%;
+  top: 8%;
+  background: rgb(255 220 200 / 22%);
+}
+
+.northstar-login__bokeh-dot--d {
+  width: min(36vw, 18rem);
+  height: min(36vw, 18rem);
+  right: -5%;
+  bottom: -10%;
+  background: rgb(255 255 255 / 10%);
+  filter: blur(4px);
+}
+
+.northstar-login__bokeh-dot--e {
+  width: min(14vw, 7rem);
+  height: min(14vw, 7rem);
+  left: 45%;
+  top: 40%;
+  background: rgb(255 255 255 / 14%);
+}
+
+.northstar-login__shell {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  min-height: 100dvh;
+}
+
+.northstar-login__brand {
+  flex: 1 1 42%;
+  max-width: 36rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: clamp(2rem, 5vw, 3.5rem) clamp(1.5rem, 4vw, 3rem);
+  box-sizing: border-box;
+}
+
+.northstar-login__brand-top {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.25rem, 3vw, 2rem);
+}
+
+.northstar-login__logo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  color: #fff;
+  text-shadow: 0 2px 20px rgb(0 0 0 / 15%);
+}
+
+.northstar-login__logo-line1 {
+  font-size: clamp(0.75rem, 1.4vw, 0.875rem);
+  font-weight: 300;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  opacity: 0.95;
+}
+
+.northstar-login__logo-line2 {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  line-height: 1;
+}
+
+.northstar-login__logo-ring {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(3.25rem, 8vw, 4.5rem);
+  height: clamp(3.25rem, 8vw, 4.5rem);
+  border-radius: 50%;
+  border: 2px solid rgb(255 255 255 / 85%);
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.northstar-login__logo-star {
+  width: 55%;
+  height: 55%;
+  display: block;
+  color: #fff;
+  fill: currentColor;
+}
+
+.northstar-login__logo-bank {
+  font-size: clamp(2.75rem, 9vw, 4.5rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.northstar-login__tagline {
+  margin: 0;
+  max-width: 22rem;
+  font-size: clamp(1rem, 2vw, 1.125rem);
+  font-weight: 400;
+  line-height: 1.55;
+  color: rgb(255 255 255 / 92%);
+}
+
+.northstar-login__brand-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.northstar-login__support {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: rgb(255 255 255 / 78%);
+}
+
+.northstar-login__support a {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.northstar-login__support a:hover {
+  color: rgb(255 255 255 / 95%);
+}
+
+.northstar-login__copyright {
+  margin: 0;
+  font-size: 0.75rem;
+  color: rgb(255 255 255 / 55%);
+}
+
+.northstar-login__panel {
+  flex: 1 1 58%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  box-sizing: border-box;
+}
+
+.northstar-login__card.pf-v6-c-card {
+  position: relative;
+  width: 100%;
+  max-width: 26rem;
+  border: none;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow:
+    0 8px 40px rgb(0 0 0 / 18%),
+    0 2px 12px rgb(0 0 0 / 8%);
+}
+
+.northstar-login__landing-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  text-align: center;
+  border-radius: inherit;
+  background: rgb(255 255 255 / 94%);
+}
+
+.northstar-login__landing-overlay-text {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  font-weight: 500;
+  color: #3d3d3d;
+}
+
+.northstar-login__card .pf-v6-c-card__body {
+  padding: clamp(2rem, 4vw, 2.5rem);
+}
+
+.northstar-login__card-title {
+  margin: 0 0 0.5rem !important;
+  color: #3d3d3d !important;
+  font-weight: 600 !important;
+}
+
+.northstar-login__card-subtitle {
+  margin: 0 0 1.75rem;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: #8a8a8a;
+}
+
+.northstar-login__form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.125rem;
+}
+
+.northstar-login__field.pf-v6-c-form__group {
+  margin: 0;
+}
+
+/* One light grey for text fields + password addon so edges match */
+.northstar-login__form .pf-v6-c-form-control {
+  --pf-v6-c-form-control--BackgroundColor: #fafafa;
+  --pf-v6-c-form-control--Color: #1a1a1a;
+  --pf-v6-c-form-control--m-placeholder--Color: #9a9a9a;
+  --pf-v6-c-form-control--before--BorderColor: #e8e8e8;
+  --pf-v6-c-form-control--hover--after--BorderColor: #e0e0e0;
+  --pf-v6-c-form-control--m-expanded--after--BorderColor: #d4d4d4;
+  border-radius: 0.5rem;
+}
+
+.northstar-login__password-group.pf-v6-c-input-group {
+  --pf-v6-c-input-group--item--BorderWidth: 0;
+  --pf-v6-c-input-group__item--BorderColor--base: #e8e8e8;
+}
+
+.northstar-login__password-toggle.pf-v6-c-button.pf-m-control {
+  --pf-v6-c-button--m-control--BackgroundColor: #fafafa;
+  --pf-v6-c-button--m-control--BorderColor: #e8e8e8;
+  --pf-v6-c-button--m-control--Color: #1a1a1a;
+  --pf-v6-c-button--m-control__icon--Color: #1a1a1a;
+  --pf-v6-c-button--m-control--hover--BackgroundColor: #f0f0f0;
+  --pf-v6-c-button--m-control--hover--BorderColor: #e8e8e8;
+  --pf-v6-c-button--m-control--hover__icon--Color: #1a1a1a;
+  --pf-v6-c-button--m-control--m-clicked--BackgroundColor: #ebebeb;
+  --pf-v6-c-button--m-control--m-clicked--BorderColor: #e8e8e8;
+  --pf-v6-c-button--m-control--m-clicked__icon--Color: #1a1a1a;
+  --pf-v6-c-button--m-control--active--BackgroundColor: #e8e8e8;
+  height: 100%;
+  min-height: 2.25rem;
+  align-self: stretch;
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.northstar-login__password-toggle.pf-v6-c-button.pf-m-control .pf-v6-c-button__icon,
+.northstar-login__password-toggle.pf-v6-c-button.pf-m-control .pf-v6-c-button__icon svg {
+  color: #1a1a1a;
+  fill: currentColor;
+}
+
+.northstar-login__form-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-top: -0.25rem;
+}
+
+.northstar-login__card .pf-v6-c-check__input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  flex-shrink: 0;
+  background-color: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 0.1875rem;
+  cursor: pointer;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.northstar-login__card .pf-v6-c-check__input:checked {
+  background-color: #eb0000;
+  border-color: #c40000;
+}
+
+.northstar-login__card .pf-v6-c-check__input:checked::after {
+  content: '';
+  position: absolute;
+  left: 0.28rem;
+  top: 0.12rem;
+  width: 0.28rem;
+  height: 0.5rem;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  box-sizing: border-box;
+}
+
+.northstar-login__card .pf-v6-c-check__input:focus-visible {
+  outline: 2px solid #eb0000;
+  outline-offset: 2px;
+}
+
+.northstar-login__card .pf-v6-c-check__label {
+  color: #3d3d3d !important;
+  font-size: 0.875rem;
+}
+
+.northstar-login__forgot-link.pf-v6-c-button.pf-m-link {
+  color: #eb0000 !important;
+  padding: 0 !important;
+  font-size: 0.875rem;
+  font-weight: 400 !important;
+  font-style: normal !important;
+}
+
+.northstar-login__forgot-link.pf-v6-c-button.pf-m-link .pf-v6-c-button__text {
+  font-weight: 400 !important;
+  font-style: normal !important;
+}
+
+.northstar-login__forgot-link.pf-v6-c-button.pf-m-link:hover {
+  color: #c40000 !important;
+}
+
+/* Login only — Northstar red primary (tenant shell keeps default PatternFly primary) */
+.northstar-login__submit.pf-v6-c-button.pf-m-primary {
+  margin-top: 0.5rem;
+  --pf-v6-c-button--m-primary--BackgroundColor: transparent;
+  --pf-v6-c-button--m-primary--Color: #fff;
+  background: linear-gradient(90deg, #d40000 0%, #eb0000 45%, #ff3d2e 100%) !important;
+  border: none !important;
+  font-weight: 600 !important;
+  font-size: 1rem !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 4px 14px rgb(180 0 0 / 35%);
+}
+
+/* Hover: same white text and shadow; mirror gradient left ↔ right */
+.northstar-login__submit.pf-v6-c-button.pf-m-primary:hover {
+  --pf-v6-c-button--m-primary--Color: #fff;
+  color: #fff !important;
+  background: linear-gradient(270deg, #d40000 0%, #eb0000 45%, #ff3d2e 100%) !important;
+  box-shadow: 0 4px 14px rgb(180 0 0 / 35%);
+  filter: none;
+}
+
+.northstar-login__submit.pf-v6-c-button.pf-m-primary:active {
+  --pf-v6-c-button--m-primary--Color: #fff;
+  color: #fff !important;
+  background: linear-gradient(90deg, #d40000 0%, #eb0000 45%, #ff3d2e 100%) !important;
+  filter: brightness(0.96);
+}
+
+/* Vertexa Cloud Solutions — centered glass login (blue → violet → magenta + flowing lines) */
+
+.northstar-login__back-row {
+  margin-top: var(--pf-t--global--spacer--md);
+  text-align: center;
+}
+
+/* Same light gray as `.northstar-login__card-subtitle` */
+.northstar-login__back-link.pf-v6-c-button.pf-m-link {
+  color: #8a8a8a !important;
+  padding: 0 !important;
+  font-size: 0.9375rem;
+  font-weight: 400;
+}
+
+.northstar-login__back-link.pf-v6-c-button.pf-m-link:hover:not(:disabled) {
+  color: #6e6e6e !important;
+}
+
+@media (max-width: 62rem) {
+  .northstar-login__shell {
+    flex-direction: column;
+  }
+
+  .northstar-login__brand {
+    max-width: none;
+    min-height: 0;
+    padding-bottom: 1.5rem;
+  }
+
+  .northstar-login__panel {
+    flex: 1 1 auto;
+    padding-top: 0;
+  }
+}
+
+.vertexa-login {
+  position: relative;
+  margin-inline: 0;
+  max-width: none;
+  min-height: 100dvh;
+  box-sizing: border-box;
+  overflow-x: clip;
+  /* Allow scroll when the virtual keyboard or small viewports would clip the form */
+  overflow-y: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1.5rem, 4vw, 2.5rem) clamp(1.25rem, 5vw, 2.75rem);
+  background:
+    radial-gradient(120% 90% at 50% 45%, rgb(255 255 255 / 6%) 0%, transparent 55%),
+    linear-gradient(
+      100deg,
+      #0c1a5c 0%,
+      #152578 14%,
+      #2a1f8c 30%,
+      #4a1f9e 46%,
+      #7b1fa8 58%,
+      #ab2a9a 72%,
+      #d81f7a 86%,
+      #f04ba8 100%
+    );
+  color: #fff;
+}
+
+.vertexa-login__ambient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.vertexa-login__waves-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 1;
+  pointer-events: none;
+}
+
+.vertexa-login__frame {
+  position: relative;
+  z-index: 1;
+  width: min(calc(100vw - 2.5rem), 36rem);
+  max-width: 100%;
+  box-sizing: border-box;
+  padding-inline: clamp(0.75rem, 3.5vw, 1.5rem);
+  container-type: inline-size;
+  container-name: vertexa-login;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
+  overflow-x: visible;
+}
+
+.vertexa-login__brand-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(4.25rem, 11vw, 5.5rem);
+  height: clamp(4.25rem, 11vw, 5.5rem);
+  border-radius: 1rem;
+  border: 1px solid rgb(0 0 0 / 10%);
+  background: rgb(255 255 255 / 96%);
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 22%),
+    0 12px 40px rgb(0 0 0 / 20%);
+}
+
+.vertexa-login__brand-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.vertexa-login__company {
+  margin: 0;
+  box-sizing: border-box;
+  max-width: 100%;
+  padding-inline: 0.25rem;
+  white-space: nowrap;
+  overflow: visible;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 92%);
+  line-height: 1.08;
+  /* Viewport fallback: conservative so long uppercase line does not clip */
+  font-size: clamp(0.8125rem, 4.6vw, 2.35rem);
+}
+
+@container vertexa-login (min-width: 0px) {
+  .vertexa-login__company {
+    /* ~24+ glyph-width budget incl. tracking; divisor avoids clipping “SOLUTIONS” */
+    font-size: clamp(0.8125rem, calc(100cqi / 19.25), 2.35rem);
+  }
+}
+
+.vertexa-login__headline.pf-v6-c-title {
+  margin: 0 auto 1rem !important;
+  width: 100%;
+  text-align: center;
+  color: rgb(255 255 255 / 94%) !important;
+  font-weight: 600 !important;
+  font-size: clamp(1.0625rem, 2.4vw, 1.25rem) !important;
+  line-height: 1.25 !important;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 10px rgb(0 0 0 / 20%);
+}
+
+.vertexa-login__subhead {
+  margin: 0;
+  max-width: 20rem;
+  font-size: clamp(1rem, 2.5vw, 1.125rem);
+  line-height: 1.45;
+  color: rgb(255 255 255 / 76%);
+  text-wrap: balance;
+}
+
+.vertexa-login__surface {
+  position: relative;
+  width: 100%;
+  padding: clamp(1.875rem, 4.5vw, 2.5rem) clamp(1.5rem, 3.5vw, 2.125rem);
+  border-radius: 1.25rem;
+  text-align: left;
+  background: rgb(255 255 255 / 12%);
+  border: 1px solid rgb(255 255 255 / 22%);
+  box-shadow:
+    0 24px 80px rgb(0 0 0 / 22%),
+    inset 0 1px 0 rgb(255 255 255 / 18%);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+/* Full-screen neutral gray while signing in (no gradient / teal bleed-through) */
+.vertexa-login__loading-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  text-align: center;
+  background: rgb(76 76 80 / 98%);
+}
+
+.vertexa-login__loading-veil .pf-v6-c-spinner {
+  --pf-v6-c-spinner--Color: rgb(255 255 255 / 92%);
+}
+
+.vertexa-login__loading-veil__text {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  font-weight: 500;
+  color: rgb(255 255 255 / 96%);
+}
+
+.vertexa-login__form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.vertexa-login__field.pf-v6-c-form__group {
+  margin: 0;
+}
+
+.vertexa-login__glass-group.pf-v6-c-input-group {
+  --pf-v6-c-input-group--item--BorderWidth: 0;
+  border-radius: 0.625rem;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgb(0 0 0 / 12%);
+  transition: box-shadow 0.15s ease;
+}
+
+.vertexa-login__glass-group.pf-v6-c-input-group:focus-within {
+  box-shadow:
+    0 0 0 2px rgb(255 255 255 / 45%),
+    0 4px 24px rgb(0 0 0 / 16%);
+}
+
+.vertexa-login__glass-group .pf-v6-c-input-group__item {
+  background: rgb(255 255 255 / 14%);
+  border-color: rgb(255 255 255 / 22%);
+}
+
+.vertexa-login__glass-addon.pf-v6-c-input-group__item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 0.875rem;
+  color: rgb(255 255 255 / 92%);
+}
+
+.vertexa-login__glass-addon svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  fill: currentColor;
+}
+
+.vertexa-login__field-input.pf-v6-c-form-control {
+  --pf-v6-c-form-control--BackgroundColor: transparent;
+  --pf-v6-c-form-control--Color: #fff;
+  --pf-v6-c-form-control--m-placeholder--Color: rgb(255 255 255 / 52%);
+  --pf-v6-c-form-control--before--BorderColor: transparent;
+  --pf-v6-c-form-control--hover--after--BorderColor: rgb(255 255 255 / 35%);
+  --pf-v6-c-form-control--m-expanded--after--BorderColor: rgb(255 255 255 / 55%);
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+}
+
+.vertexa-login__eye.pf-v6-c-button.pf-m-plain {
+  --pf-v6-c-button--m-plain--Color: rgb(255 255 255 / 88%);
+  --pf-v6-c-button--m-plain--hover--Color: #fff;
+  height: 100%;
+  min-height: 2.5rem;
+  align-self: stretch;
+  padding-inline: 0.75rem;
+}
+
+.vertexa-login__eye .pf-v6-c-button__icon svg {
+  fill: currentColor;
+}
+
+.vertexa-login__submit.pf-v6-c-button.pf-m-primary {
+  margin-top: 0.375rem;
+  --pf-v6-c-button--m-primary--BackgroundColor: transparent;
+  --pf-v6-c-button--m-primary--Color: #2b2e36;
+  color: #2b2e36 !important;
+  background: linear-gradient(
+    180deg,
+    rgb(245 238 255 / 98%) 0%,
+    rgb(214 202 248 / 96%) 48%,
+    rgb(188 172 236 / 94%) 100%
+  ) !important;
+  border: 1px solid rgb(255 255 255 / 55%) !important;
+  font-weight: 600 !important;
+  font-size: 1rem !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 18%);
+}
+
+.vertexa-login__submit.pf-v6-c-button.pf-m-primary:hover {
+  --pf-v6-c-button--m-primary--Color: #1a1c22;
+  color: #1a1c22 !important;
+  background: linear-gradient(
+    180deg,
+    rgb(252 248 255 / 100%) 0%,
+    rgb(226 214 252 / 98%) 50%,
+    rgb(198 182 240 / 96%) 100%
+  ) !important;
+  filter: none;
+}
+
+.vertexa-login__submit.pf-v6-c-button.pf-m-primary:active {
+  filter: brightness(0.96);
+}
+
+.vertexa-login__back-row {
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
+.vertexa-login__back-link.pf-v6-c-button.pf-m-link {
+  color: rgb(255 255 255 / 72%) !important;
+  padding: 0 !important;
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.vertexa-login__back-link.pf-v6-c-button.pf-m-link:hover:not(:disabled) {
+  color: #fff !important;
+}
+
