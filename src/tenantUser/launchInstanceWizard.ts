@@ -39,13 +39,12 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   defaultSshPublicKey:
     'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC7example+demo+key+northsummitbank+tenant-user@demo',
   preConfiguredTitle: 'Pre-configured by admin',
-  hardwareProfile: 'HPE ProLiant DL380 Gen10+',
+  hardwareProfile: 'Dell PowerEdge R750',
   osImage: 'RHEL 9.4',
   networkVlan: '200 · Primary Provisioning',
   reviewTitle: 'Review',
-  reviewCatalogItem: 'GPU Node · NVIDIA A100 4x',
-  reviewHardware: 'HPE ProLiant DL380 Gen10+',
-  reviewGpu: 'NVIDIA A100 80 GB × 4',
+  reviewHardware: 'Dell PowerEdge R750',
+  reviewGpu: 'CPU-only',
   reviewOsImage: 'RHEL 9.4',
   reviewNetwork: '200 · Primary Provisioning Network',
   reviewProvisioningNote:

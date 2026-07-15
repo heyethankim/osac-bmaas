@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
+  Alert,
+  AlertActionLink,
   Button,
   Card,
   CardBody,
@@ -33,6 +35,7 @@ export function TenantAdminCatalogPage({
     ),
   )
   const [removedTeamsByItemId, setRemovedTeamsByItemId] = useState<Record<string, string[]>>({})
+  const showProjectsTeamsAlert = projects.length === 0
 
   const authorizedTeamsByItemId = useMemo(() => {
     const projectTeamNames = getTenantCatalogAuthorizedTeams(projects)
@@ -61,6 +64,22 @@ export function TenantAdminCatalogPage({
       <Content component="p" className="tenant-admin-catalog-manager__lede">
         {TENANT_CATALOG_MANAGER_DEMO.lede}
       </Content>
+
+      {showProjectsTeamsAlert ? (
+        <Alert
+          variant="info"
+          isInline
+          title={TENANT_CATALOG_MANAGER_DEMO.projectsTeamsAlertTitle}
+          className="tenant-admin-catalog-manager__projects-teams-alert"
+          actionLinks={
+            <AlertActionLink component="button" onClick={onNavigateToProjectsTeams}>
+              {TENANT_CATALOG_MANAGER_DEMO.projectsTeamsAlertActionLabel}
+            </AlertActionLink>
+          }
+        >
+          <Content component="p">{TENANT_CATALOG_MANAGER_DEMO.projectsTeamsAlertBody}</Content>
+        </Alert>
+      ) : null}
 
       <div className="tenant-admin-catalog-manager__catalog-list">
         {TENANT_CATALOG_GOVERNANCE_ITEMS.map((item) => {

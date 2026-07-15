@@ -15,6 +15,7 @@ import {
   Title,
 } from '@patternfly/react-core'
 import { DEMO_LOGIN_PREFILLED_PASSWORD } from '../demoTenant'
+import { ConceptualDesignSticker } from '../components/ConceptualDesignSticker'
 
 export type NorthstarBankLoginPageProps = {
   onLoginSuccess: () => void
@@ -213,6 +214,7 @@ export function NorthstarBankLoginPage({
           </Card>
         </main>
       </div>
+      <ConceptualDesignSticker />
     </div>
   )
 }

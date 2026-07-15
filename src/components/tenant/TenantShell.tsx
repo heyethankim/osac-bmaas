@@ -35,6 +35,7 @@ import {
 } from '@patternfly/react-core'
 import type { TenantNavGroup, TenantNavItem } from '../../tenantShell/constants'
 import { NorthstarBankMastheadLogo } from './NorthstarBankMastheadLogo'
+import { ConceptualDesignSticker } from '../ConceptualDesignSticker'
 
 type TenantShellRole = 'tenant-admin' | 'tenant-user'
 
@@ -52,7 +53,7 @@ type TenantShellProps = {
 }
 
 const roleLabels: Record<TenantShellRole, string> = {
-  'tenant-admin': 'Admin',
+  'tenant-admin': 'Tenant Admin',
   'tenant-user': 'User',
 }
 
@@ -169,42 +170,25 @@ export function TenantShell({
   const sidebar = (
     <PageSidebar>
       <PageSidebarBody isFilled>
-        <div className="osac-shell-sidebar-inner">
-          <Nav
-            className="osac-app-shell-nav"
-            aria-label="Primary"
-            onSelect={(_event, item) => {
-              const nextNavId = String(item.itemId)
-              if (disabledNavIds.includes(nextNavId)) {
-                return
-              }
-              if (onNavChange) {
-                onNavChange(nextNavId)
-              } else {
-                setInternalActiveNavId(nextNavId)
-              }
-            }}
-          >
-            {navGroups.length > 0 ? (
-              navGroups.map((group) => (
-                <NavGroup key={group.id} title={group.label}>
-                  {group.items.map((item) => (
-                    <NavItem
-                      key={item.id}
-                      itemId={item.id}
-                      isActive={activeNavId === item.id}
-                      className={disabledNavIds.includes(item.id) ? 'pf-m-disabled' : undefined}
-                      to="#"
-                      preventDefault
-                    >
-                      {item.label}
-                    </NavItem>
-                  ))}
-                </NavGroup>
-              ))
-            ) : (
-              <NavList>
-                {navItems.map((item) => (
+        <Nav
+          className="osac-app-shell-nav"
+          aria-label="Primary"
+          onSelect={(_event, item) => {
+            const nextNavId = String(item.itemId)
+            if (disabledNavIds.includes(nextNavId)) {
+              return
+            }
+            if (onNavChange) {
+              onNavChange(nextNavId)
+            } else {
+              setInternalActiveNavId(nextNavId)
+            }
+          }}
+        >
+          {navGroups.length > 0 ? (
+            navGroups.map((group) => (
+              <NavGroup key={group.id} title={group.label}>
+                {group.items.map((item) => (
                   <NavItem
                     key={item.id}
                     itemId={item.id}
@@ -216,15 +200,25 @@ export function TenantShell({
                     {item.label}
                   </NavItem>
                 ))}
-              </NavList>
-            )}
-          </Nav>
-          <div className="osac-shell-sidebar-footer">
-            <div className="osac-shell-sidebar-sticker">
-              <span className="osac-shell-sidebar-sticker__label">Conceptual design</span>
-            </div>
-          </div>
-        </div>
+              </NavGroup>
+            ))
+          ) : (
+            <NavList>
+              {navItems.map((item) => (
+                <NavItem
+                  key={item.id}
+                  itemId={item.id}
+                  isActive={activeNavId === item.id}
+                  className={disabledNavIds.includes(item.id) ? 'pf-m-disabled' : undefined}
+                  to="#"
+                  preventDefault
+                >
+                  {item.label}
+                </NavItem>
+              ))}
+            </NavList>
+          )}
+        </Nav>
       </PageSidebarBody>
     </PageSidebar>
   )
@@ -248,6 +242,7 @@ export function TenantShell({
       >
         {children}
       </PageSection>
+      <ConceptualDesignSticker />
     </Page>
   )
 }

@@ -8,7 +8,7 @@ import { TenantUserWorkspacePage } from './pages/TenantUserWorkspacePage'
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         <Route path="/" element={<BmaasLandingPage />} />
         <Route path="/provider" element={<ProviderLoginPage />} />

@@ -312,6 +312,16 @@ html:has(.bmaas-role-landing) body {
   margin-block: 0;
 }
 
+.bmaas-role-landing__footer-issues {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  line-height: var(--pf-t--global--font--line-height--body);
+}
+
 .bmaas-role-landing__footer-meta.pf-v6-c-content--p,
 .bmaas-role-landing__footer-updated.pf-v6-c-content--p {
   margin: 0;

@@ -18,6 +18,10 @@ export const TENANT_CATALOG_MANAGER_DEMO = {
   title: 'Catalog manager',
   lede:
     "Filter the provider's global catalog down to safe, approved offerings. Scope GPU-intensive items to authorized teams only.",
+  projectsTeamsAlertTitle: 'Create projects & teams to authorize catalog access',
+  projectsTeamsAlertBody:
+    'Create a project, invite developers, and assign quota slices so teams can access approved catalog items.',
+  projectsTeamsAlertActionLabel: 'Go to Projects & teams',
   addProjectTeamsLinkLabel: 'Add project & teams',
   authorizedTeamsLabel: 'Authorized teams',
   authorizedTeamsEmpty: 'No teams authorized yet.',

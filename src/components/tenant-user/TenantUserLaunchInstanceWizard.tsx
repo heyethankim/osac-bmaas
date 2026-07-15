@@ -120,11 +120,11 @@ export function TenantUserLaunchInstanceWizard({
         const instance: TenantInstance = {
           id: generateTenantInstanceId(),
           name: form.instanceName.trim(),
-          catalogItemDisplayName: LAUNCH_INSTANCE_WIZARD_DEMO.reviewCatalogItem,
-          hardwareProfile: LAUNCH_INSTANCE_WIZARD_DEMO.reviewHardware,
-          osImage: LAUNCH_INSTANCE_WIZARD_DEMO.reviewOsImage,
+          catalogItemDisplayName: catalogItem.displayName,
+          hardwareProfile: catalogItem.hardwareProfile,
+          osImage: catalogItem.osImage,
           networkLabel: LAUNCH_INSTANCE_WIZARD_DEMO.reviewNetwork,
-          gpuLabel: LAUNCH_INSTANCE_WIZARD_DEMO.reviewGpu,
+          gpuLabel: catalogItem.gpu,
           projectName,
           status: 'running',
           createdAt: new Date().toISOString(),
@@ -141,7 +141,7 @@ export function TenantUserLaunchInstanceWizard({
     return () => {
       window.clearInterval(intervalId)
     }
-  }, [activeStepId, form.instanceName, isOpen, onProvisioned, projectName])
+  }, [activeStepId, catalogItem, form.instanceName, isOpen, onProvisioned, projectName])
 
   const renderConfigureStep = () => (
     <div className="tenant-user-launch-wizard__step">
@@ -184,7 +184,7 @@ export function TenantUserLaunchInstanceWizard({
                 Hardware profile
               </Content>
               <Content component="p" className="tenant-user-launch-wizard__preconfigured-value">
-                {LAUNCH_INSTANCE_WIZARD_DEMO.hardwareProfile}
+                {catalogItem.hardwareProfile}
               </Content>
             </div>
             <div className="tenant-user-launch-wizard__preconfigured-item">
@@ -192,7 +192,7 @@ export function TenantUserLaunchInstanceWizard({
                 OS image
               </Content>
               <Content component="p" className="tenant-user-launch-wizard__preconfigured-value">
-                {LAUNCH_INSTANCE_WIZARD_DEMO.osImage}
+                {catalogItem.osImage}
               </Content>
             </div>
             <div className="tenant-user-launch-wizard__preconfigured-item">
@@ -238,17 +238,15 @@ export function TenantUserLaunchInstanceWizard({
         </DescriptionListGroup>
         <DescriptionListGroup>
           <DescriptionListTerm>Hardware</DescriptionListTerm>
-          <DescriptionListDescription>
-            {LAUNCH_INSTANCE_WIZARD_DEMO.reviewHardware}
-          </DescriptionListDescription>
+          <DescriptionListDescription>{catalogItem.hardwareProfile}</DescriptionListDescription>
         </DescriptionListGroup>
         <DescriptionListGroup>
           <DescriptionListTerm>GPU</DescriptionListTerm>
-          <DescriptionListDescription>{LAUNCH_INSTANCE_WIZARD_DEMO.reviewGpu}</DescriptionListDescription>
+          <DescriptionListDescription>{catalogItem.gpu}</DescriptionListDescription>
         </DescriptionListGroup>
         <DescriptionListGroup>
           <DescriptionListTerm>OS image</DescriptionListTerm>
-          <DescriptionListDescription>{LAUNCH_INSTANCE_WIZARD_DEMO.reviewOsImage}</DescriptionListDescription>
+          <DescriptionListDescription>{catalogItem.osImage}</DescriptionListDescription>
         </DescriptionListGroup>
         <DescriptionListGroup>
           <DescriptionListTerm>Network</DescriptionListTerm>

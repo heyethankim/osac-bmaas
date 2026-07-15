@@ -559,7 +559,15 @@
 
 .tenant-admin-catalog-manager__lede.pf-v6-c-content--p {
   margin-block-end: var(--pf-t--global--spacer--lg);
-  max-width: 42rem;
+  white-space: nowrap;
+}
+
+.tenant-admin-catalog-manager__projects-teams-alert {
+  margin-block-end: var(--pf-t--global--spacer--lg);
+}
+
+.tenant-admin-catalog-manager__projects-teams-alert .pf-v6-c-alert__description .pf-v6-c-content--p {
+  margin: 0;
 }
 
 .tenant-admin-catalog-manager__catalog-list {

@@ -65,6 +65,18 @@
   white-space: nowrap;
 }
 
+.bmaas-conceptual-design-sticker--floating {
+  position: fixed;
+  bottom: var(--pf-t--global--spacer--md);
+  left: var(--pf-t--global--spacer--md);
+  z-index: 200;
+  pointer-events: none;
+}
+
+.bmaas-conceptual-design-sticker--floating .osac-shell-sidebar-sticker {
+  max-width: none;
+}
+
 .osac-app-shell-nav.pf-v6-c-nav {
   --pf-v6-c-nav--PaddingInlineStart: var(--pf-t--global--spacer--xs);
   --pf-v6-c-nav--PaddingInlineEnd: var(--pf-t--global--spacer--xs);

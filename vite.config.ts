@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+// GitHub Pages serves at /<repo-name>/; local dev uses "/".
+// CI sets BASE_PATH (see .github/workflows/deploy-pages.yml).
 const base =
   process.env.BASE_PATH && process.env.BASE_PATH !== '/'
     ? process.env.BASE_PATH.endsWith('/')
@@ -8,12 +10,7 @@ const base =
       : `${process.env.BASE_PATH}/`
     : '/'
 
-const BMAAS_LANDING_LAST_UPDATED_LABEL = new Date().toLocaleDateString('en-US', {
-  month: 'long',
-  day: 'numeric',
-  year: 'numeric',
-  timeZone: 'America/New_York',
-})
+const BMAAS_LANDING_LAST_UPDATED_LABEL = 'July 15, 2026'
 
 export default defineConfig({
   base,

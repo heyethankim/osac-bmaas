@@ -111,8 +111,8 @@ export const DEFAULT_CREATE_PROJECT_WIZARD_FORM: CreateProjectWizardForm = {
   ramAllocationGb: 512,
   instanceQuota: 7,
   ipPoolSlice: DEFAULT_PROJECT_IP_SLICE,
-  memberName: 'Chris Morgan',
-  memberEmail: 'chris@northsummitbank.com',
+  memberName: 'Jordan Lee',
+  memberEmail: 'jordan@northsummitbank.com',
   memberRole: 'developer',
   members: [
     {

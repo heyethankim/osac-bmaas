@@ -5,6 +5,7 @@ import { UserIcon } from '@patternfly/react-icons/dist/esm/icons/user-icon'
 import { UsersIcon } from '@patternfly/react-icons/dist/esm/icons/users-icon'
 import type { ReactNode } from 'react'
 import { RouterButton } from '../components/RouterButton'
+import { ConceptualDesignSticker } from '../components/ConceptualDesignSticker'
 import { BMAAS_LANDING_LAST_UPDATED } from '../bmaasLandingLastUpdated'
 import { DEMO_TENANT_LABEL } from '../demoTenant'
 import redHatHatLogoUrl from '../assets/Logo-RedHat-Hat-Color-RGB.svg?url'
@@ -104,7 +105,7 @@ export function BmaasLandingPage() {
             className="bmaas-role-landing__brand-logo"
           />
           <Title headingLevel="h1" size="4xl" className="bmaas-role-landing__title">
-            Bare Metal as a Service
+            Bare Metal as a Service Prototypes
           </Title>
           <Content component="p" className="bmaas-role-landing__lede">
             Select a role to access the customized interface.
@@ -183,14 +184,49 @@ export function BmaasLandingPage() {
         </Card>
 
         <footer className="bmaas-role-landing__footer">
+          <div className="bmaas-role-landing__footer-issues">
+            <Button
+              variant="link"
+              component="a"
+              isInline
+              href="https://redhat.atlassian.net/browse/HPUX-1790"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              HPUX-1790
+            </Button>
+          </div>
           <Content component="p" className="bmaas-role-landing__footer-meta">
-            Bare Metal as a Service — OpenShift UXD prototype
+            Created by{' '}
+            <Button
+              variant="link"
+              component="a"
+              isInline
+              href="https://redhat.enterprise.slack.com/archives/D021Q4YKTBR"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Ethan Kim
+            </Button>
+            {' & '}
+            <Button
+              variant="link"
+              component="a"
+              isInline
+              href="https://redhat.enterprise.slack.com/archives/D06FNMKMQCQ"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Kyle Baker
+            </Button>
+            {' - OpenShift UXD'}
           </Content>
           <Content component="p" className="bmaas-role-landing__footer-updated">
             Last updated: {BMAAS_LANDING_LAST_UPDATED}
           </Content>
         </footer>
       </div>
+      <ConceptualDesignSticker />
     </div>
   )
 }

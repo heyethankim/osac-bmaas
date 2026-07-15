@@ -11,6 +11,7 @@ export type TenantUserCatalogCard = {
   status: string
   displayName: string
   categoryLabel: string
+  hardwareProfile: string
   cpu: string
   ram: string
   gpu: string
@@ -23,10 +24,11 @@ export type TenantUserCatalogCard = {
 }
 
 export const TENANT_USER_CATALOG_SPECS = {
-  categoryLabel: 'GPU Accelerated',
-  cpu: 'AMD EPYC 7763 × 2',
-  ram: '1 TB DDR4',
-  gpu: 'NVIDIA A100 80 GB × 4',
+  categoryLabel: 'Compute · Standard',
+  hardwareProfile: 'Dell PowerEdge R750',
+  cpu: 'Intel Xeon Gold 6338 × 2',
+  ram: '512 GB DDR4',
+  gpu: 'CPU-only',
   osImage: 'RHEL 9.4',
   footerNote: 'Hardware pre-configured · Admin-managed',
 } as const
@@ -38,7 +40,7 @@ export const TENANT_USER_CATALOG_FALLBACK: TenantUserCatalogCard = {
   ...TENANT_USER_CATALOG_SPECS,
   catalogItemId: 'cat_L3RID02N',
   templateRefId: 'bm_2R6X47GO',
-  templateName: 'gpu-a100-training-standard',
+  templateName: 'compute-standard-r750',
   rateCard: {
     hourlyRate: 4.25,
     monthlyRate: 2850,
