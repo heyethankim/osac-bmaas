@@ -17,36 +17,29 @@ import { getTenantUserCatalogCard } from '../../tenantUser/catalog'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
 import { TENANT_USER_CATALOG_PAGE } from '../../tenantUser/constants'
 import type { TenantInstance } from '../../tenantUser/instances'
-import { addTenantUserInstance } from '../../tenantUser/storage'
 
 type TenantUserCatalogPageProps = {
-  tenantSlug: string
   organization: RegisteredOrganization | null
   catalogDraft: ProviderCatalogDraft | null
   projectName: string
-  onInstanceProvisioned: (instances: TenantInstance[]) => void
-  onNavigateToInstances: () => void
+  onProvisioningStarted: (instance: TenantInstance) => void
+  onDismissDuringProvisioning: (instanceId: string) => void
+  onWizardFinished: (instanceId: string) => void
 }
 
 export function TenantUserCatalogPage({
-  tenantSlug,
   organization,
   catalogDraft,
   projectName,
-  onInstanceProvisioned,
-  onNavigateToInstances,
+  onProvisioningStarted,
+  onDismissDuringProvisioning,
+  onWizardFinished,
 }: TenantUserCatalogPageProps) {
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const catalogItem = useMemo(
     () => getTenantUserCatalogCard(organization, catalogDraft),
     [organization, catalogDraft],
   )
-
-  const handleProvisioned = (instance: TenantInstance) => {
-    const instances = addTenantUserInstance(tenantSlug, instance)
-    onInstanceProvisioned(instances)
-    onNavigateToInstances()
-  }
 
   return (
     <div className="tenant-user-workspace-page tenant-user-catalog">
@@ -122,7 +115,15 @@ export function TenantUserCatalogPage({
         catalogItem={catalogItem}
         projectName={projectName}
         onClose={() => setIsWizardOpen(false)}
-        onProvisioned={handleProvisioned}
+        onProvisioningStarted={onProvisioningStarted}
+        onDismissDuringProvisioning={(instanceId) => {
+          setIsWizardOpen(false)
+          onDismissDuringProvisioning(instanceId)
+        }}
+        onWizardFinished={(instanceId) => {
+          setIsWizardOpen(false)
+          onWizardFinished(instanceId)
+        }}
       />
     </div>
   )

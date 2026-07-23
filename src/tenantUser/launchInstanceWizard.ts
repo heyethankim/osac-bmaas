@@ -20,12 +20,12 @@ export const LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   {
     id: 'review',
     label: 'Review',
-    description: 'Step 2 of 3 — Review',
+    description: '',
   },
   {
     id: 'provisioning',
     label: 'Provisioning',
-    description: 'Step 3 of 3 — Provisioning',
+    description: '',
   },
 ]
 
@@ -54,9 +54,18 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   provisioningTitle: 'Booting your instance',
   provisioningLede:
     'Physical provisioning is underway. This takes 10–20 minutes in production.',
+  provisioningDismissibleNote:
+    'Provisioning will continue in the background—check status in My instances.',
   bootLogRemaining: '~11 min remaining',
   launchInstanceLabel: 'Launch instance',
+  closeWhileProvisioningLabel: 'Close',
+  backgroundProvisioningAlertTitle: 'Provisioning continues in the background',
+  backgroundProvisioningAlertBody:
+    'Your instance stays in Provisioning on My instances until bare metal setup finishes.',
 } as const
+
+export const LAUNCH_INSTANCE_BOOT_LOG_STEP_MS = 850
+export const LAUNCH_INSTANCE_PROVISIONING_SETTLE_MS = 900
 
 export const PROVISIONING_BOOT_LOG_STEPS: ProvisioningBootLogStep[] = [
   { id: 'claim-host', label: 'Claiming BareMetalHost from Metal3 inventory' },

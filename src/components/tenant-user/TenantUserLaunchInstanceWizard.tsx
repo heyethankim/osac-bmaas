@@ -29,6 +29,8 @@ import type { TenantUserCatalogCard } from '../../tenantUser/catalog'
 import {
   DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM,
   isInstanceNameValid,
+  LAUNCH_INSTANCE_BOOT_LOG_STEP_MS,
+  LAUNCH_INSTANCE_PROVISIONING_SETTLE_MS,
   LAUNCH_INSTANCE_WIZARD_DEMO,
   LAUNCH_INSTANCE_WIZARD_STEPS,
   PROVISIONING_BOOT_LOG_STEPS,
@@ -43,7 +45,9 @@ type TenantUserLaunchInstanceWizardProps = {
   catalogItem: TenantUserCatalogCard
   projectName: string
   onClose: () => void
-  onProvisioned: (instance: TenantInstance) => void
+  onProvisioningStarted: (instance: TenantInstance) => void
+  onDismissDuringProvisioning: (instanceId: string) => void
+  onWizardFinished: (instanceId: string) => void
 }
 
 function getBootLogStatus(
@@ -66,16 +70,22 @@ export function TenantUserLaunchInstanceWizard({
   catalogItem,
   projectName,
   onClose,
-  onProvisioned,
+  onProvisioningStarted,
+  onDismissDuringProvisioning,
+  onWizardFinished,
 }: TenantUserLaunchInstanceWizardProps) {
   const [form, setForm] = useState<LaunchInstanceWizardForm>(DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM)
   const [activeStepId, setActiveStepId] = useState<LaunchInstanceWizardStepId>('configure')
   const [activeBootLogIndex, setActiveBootLogIndex] = useState(0)
   const [isProvisioningComplete, setIsProvisioningComplete] = useState(false)
   const provisioningStartedRef = useRef(false)
+  const provisioningInstanceIdRef = useRef<string | null>(null)
+  const isOpenRef = useRef(isOpen)
 
   const activeStepDescription =
     LAUNCH_INSTANCE_WIZARD_STEPS.find((step) => step.id === activeStepId)?.description ?? ''
+  const isProvisioningInProgress =
+    activeStepId === 'provisioning' && !isProvisioningComplete
 
   const resetWizard = () => {
     setForm(DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM)
@@ -83,16 +93,24 @@ export function TenantUserLaunchInstanceWizard({
     setActiveBootLogIndex(0)
     setIsProvisioningComplete(false)
     provisioningStartedRef.current = false
+    provisioningInstanceIdRef.current = null
   }
 
   const handleClose = () => {
-    if (activeStepId === 'provisioning' && !isProvisioningComplete) {
+    if (isProvisioningInProgress && provisioningInstanceIdRef.current) {
+      onDismissDuringProvisioning(provisioningInstanceIdRef.current)
+      resetWizard()
+      onClose()
       return
     }
 
     resetWizard()
     onClose()
   }
+
+  useEffect(() => {
+    isOpenRef.current = isOpen
+  }, [isOpen])
 
   useEffect(() => {
     if (!isOpen) {
@@ -106,6 +124,24 @@ export function TenantUserLaunchInstanceWizard({
     }
 
     provisioningStartedRef.current = true
+
+    const instance: TenantInstance = {
+      id: generateTenantInstanceId(),
+      name: form.instanceName.trim(),
+      catalogItemDisplayName: catalogItem.displayName,
+      hardwareProfile: catalogItem.hardwareProfile,
+      osImage: catalogItem.osImage,
+      networkLabel: LAUNCH_INSTANCE_WIZARD_DEMO.reviewNetwork,
+      gpuLabel: catalogItem.gpu,
+      projectName,
+      status: 'provisioning',
+      createdAt: new Date().toISOString(),
+      provisionedAt: null,
+    }
+
+    provisioningInstanceIdRef.current = instance.id
+    onProvisioningStarted(instance)
+
     const totalSteps = PROVISIONING_BOOT_LOG_STEPS.length
     let stepIndex = 0
 
@@ -117,31 +153,28 @@ export function TenantUserLaunchInstanceWizard({
         window.clearInterval(intervalId)
         setIsProvisioningComplete(true)
 
-        const instance: TenantInstance = {
-          id: generateTenantInstanceId(),
-          name: form.instanceName.trim(),
-          catalogItemDisplayName: catalogItem.displayName,
-          hardwareProfile: catalogItem.hardwareProfile,
-          osImage: catalogItem.osImage,
-          networkLabel: LAUNCH_INSTANCE_WIZARD_DEMO.reviewNetwork,
-          gpuLabel: catalogItem.gpu,
-          projectName,
-          status: 'running',
-          createdAt: new Date().toISOString(),
-          provisionedAt: new Date().toISOString(),
-        }
-
         window.setTimeout(() => {
-          onProvisioned(instance)
-          handleClose()
-        }, 900)
+          const instanceId = provisioningInstanceIdRef.current
+          if (isOpenRef.current && instanceId) {
+            onWizardFinished(instanceId)
+            resetWizard()
+          }
+        }, LAUNCH_INSTANCE_PROVISIONING_SETTLE_MS)
       }
-    }, 850)
+    }, LAUNCH_INSTANCE_BOOT_LOG_STEP_MS)
 
     return () => {
       window.clearInterval(intervalId)
     }
-  }, [activeStepId, catalogItem, form.instanceName, isOpen, onProvisioned, projectName])
+  }, [
+    activeStepId,
+    catalogItem,
+    form.instanceName,
+    isOpen,
+    onProvisioningStarted,
+    onWizardFinished,
+    projectName,
+  ])
 
   const renderConfigureStep = () => (
     <div className="tenant-user-launch-wizard__step">
@@ -269,6 +302,16 @@ export function TenantUserLaunchInstanceWizard({
         {LAUNCH_INSTANCE_WIZARD_DEMO.provisioningLede}
       </Content>
 
+      <Alert
+        variant="info"
+        isInline
+        title="You can close this wizard anytime"
+        className="tenant-user-launch-wizard__provisioning-alert"
+        customIcon={<InfoCircleIcon />}
+      >
+        <Content component="p">{LAUNCH_INSTANCE_WIZARD_DEMO.provisioningDismissibleNote}</Content>
+      </Alert>
+
       <Card className="tenant-user-launch-wizard__boot-log">
         <Flex
           alignItems={{ default: 'alignItemsCenter' }}
@@ -362,7 +405,8 @@ export function TenantUserLaunchInstanceWizard({
     }
 
     return {
-      isCancelHidden: true,
+      isCancelHidden: false,
+      cancelButtonText: LAUNCH_INSTANCE_WIZARD_DEMO.closeWhileProvisioningLabel,
       isBackHidden: true,
       isNextDisabled: true,
       nextButtonText: isProvisioningComplete ? 'Complete' : 'Provisioning…',
@@ -398,7 +442,6 @@ export function TenantUserLaunchInstanceWizard({
               description={activeStepDescription || undefined}
               onClose={handleClose}
               closeButtonAriaLabel="Close launch instance wizard"
-              isCloseHidden={activeStepId === 'provisioning'}
             />
           }
         >

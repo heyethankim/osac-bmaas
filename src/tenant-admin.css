@@ -830,6 +830,20 @@
   color: var(--pf-t--global--text--color--subtle);
 }
 
+.tenant-user-instances__provisioning-alert {
+  margin-block-end: var(--pf-t--global--spacer--lg);
+}
+
+.tenant-user-instances__status-provisioning {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--xs);
+}
+
+.tenant-user-launch-wizard__provisioning-alert {
+  margin-block: 0 var(--pf-t--global--spacer--md);
+}
+
 .tenant-user-catalog__card {
   width: 100%;
   max-width: 26rem;

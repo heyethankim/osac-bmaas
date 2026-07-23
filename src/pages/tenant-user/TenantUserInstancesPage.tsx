@@ -1,8 +1,11 @@
 import {
+  Alert,
+  AlertActionCloseButton,
   Content,
   EmptyState,
   EmptyStateBody,
   Label,
+  Spinner,
   Title,
 } from '@patternfly/react-core'
 import { CubesIcon } from '@patternfly/react-icons/dist/esm/icons/cubes-icon'
@@ -13,12 +16,15 @@ import {
   getTenantInstanceStatusLabel,
   type TenantInstance,
 } from '../../tenantUser/instances'
+import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
 import { removeTenantUserInstance } from '../../tenantUser/storage'
 
 type TenantUserInstancesPageProps = {
   tenantSlug: string
   instances: TenantInstance[]
   onInstancesChange: (instances: TenantInstance[]) => void
+  showBackgroundProvisioningNotice?: boolean
+  onDismissBackgroundProvisioningNotice?: () => void
 }
 
 function getStatusColor(status: TenantInstance['status']): 'green' | 'blue' | 'red' {
@@ -38,6 +44,8 @@ export function TenantUserInstancesPage({
   tenantSlug,
   instances,
   onInstancesChange,
+  showBackgroundProvisioningNotice = false,
+  onDismissBackgroundProvisioningNotice,
 }: TenantUserInstancesPageProps) {
   const sortedInstances = [...instances].sort(
     (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
@@ -55,6 +63,27 @@ export function TenantUserInstancesPage({
       <Content component="p" className="tenant-user-instances__lede">
         Monitor and manage bare metal instances provisioned in your project.
       </Content>
+
+      {showBackgroundProvisioningNotice ? (
+        <Alert
+          variant="info"
+          isInline
+          title={LAUNCH_INSTANCE_WIZARD_DEMO.backgroundProvisioningAlertTitle}
+          className="tenant-user-instances__provisioning-alert"
+          actionClose={
+            onDismissBackgroundProvisioningNotice ? (
+              <AlertActionCloseButton
+                onClose={onDismissBackgroundProvisioningNotice}
+                aria-label="Close provisioning notice"
+              />
+            ) : undefined
+          }
+        >
+          <Content component="p">
+            {LAUNCH_INSTANCE_WIZARD_DEMO.backgroundProvisioningAlertBody}
+          </Content>
+        </Alert>
+      ) : null}
 
       {sortedInstances.length > 0 ? (
         <Table
@@ -90,7 +119,14 @@ export function TenantUserInstancesPage({
                 <Td dataLabel="OS image">{instance.osImage}</Td>
                 <Td dataLabel="Status">
                   <Label color={getStatusColor(instance.status)} isCompact>
-                    {getTenantInstanceStatusLabel(instance.status)}
+                    {instance.status === 'provisioning' ? (
+                      <span className="tenant-user-instances__status-provisioning">
+                        <Spinner size="sm" aria-hidden />
+                        {getTenantInstanceStatusLabel(instance.status)}
+                      </span>
+                    ) : (
+                      getTenantInstanceStatusLabel(instance.status)
+                    )}
                   </Label>
                 </Td>
                 <Td dataLabel="Created">{formatTenantInstanceCreatedAt(instance.createdAt)}</Td>

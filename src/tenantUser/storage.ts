@@ -114,6 +114,18 @@ export function addTenantUserInstance(slug: string, instance: TenantInstance): T
   return instances
 }
 
+export function updateTenantUserInstance(
+  slug: string,
+  instanceId: string,
+  patch: Partial<TenantInstance>,
+): TenantInstance[] {
+  const instances = getTenantUserInstances(slug).map((instance) =>
+    instance.id === instanceId ? { ...instance, ...patch } : instance,
+  )
+  setTenantUserInstances(slug, instances)
+  return instances
+}
+
 export function removeTenantUserInstance(slug: string, instanceId: string): TenantInstance[] {
   const instances = getTenantUserInstances(slug).filter((instance) => instance.id !== instanceId)
   setTenantUserInstances(slug, instances)
