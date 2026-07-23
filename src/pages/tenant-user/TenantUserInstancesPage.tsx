@@ -5,10 +5,10 @@ import {
   EmptyState,
   EmptyStateBody,
   Label,
-  Spinner,
   Title,
 } from '@patternfly/react-core'
 import { CubesIcon } from '@patternfly/react-icons/dist/esm/icons/cubes-icon'
+import { InProgressIcon } from '@patternfly/react-icons/dist/esm/icons/in-progress-icon'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table'
 import {
   formatTenantInstanceCreatedAt,
@@ -118,15 +118,14 @@ export function TenantUserInstancesPage({
                 <Td dataLabel="Hardware">{instance.hardwareProfile}</Td>
                 <Td dataLabel="OS image">{instance.osImage}</Td>
                 <Td dataLabel="Status">
-                  <Label color={getStatusColor(instance.status)} isCompact>
-                    {instance.status === 'provisioning' ? (
-                      <span className="tenant-user-instances__status-provisioning">
-                        <Spinner size="sm" aria-hidden />
-                        {getTenantInstanceStatusLabel(instance.status)}
-                      </span>
-                    ) : (
-                      getTenantInstanceStatusLabel(instance.status)
-                    )}
+                  <Label
+                    color={getStatusColor(instance.status)}
+                    isCompact
+                    icon={
+                      instance.status === 'provisioning' ? <InProgressIcon /> : undefined
+                    }
+                  >
+                    {getTenantInstanceStatusLabel(instance.status)}
                   </Label>
                 </Td>
                 <Td dataLabel="Created">{formatTenantInstanceCreatedAt(instance.createdAt)}</Td>
