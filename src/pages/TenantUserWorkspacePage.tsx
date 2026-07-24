@@ -32,8 +32,9 @@ import { TenantUserInstancesPage } from './tenant-user/TenantUserInstancesPage'
 export function TenantUserWorkspacePage() {
   const navigate = useNavigate()
   const { tenant } = useParams<{ tenant: string }>()
+  const tenantSlug =
+    tenant && isDemoTenantId(tenant) && tenant === 'northstar' ? tenant : 'northstar'
   const isValidTenant = Boolean(tenant && isDemoTenantId(tenant) && tenant === 'northstar')
-  const tenantSlug = isValidTenant ? tenant! : 'northstar'
 
   const [previewSession] = useState(() => getProviderViewingAsTenantUser())
   const [onboardingComplete, setOnboardingComplete] = useState(() =>
