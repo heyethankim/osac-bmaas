@@ -6,6 +6,7 @@ import './login.css'
 import './provider-admin.css'
 import './tenant-shell.css'
 import './tenant-admin.css'
+import './catalog.css'
 import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(

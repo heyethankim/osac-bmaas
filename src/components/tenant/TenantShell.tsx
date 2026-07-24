@@ -20,6 +20,7 @@ import {
   MastheadToggle,
   MenuToggle,
   Nav,
+  NavExpandable,
   NavGroup,
   NavItem,
   NavList,
@@ -34,6 +35,7 @@ import {
   ToolbarItem,
 } from '@patternfly/react-core'
 import type { TenantNavGroup, TenantNavItem } from '../../tenantShell/constants'
+import { flattenTenantNavItems } from '../../tenantShell/constants'
 import { NorthstarBankMastheadLogo } from './NorthstarBankMastheadLogo'
 import { ConceptualDesignSticker } from '../ConceptualDesignSticker'
 
@@ -54,7 +56,7 @@ type TenantShellProps = {
 
 const roleLabels: Record<TenantShellRole, string> = {
   'tenant-admin': 'Tenant Admin',
-  'tenant-user': 'User',
+  'tenant-user': 'Tenant user',
 }
 
 export function TenantShell({
@@ -70,11 +72,56 @@ export function TenantShell({
   isOnboardingLayout = false,
 }: TenantShellProps) {
   const navigate = useNavigate()
-  const flattenedNavItems = navGroups.length > 0 ? navGroups.flatMap((group) => group.items) : navItems
+  const flattenedNavItems =
+    navGroups.length > 0
+      ? flattenTenantNavItems(navGroups.flatMap((group) => group.items))
+      : flattenTenantNavItems(navItems)
   const [internalActiveNavId, setInternalActiveNavId] = useState(flattenedNavItems[0]?.id ?? '')
   const activeNavId = activeNavIdProp ?? internalActiveNavId
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isDarkTheme, setIsDarkTheme] = useState(false)
+
+  const renderNavItem = (item: TenantNavItem) => {
+    if (item.children?.length) {
+      const isSectionActive = item.children.some((child) => child.id === activeNavId)
+
+      return (
+        <NavExpandable
+          key={item.id}
+          id={`tenant-${role}-nav-${item.id}`}
+          title={item.label}
+          isExpanded
+          isActive={isSectionActive}
+        >
+          {item.children.map((child) => (
+            <NavItem
+              key={child.id}
+              itemId={child.id}
+              isActive={activeNavId === child.id}
+              className={disabledNavIds.includes(child.id) ? 'pf-m-disabled' : undefined}
+              to="#"
+              preventDefault
+            >
+              {child.label}
+            </NavItem>
+          ))}
+        </NavExpandable>
+      )
+    }
+
+    return (
+      <NavItem
+        key={item.id}
+        itemId={item.id}
+        isActive={activeNavId === item.id}
+        className={disabledNavIds.includes(item.id) ? 'pf-m-disabled' : undefined}
+        to="#"
+        preventDefault
+      >
+        {item.label}
+      </NavItem>
+    )
+  }
 
   useLayoutEffect(() => {
     const root = document.documentElement
@@ -188,35 +235,11 @@ export function TenantShell({
           {navGroups.length > 0 ? (
             navGroups.map((group) => (
               <NavGroup key={group.id} title={group.label}>
-                {group.items.map((item) => (
-                  <NavItem
-                    key={item.id}
-                    itemId={item.id}
-                    isActive={activeNavId === item.id}
-                    className={disabledNavIds.includes(item.id) ? 'pf-m-disabled' : undefined}
-                    to="#"
-                    preventDefault
-                  >
-                    {item.label}
-                  </NavItem>
-                ))}
+                {group.items.map((item) => renderNavItem(item))}
               </NavGroup>
             ))
           ) : (
-            <NavList>
-              {navItems.map((item) => (
-                <NavItem
-                  key={item.id}
-                  itemId={item.id}
-                  isActive={activeNavId === item.id}
-                  className={disabledNavIds.includes(item.id) ? 'pf-m-disabled' : undefined}
-                  to="#"
-                  preventDefault
-                >
-                  {item.label}
-                </NavItem>
-              ))}
-            </NavList>
+            <NavList>{navItems.map((item) => renderNavItem(item))}</NavList>
           )}
         </Nav>
       </PageSidebarBody>

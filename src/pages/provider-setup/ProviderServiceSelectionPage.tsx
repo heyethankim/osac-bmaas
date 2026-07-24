@@ -16,24 +16,17 @@ import {
   Title,
 } from '@patternfly/react-core'
 import { AngleRightIcon } from '@patternfly/react-icons/dist/esm/icons/angle-right-icon'
-import { RhUiClusterIcon } from '@patternfly/react-icons/dist/esm/icons/rh-ui-cluster-icon'
-import { RhUiVirtualServerIcon } from '@patternfly/react-icons/dist/esm/icons/rh-ui-virtual-server-icon'
-import type { ReactNode } from 'react'
 import {
   DEFAULT_PROVIDER_SERVICE_SELECTION,
   PROVIDER_SERVICE_CHIP_LABELS,
   PROVIDER_SERVICE_OFFERINGS,
   type ProviderServiceId,
 } from '../../providerSetup/constants'
+import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 
 type ProviderServiceSelectionPageProps = {
   initialSelectedServices?: ProviderServiceId[]
   onContinue: (selectedServices: ProviderServiceId[]) => void
-}
-
-const SERVICE_ICONS: Record<ProviderServiceId, ReactNode> = {
-  baremetal: <RhUiVirtualServerIcon />,
-  cluster: <RhUiClusterIcon />,
 }
 
 function getContinueLabel(count: number): string {
@@ -149,7 +142,7 @@ export function ProviderServiceSelectionPage({
                     </Label>
                   ) : null}
                   <div className="provider-service-selection__icon-wrap">
-                    <Icon size="lg">{SERVICE_ICONS[service.id]}</Icon>
+                    <Icon size="lg">{getCatalogServiceIcon(service.id)}</Icon>
                   </div>
                   <Title
                     id={titleId}

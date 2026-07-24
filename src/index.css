@@ -285,11 +285,49 @@ html:has(.bmaas-role-landing) body {
   margin-top: auto;
 }
 
-.bmaas-role-landing__action-spacer-slot {
+.bmaas-role-landing__prototype-links {
+  width: 100%;
+  min-height: 1.5rem;
+  text-align: center;
+}
+
+.bmaas-role-landing__prototype-link-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--xs);
+}
+
+.bmaas-role-landing__prototype-link-item {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.bmaas-role-landing__prototype-link.pf-v6-c-button {
+  padding-block: 0;
+  min-height: 0;
+  font-weight: var(--pf-t--global--font--weight--body--default);
+}
+
+.bmaas-role-landing__prototype-status.pf-v6-c-label {
   flex-shrink: 0;
-  pointer-events: none;
-  /* Reserve space for the second tenant button row without rendering a visible control */
-  min-height: var(--pf-v6-c-button--MinHeight, 2.25rem);
+}
+
+.bmaas-role-landing__prototype-empty.pf-v6-c-content--p {
+  margin: 0;
+  text-align: center;
+  font-size: var(--pf-t--global--font--size--body--sm);
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.bmaas-role-landing--light .bmaas-role-landing__prototype-empty.pf-v6-c-content--p {
+  color: rgb(130 122 114 / 88%);
 }
 
 .bmaas-role-landing__action.pf-v6-c-button {

@@ -91,9 +91,7 @@ export function AssignCatalogToOrganizationModal({
               </DescriptionListGroup>
               <DescriptionListGroup>
                 <DescriptionListTerm>Linked template</DescriptionListTerm>
-                <DescriptionListDescription>
-                  <code>{catalog.templateRefId}</code>
-                </DescriptionListDescription>
+                <DescriptionListDescription>{catalog.templateName}</DescriptionListDescription>
               </DescriptionListGroup>
               <DescriptionListGroup>
                 <DescriptionListTerm>Rate</DescriptionListTerm>

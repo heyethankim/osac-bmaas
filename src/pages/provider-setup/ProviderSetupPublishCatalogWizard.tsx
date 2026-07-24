@@ -1,15 +1,24 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ArrowRightIcon } from '@patternfly/react-icons/dist/esm/icons/arrow-right-icon'
 import { CatalogIcon } from '@patternfly/react-icons/dist/esm/icons/catalog-icon'
 import {
+  Alert,
+  Card,
+  CardBody,
   Content,
+  DescriptionList,
+  DescriptionListDescription,
+  DescriptionListGroup,
+  DescriptionListTerm,
   Form,
   FormGroup,
+  Icon,
   Label,
   Modal,
   ModalVariant,
   Radio,
   Spinner,
+  TextArea,
   TextInput,
   Title,
   Wizard,
@@ -18,44 +27,89 @@ import {
 } from '@patternfly/react-core'
 import { CatalogPublishScopeIcon } from '../../components/provider-admin/CatalogPublishScopeIcon'
 import {
-  getHardwareProfileLabel,
+  formatVipEnterpriseVisibilityLabel,
+  VipEnterpriseOrganizationField,
+} from '../../components/provider-admin/VipEnterpriseOrganizationField'
+import { CatalogHardwareSpecsList } from '../../components/catalog/CatalogHardwareSpecsList'
+import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
+import { resolveHardwareSpecsFromTemplate } from '../../catalog/hardwareSpecs'
+import type { RegisteredOrganization } from '../../providerAdmin/organizations'
+import {
+  CATALOG_SERVICE_OFFERINGS,
+  getCatalogServiceOffering,
   formatRateCardSummary,
   resolveRateCard,
   PUBLISH_CATALOG_STEPS,
+  type CatalogServiceId,
   type PublishCatalogScope,
   type PublishedTemplatePayload,
   type SavedMasterTemplate,
 } from '../../providerSetup/templateDemo'
-import { getOsImageLabel } from '../../providerAdmin/osImageLabels'
 
 type ProviderSetupPublishCatalogWizardProps = {
   isOpen: boolean
   templates: SavedMasterTemplate[]
+  organizations: RegisteredOrganization[]
   defaultTemplateRefId?: string
+  /** When set, prefills the Name step instead of the template suggested name. */
+  defaultDisplayName?: string
+  /** Resume VIP after registering an organization. */
+  initialPublishScope?: PublishCatalogScope
+  initialEnterpriseTenantId?: string
   onClose: () => void
   onCreateCatalogItem: (payload: PublishedTemplatePayload) => void
+  onRegisterOrganization?: () => void
   isPublishing?: boolean
 }
 
 export function ProviderSetupPublishCatalogWizard({
   isOpen,
   templates,
+  organizations,
   defaultTemplateRefId,
+  defaultDisplayName,
+  initialPublishScope = 'global-public',
+  initialEnterpriseTenantId = '',
   onClose,
   onCreateCatalogItem,
+  onRegisterOrganization,
   isPublishing = false,
 }: ProviderSetupPublishCatalogWizardProps) {
+  const [selectedServiceId, setSelectedServiceId] = useState<CatalogServiceId | null>(null)
   const [selectedTemplateRefId, setSelectedTemplateRefId] = useState('')
   const [displayName, setDisplayName] = useState('')
+  const [description, setDescription] = useState('')
   const [publishScope, setPublishScope] = useState<PublishCatalogScope>('global-public')
+  const [enterpriseTenantId, setEnterpriseTenantId] = useState('')
 
   const selectedTemplate =
     templates.find((template) => template.templateRefId === selectedTemplateRefId) ?? null
+  const isVipEnterprise = publishScope === 'vip-enterprise'
+  const selectedVipOrganization = useMemo(
+    () => organizations.find((organization) => organization.tenantId === enterpriseTenantId) ?? null,
+    [organizations, enterpriseTenantId],
+  )
+  const isVipUnassigned = isVipEnterprise && !enterpriseTenantId.trim()
+  const canCreateCatalogItem =
+    Boolean(selectedServiceId) && Boolean(selectedTemplate) && Boolean(displayName.trim())
+
+  const selectVipEnterprise = () => {
+    setPublishScope('vip-enterprise')
+    setEnterpriseTenantId((current) => {
+      if (current.trim() && organizations.some((organization) => organization.tenantId === current)) {
+        return current
+      }
+      return organizations[0]?.tenantId ?? ''
+    })
+  }
 
   const resetWizard = () => {
+    setSelectedServiceId(null)
     setSelectedTemplateRefId('')
     setDisplayName('')
+    setDescription('')
     setPublishScope('global-public')
+    setEnterpriseTenantId('')
   }
 
   const handleClose = () => {
@@ -76,34 +130,132 @@ export function ProviderSetupPublishCatalogWizard({
 
     if (preferredTemplate) {
       setSelectedTemplateRefId(preferredTemplate.templateRefId)
-      setDisplayName(preferredTemplate.suggestedDisplayName)
+      setDisplayName(defaultDisplayName ?? preferredTemplate.suggestedDisplayName)
+      setDescription(preferredTemplate.description)
     }
-  }, [isOpen, defaultTemplateRefId, templates])
+
+    setPublishScope(initialPublishScope)
+    if (initialPublishScope === 'vip-enterprise') {
+      const preferredTenantId =
+        initialEnterpriseTenantId &&
+        organizations.some((organization) => organization.tenantId === initialEnterpriseTenantId)
+          ? initialEnterpriseTenantId
+          : (organizations[0]?.tenantId ?? '')
+      setEnterpriseTenantId(preferredTenantId)
+    } else {
+      setEnterpriseTenantId('')
+    }
+    // Initialize only when the wizard opens; resume props are read at that moment.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional open-only init
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen || publishScope !== 'vip-enterprise' || enterpriseTenantId.trim()) {
+      return
+    }
+
+    const firstOrganization = organizations[0]
+    if (firstOrganization) {
+      setEnterpriseTenantId(firstOrganization.tenantId)
+    }
+  }, [isOpen, organizations, publishScope, enterpriseTenantId])
 
   useEffect(() => {
     if (!selectedTemplate) {
       return
     }
 
-    setDisplayName(selectedTemplate.suggestedDisplayName)
-  }, [selectedTemplate?.templateRefId])
+    setDisplayName(defaultDisplayName ?? selectedTemplate.suggestedDisplayName)
+    setDescription(selectedTemplate.description)
+  }, [selectedTemplate?.templateRefId, defaultDisplayName])
 
   const handleCreateCatalogItem = () => {
-    if (!selectedTemplate || !displayName.trim()) {
+    if (!canCreateCatalogItem || !selectedServiceId || !selectedTemplate) {
       return
     }
 
     onCreateCatalogItem({
+      serviceId: selectedServiceId,
       templateRefId: selectedTemplate.templateRefId,
       templateName: selectedTemplate.templateName,
       displayName: displayName.trim(),
+      description: description.trim(),
       scope: publishScope,
       rateCard: resolveRateCard(selectedTemplate),
+      status: isVipUnassigned ? 'unpublished' : 'live',
+      ...(isVipEnterprise && enterpriseTenantId.trim()
+        ? { enterpriseTenantId: enterpriseTenantId.trim() }
+        : {}),
+      ...(selectedVipOrganization ? { vipOrganizationId: selectedVipOrganization.id } : {}),
     })
   }
 
   function renderStepContent(stepId: (typeof PUBLISH_CATALOG_STEPS)[number]['id']) {
     switch (stepId) {
+      case 'service':
+        return (
+          <div className="provider-setup-template__publish-service-step">
+            <Content component="p" className="provider-setup-template__publish-step-lede">
+              Choose the service this catalog item belongs to.
+            </Content>
+            <div
+              className="provider-setup-template__service-cards"
+              role="radiogroup"
+              aria-label="Catalog service"
+            >
+              {CATALOG_SERVICE_OFFERINGS.map((service) => {
+                const isSelected = selectedServiceId === service.id
+                const titleId = `publish-catalog-service-${service.id}-title`
+
+                return (
+                  <Card
+                    key={service.id}
+                    isSelectable
+                    isSelected={isSelected}
+                    className="provider-setup-template__service-card"
+                    aria-labelledby={titleId}
+                    onClick={() => setSelectedServiceId(service.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        setSelectedServiceId(service.id)
+                      }
+                    }}
+                  >
+                    <CardBody className="provider-setup-template__service-card-body">
+                      {isSelected ? (
+                        <Label
+                          color="grey"
+                          isCompact
+                          className="provider-setup-template__service-card-badge"
+                        >
+                          Selected
+                        </Label>
+                      ) : null}
+                      <div className="provider-setup-template__service-card-icon-wrap">
+                        <Icon size="lg">{getCatalogServiceIcon(service.id)}</Icon>
+                      </div>
+                      <Title
+                        id={titleId}
+                        headingLevel="h3"
+                        size="md"
+                        className="provider-setup-template__service-card-title"
+                      >
+                        {service.title}
+                      </Title>
+                      <Content
+                        component="p"
+                        className="provider-setup-template__service-card-description"
+                      >
+                        {service.description}
+                      </Content>
+                    </CardBody>
+                  </Card>
+                )
+              })}
+            </div>
+          </div>
+        )
       case 'template':
         return (
           <div className="provider-setup-template__publish-template-step">
@@ -117,6 +269,7 @@ export function ProviderSetupPublishCatalogWizard({
             >
               {templates.map((template) => {
                 const isSelected = template.templateRefId === selectedTemplateRefId
+                const hardwareSpecs = resolveHardwareSpecsFromTemplate(template)
 
                 return (
                   <button
@@ -150,13 +303,10 @@ export function ProviderSetupPublishCatalogWizard({
                     <Content component="p" className="provider-setup-template__select-card-detail">
                       {template.description}
                     </Content>
-                    <Content component="p" className="provider-setup-template__select-card-meta">
-                      <code>{template.templateRefId}</code>
-                      {' · '}
-                      {getHardwareProfileLabel(template.hardwareProfileId)}
-                      {' · '}
-                      {getOsImageLabel(template.osImageId)}
-                    </Content>
+                    <CatalogHardwareSpecsList
+                      specs={hardwareSpecs}
+                      className="provider-setup-template__select-card-specs"
+                    />
                     <Content component="p" className="provider-setup-template__select-card-rate">
                       {formatRateCardSummary(resolveRateCard(template))}
                     </Content>
@@ -168,37 +318,30 @@ export function ProviderSetupPublishCatalogWizard({
         )
       case 'display-name':
         return (
-          <Form autoComplete="off" className="provider-setup-template__publish-display-form">
+          <div className="provider-setup-template__publish-display-step">
             <Content component="p" className="provider-setup-template__publish-step-lede">
               This name appears in the tenant catalog when they browse available offerings.
             </Content>
-            <FormGroup label="Display name for tenants" fieldId="publish-catalog-display-name" isRequired>
-              <TextInput
-                id="publish-catalog-display-name"
-                value={displayName}
-                onChange={(_event, value) => setDisplayName(value)}
-                aria-label="Display name for tenants"
-              />
-            </FormGroup>
-            {selectedTemplate ? (
-              <>
-                <Content component="p" className="provider-setup-template__publish-linked-template">
-                  Linked template <code>{selectedTemplate.templateRefId}</code>
-                </Content>
-                <div className="provider-setup-template__publish-rate-card" aria-label="Inherited rate card">
-                  <Content component="p" className="provider-setup-template__publish-rate-card-label">
-                    Inherited rate card
-                  </Content>
-                  <Content component="p" className="provider-setup-template__publish-rate-card-value">
-                    {formatRateCardSummary(resolveRateCard(selectedTemplate))}
-                  </Content>
-                  <Content component="p" className="provider-setup-template__publish-rate-card-detail">
-                    Pricing is defined on the master template and cannot be changed at publish time.
-                  </Content>
-                </div>
-              </>
-            ) : null}
-          </Form>
+            <Form autoComplete="off" className="provider-setup-template__publish-display-form">
+              <FormGroup label="Name" fieldId="publish-catalog-display-name" isRequired>
+                <TextInput
+                  id="publish-catalog-display-name"
+                  value={displayName}
+                  onChange={(_event, value) => setDisplayName(value)}
+                  aria-label="Name"
+                />
+              </FormGroup>
+              <FormGroup label="Description" fieldId="publish-catalog-description">
+                <TextArea
+                  id="publish-catalog-description"
+                  value={description}
+                  onChange={(_event, value) => setDescription(value)}
+                  aria-label="Description"
+                  rows={3}
+                />
+              </FormGroup>
+            </Form>
+          </div>
         )
       case 'publish-scope':
         return (
@@ -206,30 +349,20 @@ export function ProviderSetupPublishCatalogWizard({
             <Content component="p" className="provider-setup-template__publish-step-lede">
               Control which tenants can discover and order this catalog item.
             </Content>
-            {selectedTemplate ? (
-              <div className="provider-setup-template__publish-summary">
-                <Content component="p" className="provider-setup-template__publish-summary-label">
-                  Commercial summary
-                </Content>
-                <Content component="p" className="provider-setup-template__publish-summary-value">
-                  {displayName.trim() || selectedTemplate.suggestedDisplayName}
-                </Content>
-                <Content component="p" className="provider-setup-template__publish-summary-detail">
-                  {formatRateCardSummary(resolveRateCard(selectedTemplate))}
-                </Content>
-              </div>
-            ) : null}
             <div
               className="provider-admin-catalog__scope-options"
               role="radiogroup"
-              aria-label="Publish scope"
+              aria-label="Visibility"
             >
               <button
                 type="button"
                 className={`provider-admin-catalog__scope-card${
                   publishScope === 'global-public' ? ' provider-admin-catalog__scope-card--selected' : ''
                 }`}
-                onClick={() => setPublishScope('global-public')}
+                onClick={() => {
+                  setPublishScope('global-public')
+                  setEnterpriseTenantId('')
+                }}
                 role="radio"
                 aria-checked={publishScope === 'global-public'}
               >
@@ -245,7 +378,10 @@ export function ProviderSetupPublishCatalogWizard({
                   id="publish-scope-global-public"
                   name="publish-scope"
                   isChecked={publishScope === 'global-public'}
-                  onChange={() => setPublishScope('global-public')}
+                  onChange={() => {
+                    setPublishScope('global-public')
+                    setEnterpriseTenantId('')
+                  }}
                   aria-label="Global public"
                 />
               </button>
@@ -254,7 +390,7 @@ export function ProviderSetupPublishCatalogWizard({
                 className={`provider-admin-catalog__scope-card${
                   publishScope === 'vip-enterprise' ? ' provider-admin-catalog__scope-card--selected' : ''
                 }`}
-                onClick={() => setPublishScope('vip-enterprise')}
+                onClick={selectVipEnterprise}
                 role="radio"
                 aria-checked={publishScope === 'vip-enterprise'}
               >
@@ -264,25 +400,144 @@ export function ProviderSetupPublishCatalogWizard({
                 />
                 <span className="provider-admin-catalog__scope-copy">
                   <span className="provider-admin-catalog__scope-title">VIP enterprise</span>
-                  <span className="provider-admin-catalog__scope-detail">Scoped to a specific tenant.</span>
+                  <span className="provider-admin-catalog__scope-detail">
+                    Visible only to a specific enterprise tenant.
+                  </span>
                 </span>
                 <Radio
                   id="publish-scope-vip-enterprise"
                   name="publish-scope"
                   isChecked={publishScope === 'vip-enterprise'}
-                  onChange={() => setPublishScope('vip-enterprise')}
+                  onChange={selectVipEnterprise}
                   aria-label="VIP enterprise"
                 />
               </button>
             </div>
+            {isVipEnterprise ? (
+              <div className="provider-setup-template__publish-enterprise-form">
+                <VipEnterpriseOrganizationField
+                  organizations={organizations}
+                  selectedTenantId={enterpriseTenantId}
+                  onSelectedTenantIdChange={setEnterpriseTenantId}
+                  onRegisterOrganization={onRegisterOrganization}
+                  fieldIdPrefix="publish-catalog"
+                />
+              </div>
+            ) : null}
           </div>
         )
+      case 'review': {
+        const reviewHardwareSpecs = selectedTemplate
+          ? resolveHardwareSpecsFromTemplate(selectedTemplate)
+          : null
+
+        return (
+          <div className="provider-setup-template__publish-review-step">
+            <Content component="p" className="provider-setup-template__publish-step-lede">
+              Confirm the catalog item details before publishing.
+            </Content>
+            {selectedTemplate ? (
+              <Alert
+                variant="info"
+                isInline
+                title="Inherited pricing"
+                className="provider-setup-template__publish-review-alert"
+              >
+                <Content component="p">
+                  This catalog item will publish with{' '}
+                  <strong>{formatRateCardSummary(resolveRateCard(selectedTemplate))}</strong> from
+                  the master template. Pricing cannot be changed at publish time.
+                </Content>
+              </Alert>
+            ) : null}
+            <DescriptionList
+              isCompact
+              className="provider-setup-template__publish-review-list"
+              aria-label="Catalog item review"
+            >
+              <DescriptionListGroup>
+                <DescriptionListTerm>Service</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {selectedServiceId
+                    ? getCatalogServiceOffering(selectedServiceId).title
+                    : '—'}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Template</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {selectedTemplate?.templateName ?? '—'}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+              {reviewHardwareSpecs ? (
+                <>
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>CPU</DescriptionListTerm>
+                    <DescriptionListDescription>{reviewHardwareSpecs.cpu}</DescriptionListDescription>
+                  </DescriptionListGroup>
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>RAM</DescriptionListTerm>
+                    <DescriptionListDescription>{reviewHardwareSpecs.ram}</DescriptionListDescription>
+                  </DescriptionListGroup>
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>GPU</DescriptionListTerm>
+                    <DescriptionListDescription>{reviewHardwareSpecs.gpu}</DescriptionListDescription>
+                  </DescriptionListGroup>
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>OS image</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      {reviewHardwareSpecs.osImage}
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                </>
+              ) : null}
+              <DescriptionListGroup>
+                <DescriptionListTerm>Name</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {displayName.trim() || '—'}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Description</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {description.trim() || '—'}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Visibility</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {isVipEnterprise
+                    ? formatVipEnterpriseVisibilityLabel(organizations, enterpriseTenantId)
+                    : 'Global public'}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+            </DescriptionList>
+            {isVipUnassigned ? (
+              <Alert
+                variant="info"
+                isInline
+                title="Will save as unpublished"
+                className="provider-setup-template__publish-review-alert"
+              >
+                <Content component="p">
+                  VIP enterprise is selected without a target organization. The catalog item will be
+                  saved as unpublished until you register or assign a tenant.
+                </Content>
+              </Alert>
+            ) : null}
+          </div>
+        )
+      }
       default:
         return null
     }
   }
 
   function getStepFooter(stepId: (typeof PUBLISH_CATALOG_STEPS)[number]['id']) {
+    if (stepId === 'service') {
+      return { isNextDisabled: !selectedServiceId }
+    }
+
     if (stepId === 'template') {
       return { isNextDisabled: !selectedTemplateRefId }
     }
@@ -293,20 +548,26 @@ export function ProviderSetupPublishCatalogWizard({
 
     if (stepId === 'publish-scope') {
       return {
+        isNextDisabled: false,
+      }
+    }
+
+    if (stepId === 'review') {
+      return {
         nextButtonText: isPublishing ? (
           <span className="provider-admin-catalog__submit-label">
             <Spinner size="sm" aria-label="Publishing catalog item" />
-            <span>Publishing…</span>
+            <span>{isVipUnassigned ? 'Saving…' : 'Publishing…'}</span>
           </span>
         ) : (
           <span className="provider-admin-catalog__submit-label">
             <CatalogIcon aria-hidden />
-            <span>Create catalog item</span>
+            <span>{isVipUnassigned ? 'Save as unpublished' : 'Create catalog item'}</span>
             <ArrowRightIcon aria-hidden />
           </span>
         ),
         onNext: handleCreateCatalogItem,
-        isNextDisabled: isPublishing || !selectedTemplate || !displayName.trim(),
+        isNextDisabled: isPublishing || !canCreateCatalogItem,
         isBackDisabled: isPublishing,
       }
     }

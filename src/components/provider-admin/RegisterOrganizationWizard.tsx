@@ -173,28 +173,30 @@ export function RegisterOrganizationWizard({
             <Content component="p" className="provider-admin-organizations__wizard-lede">
               Assign catalog access, instance quota, and an external IP pool for this organization.
             </Content>
+            <Alert
+              variant="info"
+              isInline
+              title="Catalog assignment is optional"
+              className="provider-admin-organizations__wizard-alert"
+            >
+              <Content component="p">
+                You can register this organization now and assign a catalog item later. If a catalog
+                item is already published, it can be assigned during onboarding.
+              </Content>
+            </Alert>
             {catalogDraft ? (
               <Alert
                 variant="info"
                 isInline
-                title="Catalog item assigned"
+                title="Catalog item available"
                 className="provider-admin-organizations__wizard-alert"
               >
                 <Content component="p">
-                  {catalogDraft.displayName} (<code>{catalogDraft.catalogItemId}</code>) will be
-                  available to this organization after the tenant admin activates.
+                  {catalogDraft.displayName} will be available to assign to this organization after
+                  the tenant admin activates.
                 </Content>
               </Alert>
-            ) : (
-              <Alert
-                variant="warning"
-                isInline
-                title="No published catalog item"
-                className="provider-admin-organizations__wizard-alert"
-              >
-                Publish a catalog item first to scope storefront access during onboarding.
-              </Alert>
-            )}
+            ) : null}
             <Form autoComplete="off">
               <FormGroup label="External IP pool" fieldId="register-external-ip-pool" isRequired>
                 {assignablePools.length > 0 ? (

@@ -20,6 +20,7 @@ import { getOsImageLabel } from '../../providerAdmin/osImageLabels'
 import {
   addProviderSavedTemplate,
   getProviderCatalogDraft,
+  getProviderRegisteredOrganizations,
   getProviderSavedTemplates,
 } from '../../providerSetup/storage'
 import { ProviderSetupBlueprintDesigner } from '../provider-setup/ProviderSetupBlueprintDesigner'
@@ -165,9 +166,6 @@ export function ProviderAdminBmaasTemplatesPage({
                   <Content component="p" className="provider-admin-bmaas-templates__primary-cell">
                     {template.templateName}
                   </Content>
-                  <Content component="p" className="provider-admin-bmaas-templates__meta-cell">
-                    <code>{template.templateRefId}</code>
-                  </Content>
                 </Td>
                 <Td dataLabel="Hardware profile">
                   {getHardwareProfileLabel(template.hardwareProfileId)}
@@ -220,6 +218,7 @@ export function ProviderAdminBmaasTemplatesPage({
       <ProviderSetupPublishCatalogWizard
         isOpen={isPublishWizardOpen}
         templates={availableTemplates.filter((template) => template.templateRefId !== 'bm_pending')}
+        organizations={getProviderRegisteredOrganizations()}
         defaultTemplateRefId={publishTemplateRefId ?? availableTemplates[0]?.templateRefId}
         onClose={() => {
           setIsPublishWizardOpen(false)

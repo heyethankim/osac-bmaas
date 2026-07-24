@@ -1,53 +1,252 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
-  Alert,
-  AlertActionLink,
   Button,
   Card,
   CardBody,
   Content,
+  EmptyState,
+  EmptyStateBody,
+  Form,
+  FormGroup,
   Label,
-  Switch,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  ModalVariant,
+  SearchInput,
+  TextInput,
   Title,
+  Tooltip,
 } from '@patternfly/react-core'
-import { AngleRightIcon } from '@patternfly/react-icons/dist/esm/icons/angle-right-icon'
-import { CubesIcon } from '@patternfly/react-icons/dist/esm/icons/cubes-icon'
 import { TimesIcon } from '@patternfly/react-icons/dist/esm/icons/times-icon'
+import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
+import {
+  CatalogServiceFilterToggle,
+  countCatalogServices,
+  toggleCatalogServiceFilter,
+} from '../../components/catalog/CatalogServiceFilterToggle'
+import { CatalogViewToggle } from '../../components/catalog/CatalogViewToggle'
+import { CatalogPublishScopeIcon } from '../../components/provider-admin/CatalogPublishScopeIcon'
+import { TenantCatalogItemDetailsDrawer } from '../../components/tenant-admin/TenantCatalogItemDetailsDrawer'
+import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
+import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
+import { getCatalogViewMode, setCatalogViewMode, type CatalogViewMode } from '../../catalog/viewMode'
+import type { RegisteredOrganization } from '../../providerAdmin/organizations'
+import type { ProviderCatalogDraft } from '../../providerSetup/storage'
+import { CATALOG_SERVICE_FILTER_LABELS, type CatalogServiceId } from '../../providerSetup/templateDemo'
 import {
   getTenantCatalogAuthorizedTeams,
-  TENANT_CATALOG_GOVERNANCE_ITEMS,
+  getTenantCatalogGovernanceItems,
   TENANT_CATALOG_MANAGER_DEMO,
+  type TenantCatalogGovernanceItemWithNetworking,
 } from '../../tenantAdmin/catalogManager'
+import {
+  getTenantNetworkOverrides,
+  setTenantNetworkOverrides,
+  type TenantNetworkResourceKind,
+} from '../../tenantAdmin/networking'
 import type { TenantProject } from '../../tenantAdmin/projects'
+import { openAsTenantUser } from '../../providerAdmin/openAsTenantUser'
 
 type TenantAdminCatalogPageProps = {
+  organization: RegisteredOrganization
+  catalogDraft: ProviderCatalogDraft | null
   projects: TenantProject[]
   onNavigateToProjectsTeams: () => void
 }
 
+function getVisibilityTooltip(scope: TenantCatalogGovernanceItemWithNetworking['scope']): string {
+  return scope === 'vip-enterprise'
+    ? 'Visible only to chosen tenant organizations'
+    : 'Visible to all tenants'
+}
+
+function getVisibilityLabel(scope: TenantCatalogGovernanceItemWithNetworking['scope']): string {
+  return scope === 'vip-enterprise' ? 'VIP enterprise' : 'Global public'
+}
+
+function NetworkingSummary({
+  item,
+  compact = false,
+  onViewDetails,
+}: {
+  item: TenantCatalogGovernanceItemWithNetworking
+  compact?: boolean
+  onViewDetails?: () => void
+}) {
+  const isConfigured = item.networkPolicy.enabled
+
+  if (compact) {
+    if (isConfigured && onViewDetails) {
+      return (
+        <Button
+          variant="link"
+          isInline
+          className="tenant-admin-catalog-manager__inline-link"
+          onClick={onViewDetails}
+        >
+          {TENANT_CATALOG_MANAGER_DEMO.networkingViewDetailsLabel}
+        </Button>
+      )
+    }
+
+    return (
+      <Content component="p" className="tenant-admin-catalog-manager__networking-table-summary">
+        {TENANT_CATALOG_MANAGER_DEMO.networkingNotConfiguredTableLabel}
+      </Content>
+    )
+  }
+
+  return (
+    <div className="tenant-admin-catalog-manager__spec-row">
+      <dt className="tenant-admin-catalog-manager__spec-label">
+        {TENANT_CATALOG_MANAGER_DEMO.networkingLabel}
+      </dt>
+      <dd className="tenant-admin-catalog-manager__spec-value">
+        {isConfigured && onViewDetails ? (
+          <Button
+            variant="link"
+            isInline
+            className="tenant-admin-catalog-manager__inline-link"
+            onClick={onViewDetails}
+          >
+            {TENANT_CATALOG_MANAGER_DEMO.networkingViewDetailsLabel}
+          </Button>
+        ) : (
+          TENANT_CATALOG_MANAGER_DEMO.networkingNotConfiguredSummary
+        )}
+      </dd>
+    </div>
+  )
+}
+
+function getCatalogItemActions(
+  item: TenantCatalogGovernanceItemWithNetworking,
+  onViewDetails: () => void,
+  onOpenAsTenantUser: () => void,
+  onEdit: () => void,
+  onDuplicate: () => void,
+  onTogglePublish: () => void,
+  onDelete: () => void,
+): IAction[] {
+  const isUnpublished = item.status === 'Unpublished'
+
+  return [
+    {
+      title: 'View details',
+      onClick: onViewDetails,
+    },
+    {
+      title: 'Open as tenant user',
+      isAriaDisabled: isUnpublished,
+      onClick: () => {
+        if (!isUnpublished) {
+          onOpenAsTenantUser()
+        }
+      },
+    },
+    {
+      title: 'Edit',
+      onClick: onEdit,
+    },
+    {
+      title: 'Duplicate',
+      onClick: onDuplicate,
+    },
+    {
+      isSeparator: true,
+    },
+    {
+      title: isUnpublished ? 'Publish' : 'Unpublish',
+      onClick: onTogglePublish,
+    },
+    {
+      title: 'Delete',
+      isDanger: true,
+      onClick: onDelete,
+    },
+  ]
+}
+
 export function TenantAdminCatalogPage({
+  organization,
+  catalogDraft,
   projects,
   onNavigateToProjectsTeams,
 }: TenantAdminCatalogPageProps) {
-  const [approvedByItemId, setApprovedByItemId] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(
-      TENANT_CATALOG_GOVERNANCE_ITEMS.map((item) => [item.id, item.approved]),
-    ),
+  const navigate = useNavigate()
+  const [catalogItems, setCatalogItems] = useState(() =>
+    getTenantCatalogGovernanceItems(organization, catalogDraft),
   )
+  const [viewMode, setViewMode] = useState<CatalogViewMode>(() => getCatalogViewMode('grid'))
+  const [selectedFilters, setSelectedFilters] = useState<Set<CatalogServiceId>>(
+    () => new Set(['baremetal']),
+  )
+  const [searchValue, setSearchValue] = useState('')
   const [removedTeamsByItemId, setRemovedTeamsByItemId] = useState<Record<string, string[]>>({})
-  const showProjectsTeamsAlert = projects.length === 0
+  const [selectedCatalogItem, setSelectedCatalogItem] =
+    useState<TenantCatalogGovernanceItemWithNetworking | null>(null)
+  const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [editDisplayName, setEditDisplayName] = useState('')
+  const [isUnpublishModalOpen, setIsUnpublishModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+
+  const serviceCounts = useMemo(
+    () => countCatalogServices(catalogItems.map((item) => item.serviceId)),
+    [catalogItems],
+  )
+  const filteredItems = useMemo(() => {
+    const query = searchValue.trim().toLowerCase()
+
+    return catalogItems.filter((item) => {
+      if (!selectedFilters.has(item.serviceId)) {
+        return false
+      }
+
+      if (!query) {
+        return true
+      }
+
+      return (
+        item.displayName.toLowerCase().includes(query) ||
+        item.service.toLowerCase().includes(query) ||
+        item.id.toLowerCase().includes(query) ||
+        item.cpu.toLowerCase().includes(query) ||
+        item.ram.toLowerCase().includes(query) ||
+        item.gpu.toLowerCase().includes(query) ||
+        item.osImage.toLowerCase().includes(query)
+      )
+    })
+  }, [catalogItems, selectedFilters, searchValue])
+
+  const emptyStateTitle = (() => {
+    if (selectedFilters.size === 0) {
+      return 'Select a service to view catalog items'
+    }
+    if (searchValue.trim()) {
+      return 'No catalog items match your search'
+    }
+    if (selectedFilters.size === 1) {
+      const [onlyFilter] = selectedFilters
+      return `No ${CATALOG_SERVICE_FILTER_LABELS[onlyFilter!]} items yet`
+    }
+    return 'No catalog items for the selected services'
+  })()
 
   const authorizedTeamsByItemId = useMemo(() => {
     const projectTeamNames = getTenantCatalogAuthorizedTeams(projects)
 
     return Object.fromEntries(
-      TENANT_CATALOG_GOVERNANCE_ITEMS.map((item) => {
+      catalogItems.map((item) => {
         const removed = new Set(removedTeamsByItemId[item.id] ?? [])
 
         return [item.id, projectTeamNames.filter((teamName) => !removed.has(teamName))]
       }),
     )
-  }, [projects, removedTeamsByItemId])
+  }, [catalogItems, projects, removedTeamsByItemId])
 
   const handleRemoveAuthorizedTeam = (itemId: string, teamName: string) => {
     setRemovedTeamsByItemId((current) => ({
@@ -56,172 +255,574 @@ export function TenantAdminCatalogPage({
     }))
   }
 
+  const handleViewModeChange = (nextViewMode: CatalogViewMode) => {
+    setViewMode(nextViewMode)
+    setCatalogViewMode(nextViewMode)
+  }
+
+  const handleFilterToggle = (serviceId: CatalogServiceId, isSelected: boolean) => {
+    setSelectedFilters((current) => toggleCatalogServiceFilter(current, serviceId, isSelected))
+  }
+
+  const openDetails = (item: TenantCatalogGovernanceItemWithNetworking) => {
+    setSelectedCatalogItem(item)
+    setIsDetailsDrawerOpen(true)
+  }
+
+  const closeDetails = () => {
+    setIsDetailsDrawerOpen(false)
+  }
+
+  const handleChangeNetworkField = (kind: TenantNetworkResourceKind, optionId: string) => {
+    const overrideKey =
+      kind === 'virtual-network'
+        ? 'virtualNetworkId'
+        : kind === 'subnet'
+          ? 'subnetId'
+          : 'securityGroupId'
+    const currentOverrides = getTenantNetworkOverrides(organization.slug)
+    setTenantNetworkOverrides(organization.slug, {
+      ...currentOverrides,
+      [overrideKey]: optionId,
+    })
+
+    const refreshed = getTenantCatalogGovernanceItems(organization, catalogDraft)
+    setCatalogItems(refreshed)
+    setSelectedCatalogItem((selected) => {
+      if (!selected) {
+        return selected
+      }
+      return refreshed.find((item) => item.id === selected.id) ?? selected
+    })
+  }
+
+  const updateCatalogItem = (
+    itemId: string,
+    updater: (
+      item: TenantCatalogGovernanceItemWithNetworking,
+    ) => TenantCatalogGovernanceItemWithNetworking,
+  ) => {
+    setCatalogItems((current) => {
+      const next = current.map((item) => (item.id === itemId ? updater(item) : item))
+      const updated = next.find((item) => item.id === itemId)
+      if (updated) {
+        setSelectedCatalogItem((selected) => (selected?.id === itemId ? updated : selected))
+      }
+      return next
+    })
+  }
+
+  const openAsTenantUserForItem = (item: TenantCatalogGovernanceItemWithNetworking) => {
+    if (item.status === 'Unpublished') {
+      return
+    }
+
+    navigate(
+      openAsTenantUser(organization, {
+        source: 'tenant-admin',
+        catalogItem: {
+          catalogItemId: item.catalogItemId,
+          displayName: item.displayName,
+        },
+        autoLaunch: false,
+        returnTenantSlug: organization.slug,
+        returnTenantAdminNav: 'catalog',
+      }),
+    )
+  }
+
+  const openEdit = (item: TenantCatalogGovernanceItemWithNetworking) => {
+    setSelectedCatalogItem(item)
+    setEditDisplayName(item.displayName)
+    setIsEditModalOpen(true)
+  }
+
+  const handleSaveEdit = () => {
+    if (!selectedCatalogItem || !editDisplayName.trim()) {
+      return
+    }
+
+    updateCatalogItem(selectedCatalogItem.id, (item) => ({
+      ...item,
+      displayName: editDisplayName.trim(),
+    }))
+    setIsEditModalOpen(false)
+  }
+
+  const handleDuplicate = (item: TenantCatalogGovernanceItemWithNetworking) => {
+    const suffix = Math.random().toString(36).slice(2, 6)
+    const duplicate: TenantCatalogGovernanceItemWithNetworking = {
+      ...item,
+      id: `${item.id}-copy-${suffix}`,
+      displayName: `${item.displayName} (copy)`,
+      status: 'Unpublished',
+      approved: false,
+    }
+
+    setCatalogItems((current) => [...current, duplicate])
+    setSelectedCatalogItem(duplicate)
+  }
+
+  const openTogglePublish = (item: TenantCatalogGovernanceItemWithNetworking) => {
+    setSelectedCatalogItem(item)
+    if (item.status === 'Unpublished') {
+      updateCatalogItem(item.id, (current) => ({
+        ...current,
+        status: 'Live',
+      }))
+      return
+    }
+
+    setIsUnpublishModalOpen(true)
+  }
+
+  const handleConfirmUnpublish = () => {
+    if (!selectedCatalogItem) {
+      return
+    }
+
+    updateCatalogItem(selectedCatalogItem.id, (item) => ({
+      ...item,
+      status: 'Unpublished',
+    }))
+    setIsUnpublishModalOpen(false)
+  }
+
+  const openDelete = (item: TenantCatalogGovernanceItemWithNetworking) => {
+    setSelectedCatalogItem(item)
+    setIsDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = () => {
+    if (!selectedCatalogItem) {
+      return
+    }
+
+    const deletedId = selectedCatalogItem.id
+    setCatalogItems((current) => current.filter((item) => item.id !== deletedId))
+    setRemovedTeamsByItemId((current) => {
+      const next = { ...current }
+      delete next[deletedId]
+      return next
+    })
+    setIsDetailsDrawerOpen(false)
+    setIsEditModalOpen(false)
+    setSelectedCatalogItem(null)
+    setIsDeleteModalOpen(false)
+  }
+
+  const buildCatalogItemActions = (item: TenantCatalogGovernanceItemWithNetworking) =>
+    getCatalogItemActions(
+      item,
+      () => openDetails(item),
+      () => openAsTenantUserForItem(item),
+      () => openEdit(item),
+      () => handleDuplicate(item),
+      () => openTogglePublish(item),
+      () => openDelete(item),
+    )
+
+  const renderAuthorizedTeams = (
+    itemId: string,
+    authorizedTeams: string[],
+    options?: { compact?: boolean },
+  ) => {
+    const addTeamsLink = (
+      <Button
+        variant="link"
+        isInline
+        className="tenant-admin-catalog-manager__inline-link"
+        onClick={onNavigateToProjectsTeams}
+      >
+        {TENANT_CATALOG_MANAGER_DEMO.addProjectTeamsLinkLabel}
+      </Button>
+    )
+
+    if (options?.compact) {
+      return (
+        <div className="tenant-admin-catalog-manager__authorized-teams">
+          {authorizedTeams.length > 0 ? (
+            <div className="tenant-admin-catalog-manager__team-list">
+              {authorizedTeams.map((teamName) => (
+                <Label
+                  key={teamName}
+                  color="teal"
+                  isCompact
+                  className="tenant-admin-catalog-manager__team-pill"
+                >
+                  <span className="tenant-admin-catalog-manager__team-pill-content">
+                    <span>{teamName}</span>
+                    <Button
+                      variant="plain"
+                      icon={<TimesIcon />}
+                      aria-label={`Remove ${teamName}`}
+                      className="tenant-admin-catalog-manager__team-remove"
+                      onClick={() => handleRemoveAuthorizedTeam(itemId, teamName)}
+                    />
+                  </span>
+                </Label>
+              ))}
+            </div>
+          ) : null}
+          {addTeamsLink}
+        </div>
+      )
+    }
+
+    return (
+      <div className="tenant-admin-catalog-manager__spec-row">
+        <dt className="tenant-admin-catalog-manager__spec-label">
+          {TENANT_CATALOG_MANAGER_DEMO.authorizedTeamsLabel}
+        </dt>
+        <dd className="tenant-admin-catalog-manager__spec-value">
+          {authorizedTeams.length > 0 ? (
+            <div className="tenant-admin-catalog-manager__team-list">
+              {authorizedTeams.map((teamName) => (
+                <Label
+                  key={teamName}
+                  color="teal"
+                  isCompact
+                  className="tenant-admin-catalog-manager__team-pill"
+                >
+                  <span className="tenant-admin-catalog-manager__team-pill-content">
+                    <span>{teamName}</span>
+                    <Button
+                      variant="plain"
+                      icon={<TimesIcon />}
+                      aria-label={`Remove ${teamName}`}
+                      className="tenant-admin-catalog-manager__team-remove"
+                      onClick={() => handleRemoveAuthorizedTeam(itemId, teamName)}
+                    />
+                  </span>
+                </Label>
+              ))}
+            </div>
+          ) : null}
+          {addTeamsLink}
+        </dd>
+      </div>
+    )
+  }
+
   return (
-    <div className="tenant-admin-workspace-page tenant-admin-catalog-manager">
-      <Title headingLevel="h1" size="3xl" className="tenant-admin-catalog-manager__title">
-        {TENANT_CATALOG_MANAGER_DEMO.title}
-      </Title>
-      <Content component="p" className="tenant-admin-catalog-manager__lede">
-        {TENANT_CATALOG_MANAGER_DEMO.lede}
-      </Content>
+    <TenantCatalogItemDetailsDrawer
+      isExpanded={isDetailsDrawerOpen && selectedCatalogItem !== null}
+      onClose={closeDetails}
+      item={isDetailsDrawerOpen ? selectedCatalogItem : null}
+      authorizedTeams={
+        selectedCatalogItem ? (authorizedTeamsByItemId[selectedCatalogItem.id] ?? []) : []
+      }
+      onNavigateToProjectsTeams={onNavigateToProjectsTeams}
+      onChangeNetworkField={handleChangeNetworkField}
+    >
+      <div className="tenant-admin-workspace-page tenant-admin-catalog-manager">
+        <Title headingLevel="h1" size="3xl" className="tenant-admin-catalog-manager__title">
+          {TENANT_CATALOG_MANAGER_DEMO.title}
+        </Title>
+        <Content component="p" className="tenant-admin-catalog-manager__lede">
+          {TENANT_CATALOG_MANAGER_DEMO.lede}
+        </Content>
 
-      {showProjectsTeamsAlert ? (
-        <Alert
-          variant="info"
-          isInline
-          title={TENANT_CATALOG_MANAGER_DEMO.projectsTeamsAlertTitle}
-          className="tenant-admin-catalog-manager__projects-teams-alert"
-          actionLinks={
-            <AlertActionLink component="button" onClick={onNavigateToProjectsTeams}>
-              {TENANT_CATALOG_MANAGER_DEMO.projectsTeamsAlertActionLabel}
-            </AlertActionLink>
-          }
-        >
-          <Content component="p">{TENANT_CATALOG_MANAGER_DEMO.projectsTeamsAlertBody}</Content>
-        </Alert>
-      ) : null}
+        <div className="catalog-view-toolbar tenant-admin-catalog-manager__toolbar">
+          <div className="catalog-view-toolbar__start">
+            <CatalogServiceFilterToggle
+              selectedFilters={selectedFilters}
+              serviceCounts={serviceCounts}
+              onToggle={handleFilterToggle}
+            />
+            <SearchInput
+              className="catalog-search"
+              placeholder="Search catalog items"
+              value={searchValue}
+              onChange={(_event, value) => setSearchValue(value)}
+              onClear={() => setSearchValue('')}
+              aria-label="Search catalog items"
+            />
+          </div>
+          <CatalogViewToggle viewMode={viewMode} onChange={handleViewModeChange} />
+        </div>
 
-      <div className="tenant-admin-catalog-manager__catalog-list">
-        {TENANT_CATALOG_GOVERNANCE_ITEMS.map((item) => {
-          const isApproved = approvedByItemId[item.id] ?? item.approved
-          const authorizedTeams = authorizedTeamsByItemId[item.id] ?? []
+        {filteredItems.length === 0 ? (
+          <EmptyState className="tenant-admin-catalog-manager__empty">
+            <Title headingLevel="h2" size="lg">
+              {emptyStateTitle}
+            </Title>
+            <EmptyStateBody>
+              {selectedFilters.size === 0
+                ? 'Choose one or more services above to filter the catalog.'
+                : searchValue.trim()
+                  ? 'Try a different search term or clear the search field.'
+                  : 'No approved catalog items match the selected services.'}
+            </EmptyStateBody>
+          </EmptyState>
+        ) : viewMode === 'grid' ? (
+          <div className="catalog-card-grid tenant-admin-catalog-manager__catalog-list">
+            {filteredItems.map((item) => {
+              const authorizedTeams = authorizedTeamsByItemId[item.id] ?? []
+              const catalogItemActions = buildCatalogItemActions(item)
 
-          return (
-            <Card
-              key={item.id}
-              isCompact={false}
-              className="tenant-admin-catalog-manager__card"
-            >
-              <CardBody>
-                <div className="tenant-admin-catalog-manager__card-top">
-                  <div className="tenant-admin-catalog-manager__header">
-                    <span className="tenant-admin-catalog-manager__icon" aria-hidden>
-                      <CubesIcon />
-                    </span>
-                    <div className="tenant-admin-catalog-manager__header-copy">
-                      <div className="tenant-admin-catalog-manager__meta-row">
-                        <Label color="blue" isCompact>
+              return (
+                <Card
+                  key={item.id}
+                  isCompact={false}
+                  className={[
+                    'tenant-admin-catalog-manager__card',
+                    item.status === 'Unpublished'
+                      ? 'tenant-admin-catalog-manager__card--unpublished'
+                      : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                >
+                  <CardBody>
+                    <div className="tenant-admin-catalog-manager__card-header">
+                      <span className="tenant-admin-catalog-manager__icon" aria-hidden>
+                        {getCatalogServiceIcon(item.serviceId)}
+                      </span>
+                      <div className="tenant-admin-catalog-manager__card-header-actions">
+                        <Label color="blue" className="tenant-admin-catalog-manager__card-label">
                           {item.service}
                         </Label>
-                        <Label color="green" isCompact>
+                        <Label
+                          color={item.status === 'Unpublished' ? 'grey' : 'green'}
+                          className="tenant-admin-catalog-manager__card-label"
+                        >
                           {item.status}
                         </Label>
+                        <ActionsColumn items={catalogItemActions} />
                       </div>
-                      <Content
-                        component="p"
-                        className="tenant-admin-catalog-manager__display-name"
+                    </div>
+
+                    <Content component="p" className="tenant-admin-catalog-manager__primary-cell">
+                      <Button
+                        variant="link"
+                        isInline
+                        className="tenant-admin-catalog-manager__name-link"
+                        onClick={() => openDetails(item)}
                       >
                         {item.displayName}
-                      </Content>
-                      <Content
-                        component="p"
-                        className="tenant-admin-catalog-manager__category-label"
-                      >
-                        {item.categoryLabel}
-                      </Content>
-                    </div>
-                  </div>
-
-                  <div className="tenant-admin-catalog-manager__approval-control">
-                    <Switch
-                      id={`catalog-item-approved-${item.id}`}
-                      aria-label={`Approve ${item.displayName}`}
-                      isChecked={isApproved}
-                      onChange={(_event, checked) => {
-                        setApprovedByItemId((current) => ({
-                          ...current,
-                          [item.id]: checked,
-                        }))
-                      }}
-                    />
-                    <Content
-                      component="p"
-                      className={
-                        isApproved
-                          ? 'tenant-admin-catalog-manager__approval-label tenant-admin-catalog-manager__approval-label--approved'
-                          : 'tenant-admin-catalog-manager__approval-label'
-                      }
-                    >
-                      {TENANT_CATALOG_MANAGER_DEMO.approvedLabel}
+                      </Button>
                     </Content>
-                  </div>
-                </div>
 
-                <dl className="tenant-admin-catalog-manager__specs-list">
-                  <div className="tenant-admin-catalog-manager__spec-row">
-                    <dt className="tenant-admin-catalog-manager__spec-label">CPU</dt>
-                    <dd className="tenant-admin-catalog-manager__spec-value">{item.cpu}</dd>
-                  </div>
-                  <div className="tenant-admin-catalog-manager__spec-row">
-                    <dt className="tenant-admin-catalog-manager__spec-label">RAM</dt>
-                    <dd className="tenant-admin-catalog-manager__spec-value">{item.ram}</dd>
-                  </div>
-                  <div className="tenant-admin-catalog-manager__spec-row">
-                    <dt className="tenant-admin-catalog-manager__spec-label">GPU</dt>
-                    <dd className="tenant-admin-catalog-manager__spec-value">{item.gpu}</dd>
-                  </div>
-                  <div className="tenant-admin-catalog-manager__spec-row">
-                    <dt className="tenant-admin-catalog-manager__spec-label">OS image</dt>
-                    <dd className="tenant-admin-catalog-manager__spec-value">{item.osImage}</dd>
-                  </div>
-                </dl>
+                    <dl className="tenant-admin-catalog-manager__specs-list">
+                      <div className="tenant-admin-catalog-manager__spec-row">
+                        <dt className="tenant-admin-catalog-manager__spec-label">CPU</dt>
+                        <dd className="tenant-admin-catalog-manager__spec-value">{item.cpu}</dd>
+                      </div>
+                      <div className="tenant-admin-catalog-manager__spec-row">
+                        <dt className="tenant-admin-catalog-manager__spec-label">RAM</dt>
+                        <dd className="tenant-admin-catalog-manager__spec-value">{item.ram}</dd>
+                      </div>
+                      <div className="tenant-admin-catalog-manager__spec-row">
+                        <dt className="tenant-admin-catalog-manager__spec-label">GPU</dt>
+                        <dd className="tenant-admin-catalog-manager__spec-value">{item.gpu}</dd>
+                      </div>
+                      <div className="tenant-admin-catalog-manager__spec-row">
+                        <dt className="tenant-admin-catalog-manager__spec-label">OS image</dt>
+                        <dd className="tenant-admin-catalog-manager__spec-value">{item.osImage}</dd>
+                      </div>
+                    </dl>
 
-                <div className="tenant-admin-catalog-manager__authorized-teams">
-                  <Content
-                    component="p"
-                    className="tenant-admin-catalog-manager__authorized-teams-label"
-                  >
-                    {TENANT_CATALOG_MANAGER_DEMO.authorizedTeamsLabel}
-                  </Content>
+                    <dl className="tenant-admin-catalog-manager__networking-list">
+                      <NetworkingSummary item={item} onViewDetails={() => openDetails(item)} />
+                      {renderAuthorizedTeams(item.id, authorizedTeams)}
+                    </dl>
 
-                  {authorizedTeams.length > 0 ? (
-                    <div className="tenant-admin-catalog-manager__team-list">
-                      {authorizedTeams.map((teamName) => (
-                        <Label
-                          key={teamName}
-                          color="teal"
-                          isCompact
-                          className="tenant-admin-catalog-manager__team-pill"
-                        >
-                          <span className="tenant-admin-catalog-manager__team-pill-content">
-                            <span>{teamName}</span>
-                            <Button
-                              variant="plain"
-                              icon={<TimesIcon />}
-                              aria-label={`Remove ${teamName}`}
-                              className="tenant-admin-catalog-manager__team-remove"
-                              onClick={() => handleRemoveAuthorizedTeam(item.id, teamName)}
-                            />
-                          </span>
-                        </Label>
-                      ))}
-                    </div>
-                  ) : null}
-
-                  <div className="tenant-admin-catalog-manager__authorized-teams-status">
-                    <span>
-                      {authorizedTeams.length === 0 ? (
-                        <>
-                          {TENANT_CATALOG_MANAGER_DEMO.authorizedTeamsEmpty}
-                          {' · '}
-                        </>
-                      ) : null}
-                      <button
-                        type="button"
-                        className="tenant-admin-catalog-manager__add-team-link"
-                        onClick={onNavigateToProjectsTeams}
+                    <div className="tenant-admin-catalog-manager__card-footer">
+                      <div
+                        className="tenant-admin-catalog-manager__card-footer-visibility"
+                        aria-label="Visibility"
                       >
-                        {TENANT_CATALOG_MANAGER_DEMO.addProjectTeamsLinkLabel}
-                        <AngleRightIcon aria-hidden />
-                      </button>
-                    </span>
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-          )
-        })}
+                        <Tooltip
+                          content={getVisibilityTooltip(item.scope)}
+                          position="top"
+                          enableFlip={false}
+                        >
+                          <span className="tenant-admin-catalog-manager__scope">
+                            <CatalogPublishScopeIcon
+                              scope={item.scope}
+                              className="tenant-admin-catalog-manager__scope-icon"
+                            />
+                            <span>{getVisibilityLabel(item.scope)}</span>
+                          </span>
+                        </Tooltip>
+                      </div>
+                    </div>
+                  </CardBody>
+                </Card>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="catalog-table-panel">
+            <Content component="p" className="catalog-table-result-count">
+              {formatCatalogTableResultCount(filteredItems.length, 'catalog item')}
+            </Content>
+            <Table
+              aria-label="Catalog items"
+              className="catalog-data-table tenant-admin-catalog-manager__table"
+            >
+              <Thead>
+                <Tr>
+                  <Th>Name</Th>
+                  <Th>Status</Th>
+                  <Th>CPU</Th>
+                  <Th>RAM</Th>
+                  <Th>GPU</Th>
+                  <Th>OS image</Th>
+                  <Th>Networking</Th>
+                  <Th>Authorized teams</Th>
+                  <Th screenReaderText="Actions" />
+                </Tr>
+              </Thead>
+              <Tbody>
+                {filteredItems.map((item) => {
+                  const authorizedTeams = authorizedTeamsByItemId[item.id] ?? []
+                  const catalogItemActions = buildCatalogItemActions(item)
+
+                  return (
+                    <Tr key={item.id}>
+                      <Td dataLabel="Name">
+                        <Content component="p" className="tenant-admin-catalog-manager__primary-cell">
+                          <Button
+                            variant="link"
+                            isInline
+                            className="tenant-admin-catalog-manager__name-link"
+                            onClick={() => openDetails(item)}
+                          >
+                            {item.displayName}
+                          </Button>
+                        </Content>
+                      </Td>
+                      <Td dataLabel="Status">
+                        <Label color={item.status === 'Unpublished' ? 'grey' : 'green'} isCompact>
+                          {item.status}
+                        </Label>
+                      </Td>
+                      <Td dataLabel="CPU">{item.cpu}</Td>
+                      <Td dataLabel="RAM">{item.ram}</Td>
+                      <Td dataLabel="GPU">{item.gpu}</Td>
+                      <Td dataLabel="OS image">{item.osImage}</Td>
+                      <Td dataLabel="Networking">
+                        <NetworkingSummary
+                          item={item}
+                          compact
+                          onViewDetails={() => openDetails(item)}
+                        />
+                      </Td>
+                      <Td dataLabel="Authorized teams">
+                        {renderAuthorizedTeams(item.id, authorizedTeams, { compact: true })}
+                      </Td>
+                      <Td isActionCell>
+                        <ActionsColumn items={catalogItemActions} />
+                      </Td>
+                    </Tr>
+                  )
+                })}
+              </Tbody>
+            </Table>
+          </div>
+        )}
       </div>
-    </div>
+
+      <Modal
+        variant={ModalVariant.small}
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        aria-labelledby="tenant-edit-catalog-item-title"
+      >
+        <ModalHeader title="Edit catalog item" labelId="tenant-edit-catalog-item-title" />
+        <ModalBody>
+          <Form>
+            <FormGroup label="Display name" fieldId="tenant-edit-catalog-display-name" isRequired>
+              <TextInput
+                id="tenant-edit-catalog-display-name"
+                value={editDisplayName}
+                onChange={(_event, value) => setEditDisplayName(value)}
+                aria-label="Display name"
+              />
+            </FormGroup>
+          </Form>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            variant="primary"
+            onClick={handleSaveEdit}
+            isDisabled={!editDisplayName.trim()}
+          >
+            Save
+          </Button>
+          <Button variant="link" onClick={() => setIsEditModalOpen(false)}>
+            Cancel
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      <Modal
+        variant={ModalVariant.small}
+        isOpen={isUnpublishModalOpen}
+        onClose={() => setIsUnpublishModalOpen(false)}
+        aria-labelledby="tenant-unpublish-catalog-item-title"
+      >
+        <ModalHeader
+          title="Unpublish catalog item?"
+          labelId="tenant-unpublish-catalog-item-title"
+        />
+        <ModalBody>
+          <Content component="p">
+            {selectedCatalogItem ? (
+              <>
+                <strong>{selectedCatalogItem.displayName}</strong> will leave the tenant storefront.
+                You can publish it again later.
+              </>
+            ) : (
+              'This catalog item will leave the tenant storefront. You can publish it again later.'
+            )}
+          </Content>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="primary" onClick={handleConfirmUnpublish}>
+            Unpublish
+          </Button>
+          <Button variant="link" onClick={() => setIsUnpublishModalOpen(false)}>
+            Cancel
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      <Modal
+        variant={ModalVariant.small}
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        aria-labelledby="tenant-delete-catalog-item-title"
+        aria-describedby="tenant-delete-catalog-item-description"
+      >
+        <ModalHeader
+          title="Delete catalog item?"
+          titleIconVariant="warning"
+          labelId="tenant-delete-catalog-item-title"
+        />
+        <ModalBody>
+          <Content component="p" id="tenant-delete-catalog-item-description">
+            {selectedCatalogItem ? (
+              <>
+                <strong>{selectedCatalogItem.displayName}</strong> will be permanently removed from
+                the catalog. This cannot be undone.
+              </>
+            ) : (
+              'This catalog item will be permanently removed from the catalog. This cannot be undone.'
+            )}
+          </Content>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="danger" onClick={handleConfirmDelete}>
+            Delete
+          </Button>
+          <Button variant="link" onClick={() => setIsDeleteModalOpen(false)}>
+            Cancel
+          </Button>
+        </ModalFooter>
+      </Modal>
+    </TenantCatalogItemDetailsDrawer>
   )
 }

@@ -1,6 +1,9 @@
 export type ProviderAdminNavId =
   | 'overview'
   | 'catalog'
+  | 'networking-virtual-networks'
+  | 'networking-subnets'
+  | 'networking-security-groups'
   | 'infrastructure-data-centers'
   | 'infrastructure-hardware-inventory'
   | 'infrastructure-compute-images'
@@ -24,11 +27,17 @@ export const PROVIDER_ADMIN_NAV_ITEMS: ProviderAdminNavItem[] = [
   { id: 'system', label: 'System' },
 ]
 
+export const PROVIDER_ADMIN_NETWORKING_NAV_ITEMS: ProviderAdminNavItem[] = [
+  { id: 'networking-virtual-networks', label: 'Virtual networks' },
+  { id: 'networking-subnets', label: 'Subnets' },
+  { id: 'networking-security-groups', label: 'Security groups' },
+]
+
 export const PROVIDER_ADMIN_INFRASTRUCTURE_NAV_ITEMS: ProviderAdminNavItem[] = [
   { id: 'infrastructure-data-centers', label: 'Data centers' },
   { id: 'infrastructure-hardware-inventory', label: 'Hardware inventory' },
   { id: 'infrastructure-compute-images', label: 'Compute images' },
-  { id: 'infrastructure-bmaas-templates', label: 'BMaaS templates' },
+  { id: 'infrastructure-bmaas-templates', label: 'Bare metal templates' },
   { id: 'infrastructure-external-ip-pools', label: 'External IP pools' },
 ]
 
@@ -37,6 +46,10 @@ export const PROVIDER_ADMIN_ADMINISTRATION_NAV_ITEMS: ProviderAdminNavItem[] = [
   { id: 'administration-quotas', label: 'Quotas' },
   { id: 'administration-rbac', label: 'RBAC' },
 ]
+
+export function isNetworkingNavId(navId: string): boolean {
+  return navId.startsWith('networking-')
+}
 
 export function isInfrastructureNavId(navId: string): boolean {
   return navId.startsWith('infrastructure-')

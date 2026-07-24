@@ -1,4 +1,4 @@
-import { Button, Card, CardBody, Content, Icon, Title } from '@patternfly/react-core'
+import { Button, Card, CardBody, Content, Icon, Label, Title } from '@patternfly/react-core'
 import { CogIcon } from '@patternfly/react-icons/dist/esm/icons/cog-icon'
 import { CrownIcon } from '@patternfly/react-icons/dist/esm/icons/crown-icon'
 import { UserIcon } from '@patternfly/react-icons/dist/esm/icons/user-icon'
@@ -7,8 +7,13 @@ import type { ReactNode } from 'react'
 import { RouterButton } from '../components/RouterButton'
 import { ConceptualDesignSticker } from '../components/ConceptualDesignSticker'
 import { BMAAS_LANDING_LAST_UPDATED } from '../bmaasLandingLastUpdated'
-import { DEMO_TENANT_LABEL } from '../demoTenant'
 import redHatHatLogoUrl from '../assets/Logo-RedHat-Hat-Color-RGB.svg?url'
+
+type PrototypeLink = {
+  label: string
+  to: string
+  statusLabel?: string
+}
 
 type RoleBlockProps = {
   id: string
@@ -16,9 +21,10 @@ type RoleBlockProps = {
   description: string
   icon: ReactNode
   actions: ReactNode
+  prototypeLinks?: PrototypeLink[]
 }
 
-function RoleBlock({ id, title, description, icon, actions }: RoleBlockProps) {
+function RoleBlock({ id, title, description, icon, actions, prototypeLinks = [] }: RoleBlockProps) {
   return (
     <section className="bmaas-role-landing__role-block" aria-labelledby={id}>
       <div className="bmaas-role-landing__icon-wrap" aria-hidden>
@@ -31,6 +37,37 @@ function RoleBlock({ id, title, description, icon, actions }: RoleBlockProps) {
         {description}
       </Content>
       <div className="bmaas-role-landing__tenant-user-actions">{actions}</div>
+      <div className="bmaas-role-landing__prototype-links">
+        {prototypeLinks.length > 0 ? (
+          <ul className="bmaas-role-landing__prototype-link-list">
+            {prototypeLinks.map((link) => (
+              <li key={link.to} className="bmaas-role-landing__prototype-link-item">
+                <RouterButton
+                  variant="link"
+                  isInline
+                  to={link.to}
+                  className="bmaas-role-landing__prototype-link"
+                >
+                  {link.label}
+                </RouterButton>
+                {link.statusLabel ? (
+                  <Label
+                    color="orange"
+                    isCompact
+                    className="bmaas-role-landing__prototype-status"
+                  >
+                    {link.statusLabel}
+                  </Label>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <Content component="p" className="bmaas-role-landing__prototype-empty">
+            Prototype versions coming soon
+          </Content>
+        )}
+      </div>
     </section>
   )
 }
@@ -65,29 +102,6 @@ function SingleEnterActions({
           Enter
         </RouterButton>
       )}
-      <div className="bmaas-role-landing__action-spacer-slot" aria-hidden />
-    </>
-  )
-}
-
-function TenantActions({
-  role,
-  ariaLabelPrefix,
-}: {
-  role: 'tenant-admin' | 'tenant-user'
-  ariaLabelPrefix: string
-}) {
-  return (
-    <>
-      <RouterButton
-        variant="primary"
-        to={`/${role}/northstar`}
-        className="bmaas-role-landing__action"
-        aria-label={`${ariaLabelPrefix} ${DEMO_TENANT_LABEL.northstar}`}
-      >
-        {DEMO_TENANT_LABEL.northstar}
-      </RouterButton>
-      <div className="bmaas-role-landing__action-spacer-slot" aria-hidden />
     </>
   )
 }
@@ -105,7 +119,7 @@ export function BmaasLandingPage() {
             className="bmaas-role-landing__brand-logo"
           />
           <Title headingLevel="h1" size="4xl" className="bmaas-role-landing__title">
-            Bare Metal as a Service Prototypes
+            Red Hat OSAC Prototypes 0.2
           </Title>
           <Content component="p" className="bmaas-role-landing__lede">
             Select a role to access the customized interface.
@@ -118,7 +132,7 @@ export function BmaasLandingPage() {
               <RoleBlock
                 id="bmaas-landing-role-infra-admin-title"
                 title="Infra Admin"
-                description="Bootstrap the environment, manage bare metal, and make Red Hat cloud-ready."
+                description="Bootstrap the platform for Bare Metal, Cluster, VM, and Models services."
                 icon={
                   <Icon size="md">
                     <CogIcon className="bmaas-role-landing__icon-svg" />
@@ -135,7 +149,7 @@ export function BmaasLandingPage() {
               <RoleBlock
                 id="bmaas-landing-role-provider-title"
                 title="Provider Admin"
-                description="Manage platform services, tenants, and global policies for the BMaaS environment."
+                description="Manage tenants, policies, and Bare Metal, Cluster, VM, and Models services."
                 icon={
                   <Icon size="md">
                     <CrownIcon className="bmaas-role-landing__icon-svg" />
@@ -144,21 +158,28 @@ export function BmaasLandingPage() {
                 actions={
                   <SingleEnterActions to="/provider" ariaLabel="Enter Provider Admin demo" />
                 }
+                prototypeLinks={[
+                  {
+                    label: 'Catalog',
+                    to: '/provider/workspace?nav=catalog',
+                    statusLabel: 'Not approved yet',
+                  },
+                ]}
               />
 
               <RoleBlock
                 id="bmaas-landing-role-tenant-admin-title"
                 title="Tenant Admin"
-                description="Configure organization resources, users, quotas, and shared services."
+                description="Configure quotas and catalogs for Bare Metal, Cluster, VM, and Models."
                 icon={
                   <Icon size="md">
                     <UserIcon className="bmaas-role-landing__icon-svg" />
                   </Icon>
                 }
                 actions={
-                  <TenantActions
-                    role="tenant-admin"
-                    ariaLabelPrefix="Enter Tenant Admin for"
+                  <SingleEnterActions
+                    to="/tenant-admin/northstar"
+                    ariaLabel="Enter Tenant Admin demo"
                   />
                 }
               />
@@ -166,16 +187,16 @@ export function BmaasLandingPage() {
               <RoleBlock
                 id="bmaas-landing-role-tenant-user-title"
                 title="Tenant User"
-                description="Access the Bare Metal-as-a-Service workspace to provision and manage your servers."
+                description="Provision and manage Bare Metal, Cluster, VM, and Models workloads."
                 icon={
                   <Icon size="md">
                     <UsersIcon className="bmaas-role-landing__icon-svg" />
                   </Icon>
                 }
                 actions={
-                  <TenantActions
-                    role="tenant-user"
-                    ariaLabelPrefix="Enter Tenant User workspace for"
+                  <SingleEnterActions
+                    to="/tenant-user/northstar"
+                    ariaLabel="Enter Tenant User demo"
                   />
                 }
               />

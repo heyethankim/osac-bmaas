@@ -3,13 +3,11 @@ import { Navigate, useParams } from 'react-router-dom'
 import { TenantAdminAcceptInvitationPanel } from '../components/tenant-admin/TenantAdminAcceptInvitationPanel'
 import { TenantShell } from '../components/tenant/TenantShell'
 import { DEMO_TENANT_DISPLAY_ADMIN, isDemoTenantId } from '../demoTenant'
-import { TenantAdminBillingPage } from './tenant-admin/TenantAdminBillingPage'
+import { PlaceholderTenantAdminPage } from './PlaceholderTenantAdminPage'
 import { TenantAdminCatalogPage } from './tenant-admin/TenantAdminCatalogPage'
-import { TenantAdminInstancesPage } from './tenant-admin/TenantAdminInstancesPage'
+import { TenantAdminNetworkingPage } from './tenant-admin/TenantAdminNetworkingPage'
 import { TenantAdminOverviewPage } from './tenant-admin/TenantAdminOverviewPage'
 import { TenantAdminProjectsTeamsPage } from './tenant-admin/TenantAdminProjectsTeamsPage'
-import { TenantAdminQuotaDistributionPage } from './tenant-admin/TenantAdminQuotaDistributionPage'
-import { TenantAdminSettingsPage } from './tenant-admin/TenantAdminSettingsPage'
 import { TENANT_ADMIN_NAV_ITEMS, type TenantAdminNavId } from '../tenantAdmin/constants'
 import { getWorkspaceOrganization } from '../tenantAdmin/organizations'
 import {
@@ -21,6 +19,15 @@ import {
 } from '../tenantAdmin/storage'
 import type { TenantProject } from '../tenantAdmin/projects'
 import { getProviderCatalogDraft } from '../providerSetup/storage'
+
+const TENANT_ADMIN_PLACEHOLDER_PAGES: Partial<
+  Record<TenantAdminNavId, { title: string; description: string }>
+> = {
+  services: {
+    title: 'Services',
+    description: 'Manage Bare Metal, Clusters, Models, and Virtual machines for your organization.',
+  },
+}
 
 export function TenantAdminWorkspacePage() {
   const { tenant } = useParams<{ tenant: string }>()
@@ -55,8 +62,8 @@ export function TenantAdminWorkspacePage() {
         : { ...refreshedOrganization, status: 'Active' },
     )
     setOnboardingComplete(true)
-    setActiveNavId('catalog-manager')
-    setTenantActiveNav(tenant, 'catalog-manager')
+    setActiveNavId('catalog')
+    setTenantActiveNav(tenant, 'catalog')
   }
 
   const renderWorkspaceContent = () => {
@@ -70,10 +77,22 @@ export function TenantAdminWorkspacePage() {
       )
     }
 
+    const placeholder = TENANT_ADMIN_PLACEHOLDER_PAGES[activeNavId]
+    if (placeholder) {
+      return (
+        <PlaceholderTenantAdminPage
+          title={placeholder.title}
+          description={placeholder.description}
+        />
+      )
+    }
+
     switch (activeNavId) {
-      case 'catalog-manager':
+      case 'catalog':
         return (
           <TenantAdminCatalogPage
+            organization={organization}
+            catalogDraft={catalogDraft}
             projects={projects}
             onNavigateToProjectsTeams={() => handleNavChange('projects-teams')}
           />
@@ -87,14 +106,33 @@ export function TenantAdminWorkspacePage() {
             onProjectsChange={setProjects}
           />
         )
-      case 'instances':
-        return <TenantAdminInstancesPage />
-      case 'ip-pools':
-        return <TenantAdminQuotaDistributionPage />
-      case 'billing':
-        return <TenantAdminBillingPage />
-      case 'settings':
-        return <TenantAdminSettingsPage />
+      case 'networking-virtual-networks':
+        return (
+          <TenantAdminNetworkingPage
+            tenantSlug={tenant}
+            organization={organization}
+            catalogDraft={catalogDraft}
+            kind="virtual-network"
+          />
+        )
+      case 'networking-subnets':
+        return (
+          <TenantAdminNetworkingPage
+            tenantSlug={tenant}
+            organization={organization}
+            catalogDraft={catalogDraft}
+            kind="subnet"
+          />
+        )
+      case 'networking-security-groups':
+        return (
+          <TenantAdminNetworkingPage
+            tenantSlug={tenant}
+            organization={organization}
+            catalogDraft={catalogDraft}
+            kind="security-group"
+          />
+        )
       case 'overview':
       default:
         return <TenantAdminOverviewPage />

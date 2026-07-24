@@ -4,12 +4,21 @@ export { TENANT_ADMIN_NAV_GROUPS, TENANT_ADMIN_NAV_ITEMS } from '../tenantAdmin/
 export type TenantNavItem = {
   id: string
   label: string
+  children?: ReadonlyArray<{ id: string; label: string }>
 }
 
 export type TenantNavGroup = {
   id: string
   label: string
   items: TenantNavItem[]
+}
+
+export function flattenTenantNavItems(
+  items: readonly TenantNavItem[],
+): Array<{ id: string; label: string }> {
+  return items.flatMap((item) =>
+    item.children?.length ? [...item.children] : [{ id: item.id, label: item.label }],
+  )
 }
 
 export const TENANT_USER_NAV_ITEMS: TenantNavItem[] = [

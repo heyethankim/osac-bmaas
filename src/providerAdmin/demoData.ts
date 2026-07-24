@@ -104,7 +104,7 @@ export const METERING_RECORDS: MeteringRecord[] = [
   {
     id: 'meter-1',
     orgName: 'Northstar Bank',
-    catalogItem: 'Compute Node · Dell PowerEdge R750 3x · 512 GB DDR4-3200',
+    catalogItem: 'Bare Metal - GPU Training Server',
     hoursMetered: 744,
     estimatedCost: 3114,
     period: 'June 2026',
@@ -112,7 +112,7 @@ export const METERING_RECORDS: MeteringRecord[] = [
   {
     id: 'meter-2',
     orgName: 'Bluestone Financial Group',
-    catalogItem: 'Compute Node · Dell PowerEdge R750 3x · 512 GB DDR4-3200',
+    catalogItem: 'Bare Metal - GPU Training Server',
     hoursMetered: 558,
     estimatedCost: 2335.5,
     period: 'June 2026',
@@ -120,7 +120,7 @@ export const METERING_RECORDS: MeteringRecord[] = [
   {
     id: 'meter-3',
     orgName: 'Summit Peak Credit Union',
-    catalogItem: 'Compute Node · Dell PowerEdge R750 3x · 512 GB DDR4-3200',
+    catalogItem: 'Bare Metal - GPU Training Server',
     hoursMetered: 372,
     estimatedCost: 1557,
     period: 'June 2026',

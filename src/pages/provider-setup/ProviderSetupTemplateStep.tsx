@@ -26,6 +26,7 @@ import {
   type SavedMasterTemplate,
 } from '../../providerSetup/templateDemo'
 import {
+  getProviderRegisteredOrganizations,
   getProviderSavedTemplate,
   setProviderSavedTemplate,
 } from '../../providerSetup/storage'
@@ -271,6 +272,7 @@ export function ProviderSetupTemplateStep({
       <ProviderSetupPublishCatalogWizard
         isOpen={isPublishWizardOpen}
         templates={availableTemplates}
+        organizations={getProviderRegisteredOrganizations()}
         defaultTemplateRefId={userSavedTemplate?.templateRefId}
         onClose={() => setIsPublishWizardOpen(false)}
         onCreateCatalogItem={(payload) => {

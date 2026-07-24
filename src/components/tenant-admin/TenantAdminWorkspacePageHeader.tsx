@@ -22,7 +22,7 @@ export function TenantAdminWorkspacePageHeader({
       gap={{ default: 'gapMd' }}
     >
       <FlexItem>
-        <Label color="blue" className="tenant-admin-workspace-page__kicker">
+        <Label color="grey" className="tenant-admin-workspace-page__kicker">
           {kicker}
         </Label>
         <Title headingLevel="h1" size="3xl" className="tenant-admin-workspace-page__title">

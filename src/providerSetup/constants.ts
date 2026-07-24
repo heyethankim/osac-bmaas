@@ -173,7 +173,7 @@ export const DEFAULT_TEMPLATE_FORM = {
     'Dual NVIDIA L40S bare metal nodes for AI training workloads. Includes NVLink-ready rack placement from discovery.',
 }
 
-export type ProviderServiceId = 'baremetal' | 'cluster'
+export type ProviderServiceId = 'baremetal' | 'cluster' | 'models' | 'virtual-machine'
 
 export type ProviderServiceOffering = {
   id: ProviderServiceId
@@ -207,33 +207,70 @@ export const PROVIDER_SERVICE_OFFERINGS: ProviderServiceOffering[] = [
       '3-field launch forms with real-time progress tracking',
     ],
   },
+  {
+    id: 'models',
+    title: 'Models as a Service',
+    description:
+      'Deploy and access secure, sovereign AI foundation models via a self-service API storefront, leveraging pre-configured runtimes optimized for your workspace.',
+    features: [
+      'Automated model serving and orchestration via vLLM / KServe',
+      'Instant inference API deployment with built-in token rate limiting',
+      'Turnkey access to curated, open-source LLM catalog blueprints',
+      'Isolated tenant workspaces with zero-data-retention guarantees',
+    ],
+  },
+  {
+    id: 'virtual-machine',
+    title: 'Virtual Machine as a Service',
+    description:
+      'Provision scalable, secure virtualized environments via a streamlined storefront, using pre-approved guest images and blueprints customized for your sovereign workspace.',
+    features: [
+      'Automated VM orchestration via KVM / KubeVirt',
+      'Rapid provisioning with curated OS blueprints',
+      'Hypervisor sandboxing with confidential computing',
+      'Isolated tenant workspaces with strict quota controls',
+    ],
+  },
 ]
 
 export const DEFAULT_PROVIDER_SERVICE_SELECTION: ProviderServiceId[] = ['baremetal']
 
 export const PROVIDER_SERVICE_CHIP_LABELS: Record<ProviderServiceId, string> = {
-  baremetal: 'BMaaS',
+  baremetal: 'Bare Metal',
   cluster: 'CaaS',
+  models: 'MaaS',
+  'virtual-machine': 'VMaaS',
 }
 
 export function getProviderSetupWizardIntro(selectedServices: ProviderServiceId[]): {
   title: string
   lede: string
 } {
-  const hasBaremetal = selectedServices.includes('baremetal')
-  const hasCluster = selectedServices.includes('cluster')
-
-  if (hasBaremetal && !hasCluster) {
-    return {
-      title: 'Set up Bare Metal as a Service',
-      lede: 'Connect Metal3, discover hosts, and publish your first instance template.',
-    }
-  }
-
-  if (hasCluster && !hasBaremetal) {
-    return {
-      title: 'Set up Cluster as a Service',
-      lede: 'Connect your environment, define cluster profiles, and publish tenant-ready offerings.',
+  if (selectedServices.length === 1) {
+    const [onlyService] = selectedServices
+    switch (onlyService) {
+      case 'baremetal':
+        return {
+          title: 'Set up Bare Metal as a Service',
+          lede: 'Connect Metal3, discover hosts, and publish your first instance template.',
+        }
+      case 'cluster':
+        return {
+          title: 'Set up Cluster as a Service',
+          lede: 'Connect your environment, define cluster profiles, and publish tenant-ready offerings.',
+        }
+      case 'models':
+        return {
+          title: 'Set up Models as a Service',
+          lede: 'Connect your model-serving environment and publish tenant-ready inference offerings.',
+        }
+      case 'virtual-machine':
+        return {
+          title: 'Set up Virtual Machine as a Service',
+          lede: 'Connect your virtualization environment and publish tenant-ready VM offerings.',
+        }
+      default:
+        break
     }
   }
 

@@ -1,3 +1,7 @@
+import type { CatalogNetworkPolicy } from '../providerAdmin/catalogNetworkPolicy'
+
+export type { CatalogNetworkPolicy }
+
 export type HardwareProfileCategory = 'compute' | 'gpu-ai'
 
 export type DiscoveredHardwareProfile = {
@@ -202,17 +206,20 @@ export function formatRateCardHourly(rateCard: RateCard): string {
   return `$${rateCard.hourlyRate.toFixed(2)}/hr`
 }
 
+export const DEFAULT_CATALOG_ITEM_DISPLAY_NAME = 'Bare Metal - GPU Training Server'
+export const SECOND_CATALOG_ITEM_DISPLAY_NAME = 'Bare Metal - AI Inference Host (L40S)'
+
 export function getCatalogDisplayName(hardwareProfileId: string): string {
   const profile = DISCOVERED_HARDWARE_PROFILES.find((item) => item.id === hardwareProfileId)
   if (!profile) {
-    return 'Bare metal instance'
+    return DEFAULT_CATALOG_ITEM_DISPLAY_NAME
   }
 
   if (profile.id === 'hpe-dl380') {
     return 'GPU Node · NVIDIA A100 4x · 1 TB RAM'
   }
 
-  return `Compute Node · ${profile.vendor} ${profile.model} ${profile.hostCount}x · ${profile.memory}`
+  return DEFAULT_CATALOG_ITEM_DISPLAY_NAME
 }
 
 export type SavedMasterTemplate = {
@@ -227,20 +234,101 @@ export type SavedMasterTemplate = {
 
 export const DEMO_EXISTING_MASTER_TEMPLATES: SavedMasterTemplate[] = []
 
+export type CatalogServiceId = 'baremetal' | 'cluster' | 'models' | 'virtual-machine'
+
+export type CatalogServiceOffering = {
+  id: CatalogServiceId
+  title: string
+  shortLabel: string
+  description: string
+}
+
+export const CATALOG_SERVICE_OFFERINGS: CatalogServiceOffering[] = [
+  {
+    id: 'baremetal',
+    title: 'Bare Metal as a Service',
+    shortLabel: 'Bare Metal',
+    description:
+      'Publish pre-configured bare metal nodes as tenant-requestable catalog items.',
+  },
+  {
+    id: 'cluster',
+    title: 'Cluster as a Service',
+    shortLabel: 'CaaS',
+    description:
+      'Publish OpenShift cluster profiles as tenant-requestable catalog items.',
+  },
+  {
+    id: 'models',
+    title: 'Models as a Service',
+    shortLabel: 'MaaS',
+    description:
+      'Publish curated AI model endpoints as tenant-requestable catalog items.',
+  },
+  {
+    id: 'virtual-machine',
+    title: 'Virtual Machine as a Service',
+    shortLabel: 'VMaaS',
+    description:
+      'Publish virtual machine flavors as tenant-requestable catalog items.',
+  },
+]
+
+export const CATALOG_SERVICE_LABELS: Record<CatalogServiceId, string> = {
+  baremetal: 'Bare Metal',
+  cluster: 'CaaS',
+  models: 'MaaS',
+  'virtual-machine': 'VMaaS',
+}
+
+export const CATALOG_SERVICE_FILTER_LABELS: Record<CatalogServiceId, string> = {
+  baremetal: 'Bare metal',
+  cluster: 'Clusters',
+  models: 'Models',
+  'virtual-machine': 'Virtual machines',
+}
+
+export const CATALOG_SERVICE_FILTERS = CATALOG_SERVICE_OFFERINGS.map((offering) => ({
+  id: offering.id,
+  label: CATALOG_SERVICE_FILTER_LABELS[offering.id],
+})) as ReadonlyArray<{ id: CatalogServiceId; label: string }>
+
+export function getCatalogServiceOffering(serviceId: CatalogServiceId): CatalogServiceOffering {
+  return (
+    CATALOG_SERVICE_OFFERINGS.find((offering) => offering.id === serviceId) ??
+    CATALOG_SERVICE_OFFERINGS[0]
+  )
+}
+
 export const PUBLISH_CATALOG_STEPS = [
+  { id: 'service', label: 'Service' },
   { id: 'template', label: 'Template' },
-  { id: 'display-name', label: 'Display name' },
-  { id: 'publish-scope', label: 'Publish scope' },
+  { id: 'display-name', label: 'Name' },
+  { id: 'publish-scope', label: 'Visibility' },
+  { id: 'review', label: 'Review' },
 ] as const
 
 export type PublishCatalogStepId = (typeof PUBLISH_CATALOG_STEPS)[number]['id']
 
 export type PublishCatalogScope = 'global-public' | 'vip-enterprise'
 
+/** Demo default for VIP enterprise visibility. */
+export const DEFAULT_ENTERPRISE_TENANT_ID = 'tenant-northstar'
+
 export type PublishedTemplatePayload = {
+  serviceId: CatalogServiceId
   templateRefId: string
   templateName: string
   displayName: string
+  description: string
   scope: PublishCatalogScope
   rateCard: RateCard
+  /** Optional; defaults applied at create time when omitted. */
+  networkPolicy?: CatalogNetworkPolicy
+  /** Optional when scope is VIP enterprise. Omit or leave empty for Restricted — unassigned. */
+  enterpriseTenantId?: string
+  /** When VIP targets a registered org, assign catalog access on create. */
+  vipOrganizationId?: string
+  /** Defaults to live. Use unpublished when VIP has no organization yet. */
+  status?: 'live' | 'unpublished'
 }

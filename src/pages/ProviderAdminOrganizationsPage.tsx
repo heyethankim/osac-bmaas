@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
   Button,
@@ -18,6 +19,7 @@ import { AssignCatalogToOrganizationModal } from '../components/provider-admin/A
 import { RegisterOrganizationWizard } from '../components/provider-admin/RegisterOrganizationWizard'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
 import { PROVIDER_ORGANIZATIONS_DEMO } from '../providerAdmin/organizations'
+import { openAsTenantUser } from '../providerAdmin/openAsTenantUser'
 import {
   addProviderRegisteredOrganization,
   assignCatalogToRegisteredOrganization,
@@ -25,7 +27,9 @@ import {
   consumeProviderOpenRegisterOrgWizard,
   getProviderCatalogDraft,
   getProviderRegisteredOrganizations,
+  peekProviderVipCatalogResumeIntent,
 } from '../providerSetup/storage'
+import type { ProviderAdminNavId } from '../providerAdmin/constants'
 
 function formatRegisteredAt(iso: string): string {
   return new Date(iso).toLocaleString([], {
@@ -40,11 +44,16 @@ function getOrganizationActions(
   organization: RegisteredOrganization,
   onViewDetails: (organization: RegisteredOrganization) => void,
   onAssignCatalog: (organization: RegisteredOrganization) => void,
+  onOpenAsTenantUser: (organization: RegisteredOrganization) => void,
 ): IAction[] {
   return [
     {
       title: 'View details',
       onClick: () => onViewDetails(organization),
+    },
+    {
+      title: 'Open as tenant user',
+      onClick: () => onOpenAsTenantUser(organization),
     },
     {
       title: 'Assign catalog item',
@@ -79,7 +88,12 @@ function getOrganizationActions(
   ]
 }
 
-export function ProviderAdminOrganizationsPage() {
+export function ProviderAdminOrganizationsPage({
+  onNavigate,
+}: {
+  onNavigate?: (navId: ProviderAdminNavId) => void
+}) {
+  const navigate = useNavigate()
   const [organizations, setOrganizations] = useState<RegisteredOrganization[]>(() =>
     getProviderRegisteredOrganizations(),
   )
@@ -107,6 +121,10 @@ export function ProviderAdminOrganizationsPage() {
     }
     setOrganizations(getProviderRegisteredOrganizations())
     setIsWizardOpen(false)
+
+    if (peekProviderVipCatalogResumeIntent()) {
+      onNavigate?.('catalog')
+    }
   }
 
   const handleAssignCatalog = (organizationId: string) => {
@@ -117,6 +135,10 @@ export function ProviderAdminOrganizationsPage() {
     assignCatalogToRegisteredOrganization(organizationId, catalogDraft)
     setOrganizations(getProviderRegisteredOrganizations())
     setAssignCatalogOrganization(null)
+  }
+
+  const handleOpenAsTenantUser = (organization: RegisteredOrganization) => {
+    navigate(openAsTenantUser(organization))
   }
 
   return (
@@ -198,6 +220,14 @@ export function ProviderAdminOrganizationsPage() {
                   <Content component="p" className="provider-admin-organizations__secondary-cell">
                     <code>{org.tenantId}</code>
                   </Content>
+                  <Button
+                    variant="link"
+                    isInline
+                    className="provider-admin-organizations__open-as-user"
+                    onClick={() => handleOpenAsTenantUser(org)}
+                  >
+                    Open as tenant user
+                  </Button>
                 </Td>
                 <Td modifier="wrap" dataLabel="Status">
                   <Label
@@ -250,6 +280,7 @@ export function ProviderAdminOrganizationsPage() {
                       org,
                       setDetailsOrganization,
                       setAssignCatalogOrganization,
+                      handleOpenAsTenantUser,
                     )}
                   />
                 </Td>
@@ -262,6 +293,7 @@ export function ProviderAdminOrganizationsPage() {
       <OrganizationDetailsModal
         organization={detailsOrganization}
         onClose={() => setDetailsOrganization(null)}
+        onOpenAsTenantUser={handleOpenAsTenantUser}
       />
 
       <RegisterOrganizationWizard

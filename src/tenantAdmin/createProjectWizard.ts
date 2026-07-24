@@ -79,7 +79,7 @@ export const CREATE_PROJECT_WIZARD_DEMO = {
     'Invitees will receive an email to join the platform and be scoped to this project.',
   catalogLede:
     'Attach approved catalog items so project members can provision instances from your governed offerings.',
-  catalogEmptyTitle: 'No approved catalog items yet. Approve offerings in Catalog manager first.',
+  catalogEmptyTitle: 'No approved catalog items yet. Approve offerings in Catalog first.',
   addMemberLabel: 'Add',
   continueLabel: 'Continue',
   createProjectLabel: 'Create project',
@@ -125,7 +125,7 @@ export const DEFAULT_CREATE_PROJECT_WIZARD_FORM: CreateProjectWizardForm = {
   catalogItems: [
     {
       id: 'compute-r750',
-      displayName: 'Compute Node · Dell PowerEdge R750 3x · 512 GB DDR4-3200',
+      displayName: 'Bare Metal - GPU Training Server',
     },
   ],
 }

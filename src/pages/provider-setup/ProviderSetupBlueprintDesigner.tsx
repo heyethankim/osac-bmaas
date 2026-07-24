@@ -530,7 +530,7 @@ export function ProviderSetupBlueprintDesigner({
             ) : null}
             {reviewSaveState === 'ready' ? (
               <Content component="p" className="provider-setup-template__review-status provider-setup-template__review-status--ready">
-                Template reference <code>{templateRefId}</code> saved. Close this wizard and use
+                Template <strong>{form.templateName}</strong> saved. Close this wizard and use
                 Publish to catalog on the create template page.
               </Content>
             ) : null}

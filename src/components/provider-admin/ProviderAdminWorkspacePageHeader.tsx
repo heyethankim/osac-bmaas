@@ -22,7 +22,7 @@ export function ProviderAdminWorkspacePageHeader({
       gap={{ default: 'gapMd' }}
     >
       <FlexItem>
-        <Label color="blue" className="provider-admin-workspace-page__kicker">
+        <Label color="grey" className="provider-admin-workspace-page__kicker">
           {kicker}
         </Label>
         <Title headingLevel="h1" size="3xl" className="provider-admin-workspace-page__title">

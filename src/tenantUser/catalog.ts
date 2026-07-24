@@ -1,12 +1,15 @@
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../providerSetup/storage'
 import {
+  CATALOG_SERVICE_LABELS,
   resolveRateCard,
+  type CatalogServiceId,
   type RateCard,
 } from '../providerSetup/templateDemo'
 import { resolveTenantCatalogView } from '../tenantAdmin/catalog'
 
 export type TenantUserCatalogCard = {
+  serviceId: CatalogServiceId
   service: string
   status: string
   displayName: string
@@ -34,9 +37,10 @@ export const TENANT_USER_CATALOG_SPECS = {
 } as const
 
 export const TENANT_USER_CATALOG_FALLBACK: TenantUserCatalogCard = {
-  service: 'BMaaS',
+  serviceId: 'baremetal',
+  service: CATALOG_SERVICE_LABELS.baremetal,
   status: 'Live',
-  displayName: 'Compute Node · Dell PowerEdge R750 3x · 512 GB DDR4-3200',
+  displayName: 'Bare Metal - GPU Training Server',
   ...TENANT_USER_CATALOG_SPECS,
   catalogItemId: 'cat_L3RID02N',
   templateRefId: 'bm_2R6X47GO',
@@ -49,23 +53,48 @@ export const TENANT_USER_CATALOG_FALLBACK: TenantUserCatalogCard = {
   },
 }
 
+export function getTenantUserCatalogCardFromDraft(
+  catalog: ProviderCatalogDraft,
+): TenantUserCatalogCard {
+  const rateCard = resolveRateCard(catalog)
+  const serviceId = catalog.serviceId ?? 'baremetal'
+
+  return {
+    serviceId,
+    service: CATALOG_SERVICE_LABELS[serviceId],
+    status: 'Live',
+    displayName: catalog.displayName,
+    ...TENANT_USER_CATALOG_SPECS,
+    catalogItemId: catalog.catalogItemId,
+    templateRefId: catalog.templateRefId,
+    templateName: catalog.templateName,
+    rateCard,
+  }
+}
+
 export function getTenantUserCatalogCard(
   organization: RegisteredOrganization | null,
   catalogDraft: ProviderCatalogDraft | null,
 ): TenantUserCatalogCard {
   if (!organization) {
-    return TENANT_USER_CATALOG_FALLBACK
+    return catalogDraft
+      ? getTenantUserCatalogCardFromDraft(catalogDraft)
+      : TENANT_USER_CATALOG_FALLBACK
   }
 
   const catalogView = resolveTenantCatalogView(organization, catalogDraft)
   if (!catalogView) {
-    return TENANT_USER_CATALOG_FALLBACK
+    return catalogDraft
+      ? getTenantUserCatalogCardFromDraft(catalogDraft)
+      : TENANT_USER_CATALOG_FALLBACK
   }
 
   const rateCard = resolveRateCard(catalogView)
+  const serviceId = catalogDraft?.serviceId ?? 'baremetal'
 
   return {
-    service: 'BMaaS',
+    serviceId,
+    service: CATALOG_SERVICE_LABELS[serviceId],
     status: 'Live',
     displayName: catalogView.displayName,
     ...TENANT_USER_CATALOG_SPECS,

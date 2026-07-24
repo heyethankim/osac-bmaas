@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useLayoutEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ProviderAdminShell } from '../components/provider-admin/ProviderAdminShell'
 import { ProviderSetupWizardPanel } from '../components/provider-setup/ProviderSetupWizardPanel'
 import type { ProviderAdminNavId } from '../providerAdmin/constants'
@@ -9,6 +10,9 @@ import { ProviderAdminComputeImagesPage } from './infrastructure/ProviderAdminCo
 import { ProviderAdminDataCentersPage } from './infrastructure/ProviderAdminDataCentersPage'
 import { ProviderAdminExternalIpPoolsPage } from './infrastructure/ProviderAdminExternalIpPoolsPage'
 import { ProviderAdminHardwareInventoryPage } from './infrastructure/ProviderAdminHardwareInventoryPage'
+import { ProviderAdminSecurityGroupsPage } from './infrastructure/ProviderAdminSecurityGroupsPage'
+import { ProviderAdminSubnetsPage } from './infrastructure/ProviderAdminSubnetsPage'
+import { ProviderAdminVirtualNetworksPage } from './infrastructure/ProviderAdminVirtualNetworksPage'
 import { ProviderAdminBillingMeteringPage } from './ProviderAdminBillingMeteringPage'
 import { ProviderAdminOrganizationsPage } from './ProviderAdminOrganizationsPage'
 import { ProviderAdminQuotasPage } from './ProviderAdminQuotasPage'
@@ -16,14 +20,20 @@ import { PlaceholderProviderAdminPage } from './PlaceholderProviderAdminPage'
 import { ProviderServiceSelectionPage } from './provider-setup/ProviderServiceSelectionPage'
 import type { ProviderServiceId } from '../providerSetup/constants'
 import { generateCatalogItemId, type PublishedTemplatePayload } from '../providerSetup/templateDemo'
+import { DEFAULT_CATALOG_NETWORK_POLICY } from '../providerAdmin/catalogNetworkPolicy'
+import {
+  ensureProviderPostSetupPrototype,
+  isProviderAdminNavId,
+} from '../providerSetup/prototypeEntry'
 import {
   getProviderActiveNav,
-  getProviderCatalogDraft,
+  getProviderCatalogItems,
   getProviderSelectedServices,
   isProviderServicesSelected,
   isProviderSetupComplete,
+  addProviderCatalogItem,
+  assignCatalogToRegisteredOrganization,
   setProviderActiveNav,
-  setProviderCatalogDraft,
   setProviderOpenRegisterOrgWizard,
   setProviderSelectedServices,
   setProviderSetupComplete,
@@ -34,15 +44,42 @@ import type { WorkspaceTransition } from '../providerAdmin/workspace'
 const PUBLISH_PHASE_MS = 900
 const ENTER_PHASE_MS = 700
 
+function readInitialProviderNav(searchParams: URLSearchParams): ProviderAdminNavId {
+  const requestedNav = searchParams.get('nav')
+  if (isProviderAdminNavId(requestedNav)) {
+    ensureProviderPostSetupPrototype(requestedNav)
+    return requestedNav
+  }
+
+  return getProviderActiveNav()
+}
+
 export function ProviderAdminWorkspacePage() {
+  const [searchParams] = useSearchParams()
   const [setupComplete, setSetupComplete] = useState(() => isProviderSetupComplete())
   const [servicesSelected, setServicesSelected] = useState(() => isProviderServicesSelected())
   const [selectedServices, setSelectedServices] = useState<ProviderServiceId[]>(() =>
     getProviderSelectedServices(),
   )
-  const [activeNavId, setActiveNavId] = useState<ProviderAdminNavId>(() => getProviderActiveNav())
-  const [catalogDraft, setCatalogDraft] = useState(() => getProviderCatalogDraft())
+  const [activeNavId, setActiveNavId] = useState<ProviderAdminNavId>(() =>
+    readInitialProviderNav(searchParams),
+  )
+  const [catalogItems, setCatalogItems] = useState(() => getProviderCatalogItems())
   const [workspaceTransition, setWorkspaceTransition] = useState<WorkspaceTransition>('idle')
+
+  useLayoutEffect(() => {
+    const requestedNav = searchParams.get('nav')
+    if (!isProviderAdminNavId(requestedNav)) {
+      return
+    }
+
+    ensureProviderPostSetupPrototype(requestedNav)
+    setCatalogItems(getProviderCatalogItems())
+    setSelectedServices(getProviderSelectedServices())
+    setServicesSelected(true)
+    setSetupComplete(true)
+    setActiveNavId(requestedNav)
+  }, [searchParams])
 
   const handleServicesContinue = (nextSelectedServices: ProviderServiceId[]) => {
     setProviderSelectedServices(nextSelectedServices)
@@ -55,18 +92,41 @@ export function ProviderAdminWorkspacePage() {
   }
 
   const handleCreateCatalogItem = (payload: PublishedTemplatePayload) => {
+    const status = payload.status ?? 'live'
     const draft = {
       catalogItemId: generateCatalogItemId(),
       templateRefId: payload.templateRefId,
       templateName: payload.templateName,
       displayName: payload.displayName,
+      description: payload.description,
       scope: payload.scope,
       rateCard: payload.rateCard,
+      serviceId: payload.serviceId,
+      networkPolicy: payload.networkPolicy ?? DEFAULT_CATALOG_NETWORK_POLICY,
+      ...(payload.enterpriseTenantId
+        ? { enterpriseTenantId: payload.enterpriseTenantId }
+        : {}),
+      status,
       createdAt: new Date().toISOString(),
     }
 
-    setProviderCatalogDraft(draft)
-    setCatalogDraft(draft)
+    addProviderCatalogItem(draft)
+
+    if (payload.vipOrganizationId) {
+      assignCatalogToRegisteredOrganization(payload.vipOrganizationId, draft)
+    }
+
+    setCatalogItems(getProviderCatalogItems())
+
+    if (status === 'unpublished') {
+      setProviderActiveNav('catalog')
+      setProviderSetupComplete()
+      setActiveNavId('catalog')
+      setSetupComplete(true)
+      setWorkspaceTransition('idle')
+      return
+    }
+
     setWorkspaceTransition('publishing')
 
     window.setTimeout(() => {
@@ -93,12 +153,9 @@ export function ProviderAdminWorkspacePage() {
   }
 
   const renderPostSetupContent = () => {
-    if (!catalogDraft) {
+    if (catalogItems.length === 0) {
       return (
-        <ProviderAdminOverviewPage
-          onGoToCatalog={() => handleNavChange('infrastructure-bmaas-templates')}
-          onGoToOrganizations={() => handleNavChange('administration-organizations')}
-        />
+        <ProviderAdminOverviewPage />
       )
     }
 
@@ -106,9 +163,10 @@ export function ProviderAdminWorkspacePage() {
       case 'catalog':
         return (
           <ProviderAdminCatalogPage
-            catalogDraft={catalogDraft}
+            catalogItems={catalogItems}
             isEntering={workspaceTransition === 'entering'}
             onCreateCatalogItem={handleCreateCatalogItem}
+            onCatalogItemsChange={() => setCatalogItems(getProviderCatalogItems())}
             isPublishing={workspaceTransition !== 'idle'}
             onRegisterOrganization={handleRegisterOrganization}
           />
@@ -128,8 +186,14 @@ export function ProviderAdminWorkspacePage() {
         )
       case 'infrastructure-external-ip-pools':
         return <ProviderAdminExternalIpPoolsPage />
+      case 'networking-virtual-networks':
+        return <ProviderAdminVirtualNetworksPage />
+      case 'networking-subnets':
+        return <ProviderAdminSubnetsPage />
+      case 'networking-security-groups':
+        return <ProviderAdminSecurityGroupsPage />
       case 'administration-organizations':
-        return <ProviderAdminOrganizationsPage />
+        return <ProviderAdminOrganizationsPage onNavigate={handleNavChange} />
       case 'administration-quotas':
         return <ProviderAdminQuotasPage />
       case 'administration-rbac':
@@ -151,10 +215,7 @@ export function ProviderAdminWorkspacePage() {
       case 'overview':
       default:
         return (
-          <ProviderAdminOverviewPage
-            onGoToCatalog={() => handleNavChange('catalog')}
-            onGoToOrganizations={() => handleNavChange('administration-organizations')}
-          />
+          <ProviderAdminOverviewPage />
         )
     }
   }

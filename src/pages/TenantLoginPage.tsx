@@ -9,6 +9,7 @@ import {
 import { getRegisteredOrganizationBySlug } from '../tenantAdmin/organizations'
 import { clearTenantOnboardingComplete } from '../tenantAdmin/storage'
 import { clearTenantUserOnboardingComplete } from '../tenantUser/storage'
+import { clearProviderViewingAsTenantUser } from '../providerAdmin/openAsTenantUser'
 
 type TenantLoginPageProps = {
   role: 'tenant-admin' | 'tenant-user'
@@ -39,6 +40,7 @@ export function TenantLoginPage({ role }: TenantLoginPageProps) {
         }
         if (role === 'tenant-user') {
           clearTenantUserOnboardingComplete(tenant)
+          clearProviderViewingAsTenantUser()
         }
         setIsLoading(true)
         window.setTimeout(() => navigate(`/${role}/northstar/workspace`), 600)

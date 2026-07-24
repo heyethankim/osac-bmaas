@@ -1,5 +1,5 @@
 import type { TenantAdminNavId } from './constants'
-import { TENANT_ADMIN_NAV_ITEMS } from './constants'
+import { getTenantAdminLeafNavItems } from './constants'
 import type { TenantCatalogItem } from './catalogItems'
 import type { OrganizationExternalIpPool, TenantProject } from './projects'
 
@@ -64,16 +64,23 @@ export function clearTenantOnboardingComplete(slug: string): void {
 }
 
 const LEGACY_TENANT_ADMIN_NAV_IDS: Record<string, TenantAdminNavId> = {
-  catalog: 'catalog-manager',
+  'catalog-manager': 'catalog',
   'team-access': 'projects-teams',
-  'cost-allocation': 'billing',
-  'quota-distribution': 'ip-pools',
-  'financial-audit': 'billing',
+  'cost-allocation': 'overview',
+  'quota-distribution': 'overview',
+  'ip-pools': 'overview',
+  billing: 'overview',
+  'financial-audit': 'overview',
   'usage-budget': 'overview',
+  instances: 'services',
+  'services-bare-metal': 'services',
+  'services-clusters': 'services',
+  'services-models': 'services',
+  'services-virtual-machines': 'services',
 }
 
 const VALID_TENANT_ADMIN_NAV_IDS = new Set<TenantAdminNavId>(
-  TENANT_ADMIN_NAV_ITEMS.map((item) => item.id),
+  getTenantAdminLeafNavItems().map((item) => item.id),
 )
 
 function normalizeTenantAdminNavId(value: string | null): TenantAdminNavId {

@@ -1,8 +1,16 @@
 import { useCallback, useState } from 'react'
-import { Navigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Alert, AlertActionLink } from '@patternfly/react-core'
 import { TenantUserAcceptInvitationPanel } from '../components/tenant-user/TenantUserAcceptInvitationPanel'
 import { TenantShell } from '../components/tenant/TenantShell'
 import { DEMO_TENANT_DISPLAY_USER, isDemoTenantId } from '../demoTenant'
+import {
+  getDemoTenantUserOrganization,
+  getProviderViewingAsTenantUser,
+  returnFromTenantUserPreview,
+} from '../providerAdmin/openAsTenantUser'
+import { getProviderRegisteredOrganizations } from '../providerSetup/storage'
+import { getProviderCatalogDraft, getProviderCatalogItems } from '../providerSetup/storage'
 import { getRegisteredOrganizationBySlug } from '../tenantAdmin/organizations'
 import { getTenantUserProjectInvitation } from '../tenantUser/invitation'
 import type { TenantInstance } from '../tenantUser/instances'
@@ -20,38 +28,36 @@ import { TENANT_USER_NAV_ITEMS } from '../tenantShell/constants'
 import { TenantUserActivityLogPage } from './tenant-user/TenantUserActivityLogPage'
 import { TenantUserCatalogPage } from './tenant-user/TenantUserCatalogPage'
 import { TenantUserInstancesPage } from './tenant-user/TenantUserInstancesPage'
-import { getProviderCatalogDraft } from '../providerSetup/storage'
 
 export function TenantUserWorkspacePage() {
+  const navigate = useNavigate()
   const { tenant } = useParams<{ tenant: string }>()
+  const isValidTenant = Boolean(tenant && isDemoTenantId(tenant) && tenant === 'northstar')
+  const tenantSlug = isValidTenant ? tenant! : 'northstar'
 
-  if (!tenant || !isDemoTenantId(tenant) || tenant !== 'northstar') {
-    return <Navigate to="/" replace />
-  }
-
+  const [previewSession] = useState(() => getProviderViewingAsTenantUser())
   const [onboardingComplete, setOnboardingComplete] = useState(() =>
-    isTenantUserOnboardingComplete(tenant),
+    isValidTenant ? isTenantUserOnboardingComplete(tenantSlug) : false,
   )
-  const [activeNavId, setActiveNavId] = useState<TenantUserNavId>(() => getTenantUserActiveNav(tenant))
-  const [instances, setInstances] = useState<TenantInstance[]>(() => getTenantUserInstances(tenant))
+  const [activeNavId, setActiveNavId] = useState<TenantUserNavId>(() =>
+    isValidTenant ? getTenantUserActiveNav(tenantSlug) : 'catalog',
+  )
+  const [instances, setInstances] = useState<TenantInstance[]>(() =>
+    isValidTenant ? getTenantUserInstances(tenantSlug) : [],
+  )
   const [showBackgroundProvisioningNotice, setShowBackgroundProvisioningNotice] = useState(false)
-
-  const organization = getRegisteredOrganizationBySlug(tenant)
-  const catalogDraft = getProviderCatalogDraft()
-  const invitation = getTenantUserProjectInvitation(tenant, organization)
-  const displayName = DEMO_TENANT_DISPLAY_USER[tenant]
 
   const handleNavChange = useCallback(
     (navId: string) => {
       const nextNavId = navId as TenantUserNavId
       setActiveNavId(nextNavId)
-      setTenantUserActiveNav(tenant, nextNavId)
+      setTenantUserActiveNav(tenantSlug, nextNavId)
 
       if (nextNavId !== 'my-instances') {
         setShowBackgroundProvisioningNotice(false)
       }
     },
-    [tenant],
+    [tenantSlug],
   )
 
   const handleNavigateToInstances = useCallback(
@@ -62,18 +68,11 @@ export function TenantUserWorkspacePage() {
     [handleNavChange],
   )
 
-  const handleInvitationAccepted = () => {
-    setTenantUserOnboardingComplete(tenant)
-    setOnboardingComplete(true)
-    setActiveNavId('catalog')
-    setTenantUserActiveNav(tenant, 'catalog')
-  }
-
   const handleProvisioningStarted = useCallback(
     (instance: TenantInstance) => {
-      setInstances(addTenantUserInstance(tenant, instance))
+      setInstances(addTenantUserInstance(tenantSlug, instance))
     },
-    [tenant],
+    [tenantSlug],
   )
 
   const handleDismissDuringProvisioning = useCallback(
@@ -86,15 +85,54 @@ export function TenantUserWorkspacePage() {
   const handleWizardFinished = useCallback(
     (instanceId: string) => {
       setInstances(
-        updateTenantUserInstance(tenant, instanceId, {
+        updateTenantUserInstance(tenantSlug, instanceId, {
           status: 'running',
           provisionedAt: new Date().toISOString(),
         }),
       )
       handleNavigateToInstances()
     },
-    [handleNavigateToInstances, tenant],
+    [handleNavigateToInstances, tenantSlug],
   )
+
+  if (!isValidTenant) {
+    return <Navigate to="/" replace />
+  }
+
+  const isPreviewSession = previewSession !== null && previewSession.tenantSlug === tenantSlug
+  const organizationFromSlug = getRegisteredOrganizationBySlug(tenantSlug)
+  const organization =
+    (isPreviewSession &&
+      previewSession &&
+      getProviderRegisteredOrganizations().find(
+        (item) => item.id === previewSession.organizationId,
+      )) ||
+    organizationFromSlug ||
+    (isPreviewSession ? getDemoTenantUserOrganization() : null)
+  const defaultCatalogDraft = getProviderCatalogDraft()
+  const focusedCatalogDraft =
+    isPreviewSession && previewSession?.catalogItemId
+      ? (getProviderCatalogItems().find(
+          (item) => item.catalogItemId === previewSession.catalogItemId,
+        ) ?? defaultCatalogDraft)
+      : defaultCatalogDraft
+  const catalogDraft = focusedCatalogDraft
+  const invitation = getTenantUserProjectInvitation(tenantSlug, organization)
+  const displayName = DEMO_TENANT_DISPLAY_USER[tenantSlug]
+
+  const handleInvitationAccepted = () => {
+    setTenantUserOnboardingComplete(tenantSlug)
+    setOnboardingComplete(true)
+    setActiveNavId('catalog')
+    setTenantUserActiveNav(tenantSlug, 'catalog')
+  }
+
+  const handleReturnFromPreview = () => {
+    navigate(returnFromTenantUserPreview())
+  }
+
+  const returnActionLabel =
+    previewSession?.source === 'tenant-admin' ? 'Return to Tenant Admin' : 'Return to Provider Admin'
 
   const renderWorkspaceContent = () => {
     if (!onboardingComplete) {
@@ -110,7 +148,7 @@ export function TenantUserWorkspacePage() {
       case 'my-instances':
         return (
           <TenantUserInstancesPage
-            tenantSlug={tenant}
+            tenantSlug={tenantSlug}
             instances={instances}
             onInstancesChange={setInstances}
             showBackgroundProvisioningNotice={showBackgroundProvisioningNotice}
@@ -128,6 +166,8 @@ export function TenantUserWorkspacePage() {
             organization={organization}
             catalogDraft={catalogDraft}
             projectName={invitation.projectName}
+            preferCatalogDraft={Boolean(previewSession?.catalogItemId)}
+            autoOpenLaunchWizard={Boolean(previewSession?.autoLaunch && previewSession.catalogItemId)}
             onProvisioningStarted={handleProvisioningStarted}
             onDismissDuringProvisioning={handleDismissDuringProvisioning}
             onWizardFinished={handleWizardFinished}
@@ -146,6 +186,25 @@ export function TenantUserWorkspacePage() {
       onNavChange={handleNavChange}
       isOnboardingLayout={!onboardingComplete}
     >
+      {isPreviewSession && previewSession ? (
+        <Alert
+          variant="info"
+          isInline
+          title="Viewing as tenant user"
+          className="tenant-user-provider-preview-banner"
+          actionLinks={
+            <AlertActionLink component="button" onClick={handleReturnFromPreview}>
+              {returnActionLabel}
+            </AlertActionLink>
+          }
+        >
+          You are previewing {previewSession.organizationName} as a tenant user
+          {previewSession.catalogDisplayName
+            ? ` for “${previewSession.catalogDisplayName}”`
+            : ' to browse the catalog'}
+          .
+        </Alert>
+      ) : null}
       {renderWorkspaceContent()}
     </TenantShell>
   )
