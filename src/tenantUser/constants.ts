@@ -17,6 +17,6 @@ export const DEMO_TENANT_USER_PROJECT_INVITATION = {
   instanceQuota: 7,
   resourcesLabel: '80 vCPU \u2022 512 GB RAM',
   permissionsSummary:
-    'As a Developer, you can provision and manage bare metal instances, manage SSH keys, and monitor your resource usage. You cannot modify project quotas or invite other members.',
+    'As a Developer, you can provision and manage instances across Bare Metal, Cluster, VM, and Models services, manage SSH keys, and monitor your resource usage. You cannot modify project quotas or invite other members.',
   scopeNote: 'Your access is scoped to the Machine Learning Dev Team project only.',
 } as const

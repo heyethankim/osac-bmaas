@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Alert, AlertActionLink } from '@patternfly/react-core'
 import { TenantUserAcceptInvitationPanel } from '../components/tenant-user/TenantUserAcceptInvitationPanel'
@@ -14,6 +14,7 @@ import { getProviderCatalogDraft, getProviderCatalogItems } from '../providerSet
 import { getRegisteredOrganizationBySlug } from '../tenantAdmin/organizations'
 import { getTenantUserProjectInvitation } from '../tenantUser/invitation'
 import type { TenantInstance } from '../tenantUser/instances'
+import { LAUNCH_INSTANCE_PROVISIONING_DURATION_MS } from '../tenantUser/launchInstanceWizard'
 import {
   addTenantUserInstance,
   getTenantUserActiveNav,
@@ -77,6 +78,65 @@ export function TenantUserWorkspacePage() {
     isValidTenant ? getTenantUserInstances(tenantSlug) : [],
   )
   const [showBackgroundProvisioningNotice, setShowBackgroundProvisioningNotice] = useState(false)
+  const provisioningTimersRef = useRef<Map<string, number>>(new Map())
+
+  const clearProvisioningTimer = useCallback((instanceId: string) => {
+    const timeoutId = provisioningTimersRef.current.get(instanceId)
+    if (timeoutId !== undefined) {
+      window.clearTimeout(timeoutId)
+      provisioningTimersRef.current.delete(instanceId)
+    }
+  }, [])
+
+  const markInstanceRunning = useCallback(
+    (instanceId: string) => {
+      clearProvisioningTimer(instanceId)
+      setInstances(
+        updateTenantUserInstance(tenantSlug, instanceId, {
+          status: 'running',
+          provisionedAt: new Date().toISOString(),
+        }),
+      )
+      setShowBackgroundProvisioningNotice(false)
+    },
+    [clearProvisioningTimer, tenantSlug],
+  )
+
+  const scheduleProvisioningCompletion = useCallback(
+    (instanceId: string, delayMs: number) => {
+      clearProvisioningTimer(instanceId)
+      const timeoutId = window.setTimeout(() => {
+        markInstanceRunning(instanceId)
+      }, Math.max(0, delayMs))
+      provisioningTimersRef.current.set(instanceId, timeoutId)
+    },
+    [clearProvisioningTimer, markInstanceRunning],
+  )
+
+  useEffect(() => {
+    if (!isValidTenant) {
+      return
+    }
+
+    const now = Date.now()
+    for (const instance of getTenantUserInstances(tenantSlug)) {
+      if (instance.status !== 'provisioning') {
+        continue
+      }
+      const elapsedMs = now - new Date(instance.createdAt).getTime()
+      scheduleProvisioningCompletion(
+        instance.id,
+        LAUNCH_INSTANCE_PROVISIONING_DURATION_MS - elapsedMs,
+      )
+    }
+
+    return () => {
+      for (const timeoutId of provisioningTimersRef.current.values()) {
+        window.clearTimeout(timeoutId)
+      }
+      provisioningTimersRef.current.clear()
+    }
+  }, [isValidTenant, scheduleProvisioningCompletion, tenantSlug])
 
   useLayoutEffect(() => {
     if (!isValidTenant) {
@@ -117,8 +177,9 @@ export function TenantUserWorkspacePage() {
   const handleProvisioningStarted = useCallback(
     (instance: TenantInstance) => {
       setInstances(addTenantUserInstance(tenantSlug, instance))
+      scheduleProvisioningCompletion(instance.id, LAUNCH_INSTANCE_PROVISIONING_DURATION_MS)
     },
-    [tenantSlug],
+    [scheduleProvisioningCompletion, tenantSlug],
   )
 
   const handleDismissDuringProvisioning = useCallback(
@@ -130,15 +191,10 @@ export function TenantUserWorkspacePage() {
 
   const handleWizardFinished = useCallback(
     (instanceId: string) => {
-      setInstances(
-        updateTenantUserInstance(tenantSlug, instanceId, {
-          status: 'running',
-          provisionedAt: new Date().toISOString(),
-        }),
-      )
+      markInstanceRunning(instanceId)
       handleNavigateToInstances()
     },
-    [handleNavigateToInstances, tenantSlug],
+    [handleNavigateToInstances, markInstanceRunning],
   )
 
   if (!isValidTenant) {
@@ -214,6 +270,7 @@ export function TenantUserWorkspacePage() {
             projectName={invitation.projectName}
             preferCatalogDraft={Boolean(previewSession?.catalogItemId)}
             autoOpenLaunchWizard={Boolean(previewSession?.autoLaunch && previewSession.catalogItemId)}
+            existingInstanceNames={instances.map((instance) => instance.name)}
             onProvisioningStarted={handleProvisioningStarted}
             onDismissDuringProvisioning={handleDismissDuringProvisioning}
             onWizardFinished={handleWizardFinished}

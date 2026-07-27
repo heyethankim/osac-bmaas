@@ -41,6 +41,7 @@ type TenantUserCatalogPageProps = {
   autoOpenLaunchWizard?: boolean
   /** Prefer the provided catalog draft even if org assignment differs. */
   preferCatalogDraft?: boolean
+  existingInstanceNames?: readonly string[]
   onProvisioningStarted: (instance: TenantInstance) => void
   onDismissDuringProvisioning: (instanceId: string) => void
   onWizardFinished: (instanceId: string) => void
@@ -52,6 +53,7 @@ export function TenantUserCatalogPage({
   projectName,
   autoOpenLaunchWizard = false,
   preferCatalogDraft = false,
+  existingInstanceNames = [],
   onProvisioningStarted,
   onDismissDuringProvisioning,
   onWizardFinished,
@@ -171,7 +173,7 @@ export function TenantUserCatalogPage({
     <Button
       variant="link"
       isInline
-      className="tenant-user-catalog__name-link"
+      className="tenant-user-catalog__name-link catalog-item-name-link"
       onClick={openDetails}
     >
       {catalogItem.displayName}
@@ -329,6 +331,7 @@ export function TenantUserCatalogPage({
           catalogDraft={catalogDraft}
           preferCatalogDraft={preferCatalogDraft}
           projectName={projectName}
+          existingInstanceNames={existingInstanceNames}
           onClose={() => setIsWizardOpen(false)}
           onProvisioningStarted={onProvisioningStarted}
           onDismissDuringProvisioning={(instanceId) => {

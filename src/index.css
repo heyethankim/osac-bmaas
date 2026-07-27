@@ -267,6 +267,7 @@ html:has(.bmaas-role-landing) body {
   flex: 1 1 auto;
   max-width: 22rem;
   margin-inline: auto;
+  margin-block-end: calc(-1 * var(--pf-t--global--spacer--sm));
   font-size: var(--pf-t--global--font--size--body--sm);
   line-height: 1.5;
 }

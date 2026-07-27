@@ -140,11 +140,14 @@
   line-height: var(--pf-t--global--font--line-height--body);
 }
 
+/* Shared card/table title link — matches My instances card title treatment. */
+.catalog-item-name-link.pf-v6-c-button,
 .catalog-data-table .catalog-table-name-link.pf-v6-c-button {
   padding: 0;
-  font-weight: var(--pf-t--global--font--weight--body--default);
+  font-size: var(--pf-t--global--font--size--md);
+  font-weight: var(--pf-t--global--font--weight--body--bold);
   text-align: start;
-  text-decoration: underline;
+  text-decoration: none;
 }
 
 .catalog-service-filter {

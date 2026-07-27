@@ -1836,13 +1836,6 @@
   margin-block-start: var(--pf-t--global--spacer--xl);
 }
 
-.provider-admin-catalog-items__name-link.pf-v6-c-button {
-  padding: 0;
-  font-weight: var(--pf-t--global--font--weight--body--default);
-  text-align: start;
-  text-decoration: underline;
-}
-
 .provider-admin-catalog-items__drawer {
   min-height: calc(100vh - 11rem);
 }

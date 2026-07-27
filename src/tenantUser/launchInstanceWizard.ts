@@ -48,8 +48,8 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   configureTitle: 'Name your instance',
   configureLede:
     'Hardware is pre-configured by your admin. Fill in the fields below to personalize your instance.',
-  instanceNamePlaceholder: 'e.g. ml-experiment-01',
-  defaultInstanceName: 'ml-experiment-01',
+  instanceNamePlaceholder: 'e.g. ML-Experiment-01',
+  defaultInstanceName: 'ML-Experiment-01',
   sshPlaceholder: 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC...',
   defaultSshPublicKey:
     'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC7example+demo+key+northsummitbank+tenant-user@demo',
@@ -65,27 +65,24 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   reviewGpu: 'CPU-only',
   reviewOsImage: 'RHEL 9.4',
   reviewProvisioningNote:
-    'Provisioning takes 10–20 minutes — live boot log tracks data center progress.',
+    'Provisioning takes 10–20 minutes — live progress tracks setup in your environment.',
   confirmProvisioningLabel: 'Confirm & start provisioning',
   provisioningKicker: 'Provisioning in progress',
   provisioningTitle: 'Booting your instance',
   provisioningLede:
-    'Physical provisioning is underway. This takes 10–20 minutes in production.',
+    'Provisioning is underway. This takes 10–20 minutes in production.',
   provisioningDismissibleNote:
     'Provisioning will continue in the background—check status in My instances.',
-  bootLogRemaining: '~11 min remaining',
+  bootLogRemaining: '~10 sec remaining',
   launchInstanceLabel: 'Launch instance',
   closeWhileProvisioningLabel: 'Close',
   backgroundProvisioningAlertTitle: 'Provisioning continues in the background',
   backgroundProvisioningAlertBody:
-    'Your instance stays in Provisioning on My instances until bare metal setup finishes.',
+    'Your instance stays in Provisioning on My instances until setup finishes.',
 } as const
 
-export const LAUNCH_INSTANCE_BOOT_LOG_STEP_MS = 850
-export const LAUNCH_INSTANCE_PROVISIONING_SETTLE_MS = 900
-
 export const PROVISIONING_BOOT_LOG_STEPS: ProvisioningBootLogStep[] = [
-  { id: 'claim-host', label: 'Reserving bare metal' },
+  { id: 'claim-host', label: 'Reserving capacity' },
   { id: 'verify-health', label: 'Checking hardware health' },
   { id: 'apply-vlan', label: 'Configuring network' },
   { id: 'write-image', label: 'Installing operating system' },
@@ -93,12 +90,42 @@ export const PROVISIONING_BOOT_LOG_STEPS: ProvisioningBootLogStep[] = [
   { id: 'register-cr', label: 'Verifying connectivity' },
 ]
 
+/** Demo: provisioning completes after this duration (wizard animation + background). */
+export const LAUNCH_INSTANCE_PROVISIONING_DURATION_MS = 10_000
+export const LAUNCH_INSTANCE_PROVISIONING_SETTLE_MS = 500
+export const LAUNCH_INSTANCE_BOOT_LOG_STEP_MS = Math.floor(
+  (LAUNCH_INSTANCE_PROVISIONING_DURATION_MS - LAUNCH_INSTANCE_PROVISIONING_SETTLE_MS) /
+    PROVISIONING_BOOT_LOG_STEPS.length,
+)
+
 export type LaunchInstanceWizardForm = {
   instanceName: string
   sshPublicKey: string
   virtualNetworkId: string
   subnetId: string
   securityGroupId: string
+}
+
+export const LAUNCH_INSTANCE_NAME_PREFIX = 'ML-Experiment'
+
+/** Next demo name like ML-Experiment-01, ML-Experiment-02, … based on existing instances. */
+export function getNextLaunchInstanceName(existingNames: readonly string[]): string {
+  let highestNumber = 0
+  const pattern = /^ml-experiment-(\d+)$/i
+
+  for (const name of existingNames) {
+    const match = name.trim().match(pattern)
+    if (!match) {
+      continue
+    }
+
+    const value = Number.parseInt(match[1], 10)
+    if (!Number.isNaN(value)) {
+      highestNumber = Math.max(highestNumber, value)
+    }
+  }
+
+  return `${LAUNCH_INSTANCE_NAME_PREFIX}-${String(highestNumber + 1).padStart(2, '0')}`
 }
 
 export const DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM: LaunchInstanceWizardForm = {
@@ -109,19 +136,21 @@ export const DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM: LaunchInstanceWizardForm = {
   securityGroupId: '',
 }
 
-export function createLaunchInstanceWizardForm(networkDefaults: {
+export function createLaunchInstanceWizardForm(options: {
   virtualNetworkId: string
   subnetId: string
   securityGroupId: string
+  instanceName?: string
 }): LaunchInstanceWizardForm {
   return {
     ...DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM,
-    virtualNetworkId: networkDefaults.virtualNetworkId,
-    subnetId: networkDefaults.subnetId,
-    securityGroupId: networkDefaults.securityGroupId,
+    instanceName: options.instanceName ?? DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM.instanceName,
+    virtualNetworkId: options.virtualNetworkId,
+    subnetId: options.subnetId,
+    securityGroupId: options.securityGroupId,
   }
 }
 
 export function isInstanceNameValid(name: string): boolean {
-  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name.trim())
+  return /^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/.test(name.trim())
 }

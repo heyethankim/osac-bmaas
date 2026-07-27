@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -10,12 +11,32 @@ const base =
       : `${process.env.BASE_PATH}/`
     : '/'
 
-const BMAAS_LANDING_LAST_UPDATED_LABEL = 'July 27, 2026'
+const LANDING_DATE_FORMAT: Intl.DateTimeFormatOptions = {
+  month: 'long',
+  day: 'numeric',
+  year: 'numeric',
+  timeZone: 'America/New_York',
+}
+
+/** Prefer latest git commit date so each prototype push refreshes the landing footer. */
+function getLandingLastUpdatedLabel(): string {
+  try {
+    const iso = execSync('git log -1 --format=%cI', { encoding: 'utf8' }).trim()
+    const commitDate = new Date(iso)
+    if (!Number.isNaN(commitDate.getTime())) {
+      return commitDate.toLocaleDateString('en-US', LANDING_DATE_FORMAT)
+    }
+  } catch {
+    /* git unavailable in some build environments */
+  }
+
+  return new Date().toLocaleDateString('en-US', LANDING_DATE_FORMAT)
+}
 
 export default defineConfig({
   base,
   define: {
-    __BMAAS_LANDING_LAST_UPDATED__: JSON.stringify(BMAAS_LANDING_LAST_UPDATED_LABEL),
+    __BMAAS_LANDING_LAST_UPDATED__: JSON.stringify(getLandingLastUpdatedLabel()),
   },
   plugins: [react()],
   server: {

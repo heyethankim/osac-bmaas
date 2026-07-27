@@ -670,7 +670,7 @@ export function TenantAdminCatalogPage({
                       <Button
                         variant="link"
                         isInline
-                        className="tenant-admin-catalog-manager__name-link"
+                        className="tenant-admin-catalog-manager__name-link catalog-item-name-link"
                         onClick={() => openDetails(item)}
                       >
                         {item.displayName}
@@ -764,7 +764,7 @@ export function TenantAdminCatalogPage({
                           <Button
                             variant="link"
                             isInline
-                            className="tenant-admin-catalog-manager__name-link"
+                            className="tenant-admin-catalog-manager__name-link catalog-item-name-link"
                             onClick={() => openDetails(item)}
                           >
                             {item.displayName}

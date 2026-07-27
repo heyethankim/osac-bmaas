@@ -759,7 +759,7 @@ export function ProviderAdminCatalogPage({
                     <Button
                       variant="link"
                       isInline
-                      className="provider-admin-catalog-items__name-link"
+                      className="provider-admin-catalog-items__name-link catalog-item-name-link"
                       onClick={() => openDetails(item)}
                     >
                       {item.displayName}
@@ -869,7 +869,7 @@ export function ProviderAdminCatalogPage({
                       <Button
                         variant="link"
                         isInline
-                        className="provider-admin-catalog-items__name-link catalog-table-name-link"
+                        className="provider-admin-catalog-items__name-link catalog-item-name-link catalog-table-name-link"
                         onClick={() => openDetails(item)}
                       >
                         {item.displayName}

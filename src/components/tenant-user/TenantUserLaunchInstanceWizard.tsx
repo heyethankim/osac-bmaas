@@ -36,6 +36,7 @@ import type { TenantUserCatalogCard } from '../../tenantUser/catalog'
 import {
   createLaunchInstanceWizardForm,
   getLaunchInstanceWizardSteps,
+  getNextLaunchInstanceName,
   isInstanceNameValid,
   LAUNCH_INSTANCE_BOOT_LOG_STEP_MS,
   LAUNCH_INSTANCE_PROVISIONING_SETTLE_MS,
@@ -51,7 +52,7 @@ import {
   resolveLaunchNetworkContext,
   type LaunchNetworkFieldView,
 } from '../../tenantUser/launchNetworking'
-import { generateTenantInstanceId, type TenantInstance } from '../../tenantUser/instances'
+import { formatTenantInstanceName, generateTenantInstanceId, type TenantInstance } from '../../tenantUser/instances'
 
 type TenantUserLaunchInstanceWizardProps = {
   isOpen: boolean
@@ -60,6 +61,7 @@ type TenantUserLaunchInstanceWizardProps = {
   catalogDraft: ProviderCatalogDraft | null
   preferCatalogDraft?: boolean
   projectName: string
+  existingInstanceNames?: readonly string[]
   onClose: () => void
   onProvisioningStarted: (instance: TenantInstance) => void
   onDismissDuringProvisioning: (instanceId: string) => void
@@ -104,6 +106,7 @@ export function TenantUserLaunchInstanceWizard({
   catalogDraft,
   preferCatalogDraft = false,
   projectName,
+  existingInstanceNames = [],
   onClose,
   onProvisioningStarted,
   onDismissDuringProvisioning,
@@ -159,6 +162,7 @@ export function TenantUserLaunchInstanceWizard({
         virtualNetworkId: networkContext.policy.virtualNetwork.id,
         subnetId: networkContext.policy.subnet.id,
         securityGroupId: networkContext.policy.securityGroup.id,
+        instanceName: getNextLaunchInstanceName(existingInstanceNames),
       }),
     )
     setActiveStepId('configure')
@@ -195,9 +199,10 @@ export function TenantUserLaunchInstanceWizard({
         virtualNetworkId: networkContext.policy.virtualNetwork.id,
         subnetId: networkContext.policy.subnet.id,
         securityGroupId: networkContext.policy.securityGroup.id,
+        instanceName: getNextLaunchInstanceName(existingInstanceNames),
       }),
     )
-  }, [isOpen, networkContext])
+  }, [isOpen, networkContext, existingInstanceNames])
 
   useEffect(() => {
     if (!isOpen || activeStepId !== 'provisioning' || provisioningStartedRef.current) {
@@ -208,7 +213,7 @@ export function TenantUserLaunchInstanceWizard({
 
     const instance: TenantInstance = {
       id: generateTenantInstanceId(),
-      name: form.instanceName.trim(),
+      name: formatTenantInstanceName(form.instanceName.trim()),
       catalogItemDisplayName: catalogItem.displayName,
       hardwareProfile: catalogItem.hardwareProfile,
       osImage: catalogItem.osImage,

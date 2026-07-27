@@ -28,6 +28,22 @@ export function formatTenantInstanceCreatedAt(iso: string): string {
   })
 }
 
+/** Title-caps hyphenated instance names for display (e.g. ml-experiment-02 → ML-Experiment-02). */
+export function formatTenantInstanceName(name: string): string {
+  return name
+    .split('-')
+    .map((part) => {
+      if (/^\d+$/.test(part)) {
+        return part
+      }
+      if (part.length <= 2) {
+        return part.toUpperCase()
+      }
+      return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+    })
+    .join('-')
+}
+
 export function getTenantInstanceStatusLabel(status: TenantInstanceStatus): string {
   switch (status) {
     case 'running':
@@ -44,6 +60,7 @@ export function getTenantInstanceStatusLabel(status: TenantInstanceStatus): stri
 export function getTenantInstanceActions(
   instance: TenantInstance,
   onTerminate: (instanceId: string) => void,
+  onViewDetails?: (instance: TenantInstance) => void,
 ): Array<{
   title: string
   isAriaDisabled?: boolean
@@ -55,7 +72,7 @@ export function getTenantInstanceActions(
     {
       title: 'View details',
       onClick: () => {
-        /* demo */
+        onViewDetails?.(instance)
       },
     },
     {
