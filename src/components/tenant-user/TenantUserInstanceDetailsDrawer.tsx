@@ -198,7 +198,7 @@ export function TenantUserInstanceDetailsDrawer({
           <DescriptionListGroup>
             <DescriptionListTerm>Instance ID</DescriptionListTerm>
             <DescriptionListDescription>
-              <code className="tenant-user-instances__drawer-mono">{instance.id}</code>
+              <code>{instance.id}</code>
             </DescriptionListDescription>
           </DescriptionListGroup>
         </DescriptionList>

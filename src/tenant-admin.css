@@ -1543,9 +1543,9 @@
   gap: var(--pf-t--global--spacer--xs);
 }
 
-.tenant-user-instances__drawer-mono {
-  font-family: var(--pf-t--global--font--family--mono);
-  font-size: var(--pf-t--global--font--size--body--sm);
+.tenant-user-instances__drawer-dl .pf-v6-c-description-list__description code {
+  font-family: var(--pf-t--global--font--family--monospace);
+  font-size: 0.92em;
 }
 
 .tenant-user-launch-wizard__modal {
