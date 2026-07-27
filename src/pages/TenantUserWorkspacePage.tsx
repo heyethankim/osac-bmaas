@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react'
-import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { useCallback, useLayoutEffect, useState } from 'react'
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Alert, AlertActionLink } from '@patternfly/react-core'
 import { TenantUserAcceptInvitationPanel } from '../components/tenant-user/TenantUserAcceptInvitationPanel'
 import { TenantShell } from '../components/tenant/TenantShell'
@@ -29,24 +29,69 @@ import { TenantUserActivityLogPage } from './tenant-user/TenantUserActivityLogPa
 import { TenantUserCatalogPage } from './tenant-user/TenantUserCatalogPage'
 import { TenantUserInstancesPage } from './tenant-user/TenantUserInstancesPage'
 
+function isTenantUserNavId(value: string | null): value is TenantUserNavId {
+  return value === 'catalog' || value === 'my-instances' || value === 'activity-log'
+}
+
+/** Seeds post-onboarding Tenant User state so landing-page prototype links can open finished screens. */
+function ensureTenantUserPostOnboardingPrototype(tenantSlug: string, navId: TenantUserNavId) {
+  setTenantUserOnboardingComplete(tenantSlug)
+  setTenantUserActiveNav(tenantSlug, navId)
+}
+
+function readInitialTenantUserNav(
+  tenantSlug: string,
+  searchParams: URLSearchParams,
+): TenantUserNavId {
+  const requestedNav = searchParams.get('nav')
+  if (isTenantUserNavId(requestedNav)) {
+    ensureTenantUserPostOnboardingPrototype(tenantSlug, requestedNav)
+    return requestedNav
+  }
+
+  return getTenantUserActiveNav(tenantSlug)
+}
+
 export function TenantUserWorkspacePage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { tenant } = useParams<{ tenant: string }>()
   const tenantSlug =
     tenant && isDemoTenantId(tenant) && tenant === 'northstar' ? tenant : 'northstar'
   const isValidTenant = Boolean(tenant && isDemoTenantId(tenant) && tenant === 'northstar')
 
   const [previewSession] = useState(() => getProviderViewingAsTenantUser())
-  const [onboardingComplete, setOnboardingComplete] = useState(() =>
-    isValidTenant ? isTenantUserOnboardingComplete(tenantSlug) : false,
-  )
+  const [onboardingComplete, setOnboardingComplete] = useState(() => {
+    if (!isValidTenant) {
+      return false
+    }
+    if (isTenantUserNavId(searchParams.get('nav'))) {
+      return true
+    }
+    return isTenantUserOnboardingComplete(tenantSlug)
+  })
   const [activeNavId, setActiveNavId] = useState<TenantUserNavId>(() =>
-    isValidTenant ? getTenantUserActiveNav(tenantSlug) : 'catalog',
+    isValidTenant ? readInitialTenantUserNav(tenantSlug, searchParams) : 'catalog',
   )
   const [instances, setInstances] = useState<TenantInstance[]>(() =>
     isValidTenant ? getTenantUserInstances(tenantSlug) : [],
   )
   const [showBackgroundProvisioningNotice, setShowBackgroundProvisioningNotice] = useState(false)
+
+  useLayoutEffect(() => {
+    if (!isValidTenant) {
+      return
+    }
+
+    const requestedNav = searchParams.get('nav')
+    if (!isTenantUserNavId(requestedNav)) {
+      return
+    }
+
+    ensureTenantUserPostOnboardingPrototype(tenantSlug, requestedNav)
+    setOnboardingComplete(true)
+    setActiveNavId(requestedNav)
+  }, [isValidTenant, searchParams, tenantSlug])
 
   const handleNavChange = useCallback(
     (navId: string) => {

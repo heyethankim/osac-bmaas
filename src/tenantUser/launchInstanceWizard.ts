@@ -85,26 +85,12 @@ export const LAUNCH_INSTANCE_BOOT_LOG_STEP_MS = 850
 export const LAUNCH_INSTANCE_PROVISIONING_SETTLE_MS = 900
 
 export const PROVISIONING_BOOT_LOG_STEPS: ProvisioningBootLogStep[] = [
-  { id: 'claim-host', label: 'Claiming BareMetalHost from Metal3 inventory' },
-  { id: 'verify-health', label: 'Verifying hardware health via IPMI / BMC' },
-  { id: 'apply-vlan', label: 'Applying VLAN profile and network policy' },
-  { id: 'boot-order', label: 'Configuring boot order — setting PXE as primary' },
-  {
-    id: 'network-boot',
-    label: 'Initiating network boot — fetching OS image (RHEL 9.4 · 9.2 GB)',
-  },
-  { id: 'write-image', label: 'Writing OS image to NVMe drives (ETA ~8 min)' },
-  { id: 'post-installer', label: 'Waiting for host to POST and enter OS installer' },
-  { id: 'first-boot', label: 'First-boot OS initialization and kernel setup' },
-  { id: 'acceptance-tests', label: 'Running hardware acceptance tests' },
-  {
-    id: 'cloud-init',
-    label: 'Applying cloud-init — SSH keys, hostname, network config',
-  },
-  {
-    id: 'register-cr',
-    label: 'Verifying connectivity and registering BareMetalInstance CR',
-  },
+  { id: 'claim-host', label: 'Reserving bare metal' },
+  { id: 'verify-health', label: 'Checking hardware health' },
+  { id: 'apply-vlan', label: 'Configuring network' },
+  { id: 'write-image', label: 'Installing operating system' },
+  { id: 'cloud-init', label: 'Applying your settings' },
+  { id: 'register-cr', label: 'Verifying connectivity' },
 ]
 
 export type LaunchInstanceWizardForm = {

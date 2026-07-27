@@ -182,6 +182,13 @@ export function BmaasLandingPage() {
                     ariaLabel="Enter Tenant Admin demo"
                   />
                 }
+                prototypeLinks={[
+                  {
+                    label: 'Catalog',
+                    to: '/tenant-admin/northstar/workspace?nav=catalog',
+                    statusLabel: 'Not approved yet',
+                  },
+                ]}
               />
 
               <RoleBlock
@@ -199,6 +206,13 @@ export function BmaasLandingPage() {
                     ariaLabel="Enter Tenant User demo"
                   />
                 }
+                prototypeLinks={[
+                  {
+                    label: 'Catalog',
+                    to: '/tenant-user/northstar/workspace?nav=catalog',
+                    statusLabel: 'Not approved yet',
+                  },
+                ]}
               />
             </div>
           </CardBody>

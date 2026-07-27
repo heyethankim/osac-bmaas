@@ -585,6 +585,10 @@
   gap: var(--pf-t--global--spacer--sm);
 }
 
+.tenant-admin-catalog-manager__page-header {
+  margin-block-end: var(--pf-t--global--spacer--lg);
+}
+
 .tenant-admin-catalog-manager__title.pf-v6-c-title {
   margin-block-end: var(--pf-t--global--spacer--sm);
 }
@@ -595,9 +599,18 @@
   color: var(--pf-t--global--text--color--subtle);
 }
 
+.tenant-admin-catalog-manager__page-header .tenant-admin-catalog-manager__lede.pf-v6-c-content--p {
+  margin-block-end: 0;
+  max-width: 48rem;
+  white-space: normal;
+}
+
+.tenant-admin-catalog-manager__create.pf-v6-c-button {
+  white-space: nowrap;
+}
+
 .tenant-admin-catalog-manager__lede.pf-v6-c-content--p {
   margin-block-end: var(--pf-t--global--spacer--lg);
-  white-space: nowrap;
 }
 
 .tenant-admin-catalog-manager__toolbar {

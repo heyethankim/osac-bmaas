@@ -7,6 +7,8 @@ import {
   Content,
   EmptyState,
   EmptyStateBody,
+  Flex,
+  FlexItem,
   Form,
   FormGroup,
   Label,
@@ -20,6 +22,7 @@ import {
   Title,
   Tooltip,
 } from '@patternfly/react-core'
+import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import { TimesIcon } from '@patternfly/react-icons/dist/esm/icons/times-icon'
 import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
@@ -565,12 +568,33 @@ export function TenantAdminCatalogPage({
       onChangeLockForUsers={handleChangeLockForUsers}
     >
       <div className="tenant-admin-workspace-page tenant-admin-catalog-manager">
-        <Title headingLevel="h1" size="3xl" className="tenant-admin-catalog-manager__title">
-          {TENANT_CATALOG_MANAGER_DEMO.title}
-        </Title>
-        <Content component="p" className="tenant-admin-catalog-manager__lede">
-          {TENANT_CATALOG_MANAGER_DEMO.lede}
-        </Content>
+        <Flex
+          className="tenant-admin-catalog-manager__page-header"
+          justifyContent={{ default: 'justifyContentSpaceBetween' }}
+          alignItems={{ default: 'alignItemsFlexStart' }}
+          gap={{ default: 'gapMd' }}
+        >
+          <FlexItem>
+            <Title headingLevel="h1" size="3xl" className="tenant-admin-catalog-manager__title">
+              {TENANT_CATALOG_MANAGER_DEMO.title}
+            </Title>
+            <Content component="p" className="tenant-admin-catalog-manager__lede">
+              {TENANT_CATALOG_MANAGER_DEMO.lede}
+            </Content>
+          </FlexItem>
+          <FlexItem alignSelf={{ default: 'alignSelfFlexStart' }}>
+            <Tooltip content="Catalog items are created by the provider. Tenant admins govern inherited offerings.">
+              <Button
+                variant="primary"
+                icon={<PlusIcon />}
+                className="tenant-admin-catalog-manager__create"
+                isAriaDisabled
+              >
+                Create catalog item
+              </Button>
+            </Tooltip>
+          </FlexItem>
+        </Flex>
 
         <div className="catalog-view-toolbar tenant-admin-catalog-manager__toolbar">
           <div className="catalog-view-toolbar__start">

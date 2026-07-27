@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Navigate, useParams } from 'react-router-dom'
+import { useLayoutEffect, useState } from 'react'
+import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { TenantAdminAcceptInvitationPanel } from '../components/tenant-admin/TenantAdminAcceptInvitationPanel'
 import { TenantShell } from '../components/tenant/TenantShell'
 import { DEMO_TENANT_DISPLAY_ADMIN, isDemoTenantId } from '../demoTenant'
@@ -29,22 +29,82 @@ const TENANT_ADMIN_PLACEHOLDER_PAGES: Partial<
   },
 }
 
-export function TenantAdminWorkspacePage() {
-  const { tenant } = useParams<{ tenant: string }>()
+function isTenantAdminNavId(value: string | null): value is TenantAdminNavId {
+  return (
+    value === 'overview' ||
+    value === 'catalog' ||
+    value === 'services' ||
+    value === 'projects-teams' ||
+    value === 'networking-virtual-networks' ||
+    value === 'networking-subnets' ||
+    value === 'networking-security-groups'
+  )
+}
 
-  if (!tenant || !isDemoTenantId(tenant) || tenant !== 'northstar') {
+/** Seeds post-onboarding Tenant Admin state so landing-page prototype links can open finished screens. */
+function ensureTenantAdminPostOnboardingPrototype(tenant: string, navId: TenantAdminNavId) {
+  setTenantOnboardingComplete(tenant)
+  setTenantActiveNav(tenant, navId)
+}
+
+function readInitialTenantAdminNav(
+  tenant: string,
+  searchParams: URLSearchParams,
+): TenantAdminNavId {
+  const requestedNav = searchParams.get('nav')
+  if (isTenantAdminNavId(requestedNav)) {
+    ensureTenantAdminPostOnboardingPrototype(tenant, requestedNav)
+    return requestedNav
+  }
+
+  return getTenantActiveNav(tenant)
+}
+
+export function TenantAdminWorkspacePage() {
+  const { tenant: tenantParam } = useParams<{ tenant: string }>()
+  const [searchParams] = useSearchParams()
+  const isValidTenant = Boolean(
+    tenantParam && isDemoTenantId(tenantParam) && tenantParam === 'northstar',
+  )
+  const tenant = 'northstar' as const
+
+  const [onboardingComplete, setOnboardingComplete] = useState(() => {
+    if (!isValidTenant) {
+      return false
+    }
+    if (isTenantAdminNavId(searchParams.get('nav'))) {
+      return true
+    }
+    return isTenantOnboardingComplete(tenant)
+  })
+  const [organization, setOrganization] = useState(() => getWorkspaceOrganization(tenant))
+  const [activeNavId, setActiveNavId] = useState<TenantAdminNavId>(() =>
+    isValidTenant ? readInitialTenantAdminNav(tenant, searchParams) : 'overview',
+  )
+  const [projects, setProjects] = useState<TenantProject[]>(() => getTenantProjects(tenant))
+
+  useLayoutEffect(() => {
+    if (!isValidTenant) {
+      return
+    }
+
+    const requestedNav = searchParams.get('nav')
+    if (!isTenantAdminNavId(requestedNav)) {
+      return
+    }
+
+    ensureTenantAdminPostOnboardingPrototype(tenant, requestedNav)
+    setOrganization(getWorkspaceOrganization(tenant))
+    setOnboardingComplete(true)
+    setActiveNavId(requestedNav)
+  }, [isValidTenant, searchParams, tenant])
+
+  if (!isValidTenant) {
     return <Navigate to="/" replace />
   }
 
-  const [onboardingComplete, setOnboardingComplete] = useState(() =>
-    isTenantOnboardingComplete(tenant),
-  )
-  const [organization, setOrganization] = useState(() => getWorkspaceOrganization(tenant))
-  const [activeNavId, setActiveNavId] = useState<TenantAdminNavId>(() => getTenantActiveNav(tenant))
-  const [projects, setProjects] = useState<TenantProject[]>(() => getTenantProjects(tenant))
-
   const catalogDraft = getProviderCatalogDraft()
-  const displayName = organization.tenantAdminName ?? DEMO_TENANT_DISPLAY_ADMIN[tenant]
+  const displayName = organization.tenantAdminName ?? DEMO_TENANT_DISPLAY_ADMIN.northstar
 
   const handleNavChange = (navId: string) => {
     const nextNavId = navId as TenantAdminNavId
