@@ -31,7 +31,13 @@ function isTenantInstance(value: unknown): value is TenantInstance {
     typeof instance.networkLabel === 'string' &&
     typeof instance.gpuLabel === 'string' &&
     typeof instance.projectName === 'string' &&
-    (instance.status === 'provisioning' || instance.status === 'running' || instance.status === 'failed') &&
+    (instance.scopeKind === undefined ||
+      instance.scopeKind === 'organization' ||
+      instance.scopeKind === 'project') &&
+    (instance.status === 'provisioning' ||
+      instance.status === 'restarting' ||
+      instance.status === 'running' ||
+      instance.status === 'failed') &&
     typeof instance.createdAt === 'string' &&
     (instance.provisionedAt === null || typeof instance.provisionedAt === 'string')
   )
@@ -94,7 +100,10 @@ export function getTenantUserInstances(slug: string): TenantInstance[] {
       return []
     }
 
-    return parsed.filter(isTenantInstance)
+    return parsed.filter(isTenantInstance).map((instance) => ({
+      ...instance,
+      scopeKind: instance.scopeKind ?? 'project',
+    }))
   } catch {
     return []
   }

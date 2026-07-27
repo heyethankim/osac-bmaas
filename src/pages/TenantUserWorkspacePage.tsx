@@ -253,6 +253,7 @@ export function TenantUserWorkspacePage() {
             tenantSlug={tenantSlug}
             instances={instances}
             onInstancesChange={setInstances}
+            defaultScopeFieldLabel={invitation.scopeFieldLabel}
             showBackgroundProvisioningNotice={showBackgroundProvisioningNotice}
             onDismissBackgroundProvisioningNotice={() =>
               setShowBackgroundProvisioningNotice(false)
@@ -267,7 +268,9 @@ export function TenantUserWorkspacePage() {
           <TenantUserCatalogPage
             organization={organization}
             catalogDraft={catalogDraft}
-            projectName={invitation.projectName}
+            scopeKind={invitation.scopeKind}
+            scopeLabel={invitation.scopeLabel}
+            scopeFieldLabel={invitation.scopeFieldLabel}
             preferCatalogDraft={Boolean(previewSession?.catalogItemId)}
             autoOpenLaunchWizard={Boolean(previewSession?.autoLaunch && previewSession.catalogItemId)}
             existingInstanceNames={instances.map((instance) => instance.name)}

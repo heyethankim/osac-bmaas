@@ -27,16 +27,23 @@ export function TenantUserAcceptInvitationPanel({
   invitation,
   onAccept,
 }: TenantUserAcceptInvitationPanelProps) {
+  const isOrganizationScope = invitation.scopeKind === 'organization'
+  const title = isOrganizationScope
+    ? TENANT_USER_ACCEPT_INVITATION_INTRO.organizationTitle
+    : TENANT_USER_ACCEPT_INVITATION_INTRO.projectTitle
+  const lede = isOrganizationScope
+    ? `${invitation.invitedByName} has granted you access to the ${invitation.workspaceName} workspace.`
+    : `${invitation.invitedByName} has granted you access to the ${invitation.scopeLabel} project on the ${invitation.workspaceName} workspace.`
+
   return (
     <Stack hasGutter className="tenant-user-onboarding">
       <StackItem className="tenant-user-onboarding__intro">
         <Label color="blue">{TENANT_USER_ACCEPT_INVITATION_INTRO.badge}</Label>
         <Title headingLevel="h1" size="3xl">
-          {TENANT_USER_ACCEPT_INVITATION_INTRO.title}
+          {title}
         </Title>
         <Content component="p" className="tenant-user-onboarding__lede">
-          {invitation.invitedByName} has granted you access to the {invitation.projectName}{' '}
-          project on the {invitation.workspaceName} workspace.
+          {lede}
         </Content>
       </StackItem>
 
@@ -46,7 +53,7 @@ export function TenantUserAcceptInvitationPanel({
             <Alert
               variant="info"
               isInline
-              title="Project permissions"
+              title={isOrganizationScope ? 'Organization permissions' : 'Project permissions'}
               className="tenant-user-onboarding__permissions-alert"
               customIcon={<ShieldAltIcon />}
             >

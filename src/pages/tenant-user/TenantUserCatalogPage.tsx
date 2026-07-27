@@ -32,11 +32,14 @@ import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWiza
 import { resolveLaunchNetworkContext } from '../../tenantUser/launchNetworking'
 import { TENANT_USER_CATALOG_PAGE } from '../../tenantUser/constants'
 import type { TenantInstance } from '../../tenantUser/instances'
+import type { TenantUserScopeKind } from '../../tenantUser/scope'
 
 type TenantUserCatalogPageProps = {
   organization: RegisteredOrganization | null
   catalogDraft: ProviderCatalogDraft | null
-  projectName: string
+  scopeKind: TenantUserScopeKind
+  scopeLabel: string
+  scopeFieldLabel: 'Organization' | 'Project'
   /** When true, open the launch wizard immediately (provider preview). */
   autoOpenLaunchWizard?: boolean
   /** Prefer the provided catalog draft even if org assignment differs. */
@@ -50,7 +53,9 @@ type TenantUserCatalogPageProps = {
 export function TenantUserCatalogPage({
   organization,
   catalogDraft,
-  projectName,
+  scopeKind,
+  scopeLabel,
+  scopeFieldLabel,
   autoOpenLaunchWizard = false,
   preferCatalogDraft = false,
   existingInstanceNames = [],
@@ -193,7 +198,9 @@ export function TenantUserCatalogPage({
           Catalog
         </Title>
         <Content component="p" className="tenant-user-catalog__lede">
-          {TENANT_USER_CATALOG_PAGE.lede}
+          {scopeKind === 'organization'
+            ? TENANT_USER_CATALOG_PAGE.organizationLede
+            : TENANT_USER_CATALOG_PAGE.projectLede}
         </Content>
 
         <div className="catalog-view-toolbar tenant-user-catalog__toolbar">
@@ -330,7 +337,9 @@ export function TenantUserCatalogPage({
           organization={organization}
           catalogDraft={catalogDraft}
           preferCatalogDraft={preferCatalogDraft}
-          projectName={projectName}
+          scopeKind={scopeKind}
+          scopeLabel={scopeLabel}
+          scopeFieldLabel={scopeFieldLabel}
           existingInstanceNames={existingInstanceNames}
           onClose={() => setIsWizardOpen(false)}
           onProvisioningStarted={onProvisioningStarted}

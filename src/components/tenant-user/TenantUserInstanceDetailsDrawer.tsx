@@ -24,6 +24,7 @@ import { ServerIcon } from '@patternfly/react-icons/dist/esm/icons/server-icon'
 import {
   formatTenantInstanceCreatedAt,
   formatTenantInstanceName,
+  getTenantInstanceScopeFieldLabel,
   getTenantInstanceStatusLabel,
   type TenantInstance,
 } from '../../tenantUser/instances'
@@ -32,7 +33,8 @@ type TenantUserInstanceDetailsDrawerProps = {
   isExpanded: boolean
   onClose: () => void
   instance: TenantInstance | null
-  onTerminate: (instanceId: string) => void
+  onRequestTerminate: (instance: TenantInstance) => void
+  onRestart: (instanceId: string) => void
   children: ReactNode
 }
 
@@ -41,6 +43,7 @@ function getStatusColor(status: TenantInstance['status']): 'green' | 'blue' | 'r
     case 'running':
       return 'green'
     case 'provisioning':
+    case 'restarting':
       return 'blue'
     case 'failed':
       return 'red'
@@ -55,7 +58,7 @@ function InstanceStatusLabel({ status }: { status: TenantInstance['status'] }) {
       color={getStatusColor(status)}
       isCompact
       icon={
-        status === 'provisioning' ? (
+        status === 'provisioning' || status === 'restarting' ? (
           <Spinner
             isInline
             diameter="0.625rem"
@@ -74,11 +77,15 @@ export function TenantUserInstanceDetailsDrawer({
   isExpanded,
   onClose,
   instance,
-  onTerminate,
+  onRequestTerminate,
+  onRestart,
   children,
 }: TenantUserInstanceDetailsDrawerProps) {
   const isRunning = instance?.status === 'running'
-  const canTerminate = instance ? instance.status !== 'provisioning' : false
+  const isRestarting = instance?.status === 'restarting'
+  const canRestart = isRunning
+  const canTerminate =
+    instance !== null && instance.status !== 'provisioning' && instance.status !== 'restarting'
 
   const panelContent = instance ? (
     <DrawerPanelContent
@@ -112,38 +119,57 @@ export function TenantUserInstanceDetailsDrawer({
         </Content>
 
         <div className="tenant-user-instances__drawer-actions">
-          <Tooltip
-            content={
-              isRunning
-                ? 'Restart is not available in this demo'
-                : 'Restart is available when the instance is running'
-            }
-          >
-            <Button variant="secondary" isAriaDisabled>
+          {canRestart ? (
+            <Button variant="secondary" onClick={() => onRestart(instance.id)}>
               Restart
             </Button>
-          </Tooltip>
-          <Tooltip
-            content={
-              canTerminate
-                ? 'Permanently delete this instance'
-                : 'Terminate is unavailable while provisioning'
-            }
-          >
-            <Button
-              variant="link"
-              isDanger
-              isAriaDisabled={!canTerminate}
-              onClick={() => {
-                if (!canTerminate) {
-                  return
+          ) : (
+            <Tooltip
+              content={
+                isRestarting
+                  ? 'Restart is already in progress'
+                  : 'Restart is available when the instance is running'
+              }
+            >
+              <Button
+                variant="secondary"
+                isAriaDisabled
+                icon={
+                  isRestarting ? (
+                    <Spinner
+                      isInline
+                      diameter="0.875rem"
+                      aria-hidden
+                      className="tenant-user-instances__status-spinner"
+                    />
+                  ) : undefined
                 }
-                onTerminate(instance.id)
-              }}
+              >
+                {isRestarting ? 'Restarting…' : 'Restart'}
+              </Button>
+            </Tooltip>
+          )}
+          {canTerminate ? (
+            <Button
+              variant="secondary"
+              isDanger
+              onClick={() => onRequestTerminate(instance)}
             >
               Terminate
             </Button>
-          </Tooltip>
+          ) : (
+            <Tooltip
+              content={
+                isRestarting
+                  ? 'Terminate is unavailable while restarting'
+                  : 'Terminate is unavailable while provisioning'
+              }
+            >
+              <Button variant="secondary" isDanger isAriaDisabled>
+                Terminate
+              </Button>
+            </Tooltip>
+          )}
         </div>
 
         <Divider className="tenant-user-instances__drawer-divider" />
@@ -160,7 +186,7 @@ export function TenantUserInstanceDetailsDrawer({
             </DescriptionListDescription>
           </DescriptionListGroup>
           <DescriptionListGroup>
-            <DescriptionListTerm>Project</DescriptionListTerm>
+            <DescriptionListTerm>{getTenantInstanceScopeFieldLabel(instance)}</DescriptionListTerm>
             <DescriptionListDescription>{instance.projectName}</DescriptionListDescription>
           </DescriptionListGroup>
           <DescriptionListGroup>

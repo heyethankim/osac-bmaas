@@ -4,7 +4,6 @@ import type { ProviderCatalogDraft } from '../providerSetup/storage'
 import { getProviderCatalogItems } from '../providerSetup/storage'
 import type { CatalogNetworkPolicy } from '../providerAdmin/catalogNetworkPolicy'
 import { resolveHardwareSpecsForCatalogItem } from '../catalog/hardwareSpecs'
-import type { TenantProject } from './projects'
 import { resolveCatalogNetworkPolicyForOrganization } from './networking'
 
 export type TenantCatalogGovernanceItem = {
@@ -30,10 +29,14 @@ export type TenantCatalogGovernanceItemWithNetworking = TenantCatalogGovernanceI
 
 export const TENANT_CATALOG_MANAGER_DEMO = {
   title: 'Catalog',
-  lede:
-    "Filter the provider's global catalog down to safe, approved offerings. Scope GPU-intensive items to authorized teams only.",
-  addProjectTeamsLinkLabel: 'Add project & teams',
-  authorizedTeamsLabel: 'Authorized teams',
+  lede: "Filter the provider's global catalog down to safe, approved offerings.",
+  accessLabel: 'Access',
+  accessDetailNote:
+    'Available to all organization members by default. Assign projects or teams if you want to restrict who can launch this item.',
+  addProjectsLinkLabel: 'Set up projects & teams',
+  manageProjectsLinkLabel: 'Manage projects & teams',
+  drawerAccessLede:
+    'Review provider-configured hardware and networking for this offering.',
   networkingLabel: 'Networking',
   networkingNotConfiguredSummary: 'Not configured',
   networkingViewDetailsLabel: 'Details',
@@ -42,6 +45,11 @@ export const TENANT_CATALOG_MANAGER_DEMO = {
     'Provider-locked fields cannot be changed. For editable fields, choose a value and optionally lock it for tenant users at launch.',
 } as const
 
+export function getTenantCatalogProjectsLinkLabel(projectCount: number): string {
+  return projectCount > 0
+    ? TENANT_CATALOG_MANAGER_DEMO.manageProjectsLinkLabel
+    : TENANT_CATALOG_MANAGER_DEMO.addProjectsLinkLabel
+}
 export const TENANT_CATALOG_GOVERNANCE_ITEMS: TenantCatalogGovernanceItem[] = [
   {
     id: 'compute-r750',
@@ -101,10 +109,4 @@ export function getTenantCatalogGovernanceItems(
 
 export function getTenantCatalogGovernanceSpecSummary(item: TenantCatalogGovernanceItem): string {
   return [item.cpu, item.ram, item.gpu, item.osImage].join(' · ')
-}
-
-export function getTenantCatalogAuthorizedTeams(projects: TenantProject[]): string[] {
-  return [...projects]
-    .sort((left, right) => left.name.localeCompare(right.name))
-    .map((project) => project.name)
 }

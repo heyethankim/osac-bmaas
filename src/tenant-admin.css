@@ -851,16 +851,19 @@
   font-weight: var(--pf-t--global--font--weight--body--default);
 }
 
-.tenant-admin-catalog-manager__drawer-network-select.pf-v6-c-form-control {
-  max-width: 100%;
-}
-
 .tenant-admin-catalog-manager__drawer-network-controls {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--pf-t--global--spacer--sm);
   width: 100%;
+}
+
+.tenant-admin-catalog-manager__drawer-network-select.pf-v6-c-form-control {
+  flex: 1 1 12rem;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .tenant-admin-catalog-manager__drawer-team-list {
@@ -903,6 +906,12 @@
   display: flex;
   flex-direction: column;
   gap: var(--pf-t--global--spacer--sm);
+}
+
+.tenant-admin-catalog-manager__org-access-note.pf-v6-c-content--p {
+  margin: 0;
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
 }
 
 .tenant-admin-catalog-manager__authorized-teams-label.pf-v6-c-content--p {

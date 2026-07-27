@@ -1,4 +1,6 @@
-export type TenantInstanceStatus = 'provisioning' | 'running' | 'failed'
+export type TenantInstanceStatus = 'provisioning' | 'restarting' | 'running' | 'failed'
+
+export type TenantInstanceScopeKind = 'organization' | 'project'
 
 export type TenantInstance = {
   id: string
@@ -8,11 +10,16 @@ export type TenantInstance = {
   osImage: string
   networkLabel: string
   gpuLabel: string
+  /** Scope label: project name when project-scoped, organization name otherwise. */
   projectName: string
+  scopeKind: TenantInstanceScopeKind
   status: TenantInstanceStatus
   createdAt: string
   provisionedAt: string | null
 }
+
+/** Demo latency before a restarted instance returns to Running. */
+export const TENANT_INSTANCE_RESTART_DURATION_MS = 2500
 
 export function generateTenantInstanceId(): string {
   const suffix = Math.random().toString(36).slice(2, 8)
@@ -50,6 +57,8 @@ export function getTenantInstanceStatusLabel(status: TenantInstanceStatus): stri
       return 'Running'
     case 'provisioning':
       return 'Provisioning'
+    case 'restarting':
+      return 'Restarting'
     case 'failed':
       return 'Failed'
     default:
@@ -59,14 +68,17 @@ export function getTenantInstanceStatusLabel(status: TenantInstanceStatus): stri
 
 export function getTenantInstanceActions(
   instance: TenantInstance,
-  onTerminate: (instanceId: string) => void,
+  onTerminate: (instance: TenantInstance) => void,
   onViewDetails?: (instance: TenantInstance) => void,
+  onRestart?: (instanceId: string) => void,
 ): Array<{
   title: string
   isAriaDisabled?: boolean
+  isDanger?: boolean
   onClick: () => void
 }> {
   const isRunning = instance.status === 'running'
+  const isBusy = instance.status === 'provisioning' || instance.status === 'restarting'
 
   return [
     {
@@ -79,15 +91,22 @@ export function getTenantInstanceActions(
       title: 'Restart instance',
       isAriaDisabled: !isRunning,
       onClick: () => {
-        /* demo */
+        onRestart?.(instance.id)
       },
     },
     {
       title: 'Terminate instance',
-      isAriaDisabled: instance.status === 'provisioning',
+      isDanger: true,
+      isAriaDisabled: isBusy,
       onClick: () => {
-        onTerminate(instance.id)
+        onTerminate(instance)
       },
     },
   ]
+}
+
+export function getTenantInstanceScopeFieldLabel(
+  instance: TenantInstance,
+): 'Organization' | 'Project' {
+  return instance.scopeKind === 'organization' ? 'Organization' : 'Project'
 }

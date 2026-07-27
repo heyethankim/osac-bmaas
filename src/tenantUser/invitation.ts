@@ -2,9 +2,15 @@ import type { RegisteredOrganization } from '../providerAdmin/organizations'
 import { DEMO_TENANT_LABEL, type DemoTenantId } from '../demoTenant'
 import { DEMO_TENANT_USER_PROJECT_INVITATION } from './constants'
 import { resolveOrganizationExternalIpPool } from '../tenantAdmin/projects'
+import {
+  resolveTenantUserLaunchScope,
+  type TenantUserScopeKind,
+} from './scope'
 
 export type TenantUserProjectInvitation = {
-  projectName: string
+  scopeKind: TenantUserScopeKind
+  scopeLabel: string
+  scopeFieldLabel: 'Organization' | 'Project'
   projectEnvironment: string
   workspaceName: string
   role: string
@@ -17,6 +23,8 @@ export type TenantUserProjectInvitation = {
   ipPoolName: string
   permissionsSummary: string
   scopeNote: string
+  /** @deprecated Use scopeLabel — kept for gradual call-site updates */
+  projectName: string
 }
 
 export function getTenantUserProjectInvitation(
@@ -25,9 +33,14 @@ export function getTenantUserProjectInvitation(
 ): TenantUserProjectInvitation {
   const organizationPool = organization ? resolveOrganizationExternalIpPool(organization) : null
   const workspaceName = organization?.name ?? DEMO_TENANT_LABEL[tenantSlug]
+  const scope = resolveTenantUserLaunchScope(tenantSlug, organization)
+  const isOrganizationScope = scope.kind === 'organization'
 
   return {
-    projectName: DEMO_TENANT_USER_PROJECT_INVITATION.projectName,
+    scopeKind: scope.kind,
+    scopeLabel: scope.label,
+    scopeFieldLabel: scope.fieldLabel,
+    projectName: scope.label,
     projectEnvironment: DEMO_TENANT_USER_PROJECT_INVITATION.projectEnvironment,
     workspaceName,
     role: DEMO_TENANT_USER_PROJECT_INVITATION.role,
@@ -39,7 +52,11 @@ export function getTenantUserProjectInvitation(
     resourcesLabel: DEMO_TENANT_USER_PROJECT_INVITATION.resourcesLabel,
     ipPoolCidr: organizationPool?.cidr ?? '203.0.113.0/26',
     ipPoolName: organizationPool?.name ?? 'Northstar public edge',
-    permissionsSummary: DEMO_TENANT_USER_PROJECT_INVITATION.permissionsSummary,
-    scopeNote: DEMO_TENANT_USER_PROJECT_INVITATION.scopeNote,
+    permissionsSummary: isOrganizationScope
+      ? DEMO_TENANT_USER_PROJECT_INVITATION.organizationPermissionsSummary
+      : DEMO_TENANT_USER_PROJECT_INVITATION.projectPermissionsSummary,
+    scopeNote: isOrganizationScope
+      ? DEMO_TENANT_USER_PROJECT_INVITATION.organizationScopeNote
+      : `${DEMO_TENANT_USER_PROJECT_INVITATION.projectScopeNotePrefix} ${scope.label} ${DEMO_TENANT_USER_PROJECT_INVITATION.projectScopeNoteSuffix}`,
   }
 }

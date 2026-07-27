@@ -25,6 +25,7 @@ import {
   Title,
 } from '@patternfly/react-core'
 import { CatalogPublishScopeIcon } from './CatalogPublishScopeIcon'
+import { NetworkFieldLockButton } from '../catalog/NetworkFieldLockButton'
 import { formatVipEnterpriseVisibilityLabel } from './VipEnterpriseOrganizationField'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import {
@@ -330,8 +331,9 @@ export function CatalogItemDetailsDrawer({
               </div>
               <Switch
                 id={`catalog-detail-network-enabled-${catalog.catalogItemId}`}
-                label={networkPolicy.enabled ? 'On' : 'Off'}
+                label="On"
                 aria-label="Networking"
+                hasCheckIcon
                 isChecked={networkPolicy.enabled}
                 onChange={(_event, checked) =>
                   updateNetworkPolicy({
@@ -350,10 +352,12 @@ export function CatalogItemDetailsDrawer({
                   <FormGroup
                     label="Virtual network"
                     fieldId={`catalog-detail-vnet-${catalog.catalogItemId}`}
+                    className="provider-admin-catalog-items__drawer-network-field-group"
                   >
                     <FormSelect
                       id={`catalog-detail-vnet-${catalog.catalogItemId}`}
                       value={networkPolicy.virtualNetwork.id}
+                      isDisabled={networkPolicy.virtualNetwork.locked}
                       onChange={(_event, value) => handleVirtualNetworkChange(value)}
                       aria-label="Virtual network"
                     >
@@ -366,16 +370,17 @@ export function CatalogItemDetailsDrawer({
                       ))}
                     </FormSelect>
                   </FormGroup>
-                  <Switch
-                    id={`catalog-detail-vnet-lock-${catalog.catalogItemId}`}
-                    label="Lock for tenant admins"
-                    isChecked={networkPolicy.virtualNetwork.locked}
-                    onChange={(_event, checked) =>
+                  <NetworkFieldLockButton
+                    isLocked={networkPolicy.virtualNetwork.locked}
+                    aria-label="Lock virtual network for tenant admins"
+                    lockTooltip="Lock value — unlock to change"
+                    unlockTooltip="Unlock to change this value"
+                    onToggle={(locked) =>
                       updateNetworkPolicy({
                         ...networkPolicy,
                         virtualNetwork: {
                           ...networkPolicy.virtualNetwork,
-                          locked: checked,
+                          locked,
                         },
                       })
                     }
@@ -385,10 +390,12 @@ export function CatalogItemDetailsDrawer({
                   <FormGroup
                     label="Subnet"
                     fieldId={`catalog-detail-subnet-${catalog.catalogItemId}`}
+                    className="provider-admin-catalog-items__drawer-network-field-group"
                   >
                     <FormSelect
                       id={`catalog-detail-subnet-${catalog.catalogItemId}`}
                       value={networkPolicy.subnet.id}
+                      isDisabled={networkPolicy.subnet.locked}
                       onChange={(_event, value) =>
                         updateNetworkPolicy({
                           ...networkPolicy,
@@ -410,14 +417,15 @@ export function CatalogItemDetailsDrawer({
                       ))}
                     </FormSelect>
                   </FormGroup>
-                  <Switch
-                    id={`catalog-detail-subnet-lock-${catalog.catalogItemId}`}
-                    label="Lock for tenant admins"
-                    isChecked={networkPolicy.subnet.locked}
-                    onChange={(_event, checked) =>
+                  <NetworkFieldLockButton
+                    isLocked={networkPolicy.subnet.locked}
+                    aria-label="Lock subnet for tenant admins"
+                    lockTooltip="Lock value — unlock to change"
+                    unlockTooltip="Unlock to change this value"
+                    onToggle={(locked) =>
                       updateNetworkPolicy({
                         ...networkPolicy,
-                        subnet: { ...networkPolicy.subnet, locked: checked },
+                        subnet: { ...networkPolicy.subnet, locked },
                       })
                     }
                   />
@@ -426,10 +434,12 @@ export function CatalogItemDetailsDrawer({
                   <FormGroup
                     label="Security group"
                     fieldId={`catalog-detail-sg-${catalog.catalogItemId}`}
+                    className="provider-admin-catalog-items__drawer-network-field-group"
                   >
                     <FormSelect
                       id={`catalog-detail-sg-${catalog.catalogItemId}`}
                       value={networkPolicy.securityGroup.id}
+                      isDisabled={networkPolicy.securityGroup.locked}
                       onChange={(_event, value) =>
                         updateNetworkPolicy({
                           ...networkPolicy,
@@ -451,16 +461,17 @@ export function CatalogItemDetailsDrawer({
                       ))}
                     </FormSelect>
                   </FormGroup>
-                  <Switch
-                    id={`catalog-detail-sg-lock-${catalog.catalogItemId}`}
-                    label="Lock for tenant admins"
-                    isChecked={networkPolicy.securityGroup.locked}
-                    onChange={(_event, checked) =>
+                  <NetworkFieldLockButton
+                    isLocked={networkPolicy.securityGroup.locked}
+                    aria-label="Lock security group for tenant admins"
+                    lockTooltip="Lock value — unlock to change"
+                    unlockTooltip="Unlock to change this value"
+                    onToggle={(locked) =>
                       updateNetworkPolicy({
                         ...networkPolicy,
                         securityGroup: {
                           ...networkPolicy.securityGroup,
-                          locked: checked,
+                          locked,
                         },
                       })
                     }

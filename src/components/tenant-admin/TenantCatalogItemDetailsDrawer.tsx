@@ -19,14 +19,15 @@ import {
   FormSelectOption,
   Icon,
   Label,
-  Switch,
   Title,
 } from '@patternfly/react-core'
 import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
+import { NetworkFieldLockButton } from '../catalog/NetworkFieldLockButton'
 import { CatalogPublishScopeIcon } from '../provider-admin/CatalogPublishScopeIcon'
 import {
   TENANT_CATALOG_MANAGER_DEMO,
+  getTenantCatalogProjectsLinkLabel,
   type TenantCatalogGovernanceItemWithNetworking,
 } from '../../tenantAdmin/catalogManager'
 import {
@@ -45,7 +46,7 @@ type TenantCatalogItemDetailsDrawerProps = {
   onClose: () => void
   item: TenantCatalogGovernanceItemWithNetworking | null
   organizationSlug: string
-  authorizedTeams: string[]
+  projectCount: number
   onNavigateToProjectsTeams: () => void
   onChangeNetworkField: (kind: TenantNetworkResourceKind, optionId: string) => void
   onChangeLockForUsers: (kind: TenantNetworkResourceKind, locked: boolean) => void
@@ -57,7 +58,7 @@ export function TenantCatalogItemDetailsDrawer({
   onClose,
   item,
   organizationSlug,
-  authorizedTeams,
+  projectCount,
   onNavigateToProjectsTeams,
   onChangeNetworkField,
   onChangeLockForUsers,
@@ -99,8 +100,7 @@ export function TenantCatalogItemDetailsDrawer({
 
       <DrawerPanelBody className="tenant-admin-catalog-manager__drawer-body">
         <Content component="p" className="tenant-admin-catalog-manager__drawer-lede">
-          Review provider-configured hardware and networking for this offering, and manage
-          authorized teams.
+          {TENANT_CATALOG_MANAGER_DEMO.drawerAccessLede}
         </Content>
 
         <Divider className="tenant-admin-catalog-manager__drawer-divider" />
@@ -183,7 +183,6 @@ export function TenantCatalogItemDetailsDrawer({
               >
                 {networkFields.map((field) => {
                   const meta = getTenantNetworkResourceMeta(field.kind, virtualNetworkId)
-                  const lockSwitchId = `tenant-catalog-lock-users-${field.kind}`
 
                   return (
                     <DescriptionListGroup key={field.kind}>
@@ -214,6 +213,7 @@ export function TenantCatalogItemDetailsDrawer({
                               id={`tenant-catalog-network-${field.kind}`}
                               className="tenant-admin-catalog-manager__drawer-network-select"
                               value={field.selectedId}
+                              isDisabled={field.lockedForUsers}
                               aria-label={field.label}
                               onChange={(_event, value) => onChangeNetworkField(field.kind, value)}
                             >
@@ -225,14 +225,12 @@ export function TenantCatalogItemDetailsDrawer({
                                 />
                               ))}
                             </FormSelect>
-                            <Switch
-                              id={lockSwitchId}
-                              label="Lock for users"
+                            <NetworkFieldLockButton
+                              isLocked={field.lockedForUsers}
                               aria-label={`Lock ${field.label} for tenant users`}
-                              isChecked={field.lockedForUsers}
-                              onChange={(_event, checked) =>
-                                onChangeLockForUsers(field.kind, checked)
-                              }
+                              lockTooltip="Lock value — unlock to change"
+                              unlockTooltip="Unlock to change this value"
+                              onToggle={(locked) => onChangeLockForUsers(field.kind, locked)}
                             />
                           </div>
                         )}
@@ -249,19 +247,13 @@ export function TenantCatalogItemDetailsDrawer({
 
         <div className="tenant-admin-catalog-manager__drawer-section">
           <Content component="p" className="tenant-admin-catalog-manager__drawer-section-title">
-            {TENANT_CATALOG_MANAGER_DEMO.authorizedTeamsLabel}
+            {TENANT_CATALOG_MANAGER_DEMO.accessLabel}
           </Content>
-          {authorizedTeams.length > 0 ? (
-            <div className="tenant-admin-catalog-manager__drawer-team-list">
-              {authorizedTeams.map((teamName) => (
-                <Label key={teamName} color="teal" isCompact>
-                  {teamName}
-                </Label>
-              ))}
-            </div>
-          ) : null}
+          <Content component="p" className="tenant-admin-catalog-manager__org-access-note">
+            {TENANT_CATALOG_MANAGER_DEMO.accessDetailNote}
+          </Content>
           <Button variant="link" isInline onClick={onNavigateToProjectsTeams}>
-            {TENANT_CATALOG_MANAGER_DEMO.addProjectTeamsLinkLabel}
+            {getTenantCatalogProjectsLinkLabel(projectCount)}
           </Button>
         </div>
       </DrawerPanelBody>

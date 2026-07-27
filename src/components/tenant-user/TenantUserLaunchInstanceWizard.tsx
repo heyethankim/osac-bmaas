@@ -53,6 +53,7 @@ import {
   type LaunchNetworkFieldView,
 } from '../../tenantUser/launchNetworking'
 import { formatTenantInstanceName, generateTenantInstanceId, type TenantInstance } from '../../tenantUser/instances'
+import type { TenantUserScopeKind } from '../../tenantUser/scope'
 
 type TenantUserLaunchInstanceWizardProps = {
   isOpen: boolean
@@ -60,7 +61,9 @@ type TenantUserLaunchInstanceWizardProps = {
   organization: RegisteredOrganization | null
   catalogDraft: ProviderCatalogDraft | null
   preferCatalogDraft?: boolean
-  projectName: string
+  scopeKind: TenantUserScopeKind
+  scopeLabel: string
+  scopeFieldLabel: 'Organization' | 'Project'
   existingInstanceNames?: readonly string[]
   onClose: () => void
   onProvisioningStarted: (instance: TenantInstance) => void
@@ -105,7 +108,9 @@ export function TenantUserLaunchInstanceWizard({
   organization,
   catalogDraft,
   preferCatalogDraft = false,
-  projectName,
+  scopeKind,
+  scopeLabel,
+  scopeFieldLabel,
   existingInstanceNames = [],
   onClose,
   onProvisioningStarted,
@@ -219,7 +224,8 @@ export function TenantUserLaunchInstanceWizard({
       osImage: catalogItem.osImage,
       networkLabel,
       gpuLabel: catalogItem.gpu,
-      projectName,
+      projectName: scopeLabel,
+      scopeKind,
       status: 'provisioning',
       createdAt: new Date().toISOString(),
       provisionedAt: null,
@@ -260,7 +266,8 @@ export function TenantUserLaunchInstanceWizard({
     networkLabel,
     onProvisioningStarted,
     onWizardFinished,
-    projectName,
+    scopeKind,
+    scopeLabel,
   ])
 
   const updateNetworkSelection = (
@@ -474,8 +481,8 @@ export function TenantUserLaunchInstanceWizard({
           </>
         ) : null}
         <DescriptionListGroup>
-          <DescriptionListTerm>Team</DescriptionListTerm>
-          <DescriptionListDescription>{projectName}</DescriptionListDescription>
+          <DescriptionListTerm>{scopeFieldLabel}</DescriptionListTerm>
+          <DescriptionListDescription>{scopeLabel}</DescriptionListDescription>
         </DescriptionListGroup>
       </DescriptionList>
     </div>

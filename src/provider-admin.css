@@ -1933,8 +1933,15 @@
 
 .provider-admin-catalog-items__drawer-network-field {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
   gap: var(--pf-t--global--spacer--sm);
+}
+
+.provider-admin-catalog-items__drawer-network-field-group {
+  flex: 1 1 12rem;
+  min-width: 0;
 }
 
 .provider-admin-catalog-items__drawer-dl {

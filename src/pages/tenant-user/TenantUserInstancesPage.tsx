@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   AlertActionCloseButton,
@@ -9,6 +9,11 @@ import {
   EmptyState,
   EmptyStateBody,
   Label,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  ModalVariant,
   Spinner,
   Title,
 } from '@patternfly/react-core'
@@ -26,25 +31,29 @@ import {
   formatTenantInstanceCreatedAt,
   formatTenantInstanceName,
   getTenantInstanceActions,
+  getTenantInstanceScopeFieldLabel,
   getTenantInstanceStatusLabel,
+  TENANT_INSTANCE_RESTART_DURATION_MS,
   type TenantInstance,
 } from '../../tenantUser/instances'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
-import { removeTenantUserInstance } from '../../tenantUser/storage'
+import { removeTenantUserInstance, updateTenantUserInstance } from '../../tenantUser/storage'
 
 type TenantUserInstancesPageProps = {
   tenantSlug: string
   instances: TenantInstance[]
   onInstancesChange: (instances: TenantInstance[]) => void
+  defaultScopeFieldLabel?: 'Organization' | 'Project'
   showBackgroundProvisioningNotice?: boolean
   onDismissBackgroundProvisioningNotice?: () => void
 }
 
-function getStatusColor(status: TenantInstance['status']): 'green' | 'blue' | 'red' {
+function getStatusColor(status: TenantInstance['status']): 'green' | 'blue' | 'orange' | 'red' {
   switch (status) {
     case 'running':
       return 'green'
     case 'provisioning':
+    case 'restarting':
       return 'blue'
     case 'failed':
       return 'red'
@@ -59,7 +68,7 @@ function InstanceStatusLabel({ status }: { status: TenantInstance['status'] }) {
       color={getStatusColor(status)}
       isCompact
       icon={
-        status === 'provisioning' ? (
+        status === 'provisioning' || status === 'restarting' ? (
           <Spinner
             isInline
             diameter="0.625rem"
@@ -78,32 +87,105 @@ export function TenantUserInstancesPage({
   tenantSlug,
   instances,
   onInstancesChange,
+  defaultScopeFieldLabel = 'Project',
   showBackgroundProvisioningNotice = false,
   onDismissBackgroundProvisioningNotice,
 }: TenantUserInstancesPageProps) {
   const [viewMode, setViewMode] = useState<ViewMode>(() => getInstancesViewMode('grid'))
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null)
   const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false)
+  const [instancePendingTerminate, setInstancePendingTerminate] = useState<TenantInstance | null>(
+    null,
+  )
+  const restartTimersRef = useRef<Map<string, number>>(new Map())
+
+  const scopeColumnLabel = useMemo(() => {
+    if (instances.length === 0) {
+      return defaultScopeFieldLabel
+    }
+    const labels = new Set(
+      instances.map((instance) => getTenantInstanceScopeFieldLabel(instance)),
+    )
+    return labels.size === 1 ? [...labels][0] : 'Scope'
+  }, [defaultScopeFieldLabel, instances])
 
   const sortedInstances = [...instances].sort(
     (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
   )
-
   const selectedInstance = useMemo(
     () => instances.find((instance) => instance.id === selectedInstanceId) ?? null,
     [instances, selectedInstanceId],
   )
+
+  useEffect(() => {
+    return () => {
+      for (const timeoutId of restartTimersRef.current.values()) {
+        window.clearTimeout(timeoutId)
+      }
+      restartTimersRef.current.clear()
+    }
+  }, [])
 
   const closeDetails = () => {
     setIsDetailsDrawerOpen(false)
   }
 
   const handleTerminateInstance = (instanceId: string) => {
+    const timeoutId = restartTimersRef.current.get(instanceId)
+    if (timeoutId !== undefined) {
+      window.clearTimeout(timeoutId)
+      restartTimersRef.current.delete(instanceId)
+    }
     onInstancesChange(removeTenantUserInstance(tenantSlug, instanceId))
     if (selectedInstanceId === instanceId) {
       setSelectedInstanceId(null)
       setIsDetailsDrawerOpen(false)
     }
+  }
+
+  const openTerminateConfirm = (instance: TenantInstance) => {
+    setInstancePendingTerminate(instance)
+  }
+
+  const closeTerminateConfirm = () => {
+    setInstancePendingTerminate(null)
+  }
+
+  const handleConfirmTerminate = () => {
+    if (!instancePendingTerminate) {
+      return
+    }
+    const instanceId = instancePendingTerminate.id
+    setInstancePendingTerminate(null)
+    handleTerminateInstance(instanceId)
+  }
+
+  const handleRestartInstance = (instanceId: string) => {
+    const instance = instances.find((item) => item.id === instanceId)
+    if (!instance || instance.status !== 'running') {
+      return
+    }
+
+    const existingTimeout = restartTimersRef.current.get(instanceId)
+    if (existingTimeout !== undefined) {
+      window.clearTimeout(existingTimeout)
+    }
+
+    onInstancesChange(
+      updateTenantUserInstance(tenantSlug, instanceId, {
+        status: 'restarting',
+      }),
+    )
+
+    const timeoutId = window.setTimeout(() => {
+      restartTimersRef.current.delete(instanceId)
+      onInstancesChange(
+        updateTenantUserInstance(tenantSlug, instanceId, {
+          status: 'running',
+        }),
+      )
+    }, TENANT_INSTANCE_RESTART_DURATION_MS)
+    restartTimersRef.current.set(instanceId, timeoutId)
   }
 
   const handleViewDetails = (instance: TenantInstance) => {
@@ -117,11 +199,13 @@ export function TenantUserInstancesPage({
   }
 
   return (
+    <>
     <TenantUserInstanceDetailsDrawer
       isExpanded={isDetailsDrawerOpen && selectedInstance !== null}
       onClose={closeDetails}
       instance={isDetailsDrawerOpen ? selectedInstance : null}
-      onTerminate={handleTerminateInstance}
+      onRequestTerminate={openTerminateConfirm}
+      onRestart={handleRestartInstance}
     >
       <div className="tenant-user-workspace-page tenant-user-instances">
         <div className="catalog-view-toolbar tenant-user-instances__toolbar">
@@ -179,8 +263,9 @@ export function TenantUserInstancesPage({
                         <ActionsColumn
                           items={getTenantInstanceActions(
                             instance,
-                            handleTerminateInstance,
+                            openTerminateConfirm,
                             handleViewDetails,
+                            handleRestartInstance,
                           )}
                         />
                       </div>
@@ -219,7 +304,7 @@ export function TenantUserInstancesPage({
 
                     <dl className="tenant-user-instances__card-footer">
                       <div className="tenant-user-instances__card-footer-row">
-                        <dt>Project</dt>
+                        <dt>{getTenantInstanceScopeFieldLabel(instance)}</dt>
                         <dd>{instance.projectName}</dd>
                       </div>
                       <div className="tenant-user-instances__card-footer-row">
@@ -244,7 +329,7 @@ export function TenantUserInstancesPage({
                   <Tr>
                     <Th>Name</Th>
                     <Th>Status</Th>
-                    <Th>Project</Th>
+                    <Th>{scopeColumnLabel}</Th>
                     <Th>Hardware</Th>
                     <Th>OS image</Th>
                     <Th>Created</Th>
@@ -267,7 +352,9 @@ export function TenantUserInstancesPage({
                     <Td dataLabel="Status">
                       <InstanceStatusLabel status={instance.status} />
                     </Td>
-                      <Td dataLabel="Project">{instance.projectName}</Td>
+                      <Td dataLabel={getTenantInstanceScopeFieldLabel(instance)}>
+                        {instance.projectName}
+                      </Td>
                       <Td dataLabel="Hardware">{instance.hardwareProfile}</Td>
                       <Td dataLabel="OS image">{instance.osImage}</Td>
                       <Td dataLabel="Created">
@@ -277,8 +364,9 @@ export function TenantUserInstancesPage({
                         <ActionsColumn
                           items={getTenantInstanceActions(
                             instance,
-                            handleTerminateInstance,
+                            openTerminateConfirm,
                             handleViewDetails,
+                            handleRestartInstance,
                           )}
                         />
                       </Td>
@@ -301,5 +389,40 @@ export function TenantUserInstancesPage({
         )}
       </div>
     </TenantUserInstanceDetailsDrawer>
+
+      <Modal
+        variant={ModalVariant.small}
+        isOpen={instancePendingTerminate !== null}
+        onClose={closeTerminateConfirm}
+        aria-labelledby="terminate-instance-title"
+        aria-describedby="terminate-instance-description"
+      >
+        <ModalHeader
+          title="Terminate instance?"
+          titleIconVariant="warning"
+          labelId="terminate-instance-title"
+        />
+        <ModalBody>
+          <Content component="p" id="terminate-instance-description">
+            {instancePendingTerminate ? (
+              <>
+                <strong>{formatTenantInstanceName(instancePendingTerminate.name)}</strong> will be
+                permanently removed. This cannot be undone.
+              </>
+            ) : (
+              'This instance will be permanently removed. This cannot be undone.'
+            )}
+          </Content>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="danger" onClick={handleConfirmTerminate}>
+            Terminate
+          </Button>
+          <Button variant="link" onClick={closeTerminateConfirm}>
+            Cancel
+          </Button>
+        </ModalFooter>
+      </Modal>
+    </>
   )
 }

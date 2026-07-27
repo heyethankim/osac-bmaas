@@ -23,7 +23,6 @@ import {
   Tooltip,
 } from '@patternfly/react-core'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
-import { TimesIcon } from '@patternfly/react-icons/dist/esm/icons/times-icon'
 import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
 import {
@@ -41,7 +40,6 @@ import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import { CATALOG_SERVICE_FILTER_LABELS, type CatalogServiceId } from '../../providerSetup/templateDemo'
 import {
-  getTenantCatalogAuthorizedTeams,
   getTenantCatalogGovernanceItems,
   TENANT_CATALOG_MANAGER_DEMO,
   type TenantCatalogGovernanceItemWithNetworking,
@@ -208,7 +206,6 @@ export function TenantAdminCatalogPage({
     () => new Set(['baremetal']),
   )
   const [searchValue, setSearchValue] = useState('')
-  const [removedTeamsByItemId, setRemovedTeamsByItemId] = useState<Record<string, string[]>>({})
   const [selectedCatalogItem, setSelectedCatalogItem] =
     useState<TenantCatalogGovernanceItemWithNetworking | null>(null)
   const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false)
@@ -258,25 +255,6 @@ export function TenantAdminCatalogPage({
     }
     return 'No catalog items for the selected services'
   })()
-
-  const authorizedTeamsByItemId = useMemo(() => {
-    const projectTeamNames = getTenantCatalogAuthorizedTeams(projects)
-
-    return Object.fromEntries(
-      catalogItems.map((item) => {
-        const removed = new Set(removedTeamsByItemId[item.id] ?? [])
-
-        return [item.id, projectTeamNames.filter((teamName) => !removed.has(teamName))]
-      }),
-    )
-  }, [catalogItems, projects, removedTeamsByItemId])
-
-  const handleRemoveAuthorizedTeam = (itemId: string, teamName: string) => {
-    setRemovedTeamsByItemId((current) => ({
-      ...current,
-      [itemId]: [...(current[itemId] ?? []), teamName],
-    }))
-  }
 
   const handleViewModeChange = (nextViewMode: CatalogViewMode) => {
     setViewMode(nextViewMode)
@@ -450,11 +428,6 @@ export function TenantAdminCatalogPage({
 
     const deletedId = selectedCatalogItem.id
     setCatalogItems((current) => current.filter((item) => item.id !== deletedId))
-    setRemovedTeamsByItemId((current) => {
-      const next = { ...current }
-      delete next[deletedId]
-      return next
-    })
     setIsDetailsDrawerOpen(false)
     setIsEditModalOpen(false)
     setSelectedCatalogItem(null)
@@ -472,97 +445,13 @@ export function TenantAdminCatalogPage({
       () => openDelete(item),
     )
 
-  const renderAuthorizedTeams = (
-    itemId: string,
-    authorizedTeams: string[],
-    options?: { compact?: boolean },
-  ) => {
-    const addTeamsLink = (
-      <Button
-        variant="link"
-        isInline
-        className="tenant-admin-catalog-manager__inline-link"
-        onClick={onNavigateToProjectsTeams}
-      >
-        {TENANT_CATALOG_MANAGER_DEMO.addProjectTeamsLinkLabel}
-      </Button>
-    )
-
-    if (options?.compact) {
-      return (
-        <div className="tenant-admin-catalog-manager__authorized-teams">
-          {authorizedTeams.length > 0 ? (
-            <div className="tenant-admin-catalog-manager__team-list">
-              {authorizedTeams.map((teamName) => (
-                <Label
-                  key={teamName}
-                  color="teal"
-                  isCompact
-                  className="tenant-admin-catalog-manager__team-pill"
-                >
-                  <span className="tenant-admin-catalog-manager__team-pill-content">
-                    <span>{teamName}</span>
-                    <Button
-                      variant="plain"
-                      icon={<TimesIcon />}
-                      aria-label={`Remove ${teamName}`}
-                      className="tenant-admin-catalog-manager__team-remove"
-                      onClick={() => handleRemoveAuthorizedTeam(itemId, teamName)}
-                    />
-                  </span>
-                </Label>
-              ))}
-            </div>
-          ) : null}
-          {addTeamsLink}
-        </div>
-      )
-    }
-
-    return (
-      <div className="tenant-admin-catalog-manager__spec-row">
-        <dt className="tenant-admin-catalog-manager__spec-label">
-          {TENANT_CATALOG_MANAGER_DEMO.authorizedTeamsLabel}
-        </dt>
-        <dd className="tenant-admin-catalog-manager__spec-value">
-          {authorizedTeams.length > 0 ? (
-            <div className="tenant-admin-catalog-manager__team-list">
-              {authorizedTeams.map((teamName) => (
-                <Label
-                  key={teamName}
-                  color="teal"
-                  isCompact
-                  className="tenant-admin-catalog-manager__team-pill"
-                >
-                  <span className="tenant-admin-catalog-manager__team-pill-content">
-                    <span>{teamName}</span>
-                    <Button
-                      variant="plain"
-                      icon={<TimesIcon />}
-                      aria-label={`Remove ${teamName}`}
-                      className="tenant-admin-catalog-manager__team-remove"
-                      onClick={() => handleRemoveAuthorizedTeam(itemId, teamName)}
-                    />
-                  </span>
-                </Label>
-              ))}
-            </div>
-          ) : null}
-          {addTeamsLink}
-        </dd>
-      </div>
-    )
-  }
-
   return (
     <TenantCatalogItemDetailsDrawer
       isExpanded={isDetailsDrawerOpen && selectedCatalogItem !== null}
       onClose={closeDetails}
       item={isDetailsDrawerOpen ? selectedCatalogItem : null}
       organizationSlug={organization.slug}
-      authorizedTeams={
-        selectedCatalogItem ? (authorizedTeamsByItemId[selectedCatalogItem.id] ?? []) : []
-      }
+      projectCount={projects.length}
       onNavigateToProjectsTeams={onNavigateToProjectsTeams}
       onChangeNetworkField={handleChangeNetworkField}
       onChangeLockForUsers={handleChangeLockForUsers}
@@ -631,7 +520,6 @@ export function TenantAdminCatalogPage({
         ) : viewMode === 'grid' ? (
           <div className="catalog-card-grid tenant-admin-catalog-manager__catalog-list">
             {filteredItems.map((item) => {
-              const authorizedTeams = authorizedTeamsByItemId[item.id] ?? []
               const catalogItemActions = buildCatalogItemActions(item)
 
               return (
@@ -702,7 +590,6 @@ export function TenantAdminCatalogPage({
                         organizationSlug={organization.slug}
                         onViewDetails={() => openDetails(item)}
                       />
-                      {renderAuthorizedTeams(item.id, authorizedTeams)}
                     </dl>
 
                     <div className="tenant-admin-catalog-manager__card-footer">
@@ -748,13 +635,11 @@ export function TenantAdminCatalogPage({
                   <Th>GPU</Th>
                   <Th>OS image</Th>
                   <Th>Networking</Th>
-                  <Th>Authorized teams</Th>
                   <Th screenReaderText="Actions" />
                 </Tr>
               </Thead>
               <Tbody>
                 {filteredItems.map((item) => {
-                  const authorizedTeams = authorizedTeamsByItemId[item.id] ?? []
                   const catalogItemActions = buildCatalogItemActions(item)
 
                   return (
@@ -787,9 +672,6 @@ export function TenantAdminCatalogPage({
                           compact
                           onViewDetails={() => openDetails(item)}
                         />
-                      </Td>
-                      <Td dataLabel="Authorized teams">
-                        {renderAuthorizedTeams(item.id, authorizedTeams, { compact: true })}
                       </Td>
                       <Td isActionCell>
                         <ActionsColumn items={catalogItemActions} />
