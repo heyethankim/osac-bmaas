@@ -17,16 +17,42 @@ import {
 
 export type TenantNetworkResourceKind = 'virtual-network' | 'subnet' | 'security-group'
 
+export type TenantNetworkLockForUsers = {
+  virtualNetwork?: boolean
+  subnet?: boolean
+  securityGroup?: boolean
+}
+
 export type TenantNetworkOverrides = {
   virtualNetworkId?: string
   subnetId?: string
   securityGroupId?: string
+  /** Narrow Provider-editable fields so tenant users cannot change them at launch. */
+  lockForUsers?: TenantNetworkLockForUsers
 }
+
+export type TenantNetworkValueOverrideKey =
+  | 'virtualNetworkId'
+  | 'subnetId'
+  | 'securityGroupId'
 
 const TENANT_NETWORK_OVERRIDES_KEY_PREFIX = 'bmaas-tenant-network-overrides-'
 
 function getOverridesKey(slug: string): string {
   return `${TENANT_NETWORK_OVERRIDES_KEY_PREFIX}${slug}`
+}
+
+function isTenantNetworkLockForUsers(value: unknown): value is TenantNetworkLockForUsers {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+
+  const locks = value as TenantNetworkLockForUsers
+  return (
+    (locks.virtualNetwork === undefined || typeof locks.virtualNetwork === 'boolean') &&
+    (locks.subnet === undefined || typeof locks.subnet === 'boolean') &&
+    (locks.securityGroup === undefined || typeof locks.securityGroup === 'boolean')
+  )
 }
 
 function isTenantNetworkOverrides(value: unknown): value is TenantNetworkOverrides {
@@ -38,7 +64,8 @@ function isTenantNetworkOverrides(value: unknown): value is TenantNetworkOverrid
   return (
     (overrides.virtualNetworkId === undefined || typeof overrides.virtualNetworkId === 'string') &&
     (overrides.subnetId === undefined || typeof overrides.subnetId === 'string') &&
-    (overrides.securityGroupId === undefined || typeof overrides.securityGroupId === 'string')
+    (overrides.securityGroupId === undefined || typeof overrides.securityGroupId === 'string') &&
+    (overrides.lockForUsers === undefined || isTenantNetworkLockForUsers(overrides.lockForUsers))
   )
 }
 
@@ -67,6 +94,27 @@ export function setTenantNetworkOverrides(
   return overrides
 }
 
+function lockForUsersKey(
+  kind: TenantNetworkResourceKind,
+): keyof TenantNetworkLockForUsers {
+  switch (kind) {
+    case 'virtual-network':
+      return 'virtualNetwork'
+    case 'subnet':
+      return 'subnet'
+    case 'security-group':
+      return 'securityGroup'
+  }
+}
+
+export function getTenantLockForUsers(
+  overrides: TenantNetworkOverrides,
+  kind: TenantNetworkResourceKind,
+): boolean {
+  return Boolean(overrides.lockForUsers?.[lockForUsersKey(kind)])
+}
+
+/** Apply value overrides only; preserve Provider lock flags for Tenant Admin editing. */
 export function applyTenantNetworkOverrides(
   policy: CatalogNetworkPolicy,
   overrides: TenantNetworkOverrides,
@@ -99,26 +147,80 @@ export function applyTenantNetworkOverrides(
   }
 }
 
-export function resolveCatalogNetworkPolicyForOrganization(
+/**
+ * Effective locks for Tenant Users: Provider lock OR Tenant Admin "Lock for users".
+ * Does not unlock Provider-locked fields.
+ */
+export function applyTenantLocksForUsers(
+  policy: CatalogNetworkPolicy,
+  overrides: TenantNetworkOverrides,
+): CatalogNetworkPolicy {
+  if (!policy.enabled) {
+    return policy
+  }
+
+  const locks = overrides.lockForUsers ?? {}
+
+  return {
+    ...policy,
+    virtualNetwork: {
+      ...policy.virtualNetwork,
+      locked: policy.virtualNetwork.locked || Boolean(locks.virtualNetwork),
+    },
+    subnet: {
+      ...policy.subnet,
+      locked: policy.subnet.locked || Boolean(locks.subnet),
+    },
+    securityGroup: {
+      ...policy.securityGroup,
+      locked: policy.securityGroup.locked || Boolean(locks.securityGroup),
+    },
+  }
+}
+
+export function resolveProviderCatalogNetworkPolicy(
   organization: RegisteredOrganization,
   catalogDraft: ProviderCatalogDraft | null,
 ): CatalogNetworkPolicy {
-  let base: CatalogNetworkPolicy = DEFAULT_CATALOG_NETWORK_POLICY
-
   if (organization.catalogItemId) {
     const assigned = getProviderCatalogItems().find(
       (item) => item.catalogItemId === organization.catalogItemId,
     )
     if (assigned) {
-      base = getCatalogItemNetworkPolicy(assigned)
-    } else if (catalogDraft) {
-      base = getCatalogItemNetworkPolicy(catalogDraft)
+      return getCatalogItemNetworkPolicy(assigned)
+    }
+    if (catalogDraft) {
+      return getCatalogItemNetworkPolicy(catalogDraft)
     }
   } else if (catalogDraft) {
-    base = getCatalogItemNetworkPolicy(catalogDraft)
+    return getCatalogItemNetworkPolicy(catalogDraft)
   }
 
+  return DEFAULT_CATALOG_NETWORK_POLICY
+}
+
+/** Provider policy + Tenant Admin value overrides (Provider locks unchanged). */
+export function resolveCatalogNetworkPolicyForOrganization(
+  organization: RegisteredOrganization,
+  catalogDraft: ProviderCatalogDraft | null,
+): CatalogNetworkPolicy {
+  const base = resolveProviderCatalogNetworkPolicy(organization, catalogDraft)
   return applyTenantNetworkOverrides(base, getTenantNetworkOverrides(organization.slug))
+}
+
+/** Policy Tenant Users see at launch (values + effective locks). */
+export function resolveEffectiveNetworkPolicyForUsers(
+  organization: RegisteredOrganization,
+  catalogDraft: ProviderCatalogDraft | null,
+): CatalogNetworkPolicy {
+  const overrides = getTenantNetworkOverrides(organization.slug)
+  return applyTenantLocksForUsers(
+    applyTenantNetworkOverrides(
+      resolveProviderCatalogNetworkPolicy(organization, catalogDraft),
+      overrides,
+    ),
+    overrides,
+  )
 }
 
 export function getTenantNetworkResourceMeta(
@@ -129,7 +231,7 @@ export function getTenantNetworkResourceMeta(
   fieldLabel: string
   lede: string
   fieldKey: 'virtualNetwork' | 'subnet' | 'securityGroup'
-  overrideKey: keyof TenantNetworkOverrides
+  overrideKey: TenantNetworkValueOverrideKey
   options: readonly CatalogNetworkResourceOption[]
 } {
   switch (kind) {
@@ -187,19 +289,24 @@ export type TenantCatalogNetworkFieldSummary = {
   kind: TenantNetworkResourceKind
   label: string
   value: string
-  locked: boolean
+  /** Provider lock — Tenant Admin cannot change the value. */
+  providerLocked: boolean
+  /** Tenant Admin chose to lock this for Tenant Users (only when !providerLocked). */
+  lockedForUsers: boolean
   selectedId: string
 }
 
 export function getTenantCatalogNetworkFieldSummaries(
   policy: CatalogNetworkPolicy,
+  overrides: TenantNetworkOverrides = {},
 ): TenantCatalogNetworkFieldSummary[] {
   return [
     {
       kind: 'virtual-network',
       label: 'Virtual network',
       value: getNetworkOptionDetail(getCatalogVirtualNetworkOptions(), policy.virtualNetwork.id),
-      locked: policy.virtualNetwork.locked,
+      providerLocked: policy.virtualNetwork.locked,
+      lockedForUsers: getTenantLockForUsers(overrides, 'virtual-network'),
       selectedId: policy.virtualNetwork.id,
     },
     {
@@ -209,14 +316,16 @@ export function getTenantCatalogNetworkFieldSummaries(
         getCatalogSubnetOptions(policy.virtualNetwork.id),
         policy.subnet.id,
       ),
-      locked: policy.subnet.locked,
+      providerLocked: policy.subnet.locked,
+      lockedForUsers: getTenantLockForUsers(overrides, 'subnet'),
       selectedId: policy.subnet.id,
     },
     {
       kind: 'security-group',
       label: 'Security group',
       value: getNetworkOptionDetail(getCatalogSecurityGroupOptions(), policy.securityGroup.id),
-      locked: policy.securityGroup.locked,
+      providerLocked: policy.securityGroup.locked,
+      lockedForUsers: getTenantLockForUsers(overrides, 'security-group'),
       selectedId: policy.securityGroup.id,
     },
   ]

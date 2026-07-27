@@ -19,6 +19,7 @@ import {
   FormSelectOption,
   Icon,
   Label,
+  Switch,
   Title,
 } from '@patternfly/react-core'
 import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
@@ -30,6 +31,7 @@ import {
 } from '../../tenantAdmin/catalogManager'
 import {
   getTenantCatalogNetworkFieldSummaries,
+  getTenantNetworkOverrides,
   getTenantNetworkResourceMeta,
   type TenantNetworkResourceKind,
 } from '../../tenantAdmin/networking'
@@ -42,9 +44,11 @@ type TenantCatalogItemDetailsDrawerProps = {
   isExpanded: boolean
   onClose: () => void
   item: TenantCatalogGovernanceItemWithNetworking | null
+  organizationSlug: string
   authorizedTeams: string[]
   onNavigateToProjectsTeams: () => void
   onChangeNetworkField: (kind: TenantNetworkResourceKind, optionId: string) => void
+  onChangeLockForUsers: (kind: TenantNetworkResourceKind, locked: boolean) => void
   children: ReactNode
 }
 
@@ -52,12 +56,17 @@ export function TenantCatalogItemDetailsDrawer({
   isExpanded,
   onClose,
   item,
+  organizationSlug,
   authorizedTeams,
   onNavigateToProjectsTeams,
   onChangeNetworkField,
+  onChangeLockForUsers,
   children,
 }: TenantCatalogItemDetailsDrawerProps) {
-  const networkFields = item ? getTenantCatalogNetworkFieldSummaries(item.networkPolicy) : []
+  const overrides = getTenantNetworkOverrides(organizationSlug)
+  const networkFields = item
+    ? getTenantCatalogNetworkFieldSummaries(item.networkPolicy, overrides)
+    : []
   const virtualNetworkId = item?.networkPolicy.virtualNetwork.id
 
   const panelContent = item ? (
@@ -174,38 +183,58 @@ export function TenantCatalogItemDetailsDrawer({
               >
                 {networkFields.map((field) => {
                   const meta = getTenantNetworkResourceMeta(field.kind, virtualNetworkId)
+                  const lockSwitchId = `tenant-catalog-lock-users-${field.kind}`
 
                   return (
                     <DescriptionListGroup key={field.kind}>
                       <DescriptionListTerm>
                         <span className="tenant-admin-catalog-manager__drawer-network-term">
                           <span>{field.label}</span>
-                          {field.locked ? (
+                          {field.providerLocked ? (
                             <Label color="grey" isCompact icon={<LockIcon />}>
-                              Locked
+                              Locked by provider
                             </Label>
-                          ) : null}
+                          ) : field.lockedForUsers ? (
+                            <Label color="grey" isCompact icon={<LockIcon />}>
+                              Locked for users
+                            </Label>
+                          ) : (
+                            <Label color="blue" isCompact>
+                              Editable for users
+                            </Label>
+                          )}
                         </span>
                       </DescriptionListTerm>
                       <DescriptionListDescription>
-                        {field.locked ? (
+                        {field.providerLocked ? (
                           field.value
                         ) : (
-                          <FormSelect
-                            id={`tenant-catalog-network-${field.kind}`}
-                            className="tenant-admin-catalog-manager__drawer-network-select"
-                            value={field.selectedId}
-                            aria-label={field.label}
-                            onChange={(_event, value) => onChangeNetworkField(field.kind, value)}
-                          >
-                            {meta.options.map((option) => (
-                              <FormSelectOption
-                                key={option.id}
-                                value={option.id}
-                                label={`${option.name} · ${option.detail}`}
-                              />
-                            ))}
-                          </FormSelect>
+                          <div className="tenant-admin-catalog-manager__drawer-network-controls">
+                            <FormSelect
+                              id={`tenant-catalog-network-${field.kind}`}
+                              className="tenant-admin-catalog-manager__drawer-network-select"
+                              value={field.selectedId}
+                              aria-label={field.label}
+                              onChange={(_event, value) => onChangeNetworkField(field.kind, value)}
+                            >
+                              {meta.options.map((option) => (
+                                <FormSelectOption
+                                  key={option.id}
+                                  value={option.id}
+                                  label={`${option.name} · ${option.detail}`}
+                                />
+                              ))}
+                            </FormSelect>
+                            <Switch
+                              id={lockSwitchId}
+                              label="Lock for users"
+                              aria-label={`Lock ${field.label} for tenant users`}
+                              isChecked={field.lockedForUsers}
+                              onChange={(_event, checked) =>
+                                onChangeLockForUsers(field.kind, checked)
+                              }
+                            />
+                          </div>
                         )}
                       </DescriptionListDescription>
                     </DescriptionListGroup>

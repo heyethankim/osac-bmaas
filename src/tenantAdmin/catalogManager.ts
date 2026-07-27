@@ -39,7 +39,7 @@ export const TENANT_CATALOG_MANAGER_DEMO = {
   networkingViewDetailsLabel: 'Details',
   networkingNotConfiguredTableLabel: 'Not configured',
   networkingSectionLede:
-    'Locked fields are set by the provider. Change unlocked fields directly below.',
+    'Provider-locked fields cannot be changed. For editable fields, choose a value and optionally lock it for tenant users at launch.',
 } as const
 
 export const TENANT_CATALOG_GOVERNANCE_ITEMS: TenantCatalogGovernanceItem[] = [

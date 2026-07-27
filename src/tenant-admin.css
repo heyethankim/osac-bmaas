@@ -849,6 +849,14 @@
   max-width: 100%;
 }
 
+.tenant-admin-catalog-manager__drawer-network-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--pf-t--global--spacer--sm);
+  width: 100%;
+}
+
 .tenant-admin-catalog-manager__drawer-team-list {
   display: flex;
   flex-wrap: wrap;

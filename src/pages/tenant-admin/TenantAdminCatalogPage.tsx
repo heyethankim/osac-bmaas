@@ -44,6 +44,7 @@ import {
   type TenantCatalogGovernanceItemWithNetworking,
 } from '../../tenantAdmin/catalogManager'
 import {
+  applyTenantLocksForUsers,
   getTenantNetworkLockSummary,
   getTenantNetworkOverrides,
   setTenantNetworkOverrides,
@@ -71,14 +72,19 @@ function getVisibilityLabel(scope: TenantCatalogGovernanceItemWithNetworking['sc
 
 function NetworkingSummary({
   item,
+  organizationSlug,
   compact = false,
   onViewDetails,
 }: {
   item: TenantCatalogGovernanceItemWithNetworking
+  organizationSlug: string
   compact?: boolean
   onViewDetails?: () => void
 }) {
-  const lockSummary = getTenantNetworkLockSummary(item.networkPolicy)
+  const overrides = getTenantNetworkOverrides(organizationSlug)
+  const lockSummary = getTenantNetworkLockSummary(
+    applyTenantLocksForUsers(item.networkPolicy, overrides),
+  )
 
   const statusContent = lockSummary ? (
     <span className="tenant-admin-catalog-manager__networking-status">
@@ -310,6 +316,33 @@ export function TenantAdminCatalogPage({
     })
   }
 
+  const handleChangeLockForUsers = (kind: TenantNetworkResourceKind, locked: boolean) => {
+    const lockKey =
+      kind === 'virtual-network'
+        ? 'virtualNetwork'
+        : kind === 'subnet'
+          ? 'subnet'
+          : 'securityGroup'
+    const currentOverrides = getTenantNetworkOverrides(organization.slug)
+    setTenantNetworkOverrides(organization.slug, {
+      ...currentOverrides,
+      lockForUsers: {
+        ...currentOverrides.lockForUsers,
+        [lockKey]: locked,
+      },
+    })
+
+    // Force re-render so card status and drawer labels refresh from sessionStorage.
+    const refreshed = getTenantCatalogGovernanceItems(organization, catalogDraft)
+    setCatalogItems(refreshed)
+    setSelectedCatalogItem((selected) => {
+      if (!selected) {
+        return selected
+      }
+      return refreshed.find((item) => item.id === selected.id) ?? selected
+    })
+  }
+
   const updateCatalogItem = (
     itemId: string,
     updater: (
@@ -523,11 +556,13 @@ export function TenantAdminCatalogPage({
       isExpanded={isDetailsDrawerOpen && selectedCatalogItem !== null}
       onClose={closeDetails}
       item={isDetailsDrawerOpen ? selectedCatalogItem : null}
+      organizationSlug={organization.slug}
       authorizedTeams={
         selectedCatalogItem ? (authorizedTeamsByItemId[selectedCatalogItem.id] ?? []) : []
       }
       onNavigateToProjectsTeams={onNavigateToProjectsTeams}
       onChangeNetworkField={handleChangeNetworkField}
+      onChangeLockForUsers={handleChangeLockForUsers}
     >
       <div className="tenant-admin-workspace-page tenant-admin-catalog-manager">
         <Title headingLevel="h1" size="3xl" className="tenant-admin-catalog-manager__title">
@@ -638,7 +673,11 @@ export function TenantAdminCatalogPage({
                     </dl>
 
                     <dl className="tenant-admin-catalog-manager__networking-list">
-                      <NetworkingSummary item={item} onViewDetails={() => openDetails(item)} />
+                      <NetworkingSummary
+                        item={item}
+                        organizationSlug={organization.slug}
+                        onViewDetails={() => openDetails(item)}
+                      />
                       {renderAuthorizedTeams(item.id, authorizedTeams)}
                     </dl>
 
@@ -720,6 +759,7 @@ export function TenantAdminCatalogPage({
                       <Td dataLabel="Networking">
                         <NetworkingSummary
                           item={item}
+                          organizationSlug={organization.slug}
                           compact
                           onViewDetails={() => openDetails(item)}
                         />

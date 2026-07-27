@@ -15,7 +15,7 @@ import {
 } from '../providerSetup/storage'
 import {
   getNetworkOptionDetail,
-  resolveCatalogNetworkPolicyForOrganization,
+  resolveEffectiveNetworkPolicyForUsers,
 } from '../tenantAdmin/networking'
 
 export type LaunchNetworkFieldKind = 'virtual-network' | 'subnet' | 'security-group'
@@ -49,7 +49,7 @@ function resolvePolicyForLaunch(
   }
 
   if (organization) {
-    return resolveCatalogNetworkPolicyForOrganization(organization, catalogDraft)
+    return resolveEffectiveNetworkPolicyForUsers(organization, catalogDraft)
   }
 
   if (catalogDraft) {
