@@ -35,8 +35,8 @@ export const TENANT_CATALOG_MANAGER_DEMO = {
   addProjectTeamsLinkLabel: 'Add project & teams',
   authorizedTeamsLabel: 'Authorized teams',
   networkingLabel: 'Networking',
-  networkingNotConfiguredSummary: 'No provider defaults',
-  networkingViewDetailsLabel: 'View configuration',
+  networkingNotConfiguredSummary: 'Not configured',
+  networkingViewDetailsLabel: 'Details',
   networkingNotConfiguredTableLabel: 'Not configured',
   networkingSectionLede:
     'Locked fields are set by the provider. Change unlocked fields directly below.',

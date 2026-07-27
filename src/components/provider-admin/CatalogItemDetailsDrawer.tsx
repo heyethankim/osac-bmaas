@@ -227,6 +227,34 @@ export function CatalogItemDetailsDrawer({
               <code>{catalog.catalogItemId}</code>
             </DescriptionListDescription>
           </DescriptionListGroup>
+          <DescriptionListGroup>
+            <DescriptionListTerm>Visibility</DescriptionListTerm>
+            <DescriptionListDescription>
+              <span className="provider-admin-catalog-items__scope">
+                <CatalogPublishScopeIcon
+                  scope={catalog.scope}
+                  className="provider-admin-catalog__scope-icon"
+                />
+                <span>{scopeLabel}</span>
+              </span>
+            </DescriptionListDescription>
+          </DescriptionListGroup>
+          {catalog.scope === 'vip-enterprise' && catalog.enterpriseTenantId ? (
+            <DescriptionListGroup>
+              <DescriptionListTerm>Enterprise organization</DescriptionListTerm>
+              <DescriptionListDescription>
+                {formatVipEnterpriseVisibilityLabel(organizations, catalog.enterpriseTenantId).replace(
+                  /^VIP enterprise · /,
+                  '',
+                )}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+          ) : catalog.scope === 'vip-enterprise' ? (
+            <DescriptionListGroup>
+              <DescriptionListTerm>Enterprise organization</DescriptionListTerm>
+              <DescriptionListDescription>Restricted — unassigned</DescriptionListDescription>
+            </DescriptionListGroup>
+          ) : null}
         </DescriptionList>
 
         {hardwareSpecs ? (
@@ -273,34 +301,6 @@ export function CatalogItemDetailsDrawer({
               {formatRateCardSummary(catalog.rateCard)}
             </DescriptionListDescription>
           </DescriptionListGroup>
-          <DescriptionListGroup>
-            <DescriptionListTerm>Visibility</DescriptionListTerm>
-            <DescriptionListDescription>
-              <span className="provider-admin-catalog-items__scope">
-                <CatalogPublishScopeIcon
-                  scope={catalog.scope}
-                  className="provider-admin-catalog__scope-icon"
-                />
-                <span>{scopeLabel}</span>
-              </span>
-            </DescriptionListDescription>
-          </DescriptionListGroup>
-          {catalog.scope === 'vip-enterprise' && catalog.enterpriseTenantId ? (
-            <DescriptionListGroup>
-              <DescriptionListTerm>Enterprise organization</DescriptionListTerm>
-              <DescriptionListDescription>
-                {formatVipEnterpriseVisibilityLabel(organizations, catalog.enterpriseTenantId).replace(
-                  /^VIP enterprise · /,
-                  '',
-                )}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-          ) : catalog.scope === 'vip-enterprise' ? (
-            <DescriptionListGroup>
-              <DescriptionListTerm>Enterprise organization</DescriptionListTerm>
-              <DescriptionListDescription>Restricted — unassigned</DescriptionListDescription>
-            </DescriptionListGroup>
-          ) : null}
           <DescriptionListGroup>
             <DescriptionListTerm>Created</DescriptionListTerm>
             <DescriptionListDescription>

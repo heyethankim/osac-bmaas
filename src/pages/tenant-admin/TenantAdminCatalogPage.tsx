@@ -21,6 +21,7 @@ import {
   Tooltip,
 } from '@patternfly/react-core'
 import { TimesIcon } from '@patternfly/react-icons/dist/esm/icons/times-icon'
+import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
 import {
   CatalogServiceFilterToggle,
@@ -43,6 +44,7 @@ import {
   type TenantCatalogGovernanceItemWithNetworking,
 } from '../../tenantAdmin/catalogManager'
 import {
+  getTenantNetworkLockSummary,
   getTenantNetworkOverrides,
   setTenantNetworkOverrides,
   type TenantNetworkResourceKind,
@@ -76,11 +78,25 @@ function NetworkingSummary({
   compact?: boolean
   onViewDetails?: () => void
 }) {
-  const isConfigured = item.networkPolicy.enabled
+  const lockSummary = getTenantNetworkLockSummary(item.networkPolicy)
 
-  if (compact) {
-    if (isConfigured && onViewDetails) {
-      return (
+  const statusContent = lockSummary ? (
+    <span className="tenant-admin-catalog-manager__networking-status">
+      <Label
+        color={
+          lockSummary.kind === 'all-locked'
+            ? 'grey'
+            : lockSummary.kind === 'all-editable'
+              ? 'blue'
+              : 'orange'
+        }
+        isCompact
+        icon={lockSummary.kind === 'all-locked' ? <LockIcon /> : undefined}
+        className="tenant-admin-catalog-manager__networking-status-label"
+      >
+        {lockSummary.label}
+      </Label>
+      {onViewDetails ? (
         <Button
           variant="link"
           isInline
@@ -89,14 +105,25 @@ function NetworkingSummary({
         >
           {TENANT_CATALOG_MANAGER_DEMO.networkingViewDetailsLabel}
         </Button>
-      )
-    }
+      ) : null}
+    </span>
+  ) : (
+    <Content
+      component="p"
+      className={
+        compact
+          ? 'tenant-admin-catalog-manager__networking-table-summary'
+          : undefined
+      }
+    >
+      {compact
+        ? TENANT_CATALOG_MANAGER_DEMO.networkingNotConfiguredTableLabel
+        : TENANT_CATALOG_MANAGER_DEMO.networkingNotConfiguredSummary}
+    </Content>
+  )
 
-    return (
-      <Content component="p" className="tenant-admin-catalog-manager__networking-table-summary">
-        {TENANT_CATALOG_MANAGER_DEMO.networkingNotConfiguredTableLabel}
-      </Content>
-    )
+  if (compact) {
+    return statusContent
   }
 
   return (
@@ -104,20 +131,7 @@ function NetworkingSummary({
       <dt className="tenant-admin-catalog-manager__spec-label">
         {TENANT_CATALOG_MANAGER_DEMO.networkingLabel}
       </dt>
-      <dd className="tenant-admin-catalog-manager__spec-value">
-        {isConfigured && onViewDetails ? (
-          <Button
-            variant="link"
-            isInline
-            className="tenant-admin-catalog-manager__inline-link"
-            onClick={onViewDetails}
-          >
-            {TENANT_CATALOG_MANAGER_DEMO.networkingViewDetailsLabel}
-          </Button>
-        ) : (
-          TENANT_CATALOG_MANAGER_DEMO.networkingNotConfiguredSummary
-        )}
-      </dd>
+      <dd className="tenant-admin-catalog-manager__spec-value">{statusContent}</dd>
     </div>
   )
 }

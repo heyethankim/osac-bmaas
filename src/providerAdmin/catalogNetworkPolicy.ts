@@ -136,3 +136,50 @@ export function resolveCatalogNetworkPolicy(
     ? DEFAULT_CATALOG_NETWORK_POLICY
     : normalized
 }
+
+export type CatalogNetworkLockSummaryKind = 'all-locked' | 'all-editable' | 'partial'
+
+export type CatalogNetworkLockSummary = {
+  kind: CatalogNetworkLockSummaryKind
+  label: string
+  lockedCount: number
+  editableCount: number
+}
+
+/** Glanceable lock state for catalog cards/tables. Null when networking is off. */
+export function getCatalogNetworkLockSummary(
+  policy: CatalogNetworkPolicy,
+): CatalogNetworkLockSummary | null {
+  if (!policy.enabled) {
+    return null
+  }
+
+  const fields = [policy.virtualNetwork, policy.subnet, policy.securityGroup]
+  const lockedCount = fields.filter((field) => field.locked).length
+  const editableCount = fields.length - lockedCount
+
+  if (lockedCount === fields.length) {
+    return {
+      kind: 'all-locked',
+      label: 'All locked',
+      lockedCount,
+      editableCount,
+    }
+  }
+
+  if (editableCount === fields.length) {
+    return {
+      kind: 'all-editable',
+      label: 'All editable',
+      lockedCount,
+      editableCount,
+    }
+  }
+
+  return {
+    kind: 'partial',
+    label: `${lockedCount} locked · ${editableCount} editable`,
+    lockedCount,
+    editableCount,
+  }
+}

@@ -23,6 +23,7 @@ import {
 } from '@patternfly/react-core'
 import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
+import { CatalogPublishScopeIcon } from '../provider-admin/CatalogPublishScopeIcon'
 import {
   TENANT_CATALOG_MANAGER_DEMO,
   type TenantCatalogGovernanceItemWithNetworking,
@@ -32,6 +33,10 @@ import {
   getTenantNetworkResourceMeta,
   type TenantNetworkResourceKind,
 } from '../../tenantAdmin/networking'
+
+function getVisibilityLabel(scope: TenantCatalogGovernanceItemWithNetworking['scope']): string {
+  return scope === 'vip-enterprise' ? 'VIP enterprise' : 'Global public'
+}
 
 type TenantCatalogItemDetailsDrawerProps = {
   isExpanded: boolean
@@ -106,6 +111,18 @@ export function TenantCatalogItemDetailsDrawer({
               <Label color={item.status === 'Unpublished' ? 'grey' : 'green'} isCompact>
                 {item.status}
               </Label>
+            </DescriptionListDescription>
+          </DescriptionListGroup>
+          <DescriptionListGroup>
+            <DescriptionListTerm>Visibility</DescriptionListTerm>
+            <DescriptionListDescription>
+              <span className="tenant-admin-catalog-manager__scope">
+                <CatalogPublishScopeIcon
+                  scope={item.scope}
+                  className="tenant-admin-catalog-manager__scope-icon"
+                />
+                <span>{getVisibilityLabel(item.scope)}</span>
+              </span>
             </DescriptionListDescription>
           </DescriptionListGroup>
         </DescriptionList>

@@ -221,3 +221,9 @@ export function getTenantCatalogNetworkFieldSummaries(
     },
   ]
 }
+
+export {
+  getCatalogNetworkLockSummary as getTenantNetworkLockSummary,
+  type CatalogNetworkLockSummary as TenantNetworkLockSummary,
+  type CatalogNetworkLockSummaryKind as TenantNetworkLockSummaryKind,
+} from '../providerAdmin/catalogNetworkPolicy'
