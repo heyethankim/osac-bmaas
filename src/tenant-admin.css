@@ -1330,6 +1330,91 @@
   width: 100%;
 }
 
+.tenant-user-catalog__drawer-panel {
+  --pf-v6-c-drawer__panel--PaddingBlockStart: var(--pf-t--global--spacer--md);
+}
+
+.tenant-user-catalog__drawer-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--md);
+  min-width: 0;
+}
+
+.tenant-user-catalog__drawer-icon-wrap {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  color: var(--pf-t--color--red--50);
+}
+
+.tenant-user-catalog__drawer-icon-wrap .pf-v6-c-icon,
+.tenant-user-catalog__drawer-icon-wrap .pf-v6-c-icon__content,
+.tenant-user-catalog__drawer-icon-wrap svg {
+  display: block;
+  width: 1.5rem;
+  height: 1.5rem;
+  line-height: 0;
+  color: var(--pf-t--color--red--50);
+  fill: currentcolor;
+}
+
+.tenant-user-catalog__drawer-title.pf-v6-c-title {
+  margin: 0;
+  line-height: 1;
+  word-break: break-word;
+}
+
+.tenant-user-catalog__drawer-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+}
+
+.tenant-user-catalog__drawer-launch {
+  align-self: flex-start;
+}
+
+.tenant-user-catalog__drawer-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.tenant-user-catalog__drawer-lede.pf-v6-c-content--p,
+.tenant-user-catalog__drawer-section-lede.pf-v6-c-content--p {
+  margin: 0;
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.tenant-user-catalog__drawer-section-title.pf-v6-c-content--p {
+  margin: 0;
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+}
+
+.tenant-user-catalog__drawer-divider {
+  margin: 0;
+}
+
+.tenant-user-catalog__drawer-dl {
+  margin-block-start: 0;
+}
+
+.tenant-user-catalog__drawer-dl .pf-v6-c-description-list__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--xs);
+}
+
+.tenant-user-catalog__drawer-network-term {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
 .tenant-user-instances__secondary-cell.pf-v6-c-content--p {
   margin-block-start: var(--pf-t--global--spacer--xs);
   color: var(--pf-t--global--text--color--subtle);
@@ -1381,6 +1466,9 @@
 .tenant-user-launch-wizard__step-lede.pf-v6-c-content--p,
 .tenant-user-launch-wizard__preconfigured-label.pf-v6-c-content--p,
 .tenant-user-launch-wizard__preconfigured-value.pf-v6-c-content--p,
+.tenant-user-launch-wizard__assigned-label.pf-v6-c-content--p,
+.tenant-user-launch-wizard__assigned-value.pf-v6-c-content--p,
+.tenant-user-launch-wizard__assigned-helper.pf-v6-c-content--p,
 .tenant-user-launch-wizard__provisioning-kicker.pf-v6-c-content--p,
 .tenant-user-launch-wizard__provisioning-percent.pf-v6-c-content--p,
 .tenant-user-launch-wizard__boot-log-title.pf-v6-c-content--p,
@@ -1416,9 +1504,13 @@
 
 .tenant-user-launch-wizard__preconfigured-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--pf-t--global--spacer--md);
   margin: 0;
+}
+
+.tenant-user-launch-wizard__preconfigured-grid--with-network {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .tenant-user-launch-wizard__preconfigured-item {
@@ -1433,6 +1525,38 @@
   font-size: var(--pf-t--global--font--size--body--sm);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.tenant-user-launch-wizard__assigned-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--pf-t--global--spacer--md);
+  margin-block-end: var(--pf-t--global--spacer--lg);
+}
+
+.tenant-user-launch-wizard__assigned-field {
+  padding: var(--pf-t--global--spacer--md);
+  border-radius: var(--pf-t--global--border--radius--medium);
+  background: var(--pf-t--global--background--color--secondary--default);
+}
+
+.tenant-user-launch-wizard__assigned-label.pf-v6-c-content--p {
+  margin: 0 0 var(--pf-t--global--spacer--xs);
+  font-size: var(--pf-t--global--font--size--body--sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.tenant-user-launch-wizard__assigned-value.pf-v6-c-content--p {
+  margin: 0;
+  color: var(--pf-t--global--text--color--regular);
+}
+
+.tenant-user-launch-wizard__assigned-helper.pf-v6-c-content--p {
+  margin: var(--pf-t--global--spacer--xs) 0 0;
+  font-size: var(--pf-t--global--font--size--body--sm);
+  color: var(--pf-t--global--text--color--subtle);
 }
 
 .tenant-user-launch-wizard__review-list {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeftIcon } from '@patternfly/react-icons/dist/esm/icons/arrow-left-icon'
 import { ArrowRightIcon } from '@patternfly/react-icons/dist/esm/icons/arrow-right-icon'
 import { CheckIcon } from '@patternfly/react-icons/dist/esm/icons/check-icon'
@@ -16,6 +16,11 @@ import {
   FlexItem,
   Form,
   FormGroup,
+  FormHelperText,
+  FormSelect,
+  FormSelectOption,
+  HelperText,
+  HelperTextItem,
   Modal,
   ModalVariant,
   Spinner,
@@ -25,24 +30,35 @@ import {
   WizardHeader,
   WizardStep,
 } from '@patternfly/react-core'
+import type { RegisteredOrganization } from '../../providerAdmin/organizations'
+import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import type { TenantUserCatalogCard } from '../../tenantUser/catalog'
 import {
-  DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM,
+  createLaunchInstanceWizardForm,
+  getLaunchInstanceWizardSteps,
   isInstanceNameValid,
   LAUNCH_INSTANCE_BOOT_LOG_STEP_MS,
   LAUNCH_INSTANCE_PROVISIONING_SETTLE_MS,
   LAUNCH_INSTANCE_WIZARD_DEMO,
-  LAUNCH_INSTANCE_WIZARD_STEPS,
   PROVISIONING_BOOT_LOG_STEPS,
   type LaunchInstanceWizardForm,
   type LaunchInstanceWizardStepId,
   type ProvisioningBootLogStatus,
 } from '../../tenantUser/launchInstanceWizard'
+import {
+  formatLaunchInstanceNetworkLabel,
+  getLaunchNetworkFieldLabel,
+  resolveLaunchNetworkContext,
+  type LaunchNetworkFieldView,
+} from '../../tenantUser/launchNetworking'
 import { generateTenantInstanceId, type TenantInstance } from '../../tenantUser/instances'
 
 type TenantUserLaunchInstanceWizardProps = {
   isOpen: boolean
   catalogItem: TenantUserCatalogCard
+  organization: RegisteredOrganization | null
+  catalogDraft: ProviderCatalogDraft | null
+  preferCatalogDraft?: boolean
   projectName: string
   onClose: () => void
   onProvisioningStarted: (instance: TenantInstance) => void
@@ -65,16 +81,51 @@ function getBootLogStatus(
   return 'pending'
 }
 
+function AssignedNetworkField({ field }: { field: LaunchNetworkFieldView }) {
+  return (
+    <div className="tenant-user-launch-wizard__assigned-field">
+      <Content component="p" className="tenant-user-launch-wizard__assigned-label">
+        {field.label}
+      </Content>
+      <Content component="p" className="tenant-user-launch-wizard__assigned-value">
+        {field.value}
+      </Content>
+      <Content component="p" className="tenant-user-launch-wizard__assigned-helper">
+        {LAUNCH_INSTANCE_WIZARD_DEMO.networkingAssignedHelper}
+      </Content>
+    </div>
+  )
+}
+
 export function TenantUserLaunchInstanceWizard({
   isOpen,
   catalogItem,
+  organization,
+  catalogDraft,
+  preferCatalogDraft = false,
   projectName,
   onClose,
   onProvisioningStarted,
   onDismissDuringProvisioning,
   onWizardFinished,
 }: TenantUserLaunchInstanceWizardProps) {
-  const [form, setForm] = useState<LaunchInstanceWizardForm>(DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM)
+  const networkContext = useMemo(
+    () => resolveLaunchNetworkContext(organization, catalogDraft, preferCatalogDraft),
+    [organization, catalogDraft, preferCatalogDraft],
+  )
+  const includeNetworkingStep = networkContext.enabled && networkContext.hasEditableFields
+  const wizardSteps = useMemo(
+    () => getLaunchInstanceWizardSteps(includeNetworkingStep),
+    [includeNetworkingStep],
+  )
+
+  const [form, setForm] = useState<LaunchInstanceWizardForm>(() =>
+    createLaunchInstanceWizardForm({
+      virtualNetworkId: networkContext.policy.virtualNetwork.id,
+      subnetId: networkContext.policy.subnet.id,
+      securityGroupId: networkContext.policy.securityGroup.id,
+    }),
+  )
   const [activeStepId, setActiveStepId] = useState<LaunchInstanceWizardStepId>('configure')
   const [activeBootLogIndex, setActiveBootLogIndex] = useState(0)
   const [isProvisioningComplete, setIsProvisioningComplete] = useState(false)
@@ -83,12 +134,33 @@ export function TenantUserLaunchInstanceWizard({
   const isOpenRef = useRef(isOpen)
 
   const activeStepDescription =
-    LAUNCH_INSTANCE_WIZARD_STEPS.find((step) => step.id === activeStepId)?.description ?? ''
+    wizardSteps.find((step) => step.id === activeStepId)?.description ?? ''
   const isProvisioningInProgress =
     activeStepId === 'provisioning' && !isProvisioningComplete
 
+  const networkSelections = {
+    virtualNetworkId: form.virtualNetworkId || networkContext.policy.virtualNetwork.id,
+    subnetId: form.subnetId || networkContext.policy.subnet.id,
+    securityGroupId: form.securityGroupId || networkContext.policy.securityGroup.id,
+  }
+
+  const networkLabel = formatLaunchInstanceNetworkLabel(networkContext, networkSelections)
+  const assignedNetworkSummary = networkContext.assignedNetworkSummary
+  const securityGroupField = networkContext.fields.find(
+    (field) => field.kind === 'security-group',
+  )
+  const securityGroupLabel = securityGroupField
+    ? getLaunchNetworkFieldLabel(securityGroupField, networkSelections.securityGroupId)
+    : networkContext.policy.securityGroup.name
+
   const resetWizard = () => {
-    setForm(DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM)
+    setForm(
+      createLaunchInstanceWizardForm({
+        virtualNetworkId: networkContext.policy.virtualNetwork.id,
+        subnetId: networkContext.policy.subnet.id,
+        securityGroupId: networkContext.policy.securityGroup.id,
+      }),
+    )
     setActiveStepId('configure')
     setActiveBootLogIndex(0)
     setIsProvisioningComplete(false)
@@ -115,8 +187,17 @@ export function TenantUserLaunchInstanceWizard({
   useEffect(() => {
     if (!isOpen) {
       resetWizard()
+      return
     }
-  }, [isOpen])
+
+    setForm(
+      createLaunchInstanceWizardForm({
+        virtualNetworkId: networkContext.policy.virtualNetwork.id,
+        subnetId: networkContext.policy.subnet.id,
+        securityGroupId: networkContext.policy.securityGroup.id,
+      }),
+    )
+  }, [isOpen, networkContext])
 
   useEffect(() => {
     if (!isOpen || activeStepId !== 'provisioning' || provisioningStartedRef.current) {
@@ -131,7 +212,7 @@ export function TenantUserLaunchInstanceWizard({
       catalogItemDisplayName: catalogItem.displayName,
       hardwareProfile: catalogItem.hardwareProfile,
       osImage: catalogItem.osImage,
-      networkLabel: LAUNCH_INSTANCE_WIZARD_DEMO.reviewNetwork,
+      networkLabel,
       gpuLabel: catalogItem.gpu,
       projectName,
       status: 'provisioning',
@@ -171,10 +252,36 @@ export function TenantUserLaunchInstanceWizard({
     catalogItem,
     form.instanceName,
     isOpen,
+    networkLabel,
     onProvisioningStarted,
     onWizardFinished,
     projectName,
   ])
+
+  const updateNetworkSelection = (
+    kind: LaunchNetworkFieldView['kind'],
+    value: string,
+  ) => {
+    setForm((current) => {
+      if (kind === 'virtual-network') {
+        return { ...current, virtualNetworkId: value }
+      }
+      if (kind === 'subnet') {
+        return { ...current, subnetId: value }
+      }
+      return { ...current, securityGroupId: value }
+    })
+  }
+
+  const getSelectedIdForField = (field: LaunchNetworkFieldView): string => {
+    if (field.kind === 'virtual-network') {
+      return networkSelections.virtualNetworkId
+    }
+    if (field.kind === 'subnet') {
+      return networkSelections.subnetId
+    }
+    return networkSelections.securityGroupId
+  }
 
   const renderConfigureStep = () => (
     <div className="tenant-user-launch-wizard__step">
@@ -211,7 +318,13 @@ export function TenantUserLaunchInstanceWizard({
             <span>{LAUNCH_INSTANCE_WIZARD_DEMO.preConfiguredTitle}</span>
           </div>
 
-          <div className="tenant-user-launch-wizard__preconfigured-grid">
+          <div
+            className={`tenant-user-launch-wizard__preconfigured-grid${
+              networkContext.enabled && !includeNetworkingStep
+                ? ' tenant-user-launch-wizard__preconfigured-grid--with-network'
+                : ''
+            }`}
+          >
             <div className="tenant-user-launch-wizard__preconfigured-item">
               <Content component="p" className="tenant-user-launch-wizard__preconfigured-label">
                 Hardware profile
@@ -228,19 +341,81 @@ export function TenantUserLaunchInstanceWizard({
                 {catalogItem.osImage}
               </Content>
             </div>
-            <div className="tenant-user-launch-wizard__preconfigured-item">
-              <Content component="p" className="tenant-user-launch-wizard__preconfigured-label">
-                Network / VLAN
-              </Content>
-              <Content component="p" className="tenant-user-launch-wizard__preconfigured-value">
-                {LAUNCH_INSTANCE_WIZARD_DEMO.networkVlan}
-              </Content>
-            </div>
+            {networkContext.enabled && !includeNetworkingStep ? (
+              <div className="tenant-user-launch-wizard__preconfigured-item">
+                <Content component="p" className="tenant-user-launch-wizard__preconfigured-label">
+                  Network
+                </Content>
+                <Content component="p" className="tenant-user-launch-wizard__preconfigured-value">
+                  {assignedNetworkSummary}
+                </Content>
+                <Content component="p" className="tenant-user-launch-wizard__assigned-helper">
+                  {LAUNCH_INSTANCE_WIZARD_DEMO.networkingAssignedHelper}
+                </Content>
+              </div>
+            ) : null}
           </div>
         </div>
       </Form>
     </div>
   )
+
+  const renderNetworkingStep = () => {
+    const assignedFields = networkContext.fields.filter((field) => field.locked)
+    const editableFields = networkContext.fields.filter((field) => !field.locked)
+
+    return (
+      <div className="tenant-user-launch-wizard__step">
+        <Content component="h2" className="tenant-user-launch-wizard__step-title">
+          {LAUNCH_INSTANCE_WIZARD_DEMO.networkingTitle}
+        </Content>
+        <Content component="p" className="tenant-user-launch-wizard__step-lede">
+          {LAUNCH_INSTANCE_WIZARD_DEMO.networkingLede}
+        </Content>
+
+        {assignedFields.length > 0 ? (
+          <div className="tenant-user-launch-wizard__assigned-grid">
+            {assignedFields.map((field) => (
+              <AssignedNetworkField key={field.kind} field={field} />
+            ))}
+          </div>
+        ) : null}
+
+        <Form autoComplete="off" className="tenant-user-launch-wizard__form">
+          {editableFields.map((field) => {
+            const fieldId = `launch-instance-${field.kind}`
+            const selectedId = getSelectedIdForField(field)
+
+            return (
+              <FormGroup key={field.kind} label={field.label} fieldId={fieldId} isRequired>
+                <FormSelect
+                  id={fieldId}
+                  value={selectedId}
+                  onChange={(_event, value) => updateNetworkSelection(field.kind, value)}
+                  aria-label={field.label}
+                >
+                  {field.options.map((option) => (
+                    <FormSelectOption
+                      key={option.id}
+                      value={option.id}
+                      label={getCatalogOptionLabel(option.name, option.detail)}
+                    />
+                  ))}
+                </FormSelect>
+                <FormHelperText>
+                  <HelperText>
+                    <HelperTextItem>
+                      Choose the {field.label.toLowerCase()} for this instance.
+                    </HelperTextItem>
+                  </HelperText>
+                </FormHelperText>
+              </FormGroup>
+            )
+          })}
+        </Form>
+      </div>
+    )
+  }
 
   const renderReviewStep = () => (
     <div className="tenant-user-launch-wizard__step">
@@ -281,10 +456,18 @@ export function TenantUserLaunchInstanceWizard({
           <DescriptionListTerm>OS image</DescriptionListTerm>
           <DescriptionListDescription>{catalogItem.osImage}</DescriptionListDescription>
         </DescriptionListGroup>
-        <DescriptionListGroup>
-          <DescriptionListTerm>Network</DescriptionListTerm>
-          <DescriptionListDescription>{LAUNCH_INSTANCE_WIZARD_DEMO.reviewNetwork}</DescriptionListDescription>
-        </DescriptionListGroup>
+        {networkContext.enabled ? (
+          <>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Network</DescriptionListTerm>
+              <DescriptionListDescription>{assignedNetworkSummary}</DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Security group</DescriptionListTerm>
+              <DescriptionListDescription>{securityGroupLabel}</DescriptionListDescription>
+            </DescriptionListGroup>
+          </>
+        ) : null}
         <DescriptionListGroup>
           <DescriptionListTerm>Team</DescriptionListTerm>
           <DescriptionListDescription>{projectName}</DescriptionListDescription>
@@ -363,6 +546,8 @@ export function TenantUserLaunchInstanceWizard({
     switch (stepId) {
       case 'configure':
         return renderConfigureStep()
+      case 'networking':
+        return renderNetworkingStep()
       case 'review':
         return renderReviewStep()
       case 'provisioning':
@@ -373,16 +558,28 @@ export function TenantUserLaunchInstanceWizard({
   }
 
   const getStepFooter = (stepId: LaunchInstanceWizardStepId) => {
-    if (stepId === 'configure') {
+    if (stepId === 'configure' || stepId === 'networking') {
       return {
         isNextDisabled:
-          !isInstanceNameValid(form.instanceName) || !form.sshPublicKey.trim(),
+          stepId === 'configure'
+            ? !isInstanceNameValid(form.instanceName) || !form.sshPublicKey.trim()
+            : false,
         nextButtonText: (
           <span className="tenant-user-launch-wizard__footer-label">
             <span>Continue</span>
             <ArrowRightIcon aria-hidden />
           </span>
         ),
+        ...(stepId === 'networking'
+          ? {
+              backButtonText: (
+                <span className="tenant-user-launch-wizard__footer-label">
+                  <ArrowLeftIcon aria-hidden />
+                  <span>Back</span>
+                </span>
+              ),
+            }
+          : {}),
       }
     }
 
@@ -425,13 +622,18 @@ export function TenantUserLaunchInstanceWizard({
     >
       {isOpen ? (
         <Wizard
-          key="launch-instance-wizard"
+          key={`launch-instance-wizard-${includeNetworkingStep ? 'net' : 'no-net'}`}
           className="tenant-user-launch-wizard"
           height="40rem"
           onClose={handleClose}
           onStepChange={(_event, currentStep) => {
             const stepId = String(currentStep.id).replace('launch-instance-step-', '')
-            if (stepId === 'configure' || stepId === 'review' || stepId === 'provisioning') {
+            if (
+              stepId === 'configure' ||
+              stepId === 'networking' ||
+              stepId === 'review' ||
+              stepId === 'provisioning'
+            ) {
               setActiveStepId(stepId)
             }
           }}
@@ -445,7 +647,7 @@ export function TenantUserLaunchInstanceWizard({
             />
           }
         >
-          {LAUNCH_INSTANCE_WIZARD_STEPS.map((step) => (
+          {wizardSteps.map((step) => (
             <WizardStep
               key={step.id}
               name={step.label}
@@ -459,4 +661,8 @@ export function TenantUserLaunchInstanceWizard({
       ) : null}
     </Modal>
   )
+}
+
+function getCatalogOptionLabel(name: string, detail: string): string {
+  return `${name} · ${detail}`
 }

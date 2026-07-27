@@ -19,6 +19,7 @@ import {
   toggleCatalogServiceFilter,
 } from '../../components/catalog/CatalogServiceFilterToggle'
 import { CatalogViewToggle } from '../../components/catalog/CatalogViewToggle'
+import { TenantUserCatalogItemDetailsDrawer } from '../../components/tenant-user/TenantUserCatalogItemDetailsDrawer'
 import { TenantUserLaunchInstanceWizard } from '../../components/tenant-user/TenantUserLaunchInstanceWizard'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
@@ -28,6 +29,7 @@ import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import { CATALOG_SERVICE_FILTER_LABELS, type CatalogServiceId } from '../../providerSetup/templateDemo'
 import { getTenantUserCatalogCard, getTenantUserCatalogCardFromDraft } from '../../tenantUser/catalog'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
+import { resolveLaunchNetworkContext } from '../../tenantUser/launchNetworking'
 import { TENANT_USER_CATALOG_PAGE } from '../../tenantUser/constants'
 import type { TenantInstance } from '../../tenantUser/instances'
 
@@ -56,6 +58,7 @@ export function TenantUserCatalogPage({
 }: TenantUserCatalogPageProps) {
   const [viewMode, setViewMode] = useState<CatalogViewMode>(() => getCatalogViewMode('grid'))
   const [isWizardOpen, setIsWizardOpen] = useState(autoOpenLaunchWizard)
+  const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const catalogItem = useMemo(() => {
     if (preferCatalogDraft && catalogDraft) {
@@ -63,6 +66,10 @@ export function TenantUserCatalogPage({
     }
     return getTenantUserCatalogCard(organization, catalogDraft)
   }, [organization, catalogDraft, preferCatalogDraft])
+  const networkContext = useMemo(
+    () => resolveLaunchNetworkContext(organization, catalogDraft, preferCatalogDraft),
+    [organization, catalogDraft, preferCatalogDraft],
+  )
   const [selectedFilters, setSelectedFilters] = useState<Set<CatalogServiceId>>(
     () => new Set([catalogItem.serviceId]),
   )
@@ -124,11 +131,24 @@ export function TenantUserCatalogPage({
     return 'No catalog items for the selected services'
   })()
 
+  const openDetails = () => {
+    setIsDetailsDrawerOpen(true)
+  }
+
+  const closeDetails = () => {
+    setIsDetailsDrawerOpen(false)
+  }
+
   const openLaunchWizard = () => {
+    setIsDetailsDrawerOpen(false)
     setIsWizardOpen(true)
   }
 
   const catalogItemActions: IAction[] = [
+    {
+      title: 'View details',
+      onClick: openDetails,
+    },
     {
       title: LAUNCH_INSTANCE_WIZARD_DEMO.launchInstanceLabel,
       onClick: openLaunchWizard,
@@ -147,171 +167,180 @@ export function TenantUserCatalogPage({
     </Button>
   )
 
+  const nameLink = (
+    <Button
+      variant="link"
+      isInline
+      className="tenant-user-catalog__name-link"
+      onClick={openDetails}
+    >
+      {catalogItem.displayName}
+    </Button>
+  )
+
   return (
-    <div className="tenant-user-workspace-page tenant-user-catalog">
-      <Title headingLevel="h1" size="3xl" className="tenant-user-catalog__title">
-        Catalog
-      </Title>
-      <Content component="p" className="tenant-user-catalog__lede">
-        {TENANT_USER_CATALOG_PAGE.lede}
-      </Content>
+    <TenantUserCatalogItemDetailsDrawer
+      isExpanded={isDetailsDrawerOpen}
+      onClose={closeDetails}
+      catalogItem={isDetailsDrawerOpen ? catalogItem : null}
+      networkContext={networkContext}
+      onLaunch={openLaunchWizard}
+    >
+      <div className="tenant-user-workspace-page tenant-user-catalog">
+        <Title headingLevel="h1" size="3xl" className="tenant-user-catalog__title">
+          Catalog
+        </Title>
+        <Content component="p" className="tenant-user-catalog__lede">
+          {TENANT_USER_CATALOG_PAGE.lede}
+        </Content>
 
-      <div className="catalog-view-toolbar tenant-user-catalog__toolbar">
-        <div className="catalog-view-toolbar__start">
-          <CatalogServiceFilterToggle
-            selectedFilters={selectedFilters}
-            serviceCounts={serviceCounts}
-            onToggle={handleFilterToggle}
-          />
-          <SearchInput
-            className="catalog-search"
-            placeholder="Search catalog items"
-            value={searchValue}
-            onChange={(_event, value) => setSearchValue(value)}
-            onClear={() => setSearchValue('')}
-            aria-label="Search catalog items"
-          />
+        <div className="catalog-view-toolbar tenant-user-catalog__toolbar">
+          <div className="catalog-view-toolbar__start">
+            <CatalogServiceFilterToggle
+              selectedFilters={selectedFilters}
+              serviceCounts={serviceCounts}
+              onToggle={handleFilterToggle}
+            />
+            <SearchInput
+              className="catalog-search"
+              placeholder="Search catalog items"
+              value={searchValue}
+              onChange={(_event, value) => setSearchValue(value)}
+              onClear={() => setSearchValue('')}
+              aria-label="Search catalog items"
+            />
+          </div>
+          <CatalogViewToggle viewMode={viewMode} onChange={handleViewModeChange} />
         </div>
-        <CatalogViewToggle viewMode={viewMode} onChange={handleViewModeChange} />
+
+        {!showCatalogItem ? (
+          <EmptyState className="tenant-user-catalog__empty">
+            <Title headingLevel="h2" size="lg">
+              {emptyStateTitle}
+            </Title>
+            <EmptyStateBody>
+              {selectedFilters.size === 0
+                ? 'Choose one or more services above to filter the catalog.'
+                : searchValue.trim() && matchesActiveFilter
+                  ? 'Try a different search term or clear the search field.'
+                  : 'No catalog items match the selected services.'}
+            </EmptyStateBody>
+          </EmptyState>
+        ) : viewMode === 'grid' ? (
+          <div className="catalog-card-grid tenant-user-catalog__grid">
+            <Card isCompact={false} className="tenant-user-catalog__card">
+              <CardBody>
+                <div className="tenant-user-catalog__card-header">
+                  <span className="tenant-user-catalog__icon" aria-hidden>
+                    {getCatalogServiceIcon(catalogItem.serviceId)}
+                  </span>
+                  <div className="tenant-user-catalog__card-header-actions">
+                    <Label color="blue" className="tenant-user-catalog__card-label">
+                      {catalogItem.service}
+                    </Label>
+                    <Label color="green" className="tenant-user-catalog__card-label">
+                      {catalogItem.status}
+                    </Label>
+                    <ActionsColumn items={catalogItemActions} />
+                  </div>
+                </div>
+
+                <Content component="p" className="tenant-user-catalog__primary-cell">
+                  {nameLink}
+                </Content>
+
+                <dl className="tenant-user-catalog__specs-list">
+                  <div className="tenant-user-catalog__spec-row">
+                    <dt className="tenant-user-catalog__spec-label">CPU</dt>
+                    <dd className="tenant-user-catalog__spec-value">{catalogItem.cpu}</dd>
+                  </div>
+                  <div className="tenant-user-catalog__spec-row">
+                    <dt className="tenant-user-catalog__spec-label">RAM</dt>
+                    <dd className="tenant-user-catalog__spec-value">{catalogItem.ram}</dd>
+                  </div>
+                  <div className="tenant-user-catalog__spec-row">
+                    <dt className="tenant-user-catalog__spec-label">GPU</dt>
+                    <dd className="tenant-user-catalog__spec-value">{catalogItem.gpu}</dd>
+                  </div>
+                  <div className="tenant-user-catalog__spec-row">
+                    <dt className="tenant-user-catalog__spec-label">OS image</dt>
+                    <dd className="tenant-user-catalog__spec-value">{catalogItem.osImage}</dd>
+                  </div>
+                </dl>
+
+                <div className="tenant-user-catalog__footer-note">
+                  <LockIcon aria-hidden />
+                  <span>{catalogItem.footerNote}</span>
+                </div>
+                {launchButton}
+              </CardBody>
+            </Card>
+          </div>
+        ) : (
+          <div className="catalog-table-panel">
+            <Content component="p" className="catalog-table-result-count">
+              {formatCatalogTableResultCount(1, 'catalog item')}
+            </Content>
+            <Table
+              aria-label="Catalog items"
+              className="catalog-data-table tenant-user-catalog__table"
+            >
+              <Thead>
+                <Tr>
+                  <Th>Name</Th>
+                  <Th>Status</Th>
+                  <Th>CPU</Th>
+                  <Th>RAM</Th>
+                  <Th>GPU</Th>
+                  <Th>OS image</Th>
+                  <Th>Action</Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                <Tr>
+                  <Td dataLabel="Name">
+                    <Content component="p" className="tenant-user-catalog__display-name">
+                      {nameLink}
+                    </Content>
+                    <Content component="p" className="tenant-user-catalog__category-label">
+                      {catalogItem.categoryLabel}
+                    </Content>
+                  </Td>
+                  <Td dataLabel="Status">
+                    <Label color="green" isCompact>
+                      {catalogItem.status}
+                    </Label>
+                  </Td>
+                  <Td dataLabel="CPU">{catalogItem.cpu}</Td>
+                  <Td dataLabel="RAM">{catalogItem.ram}</Td>
+                  <Td dataLabel="GPU">{catalogItem.gpu}</Td>
+                  <Td dataLabel="OS image">{catalogItem.osImage}</Td>
+                  <Td dataLabel="Action">{launchButton}</Td>
+                </Tr>
+              </Tbody>
+            </Table>
+          </div>
+        )}
+
+        <TenantUserLaunchInstanceWizard
+          isOpen={isWizardOpen}
+          catalogItem={catalogItem}
+          organization={organization}
+          catalogDraft={catalogDraft}
+          preferCatalogDraft={preferCatalogDraft}
+          projectName={projectName}
+          onClose={() => setIsWizardOpen(false)}
+          onProvisioningStarted={onProvisioningStarted}
+          onDismissDuringProvisioning={(instanceId) => {
+            setIsWizardOpen(false)
+            onDismissDuringProvisioning(instanceId)
+          }}
+          onWizardFinished={(instanceId) => {
+            setIsWizardOpen(false)
+            onWizardFinished(instanceId)
+          }}
+        />
       </div>
-
-      {!showCatalogItem ? (
-        <EmptyState className="tenant-user-catalog__empty">
-          <Title headingLevel="h2" size="lg">
-            {emptyStateTitle}
-          </Title>
-          <EmptyStateBody>
-            {selectedFilters.size === 0
-              ? 'Choose one or more services above to filter the catalog.'
-              : searchValue.trim() && matchesActiveFilter
-                ? 'Try a different search term or clear the search field.'
-                : 'No catalog items match the selected services.'}
-          </EmptyStateBody>
-        </EmptyState>
-      ) : viewMode === 'grid' ? (
-        <div className="catalog-card-grid tenant-user-catalog__grid">
-          <Card isCompact={false} className="tenant-user-catalog__card">
-            <CardBody>
-              <div className="tenant-user-catalog__card-header">
-                <span className="tenant-user-catalog__icon" aria-hidden>
-                  {getCatalogServiceIcon(catalogItem.serviceId)}
-                </span>
-                <div className="tenant-user-catalog__card-header-actions">
-                  <Label color="blue" className="tenant-user-catalog__card-label">
-                    {catalogItem.service}
-                  </Label>
-                  <Label color="green" className="tenant-user-catalog__card-label">
-                    {catalogItem.status}
-                  </Label>
-                  <ActionsColumn items={catalogItemActions} />
-                </div>
-              </div>
-
-              <Content component="p" className="tenant-user-catalog__primary-cell">
-                <Button
-                  variant="link"
-                  isInline
-                  className="tenant-user-catalog__name-link"
-                  onClick={openLaunchWizard}
-                >
-                  {catalogItem.displayName}
-                </Button>
-              </Content>
-
-              <dl className="tenant-user-catalog__specs-list">
-                <div className="tenant-user-catalog__spec-row">
-                  <dt className="tenant-user-catalog__spec-label">CPU</dt>
-                  <dd className="tenant-user-catalog__spec-value">{catalogItem.cpu}</dd>
-                </div>
-                <div className="tenant-user-catalog__spec-row">
-                  <dt className="tenant-user-catalog__spec-label">RAM</dt>
-                  <dd className="tenant-user-catalog__spec-value">{catalogItem.ram}</dd>
-                </div>
-                <div className="tenant-user-catalog__spec-row">
-                  <dt className="tenant-user-catalog__spec-label">GPU</dt>
-                  <dd className="tenant-user-catalog__spec-value">{catalogItem.gpu}</dd>
-                </div>
-                <div className="tenant-user-catalog__spec-row">
-                  <dt className="tenant-user-catalog__spec-label">OS image</dt>
-                  <dd className="tenant-user-catalog__spec-value">{catalogItem.osImage}</dd>
-                </div>
-              </dl>
-
-              <div className="tenant-user-catalog__footer-note">
-                <LockIcon aria-hidden />
-                <span>{catalogItem.footerNote}</span>
-              </div>
-              {launchButton}
-            </CardBody>
-          </Card>
-        </div>
-      ) : (
-        <div className="catalog-table-panel">
-          <Content component="p" className="catalog-table-result-count">
-            {formatCatalogTableResultCount(1, 'catalog item')}
-          </Content>
-          <Table
-            aria-label="Catalog items"
-            className="catalog-data-table tenant-user-catalog__table"
-          >
-          <Thead>
-            <Tr>
-              <Th>Service</Th>
-              <Th>Status</Th>
-              <Th>Display name</Th>
-              <Th>CPU</Th>
-              <Th>RAM</Th>
-              <Th>GPU</Th>
-              <Th>OS image</Th>
-              <Th>Action</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            <Tr>
-              <Td dataLabel="Service">
-                <Label color="blue" isCompact>
-                  {catalogItem.service}
-                </Label>
-              </Td>
-              <Td dataLabel="Status">
-                <Label color="green" isCompact>
-                  {catalogItem.status}
-                </Label>
-              </Td>
-              <Td dataLabel="Display name">
-                <Content component="p" className="tenant-user-catalog__display-name">
-                  {catalogItem.displayName}
-                </Content>
-                <Content component="p" className="tenant-user-catalog__category-label">
-                  {catalogItem.categoryLabel}
-                </Content>
-              </Td>
-              <Td dataLabel="CPU">{catalogItem.cpu}</Td>
-              <Td dataLabel="RAM">{catalogItem.ram}</Td>
-              <Td dataLabel="GPU">{catalogItem.gpu}</Td>
-              <Td dataLabel="OS image">{catalogItem.osImage}</Td>
-              <Td dataLabel="Action">{launchButton}</Td>
-            </Tr>
-          </Tbody>
-        </Table>
-        </div>
-      )}
-
-      <TenantUserLaunchInstanceWizard
-        isOpen={isWizardOpen}
-        catalogItem={catalogItem}
-        projectName={projectName}
-        onClose={() => setIsWizardOpen(false)}
-        onProvisioningStarted={onProvisioningStarted}
-        onDismissDuringProvisioning={(instanceId) => {
-          setIsWizardOpen(false)
-          onDismissDuringProvisioning(instanceId)
-        }}
-        onWizardFinished={(instanceId) => {
-          setIsWizardOpen(false)
-          onWizardFinished(instanceId)
-        }}
-      />
-    </div>
+    </TenantUserCatalogItemDetailsDrawer>
   )
 }

@@ -1,4 +1,8 @@
-export type LaunchInstanceWizardStepId = 'configure' | 'review' | 'provisioning'
+export type LaunchInstanceWizardStepId =
+  | 'configure'
+  | 'networking'
+  | 'review'
+  | 'provisioning'
 
 export type ProvisioningBootLogStatus = 'completed' | 'in-progress' | 'pending'
 
@@ -18,6 +22,11 @@ export const LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
     description: '',
   },
   {
+    id: 'networking',
+    label: 'Networking',
+    description: '',
+  },
+  {
     id: 'review',
     label: 'Review',
     description: '',
@@ -28,6 +37,12 @@ export const LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
     description: '',
   },
 ]
+
+export function getLaunchInstanceWizardSteps(includeNetworking: boolean) {
+  return includeNetworking
+    ? LAUNCH_INSTANCE_WIZARD_STEPS
+    : LAUNCH_INSTANCE_WIZARD_STEPS.filter((step) => step.id !== 'networking')
+}
 
 export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   configureTitle: 'Name your instance',
@@ -41,12 +56,14 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   preConfiguredTitle: 'Pre-configured by admin',
   hardwareProfile: 'Dell PowerEdge R750',
   osImage: 'RHEL 9.4',
-  networkVlan: '200 · Primary Provisioning',
+  networkingTitle: 'Networking',
+  networkingLede:
+    'Your organization sets the network placement. Choose any options your project allows.',
+  networkingAssignedHelper: 'Set by your organization',
   reviewTitle: 'Review',
   reviewHardware: 'Dell PowerEdge R750',
   reviewGpu: 'CPU-only',
   reviewOsImage: 'RHEL 9.4',
-  reviewNetwork: '200 · Primary Provisioning Network',
   reviewProvisioningNote:
     'Provisioning takes 10–20 minutes — live boot log tracks data center progress.',
   confirmProvisioningLabel: 'Confirm & start provisioning',
@@ -93,11 +110,30 @@ export const PROVISIONING_BOOT_LOG_STEPS: ProvisioningBootLogStep[] = [
 export type LaunchInstanceWizardForm = {
   instanceName: string
   sshPublicKey: string
+  virtualNetworkId: string
+  subnetId: string
+  securityGroupId: string
 }
 
 export const DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM: LaunchInstanceWizardForm = {
   instanceName: LAUNCH_INSTANCE_WIZARD_DEMO.defaultInstanceName,
   sshPublicKey: LAUNCH_INSTANCE_WIZARD_DEMO.defaultSshPublicKey,
+  virtualNetworkId: '',
+  subnetId: '',
+  securityGroupId: '',
+}
+
+export function createLaunchInstanceWizardForm(networkDefaults: {
+  virtualNetworkId: string
+  subnetId: string
+  securityGroupId: string
+}): LaunchInstanceWizardForm {
+  return {
+    ...DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM,
+    virtualNetworkId: networkDefaults.virtualNetworkId,
+    subnetId: networkDefaults.subnetId,
+    securityGroupId: networkDefaults.securityGroupId,
+  }
 }
 
 export function isInstanceNameValid(name: string): boolean {
