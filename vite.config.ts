@@ -10,7 +10,7 @@ const base =
       : `${process.env.BASE_PATH}/`
     : '/'
 
-const BMAAS_LANDING_LAST_UPDATED_LABEL = 'July 24, 2026'
+const BMAAS_LANDING_LAST_UPDATED_LABEL = 'July 27, 2026'
 
 export default defineConfig({
   base,
