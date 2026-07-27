@@ -20,7 +20,7 @@ import {
   Title,
   Tooltip,
 } from '@patternfly/react-core'
-import { ServerIcon } from '@patternfly/react-icons/dist/esm/icons/server-icon'
+import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import {
   formatTenantInstanceCreatedAt,
   formatTenantInstanceName,
@@ -99,7 +99,7 @@ export function TenantUserInstanceDetailsDrawer({
       <DrawerHead>
         <div className="tenant-user-instances__drawer-title-row">
           <span className="tenant-user-instances__drawer-icon-wrap" aria-hidden>
-            <ServerIcon />
+            {getCatalogServiceIcon('baremetal')}
           </span>
           <Title
             headingLevel="h2"

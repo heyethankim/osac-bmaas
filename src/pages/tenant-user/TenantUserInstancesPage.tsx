@@ -17,10 +17,10 @@ import {
   Spinner,
   Title,
 } from '@patternfly/react-core'
-import { ServerIcon } from '@patternfly/react-icons/dist/esm/icons/server-icon'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table'
 import { ViewModeToggle } from '../../components/catalog/CatalogViewToggle'
 import { TenantUserInstanceDetailsDrawer } from '../../components/tenant-user/TenantUserInstanceDetailsDrawer'
+import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
 import {
   getInstancesViewMode,
@@ -256,7 +256,7 @@ export function TenantUserInstancesPage({
                   <CardBody>
                     <div className="tenant-user-instances__card-header">
                       <span className="tenant-user-instances__card-icon" aria-hidden>
-                        <ServerIcon />
+                        {getCatalogServiceIcon('baremetal')}
                       </span>
                       <div className="tenant-user-instances__card-header-actions">
                         <InstanceStatusLabel status={instance.status} />
@@ -378,7 +378,9 @@ export function TenantUserInstancesPage({
           )
         ) : (
           <EmptyState className="tenant-user-instances__empty">
-            <ServerIcon className="tenant-user-instances__empty-icon" />
+            <span className="tenant-user-instances__empty-icon" aria-hidden>
+              {getCatalogServiceIcon('baremetal')}
+            </span>
             <Title headingLevel="h2" size="lg">
               No instances yet
             </Title>

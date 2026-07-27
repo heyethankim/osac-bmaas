@@ -1461,7 +1461,13 @@
 }
 
 .tenant-user-instances__empty-icon {
-  color: var(--pf-t--global--text--color--subtle);
+  display: inline-flex;
+  color: var(--pf-t--global--icon--color--subtle);
+}
+
+.tenant-user-instances__empty-icon svg {
+  width: 3.375rem;
+  height: 3.375rem;
 }
 
 .tenant-user-instances__drawer-panel {
