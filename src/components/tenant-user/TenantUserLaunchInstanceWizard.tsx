@@ -49,6 +49,7 @@ import {
 import {
   formatLaunchInstanceNetworkLabel,
   getLaunchNetworkFieldLabel,
+  resolveLaunchInstanceNetworking,
   resolveLaunchNetworkContext,
   type LaunchNetworkFieldView,
 } from '../../tenantUser/launchNetworking'
@@ -153,6 +154,7 @@ export function TenantUserLaunchInstanceWizard({
   }
 
   const networkLabel = formatLaunchInstanceNetworkLabel(networkContext, networkSelections)
+  const networking = resolveLaunchInstanceNetworking(networkContext, networkSelections)
   const assignedNetworkSummary = networkContext.assignedNetworkSummary
   const securityGroupField = networkContext.fields.find(
     (field) => field.kind === 'security-group',
@@ -223,6 +225,7 @@ export function TenantUserLaunchInstanceWizard({
       hardwareProfile: catalogItem.hardwareProfile,
       osImage: catalogItem.osImage,
       networkLabel,
+      networking,
       gpuLabel: catalogItem.gpu,
       projectName: scopeLabel,
       scopeKind,
@@ -264,6 +267,7 @@ export function TenantUserLaunchInstanceWizard({
     form.instanceName,
     isOpen,
     networkLabel,
+    networking,
     onProvisioningStarted,
     onWizardFinished,
     scopeKind,

@@ -132,22 +132,50 @@ export function formatLaunchInstanceNetworkLabel(
     securityGroupId: string
   },
 ): string {
-  if (!context.enabled) {
+  const details = resolveLaunchInstanceNetworking(context, selections)
+  if (!details.enabled) {
     return 'Networking off'
   }
 
-  const virtualNetwork =
-    context.fields.find((field) => field.kind === 'virtual-network')?.options.find(
-      (option) => option.id === selections.virtualNetworkId,
-    )?.name ?? context.policy.virtualNetwork.name
-  const subnet =
-    context.fields.find((field) => field.kind === 'subnet')?.options.find(
-      (option) => option.id === selections.subnetId,
-    )?.name ?? context.policy.subnet.name
-  const securityGroup =
-    context.fields.find((field) => field.kind === 'security-group')?.options.find(
-      (option) => option.id === selections.securityGroupId,
-    )?.name ?? context.policy.securityGroup.name
+  return `${details.virtualNetwork} / ${details.subnet} · ${details.securityGroup}`
+}
 
-  return `${virtualNetwork} / ${subnet} · ${securityGroup}`
+export function resolveLaunchInstanceNetworking(
+  context: LaunchNetworkContext,
+  selections: {
+    virtualNetworkId: string
+    subnetId: string
+    securityGroupId: string
+  },
+): {
+  enabled: boolean
+  virtualNetwork: string
+  subnet: string
+  securityGroup: string
+} {
+  if (!context.enabled) {
+    return {
+      enabled: false,
+      virtualNetwork: '',
+      subnet: '',
+      securityGroup: '',
+    }
+  }
+
+  const virtualNetworkField = context.fields.find((field) => field.kind === 'virtual-network')
+  const subnetField = context.fields.find((field) => field.kind === 'subnet')
+  const securityGroupField = context.fields.find((field) => field.kind === 'security-group')
+
+  return {
+    enabled: true,
+    virtualNetwork: virtualNetworkField
+      ? getLaunchNetworkFieldLabel(virtualNetworkField, selections.virtualNetworkId)
+      : context.policy.virtualNetwork.name,
+    subnet: subnetField
+      ? getLaunchNetworkFieldLabel(subnetField, selections.subnetId)
+      : context.policy.subnet.name,
+    securityGroup: securityGroupField
+      ? getLaunchNetworkFieldLabel(securityGroupField, selections.securityGroupId)
+      : context.policy.securityGroup.name,
+  }
 }

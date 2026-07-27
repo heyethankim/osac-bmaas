@@ -16,6 +16,20 @@ function isTenantUserNavId(value: string): value is TenantUserNavId {
   return TENANT_USER_NAV_IDS.includes(value as TenantUserNavId)
 }
 
+function isTenantInstanceNetworking(value: unknown): value is TenantInstance['networking'] {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const networking = value as NonNullable<TenantInstance['networking']>
+  return (
+    typeof networking.enabled === 'boolean' &&
+    typeof networking.virtualNetwork === 'string' &&
+    typeof networking.subnet === 'string' &&
+    typeof networking.securityGroup === 'string'
+  )
+}
+
 function isTenantInstance(value: unknown): value is TenantInstance {
   if (!value || typeof value !== 'object') {
     return false
@@ -29,6 +43,7 @@ function isTenantInstance(value: unknown): value is TenantInstance {
     typeof instance.hardwareProfile === 'string' &&
     typeof instance.osImage === 'string' &&
     typeof instance.networkLabel === 'string' &&
+    (instance.networking === undefined || isTenantInstanceNetworking(instance.networking)) &&
     typeof instance.gpuLabel === 'string' &&
     typeof instance.projectName === 'string' &&
     (instance.scopeKind === undefined ||

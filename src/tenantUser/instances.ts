@@ -2,13 +2,22 @@ export type TenantInstanceStatus = 'provisioning' | 'restarting' | 'running' | '
 
 export type TenantInstanceScopeKind = 'organization' | 'project'
 
+export type TenantInstanceNetworking = {
+  enabled: boolean
+  virtualNetwork: string
+  subnet: string
+  securityGroup: string
+}
+
 export type TenantInstance = {
   id: string
   name: string
   catalogItemDisplayName: string
   hardwareProfile: string
   osImage: string
+  /** Combined summary for legacy list views; prefer `networking` in details. */
   networkLabel: string
+  networking?: TenantInstanceNetworking
   gpuLabel: string
   /** Scope label: project name when project-scoped, organization name otherwise. */
   projectName: string
@@ -109,4 +118,32 @@ export function getTenantInstanceScopeFieldLabel(
   instance: TenantInstance,
 ): 'Organization' | 'Project' {
   return instance.scopeKind === 'organization' ? 'Organization' : 'Project'
+}
+
+/** Normalize legacy instances that only stored a combined networkLabel. */
+export function resolveTenantInstanceNetworking(
+  instance: TenantInstance,
+): TenantInstanceNetworking {
+  if (instance.networking) {
+    return instance.networking
+  }
+
+  if (!instance.networkLabel || instance.networkLabel === 'Networking off') {
+    return {
+      enabled: false,
+      virtualNetwork: '',
+      subnet: '',
+      securityGroup: '',
+    }
+  }
+
+  const [placement = '', securityGroup = ''] = instance.networkLabel.split(' · ')
+  const [virtualNetwork = '', subnet = ''] = placement.split(' / ')
+
+  return {
+    enabled: true,
+    virtualNetwork: virtualNetwork.trim(),
+    subnet: subnet.trim(),
+    securityGroup: securityGroup.trim(),
+  }
 }

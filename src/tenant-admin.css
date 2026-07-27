@@ -1439,6 +1439,10 @@
   gap: var(--pf-t--global--spacer--sm);
 }
 
+.tenant-user-catalog__drawer-network-term .pf-v6-c-label {
+  font-weight: var(--pf-t--global--font--weight--body--default);
+}
+
 .tenant-user-instances__secondary-cell.pf-v6-c-content--p {
   margin-block-start: var(--pf-t--global--spacer--xs);
   color: var(--pf-t--global--text--color--subtle);

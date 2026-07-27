@@ -331,7 +331,7 @@ export function CatalogItemDetailsDrawer({
               </div>
               <Switch
                 id={`catalog-detail-network-enabled-${catalog.catalogItemId}`}
-                label="On"
+                label={networkPolicy.enabled ? 'On' : 'Off'}
                 aria-label="Networking"
                 hasCheckIcon
                 isChecked={networkPolicy.enabled}

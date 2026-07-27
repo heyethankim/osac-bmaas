@@ -26,6 +26,7 @@ import {
   formatTenantInstanceName,
   getTenantInstanceScopeFieldLabel,
   getTenantInstanceStatusLabel,
+  resolveTenantInstanceNetworking,
   type TenantInstance,
 } from '../../tenantUser/instances'
 
@@ -86,8 +87,9 @@ export function TenantUserInstanceDetailsDrawer({
   const canRestart = isRunning
   const canTerminate =
     instance !== null && instance.status !== 'provisioning' && instance.status !== 'restarting'
+  const networking = instance ? resolveTenantInstanceNetworking(instance) : null
 
-  const panelContent = instance ? (
+  const panelContent = instance && networking ? (
     <DrawerPanelContent
       className="tenant-user-instances__drawer-panel"
       defaultSize="28rem"
@@ -228,16 +230,34 @@ export function TenantUserInstanceDetailsDrawer({
           <Content component="p" className="tenant-user-instances__drawer-section-title">
             Networking
           </Content>
-          <DescriptionList
-            isCompact
-            className="tenant-user-instances__drawer-dl"
-            aria-label="Instance networking"
-          >
-            <DescriptionListGroup>
-              <DescriptionListTerm>Network</DescriptionListTerm>
-              <DescriptionListDescription>{instance.networkLabel}</DescriptionListDescription>
-            </DescriptionListGroup>
-          </DescriptionList>
+          {!networking.enabled ? (
+            <Content component="p" className="tenant-user-instances__drawer-lede">
+              Networking is off for this catalog item.
+            </Content>
+          ) : (
+            <DescriptionList
+              isCompact
+              className="tenant-user-instances__drawer-dl"
+              aria-label="Instance networking"
+            >
+              <DescriptionListGroup>
+                <DescriptionListTerm>Virtual network</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {networking.virtualNetwork || '—'}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Subnet</DescriptionListTerm>
+                <DescriptionListDescription>{networking.subnet || '—'}</DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Security group</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {networking.securityGroup || '—'}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+            </DescriptionList>
+          )}
         </div>
 
         <Divider className="tenant-user-instances__drawer-divider" />
