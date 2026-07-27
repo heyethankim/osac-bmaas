@@ -132,7 +132,7 @@ export function BmaasLandingPage() {
               <RoleBlock
                 id="bmaas-landing-role-infra-admin-title"
                 title="Infra Admin"
-                description="Bootstrap the platform for Bare Metal, Cluster, VM, and Models services."
+                description="Bootstrap the environment, manage bare metal, and make Red Hat cloud-ready."
                 icon={
                   <Icon size="md">
                     <CogIcon className="bmaas-role-landing__icon-svg" />
@@ -149,7 +149,7 @@ export function BmaasLandingPage() {
               <RoleBlock
                 id="bmaas-landing-role-provider-title"
                 title="Provider Admin"
-                description="Manage tenants, policies, and Bare Metal, Cluster, VM, and Models services."
+                description="Manage platform services, tenants, and global policies for the OSAC environment."
                 icon={
                   <Icon size="md">
                     <CrownIcon className="bmaas-role-landing__icon-svg" />
@@ -170,7 +170,7 @@ export function BmaasLandingPage() {
               <RoleBlock
                 id="bmaas-landing-role-tenant-admin-title"
                 title="Tenant Admin"
-                description="Configure quotas and catalogs for Bare Metal, Cluster, VM, and Models."
+                description="Configure organization resources, users, quotas, and shared services."
                 icon={
                   <Icon size="md">
                     <UserIcon className="bmaas-role-landing__icon-svg" />
