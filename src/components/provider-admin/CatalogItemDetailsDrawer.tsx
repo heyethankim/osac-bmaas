@@ -58,6 +58,7 @@ type CatalogItemDetailsDrawerProps = {
   templateDescription: string
   canAssign: boolean
   onAssignToOrganization: () => void
+  onPublish?: () => void
   onNetworkPolicyChange?: (networkPolicy: CatalogNetworkPolicy) => void
   children: ReactNode
 }
@@ -80,6 +81,7 @@ export function CatalogItemDetailsDrawer({
   templateDescription,
   canAssign,
   onAssignToOrganization,
+  onPublish,
   onNetworkPolicyChange,
   children,
 }: CatalogItemDetailsDrawerProps) {
@@ -172,7 +174,21 @@ export function CatalogItemDetailsDrawer({
       </DrawerHead>
 
       <DrawerPanelBody className="provider-admin-catalog-items__drawer-body">
-        {catalog.scope === 'global-public' ? null : (
+        <Content component="p" className="provider-admin-catalog-items__drawer-lede">
+          {catalog.description?.trim() || templateDescription}
+        </Content>
+
+        {!isLive ? (
+          <div className="provider-admin-catalog-items__drawer-actions">
+            <Button
+              variant="primary"
+              className="provider-admin-catalog-items__drawer-action"
+              onClick={onPublish}
+            >
+              Publish
+            </Button>
+          </div>
+        ) : catalog.scope === 'global-public' ? null : (
           <div className="provider-admin-catalog-items__drawer-actions">
             <Button
               variant="primary"
@@ -184,10 +200,6 @@ export function CatalogItemDetailsDrawer({
             </Button>
           </div>
         )}
-
-        <Content component="p" className="provider-admin-catalog-items__drawer-lede">
-          {catalog.description?.trim() || templateDescription}
-        </Content>
 
         <Divider className="provider-admin-catalog-items__drawer-divider" />
 

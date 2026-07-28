@@ -582,6 +582,12 @@ export function ProviderAdminCatalogPage({
         setIsDetailsDrawerOpen(false)
         setIsAssignModalOpen(true)
       }}
+      onPublish={() => {
+        if (!drawerCatalog) {
+          return
+        }
+        openTogglePublish(drawerCatalog)
+      }}
       onNetworkPolicyChange={(networkPolicy) => {
         if (!drawerCatalog) {
           return
