@@ -291,7 +291,7 @@ export function ProviderAdminCatalogPage({
   const [selectedFilters, setSelectedFilters] = useState<Set<CatalogServiceId>>(
     () => new Set(initialServiceFilters.length > 0 ? initialServiceFilters : ['baremetal']),
   )
-  const [viewMode, setViewMode] = useState<CatalogViewMode>(() => getCatalogViewMode('list'))
+  const [viewMode, setViewMode] = useState<CatalogViewMode>(() => getCatalogViewMode('grid'))
   const [searchValue, setSearchValue] = useState('')
   const [organizations, setOrganizations] = useState(() => getProviderRegisteredOrganizations())
   const [isPublishWizardOpen, setIsPublishWizardOpen] = useState(false)
