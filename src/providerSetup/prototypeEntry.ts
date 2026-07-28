@@ -38,7 +38,7 @@ import {
   SECOND_CATALOG_ITEM_DISPLAY_NAME,
   parseRateCardFromForm,
 } from './templateDemo'
-import { DEFAULT_PROVIDER_SERVICE_SELECTION } from './constants'
+import { DEFAULT_PROVIDER_SERVICE_SELECTION, type ProviderServiceId } from './constants'
 import type { ProviderAdminNavId } from '../providerAdmin/constants'
 
 /** Stable demo IDs so ensure can re-seed without creating duplicates. */
@@ -236,8 +236,8 @@ export function ensureProviderCatalogDemoItems(): ProviderCatalogDraft[] {
   }
 
   const selectedServices = getProviderSelectedServices()
-  const nextServices = [
-    ...new Set([
+  const nextServices: ProviderServiceId[] = [
+    ...new Set<ProviderServiceId>([
       ...(selectedServices.length > 0 ? selectedServices : DEFAULT_PROVIDER_SERVICE_SELECTION),
       'baremetal',
       'cluster',
