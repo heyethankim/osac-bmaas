@@ -60,7 +60,7 @@ export function ProviderAdminComputeImagesPage() {
       <ProviderAdminWorkspacePageHeader
         kicker="Infrastructure"
         title="Compute images"
-        lede="Register bootable OS images for Metal3 provisioning. BMaaS templates select images from this registry."
+        lede="Register bootable OS images for Metal3 provisioning. Bare metal templates select images from this registry."
         action={
           <Button
             variant="primary"

@@ -1,20 +1,29 @@
+import type { CatalogSpecRow } from '../catalog/catalogSpecs'
+import { resolveCatalogSpecRows } from '../catalog/catalogSpecs'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../providerSetup/storage'
+import {
+  getCatalogItemStatus,
+  getProviderCatalogItems,
+} from '../providerSetup/storage'
+import { ensureProviderCatalogDemoItems } from '../providerSetup/prototypeEntry'
 import {
   CATALOG_SERVICE_LABELS,
   resolveRateCard,
   type CatalogServiceId,
   type RateCard,
 } from '../providerSetup/templateDemo'
-import { resolveTenantCatalogView } from '../tenantAdmin/catalog'
 
 export type TenantUserCatalogCard = {
   serviceId: CatalogServiceId
   service: string
   status: string
   displayName: string
+  description?: string
   categoryLabel: string
   hardwareProfile: string
+  /** Service-aware configuration rows for cards and drawers. */
+  specRows: CatalogSpecRow[]
   cpu: string
   ram: string
   gpu: string
@@ -36,12 +45,51 @@ export const TENANT_USER_CATALOG_SPECS = {
   footerNote: 'Hardware pre-configured · Admin-managed',
 } as const
 
+const CLUSTER_FOOTER_NOTE = 'Cluster profile pre-configured · Admin-managed'
+const VM_FOOTER_NOTE = 'Instance profile pre-configured · Admin-managed'
+
+function getFooterNote(serviceId: CatalogServiceId): string {
+  if (serviceId === 'cluster') {
+    return CLUSTER_FOOTER_NOTE
+  }
+  if (serviceId === 'virtual-machine') {
+    return VM_FOOTER_NOTE
+  }
+  return TENANT_USER_CATALOG_SPECS.footerNote
+}
+
+function getHardwareProfileLabel(
+  serviceId: CatalogServiceId,
+  specRows: CatalogSpecRow[],
+): string {
+  if (serviceId === 'cluster') {
+    return specRows.find((row) => row.label === 'Platform')?.value ?? 'OpenShift cluster'
+  }
+  if (serviceId === 'virtual-machine') {
+    return specRows.find((row) => row.label === 'Instance type')?.value ?? 'Standard VM'
+  }
+
+  return TENANT_USER_CATALOG_SPECS.hardwareProfile
+}
+
 export const TENANT_USER_CATALOG_FALLBACK: TenantUserCatalogCard = {
   serviceId: 'baremetal',
   service: CATALOG_SERVICE_LABELS.baremetal,
   status: 'Live',
   displayName: 'Bare Metal - GPU Training Server',
-  ...TENANT_USER_CATALOG_SPECS,
+  categoryLabel: TENANT_USER_CATALOG_SPECS.categoryLabel,
+  hardwareProfile: TENANT_USER_CATALOG_SPECS.hardwareProfile,
+  specRows: [
+    { label: 'CPU', value: TENANT_USER_CATALOG_SPECS.cpu },
+    { label: 'RAM', value: TENANT_USER_CATALOG_SPECS.ram },
+    { label: 'GPU', value: TENANT_USER_CATALOG_SPECS.gpu },
+    { label: 'OS image', value: TENANT_USER_CATALOG_SPECS.osImage },
+  ],
+  cpu: TENANT_USER_CATALOG_SPECS.cpu,
+  ram: TENANT_USER_CATALOG_SPECS.ram,
+  gpu: TENANT_USER_CATALOG_SPECS.gpu,
+  osImage: TENANT_USER_CATALOG_SPECS.osImage,
+  footerNote: TENANT_USER_CATALOG_SPECS.footerNote,
   catalogItemId: 'cat_L3RID02N',
   templateRefId: 'bm_2R6X47GO',
   templateName: 'compute-standard-r750',
@@ -53,18 +101,49 @@ export const TENANT_USER_CATALOG_FALLBACK: TenantUserCatalogCard = {
   },
 }
 
+function isCatalogVisibleToTenantUser(
+  item: ProviderCatalogDraft,
+  organization: RegisteredOrganization | null,
+): boolean {
+  if (getCatalogItemStatus(item) === 'unpublished') {
+    return false
+  }
+
+  if (item.scope === 'global-public') {
+    return true
+  }
+
+  if (!organization) {
+    return false
+  }
+
+  return (
+    item.enterpriseTenantId === organization.id ||
+    organization.catalogItemId === item.catalogItemId
+  )
+}
+
 export function getTenantUserCatalogCardFromDraft(
   catalog: ProviderCatalogDraft,
 ): TenantUserCatalogCard {
   const rateCard = resolveRateCard(catalog)
   const serviceId = catalog.serviceId ?? 'baremetal'
+  const specRows = resolveCatalogSpecRows(catalog)
 
   return {
     serviceId,
     service: CATALOG_SERVICE_LABELS[serviceId],
     status: 'Live',
     displayName: catalog.displayName,
-    ...TENANT_USER_CATALOG_SPECS,
+    description: catalog.description,
+    categoryLabel: specRows.map((row) => row.value).join(' · '),
+    hardwareProfile: getHardwareProfileLabel(serviceId, specRows),
+    specRows,
+    cpu: specRows[0]?.value ?? '—',
+    ram: specRows[1]?.value ?? '—',
+    gpu: specRows[2]?.value ?? '—',
+    osImage: specRows[3]?.value ?? '—',
+    footerNote: getFooterNote(serviceId),
     catalogItemId: catalog.catalogItemId,
     templateRefId: catalog.templateRefId,
     templateName: catalog.templateName,
@@ -72,35 +151,50 @@ export function getTenantUserCatalogCardFromDraft(
   }
 }
 
+/** All live offerings visible to the tenant user (Bare Metal + Cluster, etc.). */
+export function getTenantUserCatalogCards(
+  organization: RegisteredOrganization | null,
+  catalogDraft: ProviderCatalogDraft | null,
+  options?: { preferCatalogDraft?: boolean },
+): TenantUserCatalogCard[] {
+  ensureProviderCatalogDemoItems()
+
+  const providerItems = getProviderCatalogItems().filter((item) =>
+    isCatalogVisibleToTenantUser(item, organization),
+  )
+
+  if (providerItems.length > 0) {
+    const serviceOrder: CatalogServiceId[] = ['baremetal', 'cluster', 'models', 'virtual-machine']
+    const cards = providerItems
+      .map((item) => getTenantUserCatalogCardFromDraft(item))
+      .sort((a, b) => serviceOrder.indexOf(a.serviceId) - serviceOrder.indexOf(b.serviceId))
+
+    if (options?.preferCatalogDraft && catalogDraft) {
+      const preferredId = catalogDraft.catalogItemId
+      if (!cards.some((card) => card.catalogItemId === preferredId)) {
+        return [getTenantUserCatalogCardFromDraft(catalogDraft), ...cards]
+      }
+    }
+
+    return cards
+  }
+
+  if (catalogDraft) {
+    return [getTenantUserCatalogCardFromDraft(catalogDraft)]
+  }
+
+  return [TENANT_USER_CATALOG_FALLBACK]
+}
+
+/** @deprecated Prefer getTenantUserCatalogCards for multi-item catalogs. */
 export function getTenantUserCatalogCard(
   organization: RegisteredOrganization | null,
   catalogDraft: ProviderCatalogDraft | null,
 ): TenantUserCatalogCard {
-  if (!organization) {
-    return catalogDraft
-      ? getTenantUserCatalogCardFromDraft(catalogDraft)
-      : TENANT_USER_CATALOG_FALLBACK
-  }
-
-  const catalogView = resolveTenantCatalogView(organization, catalogDraft)
-  if (!catalogView) {
-    return catalogDraft
-      ? getTenantUserCatalogCardFromDraft(catalogDraft)
-      : TENANT_USER_CATALOG_FALLBACK
-  }
-
-  const rateCard = resolveRateCard(catalogView)
-  const serviceId = catalogDraft?.serviceId ?? 'baremetal'
-
-  return {
-    serviceId,
-    service: CATALOG_SERVICE_LABELS[serviceId],
-    status: 'Live',
-    displayName: catalogView.displayName,
-    ...TENANT_USER_CATALOG_SPECS,
-    catalogItemId: catalogView.catalogItemId,
-    templateRefId: catalogView.templateRefId,
-    templateName: catalogView.templateName,
-    rateCard,
-  }
+  const cards = getTenantUserCatalogCards(organization, catalogDraft)
+  return (
+    cards.find((card) => card.serviceId === 'baremetal') ??
+    cards[0] ??
+    TENANT_USER_CATALOG_FALLBACK
+  )
 }

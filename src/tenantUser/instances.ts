@@ -1,3 +1,7 @@
+import type { CatalogSpecRow } from '../catalog/catalogSpecs'
+import { resolveCatalogSpecRows } from '../catalog/catalogSpecs'
+import type { CatalogServiceId } from '../providerSetup/templateDemo'
+
 export type TenantInstanceStatus = 'provisioning' | 'restarting' | 'running' | 'failed'
 
 export type TenantInstanceScopeKind = 'organization' | 'project'
@@ -13,18 +17,60 @@ export type TenantInstance = {
   id: string
   name: string
   catalogItemDisplayName: string
+  /** Catalog service that produced this instance (drives icon and specs). */
+  serviceId?: CatalogServiceId
   hardwareProfile: string
   osImage: string
   /** Combined summary for legacy list views; prefer `networking` in details. */
   networkLabel: string
   networking?: TenantInstanceNetworking
   gpuLabel: string
+  /** Service-aware configuration rows captured at launch (Cluster, etc.). */
+  specRows?: CatalogSpecRow[]
   /** Scope label: project name when project-scoped, organization name otherwise. */
   projectName: string
   scopeKind: TenantInstanceScopeKind
   status: TenantInstanceStatus
   createdAt: string
   provisionedAt: string | null
+}
+
+export function getTenantInstanceServiceId(instance: TenantInstance): CatalogServiceId {
+  if (instance.serviceId) {
+    return instance.serviceId
+  }
+
+  // Legacy instances launched before serviceId was persisted.
+  if (/cluster/i.test(instance.catalogItemDisplayName)) {
+    return 'cluster'
+  }
+  if (/\bvm\b|virtual machine/i.test(instance.catalogItemDisplayName)) {
+    return 'virtual-machine'
+  }
+
+  return 'baremetal'
+}
+
+/** Spec rows for cards and drawers; prefers rows captured at launch. */
+export function getTenantInstanceSpecRows(instance: TenantInstance): CatalogSpecRow[] {
+  if (instance.specRows?.length) {
+    return instance.specRows
+  }
+
+  const serviceId = getTenantInstanceServiceId(instance)
+
+  if (serviceId === 'cluster' || serviceId === 'virtual-machine') {
+    return resolveCatalogSpecRows(
+      { serviceId, templateRefId: '', templateName: '' },
+      { includeDetails: true },
+    )
+  }
+
+  return [
+    { label: 'Hardware', value: instance.hardwareProfile },
+    { label: 'OS image', value: instance.osImage },
+    { label: 'GPU', value: instance.gpuLabel },
+  ]
 }
 
 /** Demo latency before a restarted instance returns to Running. */
@@ -44,15 +90,17 @@ export function formatTenantInstanceCreatedAt(iso: string): string {
   })
 }
 
-/** Title-caps hyphenated instance names for display (e.g. ml-experiment-02 → ML-Experiment-02). */
+/** Title-caps hyphenated instance names for display (e.g. bm-server-02 → BM-Server-02). */
 export function formatTenantInstanceName(name: string): string {
+  const acronyms = new Set(['ocp', 'bm', 'vm'])
+
   return name
     .split('-')
     .map((part) => {
       if (/^\d+$/.test(part)) {
         return part
       }
-      if (part.length <= 2) {
+      if (part.length <= 2 || acronyms.has(part.toLowerCase())) {
         return part.toUpperCase()
       }
       return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()

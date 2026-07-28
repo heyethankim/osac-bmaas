@@ -979,7 +979,18 @@
   gap: var(--pf-t--global--spacer--sm);
 }
 
+.tenant-admin-catalog-manager__access-status {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
 .tenant-admin-catalog-manager__networking-status-label.pf-v6-c-label {
+  --pf-v6-c-label--FontSize: var(--pf-t--global--font--size--body--sm);
+}
+
+.tenant-admin-catalog-manager__access-status-label.pf-v6-c-label {
   --pf-v6-c-label--FontSize: var(--pf-t--global--font--size--body--sm);
 }
 
@@ -1100,11 +1111,7 @@
 }
 
 .tenant-user-instances__toolbar {
-  margin-block-end: var(--pf-t--global--spacer--sm);
-}
-
-.tenant-user-instances__toolbar .tenant-user-instances__title.pf-v6-c-title {
-  margin-block-end: 0;
+  margin-block-end: var(--pf-t--global--spacer--lg);
 }
 
 .tenant-user-instances__provisioning-alert {
@@ -1115,6 +1122,12 @@
   display: flex;
   flex-direction: column;
   gap: var(--pf-t--global--spacer--md);
+}
+
+/* Specs share catalog row styling; footer owns the single divider. */
+.tenant-user-instances__card .tenant-user-catalog__specs-list {
+  padding-block: 0;
+  border-block-end: none;
 }
 
 .tenant-user-instances__card-header {

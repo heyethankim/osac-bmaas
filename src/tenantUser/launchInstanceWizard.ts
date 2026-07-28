@@ -1,3 +1,5 @@
+import type { CatalogServiceId } from '../providerSetup/templateDemo'
+
 export type LaunchInstanceWizardStepId =
   | 'configure'
   | 'networking'
@@ -48,8 +50,8 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   configureTitle: 'Name your instance',
   configureLede:
     'Hardware is pre-configured by your admin. Fill in the fields below to personalize your instance.',
-  instanceNamePlaceholder: 'e.g. ML-Experiment-01',
-  defaultInstanceName: 'ML-Experiment-01',
+  instanceNamePlaceholder: 'e.g. BM-Server-01',
+  defaultInstanceName: 'BM-Server-01',
   sshPlaceholder: 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC...',
   defaultSshPublicKey:
     'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC7example+demo+key+northsummitbank+tenant-user@demo',
@@ -106,12 +108,36 @@ export type LaunchInstanceWizardForm = {
   securityGroupId: string
 }
 
-export const LAUNCH_INSTANCE_NAME_PREFIX = 'ML-Experiment'
+export const LAUNCH_INSTANCE_NAME_PREFIX_BY_SERVICE: Record<CatalogServiceId, string> = {
+  baremetal: 'BM-Server',
+  cluster: 'OCP-Cluster',
+  models: 'Model-Endpoint',
+  'virtual-machine': 'VM-Instance',
+}
 
-/** Next demo name like ML-Experiment-01, ML-Experiment-02, … based on existing instances. */
-export function getNextLaunchInstanceName(existingNames: readonly string[]): string {
+/** @deprecated Prefer getLaunchInstanceNamePrefix(serviceId). */
+export const LAUNCH_INSTANCE_NAME_PREFIX = LAUNCH_INSTANCE_NAME_PREFIX_BY_SERVICE.baremetal
+
+export function getLaunchInstanceNamePrefix(serviceId: CatalogServiceId): string {
+  return LAUNCH_INSTANCE_NAME_PREFIX_BY_SERVICE[serviceId]
+}
+
+export function getLaunchInstanceNamePlaceholder(serviceId: CatalogServiceId): string {
+  return `e.g. ${getLaunchInstanceNamePrefix(serviceId)}-01`
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/** Next demo name like BM-Server-01 or OCP-Cluster-01 based on service + existing instances. */
+export function getNextLaunchInstanceName(
+  existingNames: readonly string[],
+  serviceId: CatalogServiceId = 'baremetal',
+): string {
+  const prefix = getLaunchInstanceNamePrefix(serviceId)
   let highestNumber = 0
-  const pattern = /^ml-experiment-(\d+)$/i
+  const pattern = new RegExp(`^${escapeRegExp(prefix)}-(\\d+)$`, 'i')
 
   for (const name of existingNames) {
     const match = name.trim().match(pattern)
@@ -125,7 +151,7 @@ export function getNextLaunchInstanceName(existingNames: readonly string[]): str
     }
   }
 
-  return `${LAUNCH_INSTANCE_NAME_PREFIX}-${String(highestNumber + 1).padStart(2, '0')}`
+  return `${prefix}-${String(highestNumber + 1).padStart(2, '0')}`
 }
 
 export const DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM: LaunchInstanceWizardForm = {

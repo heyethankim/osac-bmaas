@@ -57,6 +57,12 @@ export const DEFAULT_CATALOG_NETWORK_POLICY: CatalogNetworkPolicy = {
   },
 }
 
+/** Same placement defaults as the seed policy, with networking turned off. */
+export const DISABLED_CATALOG_NETWORK_POLICY: CatalogNetworkPolicy = {
+  ...DEFAULT_CATALOG_NETWORK_POLICY,
+  enabled: false,
+}
+
 /** Previous seed default (off + all unlocked) — migrate to current defaults on read. */
 function isLegacyDefaultNetworkPolicy(policy: CatalogNetworkPolicy): boolean {
   return (

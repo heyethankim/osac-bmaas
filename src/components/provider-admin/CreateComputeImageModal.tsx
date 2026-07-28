@@ -102,7 +102,7 @@ export function CreateComputeImageModal({
       <ModalBody>
         <Form autoComplete="off" className="provider-admin-compute-images__form">
           <Content component="p" className="provider-admin-compute-images__modal-lede">
-            Register bootable OS images for Metal3 provisioning. BMaaS templates reference images
+            Register bootable OS images for Metal3 provisioning. Bare metal templates reference images
             from this registry.
           </Content>
           <FormGroup label="Image name" fieldId="create-compute-image-name" isRequired>

@@ -25,6 +25,8 @@ import {
   formatTenantInstanceCreatedAt,
   formatTenantInstanceName,
   getTenantInstanceScopeFieldLabel,
+  getTenantInstanceServiceId,
+  getTenantInstanceSpecRows,
   getTenantInstanceStatusLabel,
   resolveTenantInstanceNetworking,
   type TenantInstance,
@@ -88,6 +90,8 @@ export function TenantUserInstanceDetailsDrawer({
   const canTerminate =
     instance !== null && instance.status !== 'provisioning' && instance.status !== 'restarting'
   const networking = instance ? resolveTenantInstanceNetworking(instance) : null
+  const serviceId = instance ? getTenantInstanceServiceId(instance) : 'baremetal'
+  const specRows = instance ? getTenantInstanceSpecRows(instance) : []
 
   const panelContent = instance && networking ? (
     <DrawerPanelContent
@@ -99,7 +103,7 @@ export function TenantUserInstanceDetailsDrawer({
       <DrawerHead>
         <div className="tenant-user-instances__drawer-title-row">
           <span className="tenant-user-instances__drawer-icon-wrap" aria-hidden>
-            {getCatalogServiceIcon('baremetal')}
+            {getCatalogServiceIcon(serviceId)}
           </span>
           <Title
             headingLevel="h2"
@@ -210,18 +214,12 @@ export function TenantUserInstanceDetailsDrawer({
           className="tenant-user-instances__drawer-dl"
           aria-label="Instance specifications"
         >
-          <DescriptionListGroup>
-            <DescriptionListTerm>Hardware</DescriptionListTerm>
-            <DescriptionListDescription>{instance.hardwareProfile}</DescriptionListDescription>
-          </DescriptionListGroup>
-          <DescriptionListGroup>
-            <DescriptionListTerm>OS image</DescriptionListTerm>
-            <DescriptionListDescription>{instance.osImage}</DescriptionListDescription>
-          </DescriptionListGroup>
-          <DescriptionListGroup>
-            <DescriptionListTerm>GPU</DescriptionListTerm>
-            <DescriptionListDescription>{instance.gpuLabel}</DescriptionListDescription>
-          </DescriptionListGroup>
+          {specRows.map((row) => (
+            <DescriptionListGroup key={row.label}>
+              <DescriptionListTerm>{row.label}</DescriptionListTerm>
+              <DescriptionListDescription>{row.value}</DescriptionListDescription>
+            </DescriptionListGroup>
+          ))}
         </DescriptionList>
 
         <Divider className="tenant-user-instances__drawer-divider" />

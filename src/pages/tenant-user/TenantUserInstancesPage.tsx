@@ -14,11 +14,18 @@ import {
   ModalFooter,
   ModalHeader,
   ModalVariant,
+  SearchInput,
   Spinner,
   Title,
 } from '@patternfly/react-core'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table'
+import {
+  CatalogServiceFilterToggle,
+  countCatalogServices,
+  toggleCatalogServiceFilter,
+} from '../../components/catalog/CatalogServiceFilterToggle'
 import { ViewModeToggle } from '../../components/catalog/CatalogViewToggle'
+import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
 import { TenantUserInstanceDetailsDrawer } from '../../components/tenant-user/TenantUserInstanceDetailsDrawer'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
@@ -27,11 +34,14 @@ import {
   setInstancesViewMode,
   type ViewMode,
 } from '../../catalog/viewMode'
+import { CATALOG_SERVICE_FILTER_LABELS, type CatalogServiceId } from '../../providerSetup/templateDemo'
 import {
   formatTenantInstanceCreatedAt,
   formatTenantInstanceName,
   getTenantInstanceActions,
   getTenantInstanceScopeFieldLabel,
+  getTenantInstanceServiceId,
+  getTenantInstanceSpecRows,
   getTenantInstanceStatusLabel,
   TENANT_INSTANCE_RESTART_DURATION_MS,
   type TenantInstance,
@@ -92,12 +102,23 @@ export function TenantUserInstancesPage({
   onDismissBackgroundProvisioningNotice,
 }: TenantUserInstancesPageProps) {
   const [viewMode, setViewMode] = useState<ViewMode>(() => getInstancesViewMode('grid'))
+  const [searchValue, setSearchValue] = useState('')
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null)
   const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false)
   const [instancePendingTerminate, setInstancePendingTerminate] = useState<TenantInstance | null>(
     null,
   )
   const restartTimersRef = useRef<Map<string, number>>(new Map())
+
+  const instanceServiceIds = useMemo(
+    () => instances.map((instance) => getTenantInstanceServiceId(instance)),
+    [instances],
+  )
+  const initialServiceFilters = instanceServiceIds.length > 0 ? instanceServiceIds : (['baremetal'] as const)
+  const [selectedFilters, setSelectedFilters] = useState<Set<CatalogServiceId>>(
+    () => new Set(initialServiceFilters),
+  )
+  const knownServiceFiltersRef = useRef(new Set(initialServiceFilters))
 
   const scopeColumnLabel = useMemo(() => {
     if (instances.length === 0) {
@@ -109,13 +130,68 @@ export function TenantUserInstancesPage({
     return labels.size === 1 ? [...labels][0] : 'Scope'
   }, [defaultScopeFieldLabel, instances])
 
-  const sortedInstances = [...instances].sort(
-    (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+  const sortedInstances = useMemo(
+    () =>
+      [...instances].sort(
+        (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+      ),
+    [instances],
   )
+
+  const serviceCounts = useMemo(
+    () => countCatalogServices(instanceServiceIds),
+    [instanceServiceIds],
+  )
+
+  const filteredInstances = useMemo(() => {
+    const query = searchValue.trim().toLowerCase()
+
+    return sortedInstances.filter((instance) => {
+      const serviceId = getTenantInstanceServiceId(instance)
+      if (!selectedFilters.has(serviceId)) {
+        return false
+      }
+
+      if (!query) {
+        return true
+      }
+
+      const serviceLabel = CATALOG_SERVICE_FILTER_LABELS[serviceId]
+      const specRows = getTenantInstanceSpecRows(instance)
+
+      return (
+        instance.name.toLowerCase().includes(query) ||
+        formatTenantInstanceName(instance.name).toLowerCase().includes(query) ||
+        instance.catalogItemDisplayName.toLowerCase().includes(query) ||
+        serviceLabel.toLowerCase().includes(query) ||
+        getTenantInstanceStatusLabel(instance.status).toLowerCase().includes(query) ||
+        specRows.some(
+          (row) =>
+            row.label.toLowerCase().includes(query) || row.value.toLowerCase().includes(query),
+        )
+      )
+    })
+  }, [sortedInstances, selectedFilters, searchValue])
+
   const selectedInstance = useMemo(
     () => instances.find((instance) => instance.id === selectedInstanceId) ?? null,
     [instances, selectedInstanceId],
   )
+
+  useEffect(() => {
+    setSelectedFilters((current) => {
+      const next = new Set(current)
+      let changed = false
+      for (const serviceId of instanceServiceIds) {
+        if (!knownServiceFiltersRef.current.has(serviceId)) {
+          knownServiceFiltersRef.current.add(serviceId)
+          next.add(serviceId)
+          changed = true
+        }
+      }
+      return changed ? next : current
+    })
+  }, [instanceServiceIds])
 
   useEffect(() => {
     return () => {
@@ -198,6 +274,27 @@ export function TenantUserInstancesPage({
     setInstancesViewMode(nextViewMode)
   }
 
+  const handleFilterToggle = (serviceId: CatalogServiceId, isSelected: boolean) => {
+    setSelectedFilters((current) => toggleCatalogServiceFilter(current, serviceId, isSelected))
+  }
+
+  const emptyStateTitle = (() => {
+    if (instances.length === 0) {
+      return 'No instances yet'
+    }
+    if (selectedFilters.size === 0) {
+      return 'Select a service to view instances'
+    }
+    if (searchValue.trim()) {
+      return 'No instances match your search'
+    }
+    if (selectedFilters.size === 1) {
+      const [onlyFilter] = selectedFilters
+      return `No ${CATALOG_SERVICE_FILTER_LABELS[onlyFilter!]} instances yet`
+    }
+    return 'No instances for the selected services'
+  })()
+
   return (
     <>
     <TenantUserInstanceDetailsDrawer
@@ -208,13 +305,32 @@ export function TenantUserInstancesPage({
       onRestart={handleRestartInstance}
     >
       <div className="tenant-user-workspace-page tenant-user-instances">
+        <Title headingLevel="h1" size="3xl" className="tenant-user-instances__title">
+          My instances
+        </Title>
+        <Content component="p" className="tenant-user-instances__lede">
+          Monitor and manage instances provisioned in your project.
+        </Content>
+
         <div className="catalog-view-toolbar tenant-user-instances__toolbar">
           <div className="catalog-view-toolbar__start">
-            <Title headingLevel="h1" size="3xl" className="tenant-user-instances__title">
-              My instances
-            </Title>
+            <CatalogServiceFilterToggle
+              selectedFilters={selectedFilters}
+              serviceCounts={serviceCounts}
+              onToggle={handleFilterToggle}
+              idPrefix="instances-filter-"
+              ariaLabel="Instance service filters"
+            />
+            <SearchInput
+              className="catalog-search"
+              placeholder="Search instances"
+              value={searchValue}
+              onChange={(_event, value) => setSearchValue(value)}
+              onClear={() => setSearchValue('')}
+              aria-label="Search instances"
+            />
           </div>
-          {sortedInstances.length > 0 ? (
+          {instances.length > 0 ? (
             <ViewModeToggle
               viewMode={viewMode}
               onChange={handleViewModeChange}
@@ -223,9 +339,6 @@ export function TenantUserInstancesPage({
             />
           ) : null}
         </div>
-        <Content component="p" className="tenant-user-instances__lede">
-          Monitor and manage instances provisioned in your project.
-        </Content>
 
         {showBackgroundProvisioningNotice ? (
           <Alert
@@ -248,15 +361,39 @@ export function TenantUserInstancesPage({
           </Alert>
         ) : null}
 
-        {sortedInstances.length > 0 ? (
-          viewMode === 'grid' ? (
+        {filteredInstances.length === 0 ? (
+          <EmptyState className="tenant-user-instances__empty">
+            <span className="tenant-user-instances__empty-icon" aria-hidden>
+              {getCatalogServiceIcon('baremetal')}
+            </span>
+            <Title headingLevel="h2" size="lg">
+              {emptyStateTitle}
+            </Title>
+            <EmptyStateBody>
+              {instances.length === 0
+                ? 'Launch an instance from the catalog to start provisioning capacity for your project.'
+                : selectedFilters.size === 0
+                  ? 'Choose one or more services above to filter your instances.'
+                  : searchValue.trim()
+                    ? 'Try a different search term or clear the search field.'
+                    : 'No instances match the selected services.'}
+            </EmptyStateBody>
+          </EmptyState>
+        ) : viewMode === 'grid' ? (
             <div className="catalog-card-grid tenant-user-instances__grid">
-              {sortedInstances.map((instance) => (
-                <Card key={instance.id} isCompact className="tenant-user-instances__card">
+              {filteredInstances.map((instance) => {
+                const serviceId = getTenantInstanceServiceId(instance)
+                const allSpecRows = getTenantInstanceSpecRows(instance)
+                // Cards: three highlights for Cluster/VM; Bare Metal shows full hardware rows.
+                const cardSpecRows =
+                  serviceId === 'baremetal' ? allSpecRows : allSpecRows.slice(0, 3)
+
+                return (
+                <Card key={instance.id} isCompact={false} className="tenant-user-instances__card">
                   <CardBody>
                     <div className="tenant-user-instances__card-header">
                       <span className="tenant-user-instances__card-icon" aria-hidden>
-                        {getCatalogServiceIcon('baremetal')}
+                        {getCatalogServiceIcon(serviceId)}
                       </span>
                       <div className="tenant-user-instances__card-header-actions">
                         <InstanceStatusLabel status={instance.status} />
@@ -287,26 +424,15 @@ export function TenantUserInstancesPage({
                       </Content>
                     </div>
 
-                    <dl className="tenant-user-instances__card-specs">
-                      <div className="tenant-user-instances__card-spec">
-                        <dt>Hardware</dt>
-                        <dd>{instance.hardwareProfile}</dd>
-                      </div>
-                      <div className="tenant-user-instances__card-spec">
-                        <dt>OS image</dt>
-                        <dd>{instance.osImage}</dd>
-                      </div>
-                      <div className="tenant-user-instances__card-spec">
-                        <dt>GPU</dt>
-                        <dd>{instance.gpuLabel}</dd>
-                      </div>
-                    </dl>
+                    <CatalogSpecRowsList
+                      rows={cardSpecRows}
+                      className="tenant-user-catalog__specs-list"
+                      rowClassName="tenant-user-catalog__spec-row"
+                      labelClassName="tenant-user-catalog__spec-label"
+                      valueClassName="tenant-user-catalog__spec-value"
+                    />
 
                     <dl className="tenant-user-instances__card-footer">
-                      <div className="tenant-user-instances__card-footer-row">
-                        <dt>{getTenantInstanceScopeFieldLabel(instance)}</dt>
-                        <dd>{instance.projectName}</dd>
-                      </div>
                       <div className="tenant-user-instances__card-footer-row">
                         <dt>Created</dt>
                         <dd>{formatTenantInstanceCreatedAt(instance.createdAt)}</dd>
@@ -314,12 +440,13 @@ export function TenantUserInstancesPage({
                     </dl>
                   </CardBody>
                 </Card>
-              ))}
+                )
+              })}
             </div>
           ) : (
             <div className="catalog-table-panel">
               <Content component="p" className="catalog-table-result-count">
-                {formatCatalogTableResultCount(sortedInstances.length, 'instance')}
+                {formatCatalogTableResultCount(filteredInstances.length, 'instance')}
               </Content>
               <Table
                 aria-label="My instances"
@@ -330,14 +457,19 @@ export function TenantUserInstancesPage({
                     <Th>Name</Th>
                     <Th>Status</Th>
                     <Th>{scopeColumnLabel}</Th>
-                    <Th>Hardware</Th>
-                    <Th>OS image</Th>
+                    <Th>Profile</Th>
+                    <Th>Detail</Th>
                     <Th>Created</Th>
                     <Th screenReaderText="Actions" />
                   </Tr>
                 </Thead>
                 <Tbody>
-                  {sortedInstances.map((instance) => (
+                  {filteredInstances.map((instance) => {
+                    const tableSpecRows = getTenantInstanceSpecRows(instance)
+                    const profileRow = tableSpecRows[0]
+                    const detailRow = tableSpecRows[1]
+
+                    return (
                     <Tr key={instance.id}>
                       <Td dataLabel="Name">
                         <Button
@@ -355,8 +487,8 @@ export function TenantUserInstancesPage({
                       <Td dataLabel={getTenantInstanceScopeFieldLabel(instance)}>
                         {instance.projectName}
                       </Td>
-                      <Td dataLabel="Hardware">{instance.hardwareProfile}</Td>
-                      <Td dataLabel="OS image">{instance.osImage}</Td>
+                      <Td dataLabel={profileRow?.label ?? 'Profile'}>{profileRow?.value ?? '—'}</Td>
+                      <Td dataLabel={detailRow?.label ?? 'Detail'}>{detailRow?.value ?? '—'}</Td>
                       <Td dataLabel="Created">
                         {formatTenantInstanceCreatedAt(instance.createdAt)}
                       </Td>
@@ -371,24 +503,12 @@ export function TenantUserInstancesPage({
                         />
                       </Td>
                     </Tr>
-                  ))}
+                    )
+                  })}
                 </Tbody>
               </Table>
             </div>
-          )
-        ) : (
-          <EmptyState className="tenant-user-instances__empty">
-            <span className="tenant-user-instances__empty-icon" aria-hidden>
-              {getCatalogServiceIcon('baremetal')}
-            </span>
-            <Title headingLevel="h2" size="lg">
-              No instances yet
-            </Title>
-            <EmptyStateBody>
-              Launch an instance from the catalog to start provisioning capacity for your project.
-            </EmptyStateBody>
-          </EmptyState>
-        )}
+          )}
       </div>
     </TenantUserInstanceDetailsDrawer>
 

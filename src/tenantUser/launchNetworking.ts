@@ -14,7 +14,10 @@ import {
   getProviderCatalogItems,
 } from '../providerSetup/storage'
 import {
+  applyTenantLocksForUsers,
+  applyTenantNetworkOverrides,
   getNetworkOptionDetail,
+  getTenantNetworkOverrides,
   resolveEffectiveNetworkPolicyForUsers,
 } from '../tenantAdmin/networking'
 
@@ -43,7 +46,21 @@ function resolvePolicyForLaunch(
   organization: RegisteredOrganization | null,
   catalogDraft: ProviderCatalogDraft | null,
   preferCatalogDraft: boolean,
+  catalogItemId?: string,
 ): CatalogNetworkPolicy {
+  const specificItem = catalogItemId
+    ? getProviderCatalogItems().find((item) => item.catalogItemId === catalogItemId)
+    : null
+
+  if (specificItem) {
+    const base = getCatalogItemNetworkPolicy(specificItem)
+    if (organization) {
+      const overrides = getTenantNetworkOverrides(organization.slug)
+      return applyTenantLocksForUsers(applyTenantNetworkOverrides(base, overrides), overrides)
+    }
+    return base
+  }
+
   if (preferCatalogDraft && catalogDraft) {
     return getCatalogItemNetworkPolicy(catalogDraft)
   }
@@ -64,8 +81,14 @@ export function resolveLaunchNetworkContext(
   organization: RegisteredOrganization | null,
   catalogDraft: ProviderCatalogDraft | null,
   preferCatalogDraft = false,
+  catalogItemId?: string,
 ): LaunchNetworkContext {
-  const policy = resolvePolicyForLaunch(organization, catalogDraft, preferCatalogDraft)
+  const policy = resolvePolicyForLaunch(
+    organization,
+    catalogDraft,
+    preferCatalogDraft,
+    catalogItemId,
+  )
 
   if (!policy.enabled) {
     return {

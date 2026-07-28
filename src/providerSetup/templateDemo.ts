@@ -207,7 +207,11 @@ export function formatRateCardHourly(rateCard: RateCard): string {
 }
 
 export const DEFAULT_CATALOG_ITEM_DISPLAY_NAME = 'Bare Metal - GPU Training Server'
-export const SECOND_CATALOG_ITEM_DISPLAY_NAME = 'Bare Metal - AI Inference Host'
+export const SECOND_CATALOG_ITEM_DISPLAY_NAME = 'Bare Metal - Dense GPU Node'
+/** Previous title for the second Bare Metal demo item — used when migrating stored catalogs. */
+export const LEGACY_SECOND_CATALOG_ITEM_DISPLAY_NAME = 'Bare Metal - AI Inference Host'
+/** Prefill for Provider Admin “Publish to catalog” Name step (distinct from seeded items). */
+export const PUBLISH_CATALOG_SUGGESTED_DISPLAY_NAME = 'Bare Metal - General Purpose Server'
 
 export function getCatalogDisplayName(hardwareProfileId: string): string {
   const profile = DISCOVERED_HARDWARE_PROFILES.find((item) => item.id === hardwareProfileId)
@@ -216,7 +220,7 @@ export function getCatalogDisplayName(hardwareProfileId: string): string {
   }
 
   if (profile.id === 'hpe-dl380') {
-    return 'GPU Node · NVIDIA A100 4x · 1 TB RAM'
+    return SECOND_CATALOG_ITEM_DISPLAY_NAME
   }
 
   return DEFAULT_CATALOG_ITEM_DISPLAY_NAME
@@ -232,7 +236,17 @@ export type SavedMasterTemplate = {
   rateCard: RateCard
 }
 
-export const DEMO_EXISTING_MASTER_TEMPLATES: SavedMasterTemplate[] = []
+export const DEMO_EXISTING_MASTER_TEMPLATES: SavedMasterTemplate[] = [
+  {
+    templateRefId: 'bm_hpe_dl380_a100',
+    templateName: GPU_BLUEPRINT_FORM.templateName,
+    description: GPU_BLUEPRINT_FORM.description,
+    hardwareProfileId: GPU_BLUEPRINT_FORM.hardwareProfileId,
+    osImageId: GPU_BLUEPRINT_FORM.osImage,
+    suggestedDisplayName: SECOND_CATALOG_ITEM_DISPLAY_NAME,
+    rateCard: parseRateCardFromForm(GPU_BLUEPRINT_FORM)!,
+  },
+]
 
 export type CatalogServiceId = 'baremetal' | 'cluster' | 'models' | 'virtual-machine'
 
@@ -254,7 +268,7 @@ export const CATALOG_SERVICE_OFFERINGS: CatalogServiceOffering[] = [
   {
     id: 'cluster',
     title: 'Cluster as a Service',
-    shortLabel: 'CaaS',
+    shortLabel: 'Cluster',
     description:
       'Publish OpenShift cluster profiles as tenant-requestable catalog items.',
   },
@@ -268,7 +282,7 @@ export const CATALOG_SERVICE_OFFERINGS: CatalogServiceOffering[] = [
   {
     id: 'virtual-machine',
     title: 'Virtual Machine as a Service',
-    shortLabel: 'VMaaS',
+    shortLabel: 'Virtual Machine',
     description:
       'Publish virtual machine flavors as tenant-requestable catalog items.',
   },
@@ -276,9 +290,9 @@ export const CATALOG_SERVICE_OFFERINGS: CatalogServiceOffering[] = [
 
 export const CATALOG_SERVICE_LABELS: Record<CatalogServiceId, string> = {
   baremetal: 'Bare Metal',
-  cluster: 'CaaS',
+  cluster: 'Cluster',
   models: 'MaaS',
-  'virtual-machine': 'VMaaS',
+  'virtual-machine': 'Virtual Machine',
 }
 
 export const CATALOG_SERVICE_FILTER_LABELS: Record<CatalogServiceId, string> = {

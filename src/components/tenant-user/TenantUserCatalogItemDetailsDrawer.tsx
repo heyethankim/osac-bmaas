@@ -22,6 +22,11 @@ import {
   Title,
 } from '@patternfly/react-core'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
+import {
+  getCatalogProfileFieldLabel,
+  getCatalogSpecsSectionLabel,
+  resolveCatalogSpecRows,
+} from '../../catalog/catalogSpecs'
 import type { TenantUserCatalogCard } from '../../tenantUser/catalog'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
 import type { LaunchNetworkContext } from '../../tenantUser/launchNetworking'
@@ -43,6 +48,23 @@ export function TenantUserCatalogItemDetailsDrawer({
   onLaunch,
   children,
 }: TenantUserCatalogItemDetailsDrawerProps) {
+  const specRows = catalogItem
+    ? resolveCatalogSpecRows(
+        {
+          serviceId: catalogItem.serviceId,
+          templateRefId: catalogItem.templateRefId,
+          templateName: catalogItem.templateName,
+        },
+        { includeDetails: catalogItem.serviceId !== 'baremetal' },
+      )
+    : []
+  const specsSectionLabel = catalogItem
+    ? getCatalogSpecsSectionLabel(catalogItem.serviceId)
+    : 'Hardware specifications'
+  const profileLabel = catalogItem
+    ? getCatalogProfileFieldLabel(catalogItem.serviceId)
+    : 'Linked template'
+
   const panelContent = catalogItem ? (
     <DrawerPanelContent
       className="tenant-user-catalog__drawer-panel"
@@ -82,7 +104,12 @@ export function TenantUserCatalogItemDetailsDrawer({
         </Button>
 
         <Content component="p" className="tenant-user-catalog__drawer-lede">
-          Review the hardware and networking configured for this offering before you launch.
+          {catalogItem.description?.trim() ||
+            (catalogItem.serviceId === 'cluster'
+              ? 'Review the cluster configuration and networking before you launch.'
+              : catalogItem.serviceId === 'virtual-machine'
+                ? 'Review the instance configuration and networking before you launch.'
+                : 'Review the hardware and networking configured for this offering before you launch.')}
         </Content>
 
         <Divider className="tenant-user-catalog__drawer-divider" />
@@ -104,32 +131,29 @@ export function TenantUserCatalogItemDetailsDrawer({
               </Label>
             </DescriptionListDescription>
           </DescriptionListGroup>
-        </DescriptionList>
-
-        <Divider className="tenant-user-catalog__drawer-divider" />
-
-        <DescriptionList
-          isCompact
-          className="tenant-user-catalog__drawer-dl"
-          aria-label="Hardware specifications"
-        >
           <DescriptionListGroup>
-            <DescriptionListTerm>CPU</DescriptionListTerm>
-            <DescriptionListDescription>{catalogItem.cpu}</DescriptionListDescription>
-          </DescriptionListGroup>
-          <DescriptionListGroup>
-            <DescriptionListTerm>RAM</DescriptionListTerm>
-            <DescriptionListDescription>{catalogItem.ram}</DescriptionListDescription>
-          </DescriptionListGroup>
-          <DescriptionListGroup>
-            <DescriptionListTerm>GPU</DescriptionListTerm>
-            <DescriptionListDescription>{catalogItem.gpu}</DescriptionListDescription>
-          </DescriptionListGroup>
-          <DescriptionListGroup>
-            <DescriptionListTerm>OS image</DescriptionListTerm>
-            <DescriptionListDescription>{catalogItem.osImage}</DescriptionListDescription>
+            <DescriptionListTerm>{profileLabel}</DescriptionListTerm>
+            <DescriptionListDescription>{catalogItem.templateName}</DescriptionListDescription>
           </DescriptionListGroup>
         </DescriptionList>
+
+        {specRows.length > 0 ? (
+          <>
+            <Divider className="tenant-user-catalog__drawer-divider" />
+            <DescriptionList
+              isCompact
+              className="tenant-user-catalog__drawer-dl"
+              aria-label={specsSectionLabel}
+            >
+              {specRows.map((row) => (
+                <DescriptionListGroup key={row.label}>
+                  <DescriptionListTerm>{row.label}</DescriptionListTerm>
+                  <DescriptionListDescription>{row.value}</DescriptionListDescription>
+                </DescriptionListGroup>
+              ))}
+            </DescriptionList>
+          </>
+        ) : null}
 
         <Divider className="tenant-user-catalog__drawer-divider" />
 

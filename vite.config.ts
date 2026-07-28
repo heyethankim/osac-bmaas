@@ -18,8 +18,15 @@ const LANDING_DATE_FORMAT: Intl.DateTimeFormatOptions = {
   timeZone: 'America/New_York',
 }
 
-/** Prefer latest git commit date so each prototype push refreshes the landing footer. */
+/** Landing footer date — bump when shipping a prototype update. */
+const LANDING_LAST_UPDATED_LABEL = 'July 28, 2026'
+
+/** Prefer explicit label; fall back to latest git commit or today. */
 function getLandingLastUpdatedLabel(): string {
+  if (LANDING_LAST_UPDATED_LABEL.trim()) {
+    return LANDING_LAST_UPDATED_LABEL
+  }
+
   try {
     const iso = execSync('git log -1 --format=%cI', { encoding: 'utf8' }).trim()
     const commitDate = new Date(iso)

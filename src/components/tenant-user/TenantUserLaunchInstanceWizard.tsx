@@ -32,11 +32,13 @@ import {
 } from '@patternfly/react-core'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
+import { resolveCatalogSpecRows } from '../../catalog/catalogSpecs'
 import type { TenantUserCatalogCard } from '../../tenantUser/catalog'
 import {
   createLaunchInstanceWizardForm,
   getLaunchInstanceWizardSteps,
   getNextLaunchInstanceName,
+  getLaunchInstanceNamePlaceholder,
   isInstanceNameValid,
   LAUNCH_INSTANCE_BOOT_LOG_STEP_MS,
   LAUNCH_INSTANCE_PROVISIONING_SETTLE_MS,
@@ -119,8 +121,37 @@ export function TenantUserLaunchInstanceWizard({
   onWizardFinished,
 }: TenantUserLaunchInstanceWizardProps) {
   const networkContext = useMemo(
-    () => resolveLaunchNetworkContext(organization, catalogDraft, preferCatalogDraft),
-    [organization, catalogDraft, preferCatalogDraft],
+    () =>
+      resolveLaunchNetworkContext(
+        organization,
+        catalogDraft,
+        preferCatalogDraft,
+        catalogItem.catalogItemId,
+      ),
+    [organization, catalogDraft, preferCatalogDraft, catalogItem.catalogItemId],
+  )
+  const isClusterCatalogItem = catalogItem.serviceId === 'cluster'
+  const isServiceAwareCatalogItem =
+    catalogItem.serviceId === 'cluster' || catalogItem.serviceId === 'virtual-machine'
+  const catalogDetailSpecRows = useMemo(
+    () =>
+      isServiceAwareCatalogItem
+        ? resolveCatalogSpecRows(
+            {
+              serviceId: catalogItem.serviceId,
+              templateRefId: catalogItem.templateRefId,
+              templateName: catalogItem.templateName,
+            },
+            { includeDetails: true },
+          )
+        : catalogItem.specRows,
+    [
+      isServiceAwareCatalogItem,
+      catalogItem.serviceId,
+      catalogItem.templateRefId,
+      catalogItem.templateName,
+      catalogItem.specRows,
+    ],
   )
   const includeNetworkingStep = networkContext.enabled && networkContext.hasEditableFields
   const wizardSteps = useMemo(
@@ -169,7 +200,10 @@ export function TenantUserLaunchInstanceWizard({
         virtualNetworkId: networkContext.policy.virtualNetwork.id,
         subnetId: networkContext.policy.subnet.id,
         securityGroupId: networkContext.policy.securityGroup.id,
-        instanceName: getNextLaunchInstanceName(existingInstanceNames),
+        instanceName: getNextLaunchInstanceName(
+          existingInstanceNames,
+          catalogItem.serviceId,
+        ),
       }),
     )
     setActiveStepId('configure')
@@ -206,10 +240,13 @@ export function TenantUserLaunchInstanceWizard({
         virtualNetworkId: networkContext.policy.virtualNetwork.id,
         subnetId: networkContext.policy.subnet.id,
         securityGroupId: networkContext.policy.securityGroup.id,
-        instanceName: getNextLaunchInstanceName(existingInstanceNames),
+        instanceName: getNextLaunchInstanceName(
+          existingInstanceNames,
+          catalogItem.serviceId,
+        ),
       }),
     )
-  }, [isOpen, networkContext, existingInstanceNames])
+  }, [isOpen, networkContext, existingInstanceNames, catalogItem.serviceId])
 
   useEffect(() => {
     if (!isOpen || activeStepId !== 'provisioning' || provisioningStartedRef.current) {
@@ -218,15 +255,27 @@ export function TenantUserLaunchInstanceWizard({
 
     provisioningStartedRef.current = true
 
+    const detailSpecRows = catalogDetailSpecRows
+
     const instance: TenantInstance = {
       id: generateTenantInstanceId(),
       name: formatTenantInstanceName(form.instanceName.trim()),
       catalogItemDisplayName: catalogItem.displayName,
+      serviceId: catalogItem.serviceId,
       hardwareProfile: catalogItem.hardwareProfile,
-      osImage: catalogItem.osImage,
+      osImage: isClusterCatalogItem
+        ? (detailSpecRows.find((row) => row.label === 'Platform')?.value ?? catalogItem.osImage)
+        : catalogItem.serviceId === 'virtual-machine'
+          ? (detailSpecRows.find((row) => row.label === 'OS image')?.value ?? catalogItem.osImage)
+          : catalogItem.osImage,
       networkLabel,
       networking,
-      gpuLabel: catalogItem.gpu,
+      gpuLabel: isClusterCatalogItem
+        ? (detailSpecRows.find((row) => row.label === 'Node set')?.value ?? catalogItem.gpu)
+        : catalogItem.serviceId === 'virtual-machine'
+          ? (detailSpecRows.find((row) => row.label === 'Size')?.value ?? catalogItem.gpu)
+          : catalogItem.gpu,
+      specRows: isServiceAwareCatalogItem ? detailSpecRows : catalogItem.specRows,
       projectName: scopeLabel,
       scopeKind,
       status: 'provisioning',
@@ -263,8 +312,11 @@ export function TenantUserLaunchInstanceWizard({
     }
   }, [
     activeStepId,
+    catalogDetailSpecRows,
     catalogItem,
     form.instanceName,
+    isClusterCatalogItem,
+    isServiceAwareCatalogItem,
     isOpen,
     networkLabel,
     networking,
@@ -314,7 +366,7 @@ export function TenantUserLaunchInstanceWizard({
             id="launch-instance-name"
             value={form.instanceName}
             onChange={(_event, value) => setForm((current) => ({ ...current, instanceName: value }))}
-            placeholder={LAUNCH_INSTANCE_WIZARD_DEMO.instanceNamePlaceholder}
+            placeholder={getLaunchInstanceNamePlaceholder(catalogItem.serviceId)}
           />
         </FormGroup>
 
@@ -341,22 +393,37 @@ export function TenantUserLaunchInstanceWizard({
                 : ''
             }`}
           >
-            <div className="tenant-user-launch-wizard__preconfigured-item">
-              <Content component="p" className="tenant-user-launch-wizard__preconfigured-label">
-                Hardware profile
-              </Content>
-              <Content component="p" className="tenant-user-launch-wizard__preconfigured-value">
-                {catalogItem.hardwareProfile}
-              </Content>
-            </div>
-            <div className="tenant-user-launch-wizard__preconfigured-item">
-              <Content component="p" className="tenant-user-launch-wizard__preconfigured-label">
-                OS image
-              </Content>
-              <Content component="p" className="tenant-user-launch-wizard__preconfigured-value">
-                {catalogItem.osImage}
-              </Content>
-            </div>
+            {isServiceAwareCatalogItem ? (
+              catalogDetailSpecRows.slice(0, 4).map((row) => (
+                <div key={row.label} className="tenant-user-launch-wizard__preconfigured-item">
+                  <Content component="p" className="tenant-user-launch-wizard__preconfigured-label">
+                    {row.label}
+                  </Content>
+                  <Content component="p" className="tenant-user-launch-wizard__preconfigured-value">
+                    {row.value}
+                  </Content>
+                </div>
+              ))
+            ) : (
+              <>
+                <div className="tenant-user-launch-wizard__preconfigured-item">
+                  <Content component="p" className="tenant-user-launch-wizard__preconfigured-label">
+                    Hardware profile
+                  </Content>
+                  <Content component="p" className="tenant-user-launch-wizard__preconfigured-value">
+                    {catalogItem.hardwareProfile}
+                  </Content>
+                </div>
+                <div className="tenant-user-launch-wizard__preconfigured-item">
+                  <Content component="p" className="tenant-user-launch-wizard__preconfigured-label">
+                    OS image
+                  </Content>
+                  <Content component="p" className="tenant-user-launch-wizard__preconfigured-value">
+                    {catalogItem.osImage}
+                  </Content>
+                </div>
+              </>
+            )}
             {networkContext.enabled && !includeNetworkingStep ? (
               <div className="tenant-user-launch-wizard__preconfigured-item">
                 <Content component="p" className="tenant-user-launch-wizard__preconfigured-label">
@@ -460,18 +527,29 @@ export function TenantUserLaunchInstanceWizard({
           <DescriptionListTerm>Instance name</DescriptionListTerm>
           <DescriptionListDescription>{form.instanceName.trim()}</DescriptionListDescription>
         </DescriptionListGroup>
-        <DescriptionListGroup>
-          <DescriptionListTerm>Hardware</DescriptionListTerm>
-          <DescriptionListDescription>{catalogItem.hardwareProfile}</DescriptionListDescription>
-        </DescriptionListGroup>
-        <DescriptionListGroup>
-          <DescriptionListTerm>GPU</DescriptionListTerm>
-          <DescriptionListDescription>{catalogItem.gpu}</DescriptionListDescription>
-        </DescriptionListGroup>
-        <DescriptionListGroup>
-          <DescriptionListTerm>OS image</DescriptionListTerm>
-          <DescriptionListDescription>{catalogItem.osImage}</DescriptionListDescription>
-        </DescriptionListGroup>
+        {isServiceAwareCatalogItem ? (
+          catalogDetailSpecRows.map((row) => (
+            <DescriptionListGroup key={row.label}>
+              <DescriptionListTerm>{row.label}</DescriptionListTerm>
+              <DescriptionListDescription>{row.value}</DescriptionListDescription>
+            </DescriptionListGroup>
+          ))
+        ) : (
+          <>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Hardware</DescriptionListTerm>
+              <DescriptionListDescription>{catalogItem.hardwareProfile}</DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>GPU</DescriptionListTerm>
+              <DescriptionListDescription>{catalogItem.gpu}</DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>OS image</DescriptionListTerm>
+              <DescriptionListDescription>{catalogItem.osImage}</DescriptionListDescription>
+            </DescriptionListGroup>
+          </>
+        )}
         {networkContext.enabled ? (
           <>
             <DescriptionListGroup>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
@@ -37,7 +37,12 @@ import {
 } from '../components/provider-admin/EditCatalogItemModal'
 import { getCatalogServiceIcon } from '../catalog/serviceIcons'
 import { formatCatalogTableResultCount } from '../catalog/tableResultCount'
-import { resolveHardwareSpecsForCatalogItem } from '../catalog/hardwareSpecs'
+import {
+  formatCatalogConfigurationSummary,
+  getCatalogProfileFieldLabel,
+  resolveCatalogSpecRows,
+} from '../catalog/catalogSpecs'
+import { CatalogSpecRowsList } from '../components/catalog/CatalogSpecRowsList'
 import { getCatalogViewMode, setCatalogViewMode, type CatalogViewMode } from '../catalog/viewMode'
 import { getCatalogNetworkLockSummary } from '../providerAdmin/catalogNetworkPolicy'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
@@ -62,7 +67,7 @@ import {
   CATALOG_SERVICE_LABELS,
   DEFAULT_BLUEPRINT_FORM,
   DEMO_EXISTING_MASTER_TEMPLATES,
-  SECOND_CATALOG_ITEM_DISPLAY_NAME,
+  PUBLISH_CATALOG_SUGGESTED_DISPLAY_NAME,
   formatRateCardSummary,
   parseRateCardFromForm,
   type CatalogServiceId,
@@ -77,6 +82,10 @@ type ProviderAdminCatalogPageProps = {
   onCatalogItemsChange?: () => void
   isPublishing?: boolean
   onRegisterOrganization?: () => void
+  onNavigateToLinkedTemplate?: (template: {
+    templateRefId: string
+    templateName: string
+  }) => void
 }
 
 function getDraftServiceId(catalogDraft: ProviderCatalogDraft): CatalogServiceId {
@@ -192,7 +201,7 @@ function getTemplateRowData() {
   }
 
   return {
-    templateRefId: 'bm_pending',
+    templateRefId: 'bm_dell_r750',
     templateName: DEFAULT_BLUEPRINT_FORM.templateName,
     description: DEFAULT_BLUEPRINT_FORM.description,
     hardwareProfileId: DEFAULT_BLUEPRINT_FORM.hardwareProfileId,
@@ -285,6 +294,7 @@ export function ProviderAdminCatalogPage({
   onCatalogItemsChange,
   isPublishing = false,
   onRegisterOrganization,
+  onNavigateToLinkedTemplate,
 }: ProviderAdminCatalogPageProps) {
   const navigate = useNavigate()
   const initialServiceFilters = catalogItems.map(getDraftServiceId)
@@ -309,18 +319,25 @@ export function ProviderAdminCatalogPage({
   const [editResumeTenantId, setEditResumeTenantId] = useState<string | undefined>(undefined)
 
   const newestCatalogItem = catalogItems[0] ?? null
+  const knownServiceFiltersRef = useRef(new Set(initialServiceFilters))
 
   useEffect(() => {
-    if (!newestCatalogItem) {
-      return
-    }
-
     setSelectedFilters((current) => {
       const next = new Set(current)
-      next.add(getDraftServiceId(newestCatalogItem))
-      return next
+      let changed = false
+
+      for (const item of catalogItems) {
+        const serviceId = getDraftServiceId(item)
+        if (!knownServiceFiltersRef.current.has(serviceId)) {
+          knownServiceFiltersRef.current.add(serviceId)
+          next.add(serviceId)
+          changed = true
+        }
+      }
+
+      return changed ? next : current
     })
-  }, [newestCatalogItem?.catalogItemId])
+  }, [catalogItems])
 
   const serviceCounts = useMemo(
     () => countCatalogServices(catalogItems.map(getDraftServiceId)),
@@ -588,6 +605,14 @@ export function ProviderAdminCatalogPage({
         }
         openTogglePublish(drawerCatalog)
       }}
+      onNavigateToLinkedTemplate={
+        onNavigateToLinkedTemplate
+          ? (template) => {
+              setIsDetailsDrawerOpen(false)
+              onNavigateToLinkedTemplate(template)
+            }
+          : undefined
+      }
       onNetworkPolicyChange={(networkPolicy) => {
         if (!drawerCatalog) {
           return
@@ -723,7 +748,7 @@ export function ProviderAdminCatalogPage({
               item.scope === 'vip-enterprise'
                 ? formatVipEnterpriseVisibilityLabel(organizations, item.enterpriseTenantId)
                 : 'Global public'
-            const hardwareSpecs = resolveHardwareSpecsForCatalogItem(item)
+            const specRows = resolveCatalogSpecRows(item)
 
             return (
               <Card
@@ -764,29 +789,13 @@ export function ProviderAdminCatalogPage({
                   <Content component="p" className="provider-admin-catalog-items__secondary-cell">
                     <code>{item.catalogItemId}</code>
                   </Content>
-                  <dl className="provider-admin-catalog-items__specs-list">
-                    <div className="provider-admin-catalog-items__spec-row">
-                      <dt className="provider-admin-catalog-items__spec-label">CPU</dt>
-                      <dd className="provider-admin-catalog-items__spec-value">{hardwareSpecs.cpu}</dd>
-                    </div>
-                    <div className="provider-admin-catalog-items__spec-row">
-                      <dt className="provider-admin-catalog-items__spec-label">RAM</dt>
-                      <dd className="provider-admin-catalog-items__spec-value">{hardwareSpecs.ram}</dd>
-                    </div>
-                    <div className="provider-admin-catalog-items__spec-row">
-                      <dt className="provider-admin-catalog-items__spec-label">GPU</dt>
-                      <dd className="provider-admin-catalog-items__spec-value">{hardwareSpecs.gpu}</dd>
-                    </div>
-                    <div className="provider-admin-catalog-items__spec-row">
-                      <dt className="provider-admin-catalog-items__spec-label">OS image</dt>
-                      <dd className="provider-admin-catalog-items__spec-value">
-                        {hardwareSpecs.osImage}
-                      </dd>
-                    </div>
-                  </dl>
+                  <CatalogSpecRowsList
+                    rows={specRows}
+                    className="provider-admin-catalog-items__specs-list"
+                  />
                   <dl className="provider-admin-catalog-items__card-specs">
                     <div className="provider-admin-catalog-items__card-spec">
-                      <dt>Linked template</dt>
+                      <dt>{getCatalogProfileFieldLabel(serviceId)}</dt>
                       <dd>{item.templateName}</dd>
                     </div>
                     <div className="provider-admin-catalog-items__card-spec">
@@ -831,10 +840,8 @@ export function ProviderAdminCatalogPage({
             <Tr>
               <Th>Name</Th>
               <Th>Status</Th>
-              <Th>Linked template</Th>
-              <Th>CPU</Th>
-              <Th>RAM</Th>
-              <Th>GPU</Th>
+              <Th>Profile / template</Th>
+              <Th>Configuration</Th>
               <Th>Rate</Th>
               <Th>Networking</Th>
               <Th>Visibility</Th>
@@ -856,7 +863,6 @@ export function ProviderAdminCatalogPage({
                 () => openDelete(item),
                 onRegisterOrganization,
               )
-              const hardwareSpecs = resolveHardwareSpecsForCatalogItem(item)
 
               return (
                 <Tr key={item.catalogItemId}>
@@ -878,10 +884,12 @@ export function ProviderAdminCatalogPage({
                   <Td dataLabel="Status">
                     <CatalogStatusLabel item={item} />
                   </Td>
-                  <Td dataLabel="Linked template">{item.templateName}</Td>
-                  <Td dataLabel="CPU">{hardwareSpecs.cpu}</Td>
-                  <Td dataLabel="RAM">{hardwareSpecs.ram}</Td>
-                  <Td dataLabel="GPU">{hardwareSpecs.gpu}</Td>
+                  <Td dataLabel="Profile / template">{item.templateName}</Td>
+                  <Td dataLabel="Configuration">
+                    <Content component="p" className="provider-admin-catalog-items__primary-cell">
+                      {formatCatalogConfigurationSummary(item)}
+                    </Content>
+                  </Td>
                   <Td dataLabel="Rate">
                     <Content component="p" className="provider-admin-catalog-items__primary-cell">
                       {formatRateCardSummary(item.rateCard)}
@@ -915,7 +923,7 @@ export function ProviderAdminCatalogPage({
         organizations={organizations}
         defaultTemplateRefId={newestCatalogItem?.templateRefId}
         defaultDisplayName={
-          catalogItems.length > 0 ? SECOND_CATALOG_ITEM_DISPLAY_NAME : undefined
+          catalogItems.length > 0 ? PUBLISH_CATALOG_SUGGESTED_DISPLAY_NAME : undefined
         }
         initialPublishScope={publishResumeScope}
         initialEnterpriseTenantId={publishResumeTenantId}

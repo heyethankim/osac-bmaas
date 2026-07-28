@@ -50,6 +50,7 @@
 
 .catalog-card-grid {
   --catalog-card-width: 20.875rem;
+  /* Fill left → right, then wrap. Cards keep content height (no equal-row stretch). */
   display: grid;
   grid-template-columns: repeat(
     auto-fill,
@@ -57,12 +58,22 @@
   );
   gap: var(--pf-t--global--spacer--lg);
   justify-content: start;
+  align-items: start;
+}
+
+/* True masonry packing when supported: next items settle into the shortest column. */
+@supports (grid-template-rows: masonry) {
+  .catalog-card-grid {
+    grid-template-rows: masonry;
+    align-tracks: start;
+  }
 }
 
 .catalog-card-grid > .pf-v6-c-card {
   width: 100%;
   max-width: var(--catalog-card-width);
-  height: 100%;
+  height: auto;
+  align-self: start;
   transition:
     transform 0.18s ease,
     box-shadow 0.18s ease;

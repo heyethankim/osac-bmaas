@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Button,
@@ -33,7 +33,9 @@ import {
 import { CatalogViewToggle } from '../../components/catalog/CatalogViewToggle'
 import { CatalogPublishScopeIcon } from '../../components/provider-admin/CatalogPublishScopeIcon'
 import { TenantCatalogItemDetailsDrawer } from '../../components/tenant-admin/TenantCatalogItemDetailsDrawer'
+import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
+import { formatCatalogConfigurationSummary } from '../../catalog/catalogSpecs'
 import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
 import { getCatalogViewMode, setCatalogViewMode, type CatalogViewMode } from '../../catalog/viewMode'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
@@ -143,6 +145,49 @@ function NetworkingSummary({
   )
 }
 
+function AccessSummary({
+  compact = false,
+  onViewDetails,
+}: {
+  compact?: boolean
+  onViewDetails?: () => void
+}) {
+  const statusContent = (
+    <span className="tenant-admin-catalog-manager__access-status">
+      <Label
+        color="grey"
+        isCompact
+        className="tenant-admin-catalog-manager__access-status-label"
+      >
+        {TENANT_CATALOG_MANAGER_DEMO.accessDefaultLabel}
+      </Label>
+      {onViewDetails ? (
+        <Button
+          variant="link"
+          isInline
+          className="tenant-admin-catalog-manager__inline-link"
+          onClick={onViewDetails}
+        >
+          {TENANT_CATALOG_MANAGER_DEMO.accessViewDetailsLabel}
+        </Button>
+      ) : null}
+    </span>
+  )
+
+  if (compact) {
+    return statusContent
+  }
+
+  return (
+    <div className="tenant-admin-catalog-manager__spec-row">
+      <dt className="tenant-admin-catalog-manager__spec-label">
+        {TENANT_CATALOG_MANAGER_DEMO.accessLabel}
+      </dt>
+      <dd className="tenant-admin-catalog-manager__spec-value">{statusContent}</dd>
+    </div>
+  )
+}
+
 function getCatalogItemActions(
   item: TenantCatalogGovernanceItemWithNetworking,
   onViewDetails: () => void,
@@ -202,9 +247,11 @@ export function TenantAdminCatalogPage({
     getTenantCatalogGovernanceItems(organization, catalogDraft),
   )
   const [viewMode, setViewMode] = useState<CatalogViewMode>(() => getCatalogViewMode('grid'))
+  const initialServiceFilters = catalogItems.map((item) => item.serviceId)
   const [selectedFilters, setSelectedFilters] = useState<Set<CatalogServiceId>>(
-    () => new Set(['baremetal']),
+    () => new Set(initialServiceFilters.length > 0 ? initialServiceFilters : ['baremetal']),
   )
+  const knownServiceFiltersRef = useRef(new Set(initialServiceFilters))
   const [searchValue, setSearchValue] = useState('')
   const [selectedCatalogItem, setSelectedCatalogItem] =
     useState<TenantCatalogGovernanceItemWithNetworking | null>(null)
@@ -213,6 +260,23 @@ export function TenantAdminCatalogPage({
   const [editDisplayName, setEditDisplayName] = useState('')
   const [isUnpublishModalOpen, setIsUnpublishModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+
+  useEffect(() => {
+    setSelectedFilters((current) => {
+      const next = new Set(current)
+      let changed = false
+
+      for (const item of catalogItems) {
+        if (!knownServiceFiltersRef.current.has(item.serviceId)) {
+          knownServiceFiltersRef.current.add(item.serviceId)
+          next.add(item.serviceId)
+          changed = true
+        }
+      }
+
+      return changed ? next : current
+    })
+  }, [catalogItems])
 
   const serviceCounts = useMemo(
     () => countCatalogServices(catalogItems.map((item) => item.serviceId)),
@@ -234,10 +298,11 @@ export function TenantAdminCatalogPage({
         item.displayName.toLowerCase().includes(query) ||
         item.service.toLowerCase().includes(query) ||
         item.id.toLowerCase().includes(query) ||
-        item.cpu.toLowerCase().includes(query) ||
-        item.ram.toLowerCase().includes(query) ||
-        item.gpu.toLowerCase().includes(query) ||
-        item.osImage.toLowerCase().includes(query)
+        item.templateName.toLowerCase().includes(query) ||
+        item.specRows.some(
+          (row) =>
+            row.label.toLowerCase().includes(query) || row.value.toLowerCase().includes(query),
+        )
       )
     })
   }, [catalogItems, selectedFilters, searchValue])
@@ -565,24 +630,13 @@ export function TenantAdminCatalogPage({
                       </Button>
                     </Content>
 
-                    <dl className="tenant-admin-catalog-manager__specs-list">
-                      <div className="tenant-admin-catalog-manager__spec-row">
-                        <dt className="tenant-admin-catalog-manager__spec-label">CPU</dt>
-                        <dd className="tenant-admin-catalog-manager__spec-value">{item.cpu}</dd>
-                      </div>
-                      <div className="tenant-admin-catalog-manager__spec-row">
-                        <dt className="tenant-admin-catalog-manager__spec-label">RAM</dt>
-                        <dd className="tenant-admin-catalog-manager__spec-value">{item.ram}</dd>
-                      </div>
-                      <div className="tenant-admin-catalog-manager__spec-row">
-                        <dt className="tenant-admin-catalog-manager__spec-label">GPU</dt>
-                        <dd className="tenant-admin-catalog-manager__spec-value">{item.gpu}</dd>
-                      </div>
-                      <div className="tenant-admin-catalog-manager__spec-row">
-                        <dt className="tenant-admin-catalog-manager__spec-label">OS image</dt>
-                        <dd className="tenant-admin-catalog-manager__spec-value">{item.osImage}</dd>
-                      </div>
-                    </dl>
+                    <CatalogSpecRowsList
+                      rows={item.specRows}
+                      className="tenant-admin-catalog-manager__specs-list"
+                      rowClassName="tenant-admin-catalog-manager__spec-row"
+                      labelClassName="tenant-admin-catalog-manager__spec-label"
+                      valueClassName="tenant-admin-catalog-manager__spec-value"
+                    />
 
                     <dl className="tenant-admin-catalog-manager__networking-list">
                       <NetworkingSummary
@@ -590,6 +644,7 @@ export function TenantAdminCatalogPage({
                         organizationSlug={organization.slug}
                         onViewDetails={() => openDetails(item)}
                       />
+                      <AccessSummary onViewDetails={() => openDetails(item)} />
                     </dl>
 
                     <div className="tenant-admin-catalog-manager__card-footer">
@@ -630,11 +685,9 @@ export function TenantAdminCatalogPage({
                 <Tr>
                   <Th>Name</Th>
                   <Th>Status</Th>
-                  <Th>CPU</Th>
-                  <Th>RAM</Th>
-                  <Th>GPU</Th>
-                  <Th>OS image</Th>
+                  <Th>Configuration</Th>
                   <Th>Networking</Th>
+                  <Th>Access</Th>
                   <Th screenReaderText="Actions" />
                 </Tr>
               </Thead>
@@ -661,10 +714,15 @@ export function TenantAdminCatalogPage({
                           {item.status}
                         </Label>
                       </Td>
-                      <Td dataLabel="CPU">{item.cpu}</Td>
-                      <Td dataLabel="RAM">{item.ram}</Td>
-                      <Td dataLabel="GPU">{item.gpu}</Td>
-                      <Td dataLabel="OS image">{item.osImage}</Td>
+                      <Td dataLabel="Configuration">
+                        <Content component="p" className="tenant-admin-catalog-manager__primary-cell">
+                          {formatCatalogConfigurationSummary({
+                            serviceId: item.serviceId,
+                            templateRefId: item.templateRefId,
+                            templateName: item.templateName,
+                          })}
+                        </Content>
+                      </Td>
                       <Td dataLabel="Networking">
                         <NetworkingSummary
                           item={item}
@@ -672,6 +730,9 @@ export function TenantAdminCatalogPage({
                           compact
                           onViewDetails={() => openDetails(item)}
                         />
+                      </Td>
+                      <Td dataLabel="Access">
+                        <AccessSummary compact onViewDetails={() => openDetails(item)} />
                       </Td>
                       <Td isActionCell>
                         <ActionsColumn items={catalogItemActions} />

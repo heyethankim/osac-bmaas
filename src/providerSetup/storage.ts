@@ -599,6 +599,40 @@ export function addProviderSavedTemplate(template: SavedMasterTemplate): void {
   persistProviderSavedTemplates([...templates, normalized])
 }
 
+export function upsertProviderSavedTemplate(template: SavedMasterTemplate): void {
+  const normalized = normalizeSavedMasterTemplate(template)
+  const templates = getProviderSavedTemplates()
+  const index = templates.findIndex((entry) => entry.templateRefId === normalized.templateRefId)
+
+  if (index === -1) {
+    persistProviderSavedTemplates([...templates, normalized])
+    return
+  }
+
+  const next = [...templates]
+  next[index] = normalized
+  persistProviderSavedTemplates(next)
+}
+
+/** Keep catalog “Linked template” labels in sync when a master template is renamed. */
+export function syncCatalogLinkedTemplateName(template: SavedMasterTemplate): void {
+  const items = getProviderCatalogItems()
+  let changed = false
+
+  const next = items.map((item) => {
+    if (item.templateRefId !== template.templateRefId || item.templateName === template.templateName) {
+      return item
+    }
+
+    changed = true
+    return { ...item, templateName: template.templateName }
+  })
+
+  if (changed) {
+    persistProviderCatalogItems(next)
+  }
+}
+
 export function clearProviderSavedTemplate(): void {
   try {
     sessionStorage.removeItem(PROVIDER_SAVED_TEMPLATE_KEY)

@@ -36,15 +36,34 @@ function isTenantInstance(value: unknown): value is TenantInstance {
   }
 
   const instance = value as TenantInstance
+  const validServiceId =
+    instance.serviceId === undefined ||
+    instance.serviceId === 'baremetal' ||
+    instance.serviceId === 'cluster' ||
+    instance.serviceId === 'models' ||
+    instance.serviceId === 'virtual-machine'
+  const validSpecRows =
+    instance.specRows === undefined ||
+    (Array.isArray(instance.specRows) &&
+      instance.specRows.every(
+        (row) =>
+          row &&
+          typeof row === 'object' &&
+          typeof (row as { label?: unknown }).label === 'string' &&
+          typeof (row as { value?: unknown }).value === 'string',
+      ))
+
   return (
     typeof instance.id === 'string' &&
     typeof instance.name === 'string' &&
     typeof instance.catalogItemDisplayName === 'string' &&
+    validServiceId &&
     typeof instance.hardwareProfile === 'string' &&
     typeof instance.osImage === 'string' &&
     typeof instance.networkLabel === 'string' &&
     (instance.networking === undefined || isTenantInstanceNetworking(instance.networking)) &&
     typeof instance.gpuLabel === 'string' &&
+    validSpecRows &&
     typeof instance.projectName === 'string' &&
     (instance.scopeKind === undefined ||
       instance.scopeKind === 'organization' ||

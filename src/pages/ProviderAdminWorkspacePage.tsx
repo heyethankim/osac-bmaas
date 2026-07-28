@@ -22,6 +22,7 @@ import type { ProviderServiceId } from '../providerSetup/constants'
 import { generateCatalogItemId, type PublishedTemplatePayload } from '../providerSetup/templateDemo'
 import { DEFAULT_CATALOG_NETWORK_POLICY } from '../providerAdmin/catalogNetworkPolicy'
 import {
+  ensureProviderCatalogDemoItems,
   ensureProviderPostSetupPrototype,
   isProviderAdminNavId,
 } from '../providerSetup/prototypeEntry'
@@ -40,6 +41,7 @@ import {
 } from '../providerSetup/storage'
 
 import type { WorkspaceTransition } from '../providerAdmin/workspace'
+import type { BmaasTemplateLookup } from '../providerAdmin/bmaasTemplates'
 
 const PUBLISH_PHASE_MS = 900
 const ENTER_PHASE_MS = 700
@@ -64,21 +66,27 @@ export function ProviderAdminWorkspacePage() {
   const [activeNavId, setActiveNavId] = useState<ProviderAdminNavId>(() =>
     readInitialProviderNav(searchParams),
   )
-  const [catalogItems, setCatalogItems] = useState(() => getProviderCatalogItems())
+  const [catalogItems, setCatalogItems] = useState(() =>
+    isProviderSetupComplete() ? ensureProviderCatalogDemoItems() : getProviderCatalogItems(),
+  )
   const [workspaceTransition, setWorkspaceTransition] = useState<WorkspaceTransition>('idle')
+  const [openTemplateLookup, setOpenTemplateLookup] = useState<BmaasTemplateLookup | null>(null)
 
   useLayoutEffect(() => {
     const requestedNav = searchParams.get('nav')
-    if (!isProviderAdminNavId(requestedNav)) {
+    if (isProviderAdminNavId(requestedNav)) {
+      ensureProviderPostSetupPrototype(requestedNav)
+      setCatalogItems(getProviderCatalogItems())
+      setSelectedServices(getProviderSelectedServices())
+      setServicesSelected(true)
+      setSetupComplete(true)
+      setActiveNavId(requestedNav)
       return
     }
 
-    ensureProviderPostSetupPrototype(requestedNav)
-    setCatalogItems(getProviderCatalogItems())
-    setSelectedServices(getProviderSelectedServices())
-    setServicesSelected(true)
-    setSetupComplete(true)
-    setActiveNavId(requestedNav)
+    if (isProviderSetupComplete()) {
+      setCatalogItems(ensureProviderCatalogDemoItems())
+    }
   }, [searchParams])
 
   const handleServicesContinue = (nextSelectedServices: ProviderServiceId[]) => {
@@ -169,6 +177,10 @@ export function ProviderAdminWorkspacePage() {
             onCatalogItemsChange={() => setCatalogItems(getProviderCatalogItems())}
             isPublishing={workspaceTransition !== 'idle'}
             onRegisterOrganization={handleRegisterOrganization}
+            onNavigateToLinkedTemplate={(template) => {
+              setOpenTemplateLookup(template)
+              handleNavChange('infrastructure-bmaas-templates')
+            }}
           />
         )
       case 'infrastructure-data-centers':
@@ -182,6 +194,8 @@ export function ProviderAdminWorkspacePage() {
           <ProviderAdminBmaasTemplatesPage
             onCreateCatalogItem={handleCreateCatalogItem}
             isPublishing={workspaceTransition !== 'idle'}
+            openTemplateLookup={openTemplateLookup}
+            onOpenTemplateConsumed={() => setOpenTemplateLookup(null)}
           />
         )
       case 'infrastructure-external-ip-pools':

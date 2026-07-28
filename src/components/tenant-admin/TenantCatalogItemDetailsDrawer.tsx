@@ -23,10 +23,12 @@ import {
 } from '@patternfly/react-core'
 import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
+import { getCatalogProfileFieldLabel, getCatalogSpecsSectionLabel } from '../../catalog/catalogSpecs'
 import { NetworkFieldLockButton } from '../catalog/NetworkFieldLockButton'
 import { CatalogPublishScopeIcon } from '../provider-admin/CatalogPublishScopeIcon'
 import {
   TENANT_CATALOG_MANAGER_DEMO,
+  getTenantCatalogItemDetailSpecRows,
   getTenantCatalogProjectsLinkLabel,
   type TenantCatalogGovernanceItemWithNetworking,
 } from '../../tenantAdmin/catalogManager'
@@ -69,6 +71,11 @@ export function TenantCatalogItemDetailsDrawer({
     ? getTenantCatalogNetworkFieldSummaries(item.networkPolicy, overrides)
     : []
   const virtualNetworkId = item?.networkPolicy.virtualNetwork.id
+  const specRows = item ? getTenantCatalogItemDetailSpecRows(item) : []
+  const specsSectionLabel = item
+    ? getCatalogSpecsSectionLabel(item.serviceId)
+    : 'Hardware specifications'
+  const profileLabel = item ? getCatalogProfileFieldLabel(item.serviceId) : 'Linked template'
 
   const panelContent = item ? (
     <DrawerPanelContent
@@ -100,7 +107,7 @@ export function TenantCatalogItemDetailsDrawer({
 
       <DrawerPanelBody className="tenant-admin-catalog-manager__drawer-body">
         <Content component="p" className="tenant-admin-catalog-manager__drawer-lede">
-          {TENANT_CATALOG_MANAGER_DEMO.drawerAccessLede}
+          {item.description?.trim() || TENANT_CATALOG_MANAGER_DEMO.drawerAccessLede}
         </Content>
 
         <Divider className="tenant-admin-catalog-manager__drawer-divider" />
@@ -134,32 +141,29 @@ export function TenantCatalogItemDetailsDrawer({
               </span>
             </DescriptionListDescription>
           </DescriptionListGroup>
-        </DescriptionList>
-
-        <Divider className="tenant-admin-catalog-manager__drawer-divider" />
-
-        <DescriptionList
-          isCompact
-          className="tenant-admin-catalog-manager__drawer-dl"
-          aria-label="Hardware specifications"
-        >
           <DescriptionListGroup>
-            <DescriptionListTerm>CPU</DescriptionListTerm>
-            <DescriptionListDescription>{item.cpu}</DescriptionListDescription>
-          </DescriptionListGroup>
-          <DescriptionListGroup>
-            <DescriptionListTerm>RAM</DescriptionListTerm>
-            <DescriptionListDescription>{item.ram}</DescriptionListDescription>
-          </DescriptionListGroup>
-          <DescriptionListGroup>
-            <DescriptionListTerm>GPU</DescriptionListTerm>
-            <DescriptionListDescription>{item.gpu}</DescriptionListDescription>
-          </DescriptionListGroup>
-          <DescriptionListGroup>
-            <DescriptionListTerm>OS image</DescriptionListTerm>
-            <DescriptionListDescription>{item.osImage}</DescriptionListDescription>
+            <DescriptionListTerm>{profileLabel}</DescriptionListTerm>
+            <DescriptionListDescription>{item.templateName}</DescriptionListDescription>
           </DescriptionListGroup>
         </DescriptionList>
+
+        {specRows.length > 0 ? (
+          <>
+            <Divider className="tenant-admin-catalog-manager__drawer-divider" />
+            <DescriptionList
+              isCompact
+              className="tenant-admin-catalog-manager__drawer-dl"
+              aria-label={specsSectionLabel}
+            >
+              {specRows.map((row) => (
+                <DescriptionListGroup key={row.label}>
+                  <DescriptionListTerm>{row.label}</DescriptionListTerm>
+                  <DescriptionListDescription>{row.value}</DescriptionListDescription>
+                </DescriptionListGroup>
+              ))}
+            </DescriptionList>
+          </>
+        ) : null}
 
         <Divider className="tenant-admin-catalog-manager__drawer-divider" />
 

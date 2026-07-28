@@ -101,7 +101,7 @@ export function ProviderAdminBillingMeteringPage() {
           </Grid>
 
           <Content component="p" className="provider-admin-billing__section-lede">
-            Usage is metered against rate cards defined on BMaaS templates at authoring time. Billing
+            Usage is metered against rate cards defined on Bare metal templates at authoring time. Billing
             accounts are mapped per organization in Administration.
           </Content>
 

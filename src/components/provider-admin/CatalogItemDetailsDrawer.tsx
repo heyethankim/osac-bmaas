@@ -48,7 +48,12 @@ import {
   type CatalogNetworkPolicy,
   type CatalogNetworkResourceOption,
 } from '../../providerAdmin/catalogNetworkPolicy'
-import { resolveHardwareSpecsForCatalogItem } from '../../catalog/hardwareSpecs'
+import {
+  getCatalogProfileFieldLabel,
+  getCatalogSpecsSectionLabel,
+  getDraftServiceId,
+  resolveCatalogSpecRows,
+} from '../../catalog/catalogSpecs'
 
 type CatalogItemDetailsDrawerProps = {
   isExpanded: boolean
@@ -60,6 +65,10 @@ type CatalogItemDetailsDrawerProps = {
   onAssignToOrganization: () => void
   onPublish?: () => void
   onNetworkPolicyChange?: (networkPolicy: CatalogNetworkPolicy) => void
+  onNavigateToLinkedTemplate?: (template: {
+    templateRefId: string
+    templateName: string
+  }) => void
   children: ReactNode
 }
 
@@ -83,12 +92,19 @@ export function CatalogItemDetailsDrawer({
   onAssignToOrganization,
   onPublish,
   onNetworkPolicyChange,
+  onNavigateToLinkedTemplate,
   children,
 }: CatalogItemDetailsDrawerProps) {
   const organizations = getProviderRegisteredOrganizations()
   const scopeLabel = catalog?.scope === 'vip-enterprise' ? 'VIP enterprise' : 'Global public'
   const isLive = catalog ? getCatalogItemStatus(catalog) === 'live' : false
-  const hardwareSpecs = catalog ? resolveHardwareSpecsForCatalogItem(catalog) : null
+  const catalogServiceId = catalog ? getDraftServiceId(catalog) : serviceId
+  const specRows = catalog
+    ? resolveCatalogSpecRows(catalog, { includeDetails: true })
+    : []
+  const specsSectionLabel = getCatalogSpecsSectionLabel(catalogServiceId)
+  const canLinkToBareMetalTemplate =
+    Boolean(onNavigateToLinkedTemplate) && catalogServiceId === 'baremetal'
   const [networkPolicy, setNetworkPolicy] = useState<CatalogNetworkPolicy | null>(null)
   const [virtualNetworkOptions, setVirtualNetworkOptions] = useState<CatalogNetworkResourceOption[]>(
     () => getCatalogVirtualNetworkOptions(),
@@ -258,30 +274,20 @@ export function CatalogItemDetailsDrawer({
           ) : null}
         </DescriptionList>
 
-        {hardwareSpecs ? (
+        {specRows.length > 0 ? (
           <>
             <Divider className="provider-admin-catalog-items__drawer-divider" />
             <DescriptionList
               isCompact
               className="provider-admin-catalog-items__drawer-dl"
-              aria-label="Hardware specifications"
+              aria-label={specsSectionLabel}
             >
-              <DescriptionListGroup>
-                <DescriptionListTerm>CPU</DescriptionListTerm>
-                <DescriptionListDescription>{hardwareSpecs.cpu}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>RAM</DescriptionListTerm>
-                <DescriptionListDescription>{hardwareSpecs.ram}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>GPU</DescriptionListTerm>
-                <DescriptionListDescription>{hardwareSpecs.gpu}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>OS image</DescriptionListTerm>
-                <DescriptionListDescription>{hardwareSpecs.osImage}</DescriptionListDescription>
-              </DescriptionListGroup>
+              {specRows.map((row) => (
+                <DescriptionListGroup key={row.label}>
+                  <DescriptionListTerm>{row.label}</DescriptionListTerm>
+                  <DescriptionListDescription>{row.value}</DescriptionListDescription>
+                </DescriptionListGroup>
+              ))}
             </DescriptionList>
             <Divider className="provider-admin-catalog-items__drawer-divider" />
           </>
@@ -293,8 +299,28 @@ export function CatalogItemDetailsDrawer({
           aria-label="Catalog item publishing details"
         >
           <DescriptionListGroup>
-            <DescriptionListTerm>Linked template</DescriptionListTerm>
-            <DescriptionListDescription>{catalog.templateName}</DescriptionListDescription>
+            <DescriptionListTerm>
+              {getCatalogProfileFieldLabel(catalogServiceId)}
+            </DescriptionListTerm>
+            <DescriptionListDescription>
+              {canLinkToBareMetalTemplate && onNavigateToLinkedTemplate ? (
+                <Button
+                  variant="link"
+                  isInline
+                  className="provider-admin-catalog-items__inline-link"
+                  onClick={() =>
+                    onNavigateToLinkedTemplate({
+                      templateRefId: catalog.templateRefId,
+                      templateName: catalog.templateName,
+                    })
+                  }
+                >
+                  {catalog.templateName}
+                </Button>
+              ) : (
+                catalog.templateName
+              )}
+            </DescriptionListDescription>
           </DescriptionListGroup>
           <DescriptionListGroup>
             <DescriptionListTerm>Rate</DescriptionListTerm>

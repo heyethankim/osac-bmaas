@@ -45,6 +45,8 @@ type ProviderSetupBlueprintDesignerProps = {
   isOpen: boolean
   initialForm?: BlueprintFormState
   title?: string
+  /** When set, save updates this template instead of creating a new reference ID. */
+  existingTemplateRefId?: string
   onClose: () => void
   onTemplateSaved: (template: SavedMasterTemplate) => void
 }
@@ -190,13 +192,15 @@ export function ProviderSetupBlueprintDesigner({
   isOpen,
   initialForm = DEFAULT_BLUEPRINT_FORM,
   title = 'Create master template for catalog',
+  existingTemplateRefId,
   onClose,
   onTemplateSaved,
 }: ProviderSetupBlueprintDesignerProps) {
+  const isEditing = Boolean(existingTemplateRefId)
   const [form, setForm] = useState<BlueprintFormState>(initialForm)
   const [reviewSaveState, setReviewSaveState] = useState<ReviewSaveState>('idle')
   const [validationTaskIndex, setValidationTaskIndex] = useState(0)
-  const [templateRefId, setTemplateRefId] = useState('')
+  const [templateRefId, setTemplateRefId] = useState(existingTemplateRefId ?? '')
   const validationTimerRef = useRef<number | null>(null)
   const osImageOptions = useMemo(
     () => getProviderComputeImages().map(toOsImageOption),
@@ -207,7 +211,7 @@ export function ProviderSetupBlueprintDesigner({
     setForm(initialForm)
     setReviewSaveState('idle')
     setValidationTaskIndex(0)
-    setTemplateRefId('')
+    setTemplateRefId(existingTemplateRefId ?? '')
     if (validationTimerRef.current !== null) {
       window.clearInterval(validationTimerRef.current)
       validationTimerRef.current = null
@@ -220,7 +224,7 @@ export function ProviderSetupBlueprintDesigner({
   }
 
   const handleStartSave = () => {
-    setTemplateRefId(generateTemplateReferenceId())
+    setTemplateRefId(existingTemplateRefId ?? generateTemplateReferenceId())
     setValidationTaskIndex(0)
     setReviewSaveState('validating')
   }
@@ -259,8 +263,8 @@ export function ProviderSetupBlueprintDesigner({
     })
     setReviewSaveState('idle')
     setValidationTaskIndex(0)
-    setTemplateRefId('')
-  }, [isOpen, initialForm])
+    setTemplateRefId(existingTemplateRefId ?? '')
+  }, [isOpen, initialForm, existingTemplateRefId])
 
   useEffect(() => {
     if (reviewSaveState !== 'validating') {
@@ -530,8 +534,16 @@ export function ProviderSetupBlueprintDesigner({
             ) : null}
             {reviewSaveState === 'ready' ? (
               <Content component="p" className="provider-setup-template__review-status provider-setup-template__review-status--ready">
-                Template <strong>{form.templateName}</strong> saved. Close this wizard and use
-                Publish to catalog on the create template page.
+                {isEditing ? (
+                  <>
+                    Template <strong>{form.templateName}</strong> updated.
+                  </>
+                ) : (
+                  <>
+                    Template <strong>{form.templateName}</strong> saved. Close this wizard and use
+                    Publish to catalog on the Bare metal templates page.
+                  </>
+                )}
               </Content>
             ) : null}
           </div>
@@ -543,7 +555,10 @@ export function ProviderSetupBlueprintDesigner({
 
   function getReviewFooter() {
     if (reviewSaveState === 'idle') {
-      return { nextButtonText: 'Save template', onNext: handleStartSave }
+      return {
+        nextButtonText: isEditing ? 'Save changes' : 'Save template',
+        onNext: handleStartSave,
+      }
     }
 
     if (reviewSaveState === 'validating') {
@@ -588,7 +603,7 @@ export function ProviderSetupBlueprintDesigner({
               titleId="blueprint-designer-title"
               className="provider-setup-template__designer-header"
               onClose={handleClose}
-              closeButtonAriaLabel="Close template creator"
+              closeButtonAriaLabel={isEditing ? 'Close template editor' : 'Close template creator'}
             />
           }
         >

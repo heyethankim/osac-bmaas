@@ -18,7 +18,7 @@ export type CatalogHardwareSpecs = {
 
 function getDefaultTemplateFallback(): SavedMasterTemplate {
   return {
-    templateRefId: 'bm_pending',
+    templateRefId: 'bm_dell_r750',
     templateName: DEFAULT_BLUEPRINT_FORM.templateName,
     description: DEFAULT_BLUEPRINT_FORM.description,
     hardwareProfileId: DEFAULT_BLUEPRINT_FORM.hardwareProfileId,
