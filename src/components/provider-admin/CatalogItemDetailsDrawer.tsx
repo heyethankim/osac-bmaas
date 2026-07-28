@@ -58,8 +58,6 @@ type CatalogItemDetailsDrawerProps = {
   templateDescription: string
   canAssign: boolean
   onAssignToOrganization: () => void
-  canOpenAsTenantUser?: boolean
-  onOpenAsTenantUser?: () => void
   onNetworkPolicyChange?: (networkPolicy: CatalogNetworkPolicy) => void
   children: ReactNode
 }
@@ -82,8 +80,6 @@ export function CatalogItemDetailsDrawer({
   templateDescription,
   canAssign,
   onAssignToOrganization,
-  canOpenAsTenantUser = false,
-  onOpenAsTenantUser,
   onNetworkPolicyChange,
   children,
 }: CatalogItemDetailsDrawerProps) {
@@ -176,8 +172,8 @@ export function CatalogItemDetailsDrawer({
       </DrawerHead>
 
       <DrawerPanelBody className="provider-admin-catalog-items__drawer-body">
-        <div className="provider-admin-catalog-items__drawer-actions">
-          {catalog.scope === 'global-public' ? null : (
+        {catalog.scope === 'global-public' ? null : (
+          <div className="provider-admin-catalog-items__drawer-actions">
             <Button
               variant="primary"
               className="provider-admin-catalog-items__drawer-action"
@@ -186,16 +182,8 @@ export function CatalogItemDetailsDrawer({
             >
               Assign to organization
             </Button>
-          )}
-          <Button
-            variant={catalog.scope === 'global-public' ? 'primary' : 'secondary'}
-            className="provider-admin-catalog-items__drawer-action"
-            isDisabled={!canOpenAsTenantUser}
-            onClick={onOpenAsTenantUser}
-          >
-            Open as tenant user
-          </Button>
-        </div>
+          </div>
+        )}
 
         <Content component="p" className="provider-admin-catalog-items__drawer-lede">
           {catalog.description?.trim() || templateDescription}

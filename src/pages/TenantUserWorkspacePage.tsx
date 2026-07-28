@@ -80,6 +80,16 @@ export function TenantUserWorkspacePage() {
   const [showBackgroundProvisioningNotice, setShowBackgroundProvisioningNotice] = useState(false)
   const provisioningTimersRef = useRef<Map<string, number>>(new Map())
 
+  const hasProvisioningInstances = instances.some(
+    (instance) => instance.status === 'provisioning',
+  )
+
+  useEffect(() => {
+    if (!hasProvisioningInstances) {
+      setShowBackgroundProvisioningNotice(false)
+    }
+  }, [hasProvisioningInstances])
+
   const clearProvisioningTimer = useCallback((instanceId: string) => {
     const timeoutId = provisioningTimersRef.current.get(instanceId)
     if (timeoutId !== undefined) {
@@ -254,7 +264,9 @@ export function TenantUserWorkspacePage() {
             instances={instances}
             onInstancesChange={setInstances}
             defaultScopeFieldLabel={invitation.scopeFieldLabel}
-            showBackgroundProvisioningNotice={showBackgroundProvisioningNotice}
+            showBackgroundProvisioningNotice={
+              showBackgroundProvisioningNotice && hasProvisioningInstances
+            }
             onDismissBackgroundProvisioningNotice={() =>
               setShowBackgroundProvisioningNotice(false)
             }

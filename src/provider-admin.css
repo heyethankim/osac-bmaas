@@ -1051,6 +1051,10 @@
   margin-block-end: var(--pf-t--global--spacer--lg);
 }
 
+.provider-setup-template__publish-review-list + .provider-setup-template__publish-review-alert {
+  margin-block-start: var(--pf-t--global--spacer--lg);
+}
+
 .provider-setup-template__publish-review-list {
   margin: 0;
 }

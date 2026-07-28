@@ -582,16 +582,6 @@ export function ProviderAdminCatalogPage({
         setIsDetailsDrawerOpen(false)
         setIsAssignModalOpen(true)
       }}
-      canOpenAsTenantUser={
-        Boolean(drawerCatalog) && getCatalogItemStatus(drawerCatalog!) === 'live'
-      }
-      onOpenAsTenantUser={() => {
-        if (!drawerCatalog) {
-          return
-        }
-        setIsDetailsDrawerOpen(false)
-        openAsTenantUserForItem(drawerCatalog)
-      }}
       onNetworkPolicyChange={(networkPolicy) => {
         if (!drawerCatalog) {
           return
