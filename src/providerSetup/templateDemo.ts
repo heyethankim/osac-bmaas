@@ -207,7 +207,7 @@ export function formatRateCardHourly(rateCard: RateCard): string {
 }
 
 export const DEFAULT_CATALOG_ITEM_DISPLAY_NAME = 'Bare Metal - GPU Training Server'
-export const SECOND_CATALOG_ITEM_DISPLAY_NAME = 'Bare Metal - AI Inference Host (L40S)'
+export const SECOND_CATALOG_ITEM_DISPLAY_NAME = 'Bare Metal - AI Inference Host'
 
 export function getCatalogDisplayName(hardwareProfileId: string): string {
   const profile = DISCOVERED_HARDWARE_PROFILES.find((item) => item.id === hardwareProfileId)
@@ -329,6 +329,6 @@ export type PublishedTemplatePayload = {
   enterpriseTenantId?: string
   /** When VIP targets a registered org, assign catalog access on create. */
   vipOrganizationId?: string
-  /** Defaults to live. Use unpublished when VIP has no organization yet. */
+  /** Defaults to unpublished. Publish later from the catalog. */
   status?: 'live' | 'unpublished'
 }

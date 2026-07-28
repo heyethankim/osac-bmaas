@@ -203,7 +203,6 @@ export function TenantAdminProjectsTeamsPage({
       <CreateTenantProjectWizard
         isOpen={isCreateModalOpen}
         organization={organization}
-        allocatedInstanceQuota={allocatedInstanceQuota}
         catalogOptions={wizardCatalogOptions}
         onClose={() => setIsCreateModalOpen(false)}
         onCreate={handleCreateProject}

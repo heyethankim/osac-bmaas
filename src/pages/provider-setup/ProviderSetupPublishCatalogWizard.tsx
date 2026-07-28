@@ -182,7 +182,7 @@ export function ProviderSetupPublishCatalogWizard({
       description: description.trim(),
       scope: publishScope,
       rateCard: resolveRateCard(selectedTemplate),
-      status: isVipUnassigned ? 'unpublished' : 'live',
+      status: 'unpublished',
       ...(isVipEnterprise && enterpriseTenantId.trim()
         ? { enterpriseTenantId: enterpriseTenantId.trim() }
         : {}),
@@ -512,19 +512,18 @@ export function ProviderSetupPublishCatalogWizard({
                 </DescriptionListDescription>
               </DescriptionListGroup>
             </DescriptionList>
-            {isVipUnassigned ? (
-              <Alert
-                variant="info"
-                isInline
-                title="Will save as unpublished"
-                className="provider-setup-template__publish-review-alert"
-              >
-                <Content component="p">
-                  VIP enterprise is selected without a target organization. The catalog item will be
-                  saved as unpublished until you register or assign a tenant.
-                </Content>
-              </Alert>
-            ) : null}
+            <Alert
+              variant="info"
+              isInline
+              title="Starts as unpublished"
+              className="provider-setup-template__publish-review-alert"
+            >
+              <Content component="p">
+                {isVipUnassigned
+                  ? 'VIP enterprise is selected without a target organization. The catalog item will be saved as unpublished until you register or assign a tenant, then publish it from the catalog.'
+                  : 'New catalog items are saved as unpublished. Publish from the catalog when you are ready for tenants to use this offering.'}
+              </Content>
+            </Alert>
           </div>
         )
       }
@@ -556,13 +555,13 @@ export function ProviderSetupPublishCatalogWizard({
       return {
         nextButtonText: isPublishing ? (
           <span className="provider-admin-catalog__submit-label">
-            <Spinner size="sm" aria-label="Publishing catalog item" />
-            <span>{isVipUnassigned ? 'Saving…' : 'Publishing…'}</span>
+            <Spinner size="sm" aria-label="Creating catalog item" />
+            <span>Creating…</span>
           </span>
         ) : (
           <span className="provider-admin-catalog__submit-label">
             <CatalogIcon aria-hidden />
-            <span>{isVipUnassigned ? 'Save as unpublished' : 'Create catalog item'}</span>
+            <span>Create catalog item</span>
             <ArrowRightIcon aria-hidden />
           </span>
         ),

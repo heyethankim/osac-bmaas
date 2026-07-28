@@ -1,10 +1,6 @@
 import type { TenantProjectCatalogItem } from './projects'
 
-export type CreateProjectWizardStepId =
-  | 'project-info'
-  | 'quotas-ip-pool'
-  | 'catalog'
-  | 'team-members'
+export type CreateProjectWizardStepId = 'project-info' | 'catalog' | 'team-members'
 
 export type TenantProjectEnvironment = 'development' | 'staging' | 'production' | 'research'
 
@@ -25,11 +21,6 @@ export const CREATE_PROJECT_WIZARD_STEPS: ReadonlyArray<{
   {
     id: 'project-info',
     label: 'Project Info',
-    description: '',
-  },
-  {
-    id: 'quotas-ip-pool',
-    label: 'Quotas & IP Pool',
     description: '',
   },
   {
@@ -71,7 +62,6 @@ export const TENANT_PROJECT_MEMBER_ROLES: ReadonlyArray<{
 export const CREATE_PROJECT_WIZARD_DEMO = {
   projectNamePlaceholder: 'e.g. Machine Learning Dev Team',
   descriptionPlaceholder: "Optional — describe this project's purpose",
-  ipPoolSliceLabel: 'IP pool slice (CIDR)',
   memberNamePlaceholder: 'Full name',
   memberEmailPlaceholder: 'email@northsummitbank.com',
   membersEmptyTitle: 'No members added yet. You can also add them later.',
@@ -85,7 +75,6 @@ export const CREATE_PROJECT_WIZARD_DEMO = {
   createProjectLabel: 'Create project',
 } as const
 
-export const DEFAULT_ORG_POOL_CIDR = '203.0.113.0/24'
 export const DEFAULT_PROJECT_IP_SLICE = '203.0.113.0/26'
 
 export type CreateProjectWizardForm = {

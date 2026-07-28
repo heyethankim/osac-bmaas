@@ -92,7 +92,7 @@ export function ProviderAdminWorkspacePage() {
   }
 
   const handleCreateCatalogItem = (payload: PublishedTemplatePayload) => {
-    const status = payload.status ?? 'live'
+    const status = payload.status ?? 'unpublished'
     const draft = {
       catalogItemId: generateCatalogItemId(),
       templateRefId: payload.templateRefId,

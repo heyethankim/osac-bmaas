@@ -27,7 +27,6 @@ import {
   Modal,
   ModalVariant,
   Radio,
-  Slider,
   TextArea,
   TextInput,
   Wizard,
@@ -41,7 +40,6 @@ import {
   CREATE_PROJECT_WIZARD_DEMO,
   CREATE_PROJECT_WIZARD_STEPS,
   DEFAULT_CREATE_PROJECT_WIZARD_FORM,
-  DEFAULT_ORG_POOL_CIDR,
   generateProjectWizardMemberId,
   getProjectMemberInitials,
   getTenantProjectMemberRoleShortLabel,
@@ -57,8 +55,6 @@ import {
 } from '../../tenantAdmin/createProjectWizard'
 import {
   generateTenantProjectId,
-  ORG_RAM_TOTAL_GB,
-  ORG_VCPU_TOTAL,
   resolveOrganizationExternalIpPool,
   type TenantProject,
 } from '../../tenantAdmin/projects'
@@ -66,7 +62,6 @@ import {
 type CreateTenantProjectWizardProps = {
   isOpen: boolean
   organization: RegisteredOrganization
-  allocatedInstanceQuota: number
   catalogOptions: AttachableCatalogOption[]
   onClose: () => void
   onCreate: (project: TenantProject) => void
@@ -82,7 +77,6 @@ const ENVIRONMENT_ICONS: Record<TenantProjectEnvironment, ReactNode> = {
 export function CreateTenantProjectWizard({
   isOpen,
   organization,
-  allocatedInstanceQuota,
   catalogOptions,
   onClose,
   onCreate,
@@ -93,8 +87,6 @@ export function CreateTenantProjectWizard({
     () => resolveOrganizationExternalIpPool(organization),
     [organization],
   )
-  const orgPoolCidr = organizationPool?.cidr ?? DEFAULT_ORG_POOL_CIDR
-  const remainingInstanceQuota = Math.max(0, organization.maxInstances - allocatedInstanceQuota)
 
   const resetWizard = () => {
     setForm(DEFAULT_CREATE_PROJECT_WIZARD_FORM)
@@ -112,7 +104,7 @@ export function CreateTenantProjectWizard({
   }, [isOpen])
 
   const handleCreateProject = () => {
-    if (!form.name.trim() || form.instanceQuota <= 0 || !form.ipPoolSlice.trim()) {
+    if (!form.name.trim()) {
       return
     }
 
@@ -229,84 +221,6 @@ export function CreateTenantProjectWizard({
         </div>
       </FormGroup>
     </Form>
-  )
-
-  const renderQuotasStep = () => (
-    <div className="tenant-admin-projects-teams__wizard-quotas">
-      <Form autoComplete="off" className="tenant-admin-projects-teams__wizard-form">
-        <FormGroup label="vCPU allocation" fieldId="new-project-vcpu">
-          <Slider
-            id="new-project-vcpu"
-            className="tenant-admin-projects-teams__wizard-slider"
-            value={form.vcpuAllocation}
-            onChange={(_event, value) =>
-              setForm((current) => ({ ...current, vcpuAllocation: value }))
-            }
-            min={0}
-            max={ORG_VCPU_TOTAL}
-            step={1}
-            showBoundaries
-            inputValue={form.vcpuAllocation}
-            isInputVisible
-          />
-        </FormGroup>
-        <FormGroup label="RAM allocation (GB)" fieldId="new-project-ram">
-          <Slider
-            id="new-project-ram"
-            className="tenant-admin-projects-teams__wizard-slider"
-            value={form.ramAllocationGb}
-            onChange={(_event, value) =>
-              setForm((current) => ({ ...current, ramAllocationGb: value }))
-            }
-            min={0}
-            max={ORG_RAM_TOTAL_GB}
-            step={1}
-            showBoundaries
-            inputValue={form.ramAllocationGb}
-            isInputVisible
-          />
-        </FormGroup>
-        <FormGroup label="Instance quota" fieldId="new-project-instances">
-          <Slider
-            id="new-project-instances"
-            className="tenant-admin-projects-teams__wizard-slider"
-            value={form.instanceQuota}
-            onChange={(_event, value) =>
-              setForm((current) => ({ ...current, instanceQuota: value }))
-            }
-            min={0}
-            max={remainingInstanceQuota}
-            step={1}
-            showBoundaries
-            inputValue={form.instanceQuota}
-            isInputVisible
-            isDisabled={remainingInstanceQuota <= 0}
-          />
-        </FormGroup>
-        <FormGroup
-          label={CREATE_PROJECT_WIZARD_DEMO.ipPoolSliceLabel}
-          fieldId="new-project-ip-slice"
-        >
-          <Flex alignItems={{ default: 'alignItemsCenter' }} gap={{ default: 'gapMd' }}>
-            <FlexItem grow={{ default: 'grow' }}>
-              <TextInput
-                id="new-project-ip-slice"
-                value={form.ipPoolSlice}
-                onChange={(_event, value) =>
-                  setForm((current) => ({ ...current, ipPoolSlice: value }))
-                }
-                aria-label="IP pool slice CIDR"
-              />
-            </FlexItem>
-            <FlexItem>
-              <Content component="p" className="tenant-admin-projects-teams__wizard-ip-from">
-                from {orgPoolCidr}
-              </Content>
-            </FlexItem>
-          </Flex>
-        </FormGroup>
-      </Form>
-    </div>
   )
 
   const renderCatalogStep = () => (
@@ -511,8 +425,6 @@ export function CreateTenantProjectWizard({
     switch (stepId) {
       case 'project-info':
         return renderProjectInfoStep()
-      case 'quotas-ip-pool':
-        return renderQuotasStep()
       case 'catalog':
         return renderCatalogStep()
       case 'team-members':
@@ -526,26 +438,6 @@ export function CreateTenantProjectWizard({
     if (stepId === 'project-info') {
       return {
         isNextDisabled: !form.name.trim(),
-        nextButtonText: (
-          <span className="tenant-admin-projects-teams__wizard-footer-label">
-            <span>{CREATE_PROJECT_WIZARD_DEMO.continueLabel}</span>
-            <ArrowRightIcon aria-hidden />
-          </span>
-        ),
-      }
-    }
-
-    if (stepId === 'quotas-ip-pool') {
-      return {
-        isCancelHidden: true,
-        backButtonText: (
-          <span className="tenant-admin-projects-teams__wizard-footer-label">
-            <ArrowLeftIcon aria-hidden />
-            <span>Back</span>
-          </span>
-        ),
-        isNextDisabled:
-          form.instanceQuota <= 0 || !form.ipPoolSlice.trim() || remainingInstanceQuota <= 0,
         nextButtonText: (
           <span className="tenant-admin-projects-teams__wizard-footer-label">
             <span>{CREATE_PROJECT_WIZARD_DEMO.continueLabel}</span>
