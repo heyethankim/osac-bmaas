@@ -40,14 +40,26 @@ type TenantAdminNetworkingPageProps = {
   kind: TenantNetworkResourceKind
   openVirtualNetworkId?: string | null
   onOpenVirtualNetworkConsumed?: () => void
+  openSubnetId?: string | null
+  onOpenSubnetConsumed?: () => void
+  openSecurityGroupId?: string | null
+  onOpenSecurityGroupConsumed?: () => void
   onNavigateToVirtualNetwork?: (virtualNetworkId: string) => void
+  onNavigateToSubnet?: (subnetId: string) => void
+  onNavigateToSecurityGroup?: (securityGroupId: string) => void
 }
 
 export function TenantAdminNetworkingPage({
   kind,
   openVirtualNetworkId = null,
   onOpenVirtualNetworkConsumed,
+  openSubnetId = null,
+  onOpenSubnetConsumed,
+  openSecurityGroupId = null,
+  onOpenSecurityGroupConsumed,
   onNavigateToVirtualNetwork,
+  onNavigateToSubnet,
+  onNavigateToSecurityGroup,
 }: TenantAdminNetworkingPageProps) {
   const meta = useMemo(() => getTenantNetworkResourceMeta(kind), [kind])
   const [networks, setNetworks] = useState(() => getProviderVirtualNetworks())
@@ -80,6 +92,32 @@ export function TenantAdminNetworkingPage({
     }
     onOpenVirtualNetworkConsumed?.()
   }, [kind, openVirtualNetworkId, networks, onOpenVirtualNetworkConsumed])
+
+  useEffect(() => {
+    if (kind !== 'subnet' || !openSubnetId) {
+      return
+    }
+
+    const match = subnets.find((subnet) => subnet.id === openSubnetId) ?? null
+    if (match) {
+      setSelectedSubnet(match)
+      setIsDetailsOpen(true)
+    }
+    onOpenSubnetConsumed?.()
+  }, [kind, openSubnetId, subnets, onOpenSubnetConsumed])
+
+  useEffect(() => {
+    if (kind !== 'security-group' || !openSecurityGroupId) {
+      return
+    }
+
+    const match = securityGroups.find((group) => group.id === openSecurityGroupId) ?? null
+    if (match) {
+      setSelectedGroup(match)
+      setIsDetailsOpen(true)
+    }
+    onOpenSecurityGroupConsumed?.()
+  }, [kind, openSecurityGroupId, securityGroups, onOpenSecurityGroupConsumed])
 
   const getVirtualNetwork = (virtualNetworkId: string) =>
     networks.find((item) => item.id === virtualNetworkId)
@@ -457,6 +495,8 @@ export function TenantAdminNetworkingPage({
       onClose={() => setIsDetailsOpen(false)}
       onEdit={() => undefined}
       onDelete={() => undefined}
+      onNavigateToSubnet={onNavigateToSubnet}
+      onNavigateToSecurityGroup={onNavigateToSecurityGroup}
     >
       <div className="tenant-admin-workspace-page tenant-admin-networking">
         <TenantAdminWorkspacePageHeader

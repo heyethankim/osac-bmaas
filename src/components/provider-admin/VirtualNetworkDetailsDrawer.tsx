@@ -30,12 +30,20 @@ import {
   getProviderSubnets,
 } from '../../providerSetup/storage'
 
+type RelatedItem = {
+  id: string
+  name: string
+  meta: string
+}
+
 type VirtualNetworkDetailsDrawerProps = {
   isExpanded: boolean
   network: ProviderVirtualNetwork | null
   onClose: () => void
   onEdit?: () => void
   onDelete?: () => void
+  onNavigateToSubnet?: (subnetId: string) => void
+  onNavigateToSecurityGroup?: (securityGroupId: string) => void
   children: ReactNode
 }
 
@@ -43,10 +51,12 @@ function RelatedResourceList({
   title,
   emptyLabel,
   items,
+  onNavigate,
 }: {
   title: string
   emptyLabel: string
-  items: Array<{ id: string; name: string; meta: string }>
+  items: RelatedItem[]
+  onNavigate?: (id: string) => void
 }) {
   return (
     <section className="provider-admin-network-inventory__drawer-related" aria-label={title}>
@@ -65,7 +75,18 @@ function RelatedResourceList({
                 component="p"
                 className="provider-admin-network-inventory__drawer-related-name"
               >
-                {item.name}
+                {onNavigate ? (
+                  <Button
+                    variant="link"
+                    isInline
+                    className="provider-admin-network-inventory__related-link"
+                    onClick={() => onNavigate(item.id)}
+                  >
+                    {item.name}
+                  </Button>
+                ) : (
+                  item.name
+                )}
               </Content>
               <Content
                 component="p"
@@ -81,7 +102,7 @@ function RelatedResourceList({
   )
 }
 
-function toSubnetItems(subnets: readonly ProviderSubnet[]) {
+function toSubnetItems(subnets: readonly ProviderSubnet[]): RelatedItem[] {
   return subnets.map((subnet) => ({
     id: subnet.id,
     name: subnet.name,
@@ -89,7 +110,7 @@ function toSubnetItems(subnets: readonly ProviderSubnet[]) {
   }))
 }
 
-function toSecurityGroupItems(groups: readonly ProviderSecurityGroup[]) {
+function toSecurityGroupItems(groups: readonly ProviderSecurityGroup[]): RelatedItem[] {
   return groups.map((group) => ({
     id: group.id,
     name: group.name,
@@ -103,6 +124,8 @@ export function VirtualNetworkDetailsDrawer({
   onClose,
   onEdit,
   onDelete,
+  onNavigateToSubnet,
+  onNavigateToSecurityGroup,
   children,
 }: VirtualNetworkDetailsDrawerProps) {
   const relatedSubnets = network
@@ -196,12 +219,14 @@ export function VirtualNetworkDetailsDrawer({
           title="Subnets"
           emptyLabel="No subnets associated with this virtual network."
           items={relatedSubnets}
+          onNavigate={onNavigateToSubnet}
         />
 
         <RelatedResourceList
           title="Security groups"
           emptyLabel="No security groups associated with this virtual network."
           items={relatedSecurityGroups}
+          onNavigate={onNavigateToSecurityGroup}
         />
       </DrawerPanelBody>
     </DrawerPanelContent>

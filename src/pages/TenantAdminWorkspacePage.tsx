@@ -83,6 +83,8 @@ export function TenantAdminWorkspacePage() {
   )
   const [projects, setProjects] = useState<TenantProject[]>(() => getTenantProjects(tenant))
   const [openVirtualNetworkId, setOpenVirtualNetworkId] = useState<string | null>(null)
+  const [openSubnetId, setOpenSubnetId] = useState<string | null>(null)
+  const [openSecurityGroupId, setOpenSecurityGroupId] = useState<string | null>(null)
 
   useLayoutEffect(() => {
     if (!isValidTenant) {
@@ -176,6 +178,14 @@ export function TenantAdminWorkspacePage() {
             kind="virtual-network"
             openVirtualNetworkId={openVirtualNetworkId}
             onOpenVirtualNetworkConsumed={() => setOpenVirtualNetworkId(null)}
+            onNavigateToSubnet={(subnetId) => {
+              setOpenSubnetId(subnetId)
+              handleNavChange('networking-subnets')
+            }}
+            onNavigateToSecurityGroup={(securityGroupId) => {
+              setOpenSecurityGroupId(securityGroupId)
+              handleNavChange('networking-security-groups')
+            }}
           />
         )
       case 'networking-subnets':
@@ -185,6 +195,8 @@ export function TenantAdminWorkspacePage() {
             organization={organization}
             catalogDraft={catalogDraft}
             kind="subnet"
+            openSubnetId={openSubnetId}
+            onOpenSubnetConsumed={() => setOpenSubnetId(null)}
             onNavigateToVirtualNetwork={(virtualNetworkId) => {
               setOpenVirtualNetworkId(virtualNetworkId)
               handleNavChange('networking-virtual-networks')
@@ -198,6 +210,8 @@ export function TenantAdminWorkspacePage() {
             organization={organization}
             catalogDraft={catalogDraft}
             kind="security-group"
+            openSecurityGroupId={openSecurityGroupId}
+            onOpenSecurityGroupConsumed={() => setOpenSecurityGroupId(null)}
             onNavigateToVirtualNetwork={(virtualNetworkId) => {
               setOpenVirtualNetworkId(virtualNetworkId)
               handleNavChange('networking-virtual-networks')

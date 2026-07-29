@@ -61,10 +61,7 @@ export function CreateSecurityGroupModal({
   }, [isOpen, virtualNetworks])
 
   const isCreateDisabled =
-    !form.name.trim() ||
-    !form.detail.trim() ||
-    !form.virtualNetworkId.trim() ||
-    virtualNetworks.length === 0
+    !form.name.trim() || !form.virtualNetworkId.trim() || virtualNetworks.length === 0
 
   const handleCreate = () => {
     if (isCreateDisabled) {
@@ -107,7 +104,7 @@ export function CreateSecurityGroupModal({
               onChange={(_event, value) => setForm((current) => ({ ...current, name: value }))}
             />
           </FormGroup>
-          <FormGroup label="Description" fieldId="create-sg-detail" isRequired>
+          <FormGroup label="Description" fieldId="create-sg-detail">
             <TextInput
               id="create-sg-detail"
               value={form.detail}

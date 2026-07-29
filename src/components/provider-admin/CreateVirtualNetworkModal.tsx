@@ -51,7 +51,7 @@ export function CreateVirtualNetworkModal({
     }
   }, [isOpen])
 
-  const isCreateDisabled = !form.name.trim() || !form.detail.trim() || !form.cidr.trim()
+  const isCreateDisabled = !form.name.trim() || !form.cidr.trim()
 
   const handleCreate = () => {
     if (isCreateDisabled) {
@@ -93,7 +93,7 @@ export function CreateVirtualNetworkModal({
               onChange={(_event, value) => setForm((current) => ({ ...current, name: value }))}
             />
           </FormGroup>
-          <FormGroup label="Description" fieldId="create-vnet-detail" isRequired>
+          <FormGroup label="Description" fieldId="create-vnet-detail">
             <TextInput
               id="create-vnet-detail"
               value={form.detail}

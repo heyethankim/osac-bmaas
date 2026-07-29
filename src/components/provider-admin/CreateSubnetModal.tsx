@@ -23,9 +23,21 @@ import { addProviderSubnet } from '../../providerSetup/storage'
 
 type CreateSubnetForm = {
   name: string
+  detail: string
   cidr: string
   vlan: string
   virtualNetworkId: string
+}
+
+/** Demo prefills so the create flow is ready to submit. */
+function buildDemoForm(virtualNetworks: ProviderVirtualNetwork[]): CreateSubnetForm {
+  return {
+    name: 'bm-compute-c',
+    detail: 'Demo subnet for additional tenant compute capacity',
+    cidr: '10.42.2.0/24',
+    vlan: '202',
+    virtualNetworkId: virtualNetworks[0]?.id ?? '',
+  }
 }
 
 type CreateSubnetModalProps = {
@@ -41,22 +53,11 @@ export function CreateSubnetModal({
   onClose,
   onCreated,
 }: CreateSubnetModalProps) {
-  const defaultVirtualNetworkId = virtualNetworks[0]?.id ?? ''
-  const [form, setForm] = useState<CreateSubnetForm>({
-    name: '',
-    cidr: '',
-    vlan: '',
-    virtualNetworkId: defaultVirtualNetworkId,
-  })
+  const [form, setForm] = useState<CreateSubnetForm>(() => buildDemoForm(virtualNetworks))
 
   useEffect(() => {
-    if (!isOpen) {
-      setForm({
-        name: '',
-        cidr: '',
-        vlan: '',
-        virtualNetworkId: virtualNetworks[0]?.id ?? '',
-      })
+    if (isOpen) {
+      setForm(buildDemoForm(virtualNetworks))
     }
   }, [isOpen, virtualNetworks])
 
@@ -72,12 +73,14 @@ export function CreateSubnetModal({
       return
     }
 
+    const cidr = form.cidr.trim()
+    const vlan = form.vlan.trim()
     const subnet: ProviderSubnet = {
       id: generateProviderSubnetId(),
       name: form.name.trim(),
-      cidr: form.cidr.trim(),
-      vlan: form.vlan.trim(),
-      detail: formatSubnetDetail(form.cidr.trim(), form.vlan.trim()),
+      cidr,
+      vlan,
+      detail: form.detail.trim() || formatSubnetDetail(cidr, vlan),
       virtualNetworkId: form.virtualNetworkId,
       createdAt: new Date().toISOString(),
     }
@@ -110,6 +113,14 @@ export function CreateSubnetModal({
               placeholder="bm-compute-a"
             />
           </FormGroup>
+          <FormGroup label="Description" fieldId="create-subnet-detail">
+            <TextInput
+              id="create-subnet-detail"
+              value={form.detail}
+              onChange={(_event, value) => setForm((current) => ({ ...current, detail: value }))}
+              placeholder="Optional description"
+            />
+          </FormGroup>
           <FormGroup label="Virtual network" fieldId="create-subnet-vnet" isRequired>
             <FormSelect
               id="create-subnet-vnet"
@@ -120,13 +131,17 @@ export function CreateSubnetModal({
               aria-label="Virtual network"
               isDisabled={virtualNetworks.length === 0}
             >
-              {virtualNetworks.map((network) => (
-                <FormSelectOption
-                  key={network.id}
-                  value={network.id}
-                  label={`${network.name} (${network.cidr})`}
-                />
-              ))}
+              {virtualNetworks.length === 0 ? (
+                <FormSelectOption value="" label="No virtual networks available" />
+              ) : (
+                virtualNetworks.map((network) => (
+                  <FormSelectOption
+                    key={network.id}
+                    value={network.id}
+                    label={`${network.name} (${network.cidr})`}
+                  />
+                ))
+              )}
             </FormSelect>
           </FormGroup>
           <FormGroup label="CIDR" fieldId="create-subnet-cidr" isRequired>

@@ -20,11 +20,15 @@ import { getProviderVirtualNetworks } from '../../providerSetup/storage'
 type ProviderAdminVirtualNetworksPageProps = {
   openVirtualNetworkId?: string | null
   onOpenVirtualNetworkConsumed?: () => void
+  onNavigateToSubnet?: (subnetId: string) => void
+  onNavigateToSecurityGroup?: (securityGroupId: string) => void
 }
 
 export function ProviderAdminVirtualNetworksPage({
   openVirtualNetworkId = null,
   onOpenVirtualNetworkConsumed,
+  onNavigateToSubnet,
+  onNavigateToSecurityGroup,
 }: ProviderAdminVirtualNetworksPageProps = {}) {
   const [networks, setNetworks] = useState(() => getProviderVirtualNetworks())
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -77,6 +81,8 @@ export function ProviderAdminVirtualNetworksPage({
       onClose={closeDetails}
       onEdit={() => undefined}
       onDelete={() => undefined}
+      onNavigateToSubnet={onNavigateToSubnet}
+      onNavigateToSecurityGroup={onNavigateToSecurityGroup}
     >
       <div className="provider-admin-workspace-page provider-admin-network-inventory">
         <ProviderAdminWorkspacePageHeader

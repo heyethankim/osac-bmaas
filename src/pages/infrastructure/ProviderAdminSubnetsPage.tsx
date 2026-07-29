@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
   Button,
@@ -18,10 +18,14 @@ import type { ProviderSubnet } from '../../providerAdmin/networkInventory'
 import { getProviderSubnets, getProviderVirtualNetworks } from '../../providerSetup/storage'
 
 type ProviderAdminSubnetsPageProps = {
+  openSubnetId?: string | null
+  onOpenSubnetConsumed?: () => void
   onNavigateToVirtualNetwork?: (virtualNetworkId: string) => void
 }
 
 export function ProviderAdminSubnetsPage({
+  openSubnetId = null,
+  onOpenSubnetConsumed,
   onNavigateToVirtualNetwork,
 }: ProviderAdminSubnetsPageProps = {}) {
   const [subnets, setSubnets] = useState(() => getProviderSubnets())
@@ -68,6 +72,19 @@ export function ProviderAdminSubnetsPage({
   const closeDetails = () => {
     setIsDetailsOpen(false)
   }
+
+  useEffect(() => {
+    if (!openSubnetId) {
+      return
+    }
+
+    const match = subnets.find((subnet) => subnet.id === openSubnetId) ?? null
+    if (match) {
+      setSelectedSubnet(match)
+      setIsDetailsOpen(true)
+    }
+    onOpenSubnetConsumed?.()
+  }, [openSubnetId, subnets, onOpenSubnetConsumed])
 
   const selectedVirtualNetwork = selectedSubnet
     ? getVirtualNetwork(selectedSubnet.virtualNetworkId)

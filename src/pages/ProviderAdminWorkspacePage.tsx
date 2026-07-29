@@ -72,6 +72,8 @@ export function ProviderAdminWorkspacePage() {
   const [workspaceTransition, setWorkspaceTransition] = useState<WorkspaceTransition>('idle')
   const [openTemplateLookup, setOpenTemplateLookup] = useState<BmaasTemplateLookup | null>(null)
   const [openVirtualNetworkId, setOpenVirtualNetworkId] = useState<string | null>(null)
+  const [openSubnetId, setOpenSubnetId] = useState<string | null>(null)
+  const [openSecurityGroupId, setOpenSecurityGroupId] = useState<string | null>(null)
 
   useLayoutEffect(() => {
     const requestedNav = searchParams.get('nav')
@@ -206,11 +208,21 @@ export function ProviderAdminWorkspacePage() {
           <ProviderAdminVirtualNetworksPage
             openVirtualNetworkId={openVirtualNetworkId}
             onOpenVirtualNetworkConsumed={() => setOpenVirtualNetworkId(null)}
+            onNavigateToSubnet={(subnetId) => {
+              setOpenSubnetId(subnetId)
+              handleNavChange('networking-subnets')
+            }}
+            onNavigateToSecurityGroup={(securityGroupId) => {
+              setOpenSecurityGroupId(securityGroupId)
+              handleNavChange('networking-security-groups')
+            }}
           />
         )
       case 'networking-subnets':
         return (
           <ProviderAdminSubnetsPage
+            openSubnetId={openSubnetId}
+            onOpenSubnetConsumed={() => setOpenSubnetId(null)}
             onNavigateToVirtualNetwork={(virtualNetworkId) => {
               setOpenVirtualNetworkId(virtualNetworkId)
               handleNavChange('networking-virtual-networks')
@@ -220,6 +232,8 @@ export function ProviderAdminWorkspacePage() {
       case 'networking-security-groups':
         return (
           <ProviderAdminSecurityGroupsPage
+            openSecurityGroupId={openSecurityGroupId}
+            onOpenSecurityGroupConsumed={() => setOpenSecurityGroupId(null)}
             onNavigateToVirtualNetwork={(virtualNetworkId) => {
               setOpenVirtualNetworkId(virtualNetworkId)
               handleNavChange('networking-virtual-networks')

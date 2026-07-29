@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
   Button,
@@ -18,10 +18,14 @@ import type { ProviderSecurityGroup } from '../../providerAdmin/networkInventory
 import { getProviderSecurityGroups, getProviderVirtualNetworks } from '../../providerSetup/storage'
 
 type ProviderAdminSecurityGroupsPageProps = {
+  openSecurityGroupId?: string | null
+  onOpenSecurityGroupConsumed?: () => void
   onNavigateToVirtualNetwork?: (virtualNetworkId: string) => void
 }
 
 export function ProviderAdminSecurityGroupsPage({
+  openSecurityGroupId = null,
+  onOpenSecurityGroupConsumed,
   onNavigateToVirtualNetwork,
 }: ProviderAdminSecurityGroupsPageProps = {}) {
   const [groups, setGroups] = useState(() => getProviderSecurityGroups())
@@ -68,6 +72,19 @@ export function ProviderAdminSecurityGroupsPage({
   const closeDetails = () => {
     setIsDetailsOpen(false)
   }
+
+  useEffect(() => {
+    if (!openSecurityGroupId) {
+      return
+    }
+
+    const match = groups.find((group) => group.id === openSecurityGroupId) ?? null
+    if (match) {
+      setSelectedGroup(match)
+      setIsDetailsOpen(true)
+    }
+    onOpenSecurityGroupConsumed?.()
+  }, [openSecurityGroupId, groups, onOpenSecurityGroupConsumed])
 
   const selectedVirtualNetwork = selectedGroup
     ? getVirtualNetwork(selectedGroup.virtualNetworkId)
