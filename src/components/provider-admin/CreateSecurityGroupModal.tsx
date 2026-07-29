@@ -76,6 +76,7 @@ export function CreateSecurityGroupModal({
       inboundRules: form.inboundRules.trim() || 'None',
       outboundRules: form.outboundRules.trim() || 'Allow all',
       createdAt: new Date().toISOString(),
+      status: 'Ready',
     }
 
     addProviderSecurityGroup(group)

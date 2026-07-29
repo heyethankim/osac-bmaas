@@ -19,6 +19,8 @@ import {
   Title,
 } from '@patternfly/react-core'
 import {
+  getNetworkInventoryStatus,
+  getNetworkInventoryStatusLabelColor,
   getSecurityGroupsForVirtualNetwork,
   getSubnetsForVirtualNetwork,
   type ProviderSecurityGroup,
@@ -188,9 +190,16 @@ export function VirtualNetworkDetailsDrawer({
           <DescriptionListGroup>
             <DescriptionListTerm>Status</DescriptionListTerm>
             <DescriptionListDescription>
-              <Label color="green" isCompact>
-                Ready
-              </Label>
+              {network ? (
+                <Label
+                  color={getNetworkInventoryStatusLabelColor(getNetworkInventoryStatus(network))}
+                  isCompact
+                >
+                  {getNetworkInventoryStatus(network)}
+                </Label>
+              ) : (
+                '—'
+              )}
             </DescriptionListDescription>
           </DescriptionListGroup>
           <DescriptionListGroup>

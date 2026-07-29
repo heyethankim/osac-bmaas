@@ -1,3 +1,13 @@
+import { TenantAdminWorkspacePageHeader } from '../../components/tenant-admin/TenantAdminWorkspacePageHeader'
+
 export function TenantAdminOverviewPage() {
-  return <div className="tenant-admin-workspace-page tenant-admin-overview" />
+  return (
+    <div className="provider-admin-workspace-page tenant-admin-overview">
+      <TenantAdminWorkspacePageHeader
+        kicker="Tenant workspace"
+        title="Overview"
+        lede="Monitor your organization's instances, catalog access, and project activity."
+      />
+    </div>
+  )
 }

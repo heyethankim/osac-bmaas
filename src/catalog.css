@@ -37,6 +37,13 @@
   width: 100%;
 }
 
+.catalog-status-filter,
+.catalog-organization-filter {
+  flex: 0 0 14rem;
+  width: 14rem;
+  max-width: 14rem;
+}
+
 /* Keep provider class as an alias for shared search sizing. */
 .provider-admin-catalog-items__search {
   flex: 0 0 15rem;

@@ -18,7 +18,11 @@ import {
   Label,
   Title,
 } from '@patternfly/react-core'
-import type { ProviderSecurityGroup } from '../../providerAdmin/networkInventory'
+import {
+  getNetworkInventoryStatus,
+  getNetworkInventoryStatusLabelColor,
+  type ProviderSecurityGroup,
+} from '../../providerAdmin/networkInventory'
 
 type SecurityGroupDetailsDrawerProps = {
   isExpanded: boolean
@@ -94,9 +98,16 @@ export function SecurityGroupDetailsDrawer({
           <DescriptionListGroup>
             <DescriptionListTerm>Status</DescriptionListTerm>
             <DescriptionListDescription>
-              <Label color="green" isCompact>
-                Ready
-              </Label>
+              {group ? (
+                <Label
+                  color={getNetworkInventoryStatusLabelColor(getNetworkInventoryStatus(group))}
+                  isCompact
+                >
+                  {getNetworkInventoryStatus(group)}
+                </Label>
+              ) : (
+                '—'
+              )}
             </DescriptionListDescription>
           </DescriptionListGroup>
           <DescriptionListGroup>

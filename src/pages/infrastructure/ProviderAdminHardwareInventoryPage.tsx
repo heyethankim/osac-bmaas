@@ -11,6 +11,7 @@ import {
   GridItem,
   Label,
 } from '@patternfly/react-core'
+import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
 import { ProviderSetupDiscoverInventoryTable } from '../../components/provider-setup/ProviderSetupDiscoverInventoryTable'
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
 import { MOCK_DISCOVERED_HOSTS } from '../../providerSetup/constants'
@@ -115,10 +116,14 @@ export function ProviderAdminHardwareInventoryPage() {
         </FlexItem>
       </Flex>
 
-      <div className="provider-admin-infrastructure-inventory">
+      <div className="provider-admin-infrastructure-inventory catalog-table-panel">
+        <Content component="p" className="catalog-table-result-count">
+          {formatCatalogTableResultCount(MOCK_DISCOVERED_HOSTS.length, 'host')}
+        </Content>
         <ProviderSetupDiscoverInventoryTable
           revealedHostCount={MOCK_DISCOVERED_HOSTS.length}
           availableHostCount={MOCK_DISCOVERED_HOSTS.length}
+          useCatalogStyle
         />
       </div>
     </div>

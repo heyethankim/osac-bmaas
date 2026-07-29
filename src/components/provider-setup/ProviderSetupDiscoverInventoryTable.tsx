@@ -19,6 +19,8 @@ type ProviderSetupDiscoverInventoryTableProps = {
   availableHostCount: number
   recentlyRevealedHostId?: string | null
   recentlyResolvedHostId?: string | null
+  /** Use shared catalog list table styling (provider admin inventory). */
+  useCatalogStyle?: boolean
 }
 
 function HostStatusLabel({ status }: { status: HostScanStatus }) {
@@ -62,11 +64,13 @@ function InventoryRow({
   status,
   isEntering,
   isResolving,
+  useCatalogStyle,
 }: {
   host: DiscoveredHost
   status: HostScanStatus
   isEntering: boolean
   isResolving: boolean
+  useCatalogStyle: boolean
 }) {
   const rowClassName = [
     isEntering ? 'provider-setup-discover-table__row--enter' : '',
@@ -78,7 +82,15 @@ function InventoryRow({
   return (
     <Tr className={rowClassName || undefined}>
       <Td dataLabel="Serial number">
-        <Button variant="link" isInline className="provider-setup-discover-table__serial">
+        <Button
+          variant="link"
+          isInline
+          className={
+            useCatalogStyle
+              ? 'catalog-table-name-link'
+              : 'provider-setup-discover-table__serial'
+          }
+        >
           {host.serial}
         </Button>
       </Td>
@@ -86,16 +98,26 @@ function InventoryRow({
         <HostStatusLabel status={status} />
       </Td>
       <Td dataLabel="Vendor / model">
-        <Content component="p">
+        <Content component="p" className={useCatalogStyle ? 'provider-setup-discover-table__primary-cell' : undefined}>
           <strong>{host.vendor}</strong>
         </Content>
-        <Content component="small">{host.model}</Content>
+        <Content
+          component={useCatalogStyle ? 'p' : 'small'}
+          className={useCatalogStyle ? 'provider-setup-discover-table__meta-cell' : undefined}
+        >
+          {host.model}
+        </Content>
       </Td>
       <Td dataLabel="Rack / port">
-        <Content component="p">
+        <Content component="p" className={useCatalogStyle ? 'provider-setup-discover-table__primary-cell' : undefined}>
           <strong>{host.rack}</strong>
         </Content>
-        <Content component="small">{host.port}</Content>
+        <Content
+          component={useCatalogStyle ? 'p' : 'small'}
+          className={useCatalogStyle ? 'provider-setup-discover-table__meta-cell' : undefined}
+        >
+          {host.port}
+        </Content>
       </Td>
       <Td dataLabel="CPU">
         <SpecCell status={status} inspectingText="scanning…" value={host.cpu} />
@@ -115,16 +137,21 @@ export function ProviderSetupDiscoverInventoryTable({
   availableHostCount,
   recentlyRevealedHostId,
   recentlyResolvedHostId,
+  useCatalogStyle = false,
 }: ProviderSetupDiscoverInventoryTableProps) {
   const visibleHosts = MOCK_DISCOVERED_HOSTS.slice(0, revealedHostCount)
 
   return (
     <Table
       aria-label="Discovered bare metal hosts"
-      variant="compact"
-      borders
-      isStickyHeader
-      className="provider-setup-discover-table"
+      variant={useCatalogStyle ? undefined : 'compact'}
+      borders={useCatalogStyle ? undefined : true}
+      isStickyHeader={!useCatalogStyle}
+      className={
+        useCatalogStyle
+          ? 'catalog-data-table provider-setup-discover-table'
+          : 'provider-setup-discover-table'
+      }
     >
       <Thead>
         <Tr>
@@ -145,6 +172,7 @@ export function ProviderSetupDiscoverInventoryTable({
             status={getHostScanStatus(index, availableHostCount)}
             isEntering={host.id === recentlyRevealedHostId}
             isResolving={host.id === recentlyResolvedHostId}
+            useCatalogStyle={useCatalogStyle}
           />
         ))}
       </Tbody>

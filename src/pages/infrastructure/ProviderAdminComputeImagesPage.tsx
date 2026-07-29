@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
-import { Button, Content, Label } from '@patternfly/react-core'
+import { Button, Content, EmptyState, EmptyStateBody, Label } from '@patternfly/react-core'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
+import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
 import { ComputeImageDetailsModal } from '../../components/provider-admin/ComputeImageDetailsModal'
 import { CreateComputeImageModal } from '../../components/provider-admin/CreateComputeImageModal'
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
@@ -73,64 +74,80 @@ export function ProviderAdminComputeImagesPage() {
         }
       />
 
-      <Table
-        aria-label="Compute images"
-        variant="compact"
-        borders={false}
-        className="provider-admin-compute-images__table"
-      >
-        <Thead>
-          <Tr>
-            <Th modifier="wrap">Image</Th>
-            <Th modifier="wrap">Status</Th>
-            <Th modifier="wrap">Architecture</Th>
-            <Th modifier="wrap">Format</Th>
-            <Th modifier="wrap">Size</Th>
-            <Th screenReaderText="Actions" />
-          </Tr>
-        </Thead>
-        <Tbody>
-          {images.map((image) => {
-            const inUse = isProviderComputeImageInUse(image.id)
-
-            return (
-              <Tr key={image.id}>
-                <Td dataLabel="Image">
-                  <Content component="p" className="provider-admin-compute-images__primary-cell">
-                    {image.name}
-                  </Content>
-                  <Content component="p" className="provider-admin-compute-images__meta-cell">
-                    <code>{image.id}</code>
-                  </Content>
-                </Td>
-                <Td dataLabel="Status">
-                  {inUse ? (
-                    <Label color="blue" isCompact>
-                      In use
-                    </Label>
-                  ) : image.recommended ? (
-                    <Label color="green" isCompact>
-                      Recommended
-                    </Label>
-                  ) : (
-                    <Label color="green" isCompact>
-                      Available
-                    </Label>
-                  )}
-                </Td>
-                <Td dataLabel="Architecture">{image.architecture}</Td>
-                <Td dataLabel="Format">{image.format}</Td>
-                <Td dataLabel="Size">{image.sizeLabel}</Td>
-                <Td isActionCell>
-                  <ActionsColumn
-                    items={getComputeImageActions(image, inUse, setDetailsImage)}
-                  />
-                </Td>
+      {images.length === 0 ? (
+        <EmptyState titleText="No compute images yet" headingLevel="h2">
+          <EmptyStateBody>Create an image to register bootable OS images for provisioning.</EmptyStateBody>
+        </EmptyState>
+      ) : (
+        <div className="catalog-table-panel">
+          <Content component="p" className="catalog-table-result-count">
+            {formatCatalogTableResultCount(images.length, 'compute image')}
+          </Content>
+          <Table
+            aria-label="Compute images"
+            className="catalog-data-table provider-admin-compute-images__table"
+          >
+            <Thead>
+              <Tr>
+                <Th>Image</Th>
+                <Th>Status</Th>
+                <Th>Architecture</Th>
+                <Th>Format</Th>
+                <Th>Size</Th>
+                <Th screenReaderText="Actions" />
               </Tr>
-            )
-          })}
-        </Tbody>
-      </Table>
+            </Thead>
+            <Tbody>
+              {images.map((image) => {
+                const inUse = isProviderComputeImageInUse(image.id)
+
+                return (
+                  <Tr key={image.id}>
+                    <Td dataLabel="Image">
+                      <Content component="p" className="provider-admin-compute-images__primary-cell">
+                        <Button
+                          variant="link"
+                          isInline
+                          className="catalog-table-name-link"
+                          onClick={() => setDetailsImage(image)}
+                        >
+                          {image.name}
+                        </Button>
+                      </Content>
+                      <Content component="p" className="provider-admin-compute-images__meta-cell">
+                        <code>{image.id}</code>
+                      </Content>
+                    </Td>
+                    <Td dataLabel="Status">
+                      {inUse ? (
+                        <Label color="blue" isCompact>
+                          In use
+                        </Label>
+                      ) : image.recommended ? (
+                        <Label color="green" isCompact>
+                          Recommended
+                        </Label>
+                      ) : (
+                        <Label color="green" isCompact>
+                          Available
+                        </Label>
+                      )}
+                    </Td>
+                    <Td dataLabel="Architecture">{image.architecture}</Td>
+                    <Td dataLabel="Format">{image.format}</Td>
+                    <Td dataLabel="Size">{image.sizeLabel}</Td>
+                    <Td isActionCell>
+                      <ActionsColumn
+                        items={getComputeImageActions(image, inUse, setDetailsImage)}
+                      />
+                    </Td>
+                  </Tr>
+                )
+              })}
+            </Tbody>
+          </Table>
+        </div>
+      )}
 
       <CreateComputeImageModal
         isOpen={isCreateModalOpen}

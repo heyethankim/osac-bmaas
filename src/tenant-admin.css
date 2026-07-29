@@ -122,42 +122,6 @@
   max-width: 42rem;
 }
 
-.tenant-admin-networking > .catalog-view-toolbar {
-  margin-block-end: var(--pf-t--global--spacer--md);
-}
-
-.tenant-admin-networking > .catalog-table-panel {
-  margin-block-start: 0;
-}
-
-.tenant-admin-networking__alert {
-  margin-block-end: var(--pf-t--global--spacer--lg);
-}
-
-.tenant-admin-networking__summary {
-  margin-block-end: var(--pf-t--global--spacer--lg);
-}
-
-.tenant-admin-networking__form {
-  max-width: 32rem;
-}
-
-.tenant-admin-networking__primary-cell.pf-v6-c-content--p,
-.tenant-admin-networking__meta-cell.pf-v6-c-content--p {
-  margin: 0;
-}
-
-.tenant-admin-networking__meta-cell.pf-v6-c-content--p {
-  margin-block-start: var(--pf-t--global--spacer--xs);
-  color: var(--pf-t--global--text--color--subtle);
-  font-size: var(--pf-t--global--font--size--body--sm);
-}
-
-.tenant-admin-networking__meta-cell code,
-.tenant-admin-networking__table code {
-  font-family: var(--pf-t--global--font--family--monospace);
-}
-
 .tenant-admin-overview__cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
@@ -1123,12 +1087,14 @@
 }
 
 .tenant-user-catalog__title.pf-v6-c-title,
-.tenant-user-instances__title.pf-v6-c-title {
+.tenant-user-instances__title.pf-v6-c-title,
+.tenant-user-activity-log__title.pf-v6-c-title {
   margin-block-end: var(--pf-t--global--spacer--sm);
 }
 
 .tenant-user-catalog__lede.pf-v6-c-content--p,
-.tenant-user-instances__lede.pf-v6-c-content--p {
+.tenant-user-instances__lede.pf-v6-c-content--p,
+.tenant-user-activity-log__lede.pf-v6-c-content--p {
   margin: 0 0 var(--pf-t--global--spacer--lg);
   max-width: 42rem;
   color: var(--pf-t--global--text--color--subtle);

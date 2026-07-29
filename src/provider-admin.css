@@ -1701,8 +1701,16 @@
   font-size: var(--pf-t--global--font--size--body--sm);
 }
 
+.provider-admin-infrastructure-inventory.catalog-table-panel {
+  margin-block-start: var(--pf-t--global--spacer--md);
+}
+
 .provider-admin-infrastructure-inventory .provider-setup-discover-table {
   --pf-v6-c-table--cell--PaddingBlock: var(--pf-t--global--spacer--md);
+}
+
+.provider-admin-infrastructure-inventory .provider-setup-discover-table__meta-cell.pf-v6-c-content--p {
+  margin-block-start: var(--pf-t--global--spacer--xs);
 }
 
 .provider-admin-infrastructure-inventory .provider-setup-discover__inventory-panel {
@@ -1711,13 +1719,20 @@
   overflow: hidden;
 }
 
+.provider-admin-profiles > .catalog-table-panel {
+  margin-block-start: 0;
+}
+
 .provider-admin-bmaas-templates__table {
   --pf-v6-c-table--cell--PaddingBlock: var(--pf-t--global--spacer--md);
 }
 
-.provider-admin-bmaas-templates__name-link.pf-v6-c-button {
-  font-weight: var(--pf-t--global--font--weight--body--bold);
-  padding: 0;
+.provider-admin-bmaas-templates__table .pf-v6-c-table__tbody .pf-v6-c-table__td {
+  vertical-align: middle;
+}
+
+.provider-admin-bmaas-templates__meta-cell.pf-v6-c-content--p {
+  margin-block-start: var(--pf-t--global--spacer--xs);
 }
 
 .provider-admin-bmaas-templates__drawer-panel {
@@ -1775,6 +1790,14 @@
   --pf-v6-c-table--cell--PaddingBlock: var(--pf-t--global--spacer--md);
 }
 
+.provider-admin-external-ip-pools__table .pf-v6-c-table__tbody .pf-v6-c-table__td {
+  vertical-align: middle;
+}
+
+.provider-admin-external-ip-pools__meta-cell.pf-v6-c-content--p {
+  margin-block-start: var(--pf-t--global--spacer--xs);
+}
+
 .provider-admin-external-ip-pools__meta-cell code,
 .provider-admin-external-ip-pools__table code {
   font-family: var(--pf-t--global--font--family--monospace);
@@ -1815,8 +1838,7 @@
   margin-block-start: 0;
 }
 
-.provider-admin-network-inventory__table,
-.tenant-admin-networking__table {
+.provider-admin-network-inventory__table {
   --pf-v6-c-table--cell--PaddingBlock: var(--pf-t--global--spacer--md);
   table-layout: fixed;
   width: 100%;
@@ -1846,12 +1868,8 @@
 
 .provider-admin-network-inventory__col-name .provider-admin-network-inventory__primary-cell,
 .provider-admin-network-inventory__col-name .provider-admin-network-inventory__meta-cell,
-.provider-admin-network-inventory__col-name .tenant-admin-networking__primary-cell,
-.provider-admin-network-inventory__col-name .tenant-admin-networking__meta-cell,
 .provider-admin-network-inventory__table .provider-admin-network-inventory__primary-cell,
-.provider-admin-network-inventory__table .provider-admin-network-inventory__meta-cell,
-.tenant-admin-networking__table .tenant-admin-networking__primary-cell,
-.tenant-admin-networking__table .tenant-admin-networking__meta-cell {
+.provider-admin-network-inventory__table .provider-admin-network-inventory__meta-cell {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1878,8 +1896,7 @@
   vertical-align: bottom;
 }
 
-.provider-admin-network-inventory__table .pf-v6-c-table__tbody .pf-v6-c-table__td,
-.tenant-admin-networking__table .pf-v6-c-table__tbody .pf-v6-c-table__td {
+.provider-admin-network-inventory__table .pf-v6-c-table__tbody .pf-v6-c-table__td {
   vertical-align: middle;
 }
 
@@ -2009,6 +2026,14 @@
 
 .provider-admin-compute-images__table {
   --pf-v6-c-table--cell--PaddingBlock: var(--pf-t--global--spacer--md);
+}
+
+.provider-admin-compute-images__table .pf-v6-c-table__tbody .pf-v6-c-table__td {
+  vertical-align: middle;
+}
+
+.provider-admin-compute-images__meta-cell.pf-v6-c-content--p {
+  margin-block-start: var(--pf-t--global--spacer--xs);
 }
 
 .provider-admin-compute-images__meta-cell code,
@@ -2578,8 +2603,13 @@
 }
 
 
-.provider-admin-quotas__toggle-group {
+.provider-admin-quotas__toggle-group,
+.provider-admin-profiles__toggle-group {
   margin-block-end: var(--pf-t--global--spacer--md);
+}
+
+.provider-admin-profiles__empty {
+  margin-block-start: var(--pf-t--global--spacer--lg);
 }
 
 .provider-admin-quotas__section-lede,

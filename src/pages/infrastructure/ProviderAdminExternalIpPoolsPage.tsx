@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
-import { Button, Content, Label } from '@patternfly/react-core'
+import { Button, Content, EmptyState, EmptyStateBody, Label } from '@patternfly/react-core'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
+import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
 import { AssignExternalIpPoolModal } from '../../components/provider-admin/AssignExternalIpPoolModal'
 import { CreateExternalIpPoolModal } from '../../components/provider-admin/CreateExternalIpPoolModal'
 import { ExternalIpPoolDetailsModal } from '../../components/provider-admin/ExternalIpPoolDetailsModal'
@@ -120,63 +121,79 @@ export function ProviderAdminExternalIpPoolsPage() {
         }
       />
 
-      <Table
-        aria-label="External IP pools"
-        variant="compact"
-        borders={false}
-        className="provider-admin-external-ip-pools__table"
-      >
-        <Thead>
-          <Tr>
-            <Th modifier="wrap">Pool</Th>
-            <Th modifier="wrap">Status</Th>
-            <Th modifier="wrap">CIDR</Th>
-            <Th modifier="wrap">Data center</Th>
-            <Th modifier="wrap">Capacity</Th>
-            <Th screenReaderText="Actions" />
-          </Tr>
-        </Thead>
-        <Tbody>
-          {pools.map((pool) => (
-            <Tr key={pool.id}>
-              <Td dataLabel="Pool">
-                <Content component="p" className="provider-admin-external-ip-pools__primary-cell">
-                  {pool.name}
-                </Content>
-                <Content component="p" className="provider-admin-external-ip-pools__meta-cell">
-                  <code>{pool.id}</code>
-                </Content>
-              </Td>
-              <Td dataLabel="Status">
-                {pool.assignedOrganizationName ? (
-                  <Label color="blue" isCompact>
-                    Assigned
-                  </Label>
-                ) : (
-                  <Label color="green" isCompact>
-                    Available
-                  </Label>
-                )}
-              </Td>
-              <Td dataLabel="CIDR">
-                <code>{pool.cidr}</code>
-              </Td>
-              <Td dataLabel="Data center">{pool.dataCenter}</Td>
-              <Td dataLabel="Capacity">{pool.totalAddresses.toLocaleString()} addresses</Td>
-              <Td isActionCell>
-                <ActionsColumn
-                  items={getExternalIpPoolActions(
-                    pool,
-                    setDetailsPool,
-                    setAssignPool,
-                    setAssignmentPool,
-                  )}
-                />
-              </Td>
-            </Tr>
-          ))}
-        </Tbody>
-      </Table>
+      {pools.length === 0 ? (
+        <EmptyState titleText="No external IP pools yet" headingLevel="h2">
+          <EmptyStateBody>Create a pool to define routable address ranges for tenant edge exposure.</EmptyStateBody>
+        </EmptyState>
+      ) : (
+        <div className="catalog-table-panel">
+          <Content component="p" className="catalog-table-result-count">
+            {formatCatalogTableResultCount(pools.length, 'external IP pool')}
+          </Content>
+          <Table
+            aria-label="External IP pools"
+            className="catalog-data-table provider-admin-external-ip-pools__table"
+          >
+            <Thead>
+              <Tr>
+                <Th>Pool</Th>
+                <Th>Status</Th>
+                <Th>CIDR</Th>
+                <Th>Data center</Th>
+                <Th>Capacity</Th>
+                <Th screenReaderText="Actions" />
+              </Tr>
+            </Thead>
+            <Tbody>
+              {pools.map((pool) => (
+                <Tr key={pool.id}>
+                  <Td dataLabel="Pool">
+                    <Content component="p" className="provider-admin-external-ip-pools__primary-cell">
+                      <Button
+                        variant="link"
+                        isInline
+                        className="catalog-table-name-link"
+                        onClick={() => setDetailsPool(pool)}
+                      >
+                        {pool.name}
+                      </Button>
+                    </Content>
+                    <Content component="p" className="provider-admin-external-ip-pools__meta-cell">
+                      <code>{pool.id}</code>
+                    </Content>
+                  </Td>
+                  <Td dataLabel="Status">
+                    {pool.assignedOrganizationName ? (
+                      <Label color="blue" isCompact>
+                        Assigned
+                      </Label>
+                    ) : (
+                      <Label color="green" isCompact>
+                        Available
+                      </Label>
+                    )}
+                  </Td>
+                  <Td dataLabel="CIDR">
+                    <code>{pool.cidr}</code>
+                  </Td>
+                  <Td dataLabel="Data center">{pool.dataCenter}</Td>
+                  <Td dataLabel="Capacity">{pool.totalAddresses.toLocaleString()} addresses</Td>
+                  <Td isActionCell>
+                    <ActionsColumn
+                      items={getExternalIpPoolActions(
+                        pool,
+                        setDetailsPool,
+                        setAssignPool,
+                        setAssignmentPool,
+                      )}
+                    />
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        </div>
+      )}
 
       <CreateExternalIpPoolModal
         isOpen={isCreateModalOpen}

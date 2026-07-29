@@ -31,7 +31,7 @@ export const TENANT_ADMIN_NETWORKING_NAV_ITEMS: ReadonlyArray<{
 export const TENANT_ADMIN_NAV_ITEMS: TenantAdminNavItem[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'catalog', label: 'Catalog' },
-  { id: 'services', label: 'Services' },
+  { id: 'services', label: 'My instances' },
   { id: 'projects-teams', label: 'Projects & teams' },
   {
     id: 'networking',
@@ -62,8 +62,3 @@ export const TENANT_ADMIN_NAV_GROUPS: TenantAdminNavGroup[] = [
     items: TENANT_ADMIN_NAV_ITEMS,
   },
 ]
-
-export const TENANT_ACCEPT_INVITATION_INTRO = {
-  title: 'Accept your organization invitation',
-  lede: 'Your provider administrator registered this organization and invited you as the first tenant admin.',
-} as const

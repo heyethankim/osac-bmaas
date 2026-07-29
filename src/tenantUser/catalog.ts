@@ -1,5 +1,8 @@
 import type { CatalogSpecRow } from '../catalog/catalogSpecs'
-import { resolveCatalogSpecRows } from '../catalog/catalogSpecs'
+import {
+  resolveCatalogSpecRows,
+  VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID,
+} from '../catalog/catalogSpecs'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../providerSetup/storage'
 import {
@@ -106,6 +109,14 @@ function isCatalogVisibleToTenantUser(
   organization: RegisteredOrganization | null,
 ): boolean {
   if (getCatalogItemStatus(item) === 'unpublished') {
+    return false
+  }
+
+  if (
+    organization &&
+    item.catalogItemId === VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID &&
+    (organization.slug === 'northstar' || organization.slug === 'evergreen')
+  ) {
     return false
   }
 

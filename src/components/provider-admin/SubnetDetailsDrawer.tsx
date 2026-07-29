@@ -18,7 +18,11 @@ import {
   Label,
   Title,
 } from '@patternfly/react-core'
-import type { ProviderSubnet } from '../../providerAdmin/networkInventory'
+import {
+  getNetworkInventoryStatus,
+  getNetworkInventoryStatusLabelColor,
+  type ProviderSubnet,
+} from '../../providerAdmin/networkInventory'
 
 type SubnetDetailsDrawerProps = {
   isExpanded: boolean
@@ -94,9 +98,16 @@ export function SubnetDetailsDrawer({
           <DescriptionListGroup>
             <DescriptionListTerm>Status</DescriptionListTerm>
             <DescriptionListDescription>
-              <Label color="green" isCompact>
-                Ready
-              </Label>
+              {subnet ? (
+                <Label
+                  color={getNetworkInventoryStatusLabelColor(getNetworkInventoryStatus(subnet))}
+                  isCompact
+                >
+                  {getNetworkInventoryStatus(subnet)}
+                </Label>
+              ) : (
+                '—'
+              )}
             </DescriptionListDescription>
           </DescriptionListGroup>
           <DescriptionListGroup>

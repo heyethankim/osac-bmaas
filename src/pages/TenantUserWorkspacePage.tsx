@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Alert, AlertActionLink } from '@patternfly/react-core'
-import { TenantUserAcceptInvitationPanel } from '../components/tenant-user/TenantUserAcceptInvitationPanel'
 import { TenantShell } from '../components/tenant/TenantShell'
 import { DEMO_TENANT_DISPLAY_USER, isDemoTenantId } from '../demoTenant'
 import {
@@ -19,7 +18,6 @@ import {
   addTenantUserInstance,
   getTenantUserActiveNav,
   getTenantUserInstances,
-  isTenantUserOnboardingComplete,
   setTenantUserActiveNav,
   setTenantUserOnboardingComplete,
   updateTenantUserInstance,
@@ -63,15 +61,6 @@ export function TenantUserWorkspacePage() {
   const isValidTenant = Boolean(tenant && isDemoTenantId(tenant) && tenant === 'northstar')
 
   const [previewSession] = useState(() => getProviderViewingAsTenantUser())
-  const [onboardingComplete, setOnboardingComplete] = useState(() => {
-    if (!isValidTenant) {
-      return false
-    }
-    if (isTenantUserNavId(searchParams.get('nav'))) {
-      return true
-    }
-    return isTenantUserOnboardingComplete(tenantSlug)
-  })
   const [activeNavId, setActiveNavId] = useState<TenantUserNavId>(() =>
     isValidTenant ? readInitialTenantUserNav(tenantSlug, searchParams) : 'catalog',
   )
@@ -154,13 +143,15 @@ export function TenantUserWorkspacePage() {
       return
     }
 
+    setTenantUserOnboardingComplete(tenantSlug)
+    activateProviderRegisteredOrganizationBySlug(tenantSlug)
+
     const requestedNav = searchParams.get('nav')
     if (!isTenantUserNavId(requestedNav)) {
       return
     }
 
     ensureTenantUserPostOnboardingPrototype(tenantSlug, requestedNav)
-    setOnboardingComplete(true)
     setActiveNavId(requestedNav)
   }, [isValidTenant, searchParams, tenantSlug])
 
@@ -233,14 +224,6 @@ export function TenantUserWorkspacePage() {
   const invitation = getTenantUserProjectInvitation(tenantSlug, organization)
   const displayName = DEMO_TENANT_DISPLAY_USER[tenantSlug]
 
-  const handleInvitationAccepted = () => {
-    activateProviderRegisteredOrganizationBySlug(tenantSlug)
-    setTenantUserOnboardingComplete(tenantSlug)
-    setOnboardingComplete(true)
-    setActiveNavId('catalog')
-    setTenantUserActiveNav(tenantSlug, 'catalog')
-  }
-
   const handleReturnFromPreview = () => {
     navigate(returnFromTenantUserPreview())
   }
@@ -249,15 +232,6 @@ export function TenantUserWorkspacePage() {
     previewSession?.source === 'tenant-admin' ? 'Return to Tenant Admin' : 'Return to Provider Admin'
 
   const renderWorkspaceContent = () => {
-    if (!onboardingComplete) {
-      return (
-        <TenantUserAcceptInvitationPanel
-          invitation={invitation}
-          onAccept={handleInvitationAccepted}
-        />
-      )
-    }
-
     switch (activeNavId) {
       case 'my-instances':
         return (
@@ -301,10 +275,9 @@ export function TenantUserWorkspacePage() {
       role="tenant-user"
       displayName={displayName}
       navItems={TENANT_USER_NAV_ITEMS}
-      showNavigation={onboardingComplete}
+      showNavigation
       activeNavId={activeNavId}
       onNavChange={handleNavChange}
-      isOnboardingLayout={!onboardingComplete}
     >
       {isPreviewSession && previewSession ? (
         <Alert

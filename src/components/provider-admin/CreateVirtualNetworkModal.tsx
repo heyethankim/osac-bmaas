@@ -65,6 +65,7 @@ export function CreateVirtualNetworkModal({
       cidr: form.cidr.trim(),
       ipv6Cidr: form.ipv6Cidr.trim(),
       createdAt: new Date().toISOString(),
+      status: 'Ready',
     }
 
     addProviderVirtualNetwork(network)

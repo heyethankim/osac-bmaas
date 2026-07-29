@@ -1,9 +1,3 @@
-export const TENANT_USER_ACCEPT_INVITATION_INTRO = {
-  badge: 'Platform invitation',
-  organizationTitle: 'You\u2019ve been invited to join a workspace',
-  projectTitle: 'You\u2019ve been invited to join a project',
-} as const
-
 export const TENANT_USER_CATALOG_PAGE = {
   organizationLede: 'Browse and provision catalog items available to your organization.',
   projectLede: 'Browse and provision catalog items assigned to your project.',

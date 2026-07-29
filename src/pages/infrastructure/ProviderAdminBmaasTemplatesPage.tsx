@@ -1,7 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
-import { Button, Content, Label } from '@patternfly/react-core'
+import {
+  Button,
+  Content,
+  EmptyState,
+  EmptyStateBody,
+  Label,
+  ToggleGroup,
+  ToggleGroupItem,
+} from '@patternfly/react-core'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
+import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
 import { BmaasTemplateDetailsDrawer } from '../../components/provider-admin/BmaasTemplateDetailsDrawer'
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
 import {
@@ -19,20 +28,25 @@ import {
   getSwitchPortProfileLabel,
   formatRateCardSummary,
   resolveRateCard,
+  type CatalogServiceId,
   type PublishedTemplatePayload,
   type SavedMasterTemplate,
 } from '../../providerSetup/templateDemo'
 import { getOsImageLabel } from '../../providerAdmin/osImageLabels'
 import {
   addProviderSavedTemplate,
+  getCatalogItemStatus,
   getProviderCatalogItems,
   getProviderRegisteredOrganizations,
   getProviderSavedTemplates,
   syncCatalogLinkedTemplateName,
   upsertProviderSavedTemplate,
+  type ProviderCatalogDraft,
 } from '../../providerSetup/storage'
 import { ProviderSetupBlueprintDesigner } from '../provider-setup/ProviderSetupBlueprintDesigner'
 import { ProviderSetupPublishCatalogWizard } from '../provider-setup/ProviderSetupPublishCatalogWizard'
+
+type ProfilesTemplatesTab = 'baremetal' | 'cluster' | 'virtual-machine'
 
 type ProviderAdminBmaasTemplatesPageProps = {
   onCreateCatalogItem: (payload: PublishedTemplatePayload) => void
@@ -72,6 +86,91 @@ function getTemplateActions(
   ]
 }
 
+function getServiceProfiles(
+  catalogItems: ProviderCatalogDraft[],
+  serviceId: CatalogServiceId,
+): ProviderCatalogDraft[] {
+  return catalogItems.filter((item) => (item.serviceId ?? 'baremetal') === serviceId)
+}
+
+function ServiceProfilesTable({
+  serviceId,
+  profiles,
+  emptyTitle,
+  emptyBody,
+  ariaLabel,
+  resultNoun,
+}: {
+  serviceId: 'cluster' | 'virtual-machine'
+  profiles: ProviderCatalogDraft[]
+  emptyTitle: string
+  emptyBody: string
+  ariaLabel: string
+  resultNoun: string
+}) {
+  const profileColumnLabel = serviceId === 'cluster' ? 'Cluster profile' : 'VM profile'
+
+  if (profiles.length === 0) {
+    return (
+      <EmptyState titleText={emptyTitle} headingLevel="h2" className="provider-admin-profiles__empty">
+        <EmptyStateBody>{emptyBody}</EmptyStateBody>
+      </EmptyState>
+    )
+  }
+
+  return (
+    <div className="catalog-table-panel">
+      <Content component="p" className="catalog-table-result-count">
+        {formatCatalogTableResultCount(profiles.length, resultNoun)}
+      </Content>
+      <Table
+        aria-label={ariaLabel}
+        className="catalog-data-table provider-admin-bmaas-templates__table"
+      >
+        <Thead>
+          <Tr>
+            <Th>{profileColumnLabel}</Th>
+            <Th>Status</Th>
+            <Th>Catalog item</Th>
+            <Th>Rate card</Th>
+          </Tr>
+        </Thead>
+        <Tbody>
+          {profiles.map((profile) => {
+            const isLive = getCatalogItemStatus(profile) === 'live'
+
+            return (
+              <Tr key={profile.catalogItemId}>
+                <Td dataLabel={profileColumnLabel}>
+                  <Content component="p" className="provider-admin-bmaas-templates__primary-cell">
+                    {profile.templateName}
+                  </Content>
+                  <Content component="p" className="provider-admin-bmaas-templates__meta-cell">
+                    <code>{profile.templateRefId}</code>
+                  </Content>
+                </Td>
+                <Td dataLabel="Status">
+                  {isLive ? (
+                    <Label color="green" isCompact>
+                      Published
+                    </Label>
+                  ) : (
+                    <Label color="grey" isCompact>
+                      Unpublished
+                    </Label>
+                  )}
+                </Td>
+                <Td dataLabel="Catalog item">{profile.displayName}</Td>
+                <Td dataLabel="Rate card">{formatRateCardSummary(profile.rateCard)}</Td>
+              </Tr>
+            )
+          })}
+        </Tbody>
+      </Table>
+    </div>
+  )
+}
+
 export function ProviderAdminBmaasTemplatesPage({
   onCreateCatalogItem,
   isPublishing = false,
@@ -79,6 +178,7 @@ export function ProviderAdminBmaasTemplatesPage({
   onOpenTemplateConsumed,
 }: ProviderAdminBmaasTemplatesPageProps) {
   const [savedTemplates, setSavedTemplates] = useState(() => getProviderSavedTemplates())
+  const [activeTab, setActiveTab] = useState<ProfilesTemplatesTab>('baremetal')
   const [isDesignerOpen, setIsDesignerOpen] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<SavedMasterTemplate | null>(null)
   const [isPublishWizardOpen, setIsPublishWizardOpen] = useState(false)
@@ -98,6 +198,14 @@ export function ProviderAdminBmaasTemplatesPage({
     () => mergeAvailableTemplates(savedTemplates),
     [savedTemplates],
   )
+  const clusterProfiles = useMemo(
+    () => getServiceProfiles(catalogItems, 'cluster'),
+    [catalogItems],
+  )
+  const vmProfiles = useMemo(
+    () => getServiceProfiles(catalogItems, 'virtual-machine'),
+    [catalogItems],
+  )
   const hasGpuTemplate = savedTemplates.some(
     (template) => template.hardwareProfileId === SECOND_HARDWARE_PROFILE_ID,
   )
@@ -112,6 +220,7 @@ export function ProviderAdminBmaasTemplatesPage({
     }
 
     const match = findBmaasTemplate(openTemplateLookup, availableTemplates)
+    setActiveTab('baremetal')
     if (match) {
       setSelectedTemplate(match)
       setIsDetailsDrawerOpen(true)
@@ -166,7 +275,7 @@ export function ProviderAdminBmaasTemplatesPage({
 
   return (
     <BmaasTemplateDetailsDrawer
-      isExpanded={isDetailsDrawerOpen}
+      isExpanded={isDetailsDrawerOpen && activeTab === 'baremetal'}
       template={selectedTemplate}
       onClose={closeDetails}
       isPublishing={isPublishing}
@@ -182,104 +291,183 @@ export function ProviderAdminBmaasTemplatesPage({
           : undefined
       }
     >
-      <div className="provider-admin-workspace-page">
+      <div className="provider-admin-workspace-page provider-admin-profiles">
         <ProviderAdminWorkspacePageHeader
           kicker="Infrastructure"
-          title="Bare metal templates"
-          lede="Private master templates linked to discovered hardware profiles and compute images from the image registry."
+          title="Profiles & templates"
+          lede="Author bare metal templates, cluster profiles, and VM profiles used when publishing catalog offerings."
           action={
-            <Button
-              variant="primary"
-              icon={<PlusIcon />}
-              onClick={handleOpenCreateDesigner}
-              isDisabled={hasGpuTemplate}
-            >
-              Create template for catalog
-            </Button>
+            activeTab === 'baremetal' ? (
+              <Button
+                variant="primary"
+                icon={<PlusIcon />}
+                onClick={handleOpenCreateDesigner}
+                isDisabled={hasGpuTemplate}
+              >
+                Create template for catalog
+              </Button>
+            ) : undefined
           }
         />
 
-        <Table
-          aria-label="Bare metal templates"
-          variant="compact"
-          borders={false}
-          className="provider-admin-bmaas-templates__table"
+        <ToggleGroup
+          aria-label="Profiles and templates views"
+          className="provider-admin-profiles__toggle-group"
         >
-          <Thead>
-            <Tr>
-              <Th modifier="wrap">Template</Th>
-              <Th modifier="wrap">Status</Th>
-              <Th modifier="wrap">Hardware profile</Th>
-              <Th modifier="wrap">OS image</Th>
-              <Th modifier="wrap">Network</Th>
-              <Th modifier="wrap">Rate card</Th>
-              <Th screenReaderText="Actions" />
-            </Tr>
-          </Thead>
-          <Tbody>
-            {availableTemplates.map((template) => {
-              const status = getBmaasTemplateStatus(template, savedTemplates, catalogItems)
-              const isPublished = status === 'published'
-              const network = getTemplateNetworkDefaults(template.hardwareProfileId)
+          <ToggleGroupItem
+            text={`Bare metal templates ${availableTemplates.length}`}
+            buttonId="profiles-view-baremetal"
+            isSelected={activeTab === 'baremetal'}
+            onChange={() => setActiveTab('baremetal')}
+          />
+          <ToggleGroupItem
+            text={`Cluster profiles ${clusterProfiles.length}`}
+            buttonId="profiles-view-cluster"
+            isSelected={activeTab === 'cluster'}
+            onChange={() => setActiveTab('cluster')}
+          />
+          <ToggleGroupItem
+            text={`VM profiles ${vmProfiles.length}`}
+            buttonId="profiles-view-vm"
+            isSelected={activeTab === 'virtual-machine'}
+            onChange={() => setActiveTab('virtual-machine')}
+          />
+        </ToggleGroup>
 
-              return (
-                <Tr key={template.templateRefId}>
-                  <Td dataLabel="Template">
-                    <Button
-                      variant="link"
-                      isInline
-                      className="provider-admin-bmaas-templates__name-link"
-                      onClick={() => openDetails(template)}
-                    >
-                      {template.templateName}
-                    </Button>
-                  </Td>
-                  <Td dataLabel="Status">
-                    {isPublished ? (
-                      <Label color="green" isCompact>
-                        Published
-                      </Label>
-                    ) : (
-                      <Label color="grey" isCompact>
-                        {status === 'draft' ? 'Draft' : 'Private'}
-                      </Label>
-                    )}
-                  </Td>
-                  <Td dataLabel="Hardware profile">
-                    {getHardwareProfileLabel(template.hardwareProfileId)}
-                  </Td>
-                  <Td dataLabel="OS image">{getOsImageLabel(template.osImageId)}</Td>
-                  <Td dataLabel="Network">
-                    <Content component="p" className="provider-admin-bmaas-templates__primary-cell">
-                      {network.subnetCidr}
-                    </Content>
-                    <Content
-                      component="p"
-                      className="provider-admin-bmaas-templates__secondary-cell"
-                    >
-                      VLAN {network.vlanId} ·{' '}
-                      {getSwitchPortProfileLabel(network.switchPortProfile)}
-                    </Content>
-                  </Td>
-                  <Td dataLabel="Rate card">
-                    {formatRateCardSummary(resolveRateCard(template))}
-                  </Td>
-                  <Td isActionCell>
-                    <ActionsColumn
-                      items={getTemplateActions(
-                        isPublished,
-                        isPublishing,
-                        () => openDetails(template),
-                        () => handleOpenEditDesigner(template),
-                        () => handleOpenPublishWizard(template.templateRefId),
-                      )}
-                    />
-                  </Td>
-                </Tr>
-              )
-            })}
-          </Tbody>
-        </Table>
+        {activeTab === 'baremetal' ? (
+          availableTemplates.length === 0 ? (
+            <EmptyState
+              titleText="No bare metal templates yet"
+              headingLevel="h2"
+              className="provider-admin-profiles__empty"
+            >
+              <EmptyStateBody>
+                Create a template to get started publishing bare metal catalog offerings.
+              </EmptyStateBody>
+            </EmptyState>
+          ) : (
+            <div className="catalog-table-panel">
+              <Content component="p" className="catalog-table-result-count">
+                {formatCatalogTableResultCount(availableTemplates.length, 'bare metal template')}
+              </Content>
+              <Table
+                aria-label="Bare metal templates"
+                className="catalog-data-table provider-admin-bmaas-templates__table"
+              >
+                <Thead>
+                  <Tr>
+                    <Th>Template</Th>
+                    <Th>Status</Th>
+                    <Th>Hardware profile</Th>
+                    <Th>OS image</Th>
+                    <Th>Network</Th>
+                    <Th>Rate card</Th>
+                    <Th screenReaderText="Actions" />
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {availableTemplates.map((template) => {
+                    const status = getBmaasTemplateStatus(template, savedTemplates, catalogItems)
+                    const isPublished = status === 'published'
+                    const network = getTemplateNetworkDefaults(template.hardwareProfileId)
+
+                    return (
+                      <Tr key={template.templateRefId}>
+                        <Td dataLabel="Template">
+                          <Content
+                            component="p"
+                            className="provider-admin-bmaas-templates__primary-cell"
+                          >
+                            <Button
+                              variant="link"
+                              isInline
+                              className="catalog-table-name-link"
+                              onClick={() => openDetails(template)}
+                            >
+                              {template.templateName}
+                            </Button>
+                          </Content>
+                          <Content
+                            component="p"
+                            className="provider-admin-bmaas-templates__meta-cell"
+                          >
+                            <code>{template.templateRefId}</code>
+                          </Content>
+                        </Td>
+                        <Td dataLabel="Status">
+                          {isPublished ? (
+                            <Label color="green" isCompact>
+                              Published
+                            </Label>
+                          ) : (
+                            <Label color="grey" isCompact>
+                              {status === 'draft' ? 'Draft' : 'Private'}
+                            </Label>
+                          )}
+                        </Td>
+                        <Td dataLabel="Hardware profile">
+                          {getHardwareProfileLabel(template.hardwareProfileId)}
+                        </Td>
+                        <Td dataLabel="OS image">{getOsImageLabel(template.osImageId)}</Td>
+                        <Td dataLabel="Network">
+                          <Content
+                            component="p"
+                            className="provider-admin-bmaas-templates__primary-cell"
+                          >
+                            {network.subnetCidr}
+                          </Content>
+                          <Content
+                            component="p"
+                            className="provider-admin-bmaas-templates__meta-cell"
+                          >
+                            VLAN {network.vlanId} ·{' '}
+                            {getSwitchPortProfileLabel(network.switchPortProfile)}
+                          </Content>
+                        </Td>
+                        <Td dataLabel="Rate card">
+                          {formatRateCardSummary(resolveRateCard(template))}
+                        </Td>
+                        <Td isActionCell>
+                          <ActionsColumn
+                            items={getTemplateActions(
+                              isPublished,
+                              isPublishing,
+                              () => openDetails(template),
+                              () => handleOpenEditDesigner(template),
+                              () => handleOpenPublishWizard(template.templateRefId),
+                            )}
+                          />
+                        </Td>
+                      </Tr>
+                    )
+                  })}
+                </Tbody>
+              </Table>
+            </div>
+          )
+        ) : null}
+
+        {activeTab === 'cluster' ? (
+          <ServiceProfilesTable
+            serviceId="cluster"
+            profiles={clusterProfiles}
+            emptyTitle="No cluster profiles yet"
+            emptyBody="Cluster profiles appear here after you publish a cluster catalog offering."
+            ariaLabel="Cluster profiles"
+            resultNoun="cluster profile"
+          />
+        ) : null}
+
+        {activeTab === 'virtual-machine' ? (
+          <ServiceProfilesTable
+            serviceId="virtual-machine"
+            profiles={vmProfiles}
+            emptyTitle="No VM profiles yet"
+            emptyBody="VM profiles appear here after you publish a virtual machine catalog offering."
+            ariaLabel="VM profiles"
+            resultNoun="VM profile"
+          />
+        ) : null}
 
         <ProviderSetupBlueprintDesigner
           isOpen={isDesignerOpen}

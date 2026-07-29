@@ -83,6 +83,7 @@ export function CreateSubnetModal({
       detail: form.detail.trim() || formatSubnetDetail(cidr, vlan),
       virtualNetworkId: form.virtualNetworkId,
       createdAt: new Date().toISOString(),
+      status: 'Ready',
     }
 
     addProviderSubnet(subnet)

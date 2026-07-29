@@ -13,6 +13,8 @@ import {
   EmptyStateBody,
   Flex,
   FlexItem,
+  FormSelect,
+  FormSelectOption,
   Label,
   Modal,
   ModalBody,
@@ -47,7 +49,7 @@ import { getCatalogViewMode, setCatalogViewMode, type CatalogViewMode } from '..
 import { getCatalogNetworkLockSummary } from '../providerAdmin/catalogNetworkPolicy'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
 import { openAsTenantUser, resolveOrganizationForTenantUserPreview } from '../providerAdmin/openAsTenantUser'
-import type { ProviderCatalogDraft } from '../providerSetup/storage'
+import type { CatalogItemStatus, ProviderCatalogDraft } from '../providerSetup/storage'
 import {
   assignCatalogToRegisteredOrganization,
   consumeProviderVipCatalogResumeIntent,
@@ -90,6 +92,22 @@ type ProviderAdminCatalogPageProps = {
 
 function getDraftServiceId(catalogDraft: ProviderCatalogDraft): CatalogServiceId {
   return catalogDraft.serviceId ?? 'baremetal'
+}
+
+function catalogItemMatchesOrganization(
+  item: ProviderCatalogDraft,
+  organization: RegisteredOrganization,
+): boolean {
+  if (item.scope !== 'vip-enterprise') {
+    return false
+  }
+
+  const tenantId = item.enterpriseTenantId?.trim()
+  if (!tenantId) {
+    return false
+  }
+
+  return tenantId === organization.tenantId || tenantId === organization.id
 }
 
 function formatCatalogCreatedAt(iso: string): string {
@@ -301,6 +319,8 @@ export function ProviderAdminCatalogPage({
   const [selectedFilters, setSelectedFilters] = useState<Set<CatalogServiceId>>(
     () => new Set(initialServiceFilters.length > 0 ? initialServiceFilters : ['baremetal']),
   )
+  const [selectedStatus, setSelectedStatus] = useState<'all' | CatalogItemStatus>('all')
+  const [organizationFilter, setOrganizationFilter] = useState('')
   const [viewMode, setViewMode] = useState<CatalogViewMode>(() => getCatalogViewMode('grid'))
   const [searchValue, setSearchValue] = useState('')
   const [organizations, setOrganizations] = useState(() => getProviderRegisteredOrganizations())
@@ -343,11 +363,32 @@ export function ProviderAdminCatalogPage({
     () => countCatalogServices(catalogItems.map(getDraftServiceId)),
     [catalogItems],
   )
+  const organizationOptions = useMemo(
+    () =>
+      [...organizations].sort((left, right) =>
+        left.name.localeCompare(right.name, undefined, { sensitivity: 'base' }),
+      ),
+    [organizations],
+  )
   const filteredCatalogItems = useMemo(() => {
     const query = searchValue.trim().toLowerCase()
+    const selectedOrganization = organizationFilter
+      ? organizations.find(
+          (organization) =>
+            organization.tenantId === organizationFilter || organization.id === organizationFilter,
+        )
+      : null
 
     return catalogItems.filter((item) => {
       if (!selectedFilters.has(getDraftServiceId(item))) {
+        return false
+      }
+
+      if (selectedStatus !== 'all' && getCatalogItemStatus(item) !== selectedStatus) {
+        return false
+      }
+
+      if (selectedOrganization && !catalogItemMatchesOrganization(item, selectedOrganization)) {
         return false
       }
 
@@ -362,7 +403,14 @@ export function ProviderAdminCatalogPage({
         item.templateRefId.toLowerCase().includes(query)
       )
     })
-  }, [catalogItems, selectedFilters, searchValue])
+  }, [
+    catalogItems,
+    selectedFilters,
+    selectedStatus,
+    organizationFilter,
+    organizations,
+    searchValue,
+  ])
 
   const unassignedOrganizations = useMemo(
     () => organizations.filter((organization) => !organization.catalogItemId),
@@ -571,14 +619,30 @@ export function ProviderAdminCatalogPage({
     if (selectedFilters.size === 0) {
       return 'Select a service to view catalog items'
     }
-    if (searchValue.trim()) {
+    if (searchValue.trim() || organizationFilter) {
       return 'No matching catalog items'
+    }
+    if (selectedStatus !== 'all') {
+      return `No ${selectedStatus === 'live' ? 'published' : 'unpublished'} catalog items`
     }
     if (selectedFilters.size === 1) {
       const [onlyFilter] = selectedFilters
       return `No ${CATALOG_SERVICE_FILTER_LABELS[onlyFilter!]} items yet`
     }
     return 'No catalog items for the selected services'
+  })()
+
+  const emptyStateBody = (() => {
+    if (selectedFilters.size === 0) {
+      return 'Choose one or more services above to filter the catalog.'
+    }
+    if (searchValue.trim() || organizationFilter) {
+      return 'Try a different search, organization, or clear filters.'
+    }
+    if (selectedStatus !== 'all') {
+      return 'Try a different publish status or clear filters.'
+    }
+    return 'Create a catalog item for this service to see it listed here.'
   })()
 
   const drawerCatalog = selectedCatalogItem ?? newestCatalogItem
@@ -674,6 +738,35 @@ export function ProviderAdminCatalogPage({
             serviceCounts={serviceCounts}
             onToggle={handleFilterToggle}
           />
+          <FormSelect
+            className="catalog-status-filter"
+            id="catalog-status-filter"
+            value={selectedStatus}
+            onChange={(_event, value) =>
+              setSelectedStatus(value as 'all' | CatalogItemStatus)
+            }
+            aria-label="Filter catalog items by publish status"
+          >
+            <FormSelectOption value="all" label="All publish states" />
+            <FormSelectOption value="live" label="Published" />
+            <FormSelectOption value="unpublished" label="Unpublished" />
+          </FormSelect>
+          <FormSelect
+            className="catalog-organization-filter"
+            id="catalog-organization-filter"
+            value={organizationFilter}
+            onChange={(_event, value) => setOrganizationFilter(value)}
+            aria-label="Filter catalog items by organization"
+          >
+            <FormSelectOption value="" label="All organizations" />
+            {organizationOptions.map((organization) => (
+              <FormSelectOption
+                key={organization.id}
+                value={organization.tenantId}
+                label={organization.name}
+              />
+            ))}
+          </FormSelect>
           <SearchInput
             className="catalog-search provider-admin-catalog-items__search"
             placeholder="Search catalog items"
@@ -720,13 +813,7 @@ export function ProviderAdminCatalogPage({
           <Title headingLevel="h2" size="lg">
             {emptyStateTitle}
           </Title>
-          <EmptyStateBody>
-            {selectedFilters.size === 0
-              ? 'Choose one or more services above to filter the catalog.'
-              : searchValue.trim()
-                ? 'Try a different search term or clear the search field.'
-                : 'Create a catalog item for this service to see it listed here.'}
-          </EmptyStateBody>
+          <EmptyStateBody>{emptyStateBody}</EmptyStateBody>
         </EmptyState>
       ) : viewMode === 'grid' ? (
         <div className="catalog-card-grid provider-admin-catalog-items__card-grid">

@@ -11,6 +11,8 @@ import {
   FlexItem,
   Form,
   FormGroup,
+  FormSelect,
+  FormSelectOption,
   Label,
   Modal,
   ModalBody,
@@ -252,6 +254,7 @@ export function TenantAdminCatalogPage({
     () => new Set(initialServiceFilters.length > 0 ? initialServiceFilters : ['baremetal']),
   )
   const knownServiceFiltersRef = useRef(new Set(initialServiceFilters))
+  const [selectedStatus, setSelectedStatus] = useState<'all' | 'Live' | 'Unpublished'>('all')
   const [searchValue, setSearchValue] = useState('')
   const [selectedCatalogItem, setSelectedCatalogItem] =
     useState<TenantCatalogGovernanceItemWithNetworking | null>(null)
@@ -290,6 +293,10 @@ export function TenantAdminCatalogPage({
         return false
       }
 
+      if (selectedStatus !== 'all' && item.status !== selectedStatus) {
+        return false
+      }
+
       if (!query) {
         return true
       }
@@ -305,7 +312,7 @@ export function TenantAdminCatalogPage({
         )
       )
     })
-  }, [catalogItems, selectedFilters, searchValue])
+  }, [catalogItems, selectedFilters, selectedStatus, searchValue])
 
   const emptyStateTitle = (() => {
     if (selectedFilters.size === 0) {
@@ -314,11 +321,27 @@ export function TenantAdminCatalogPage({
     if (searchValue.trim()) {
       return 'No catalog items match your search'
     }
+    if (selectedStatus !== 'all') {
+      return `No ${selectedStatus === 'Live' ? 'published' : 'unpublished'} catalog items`
+    }
     if (selectedFilters.size === 1) {
       const [onlyFilter] = selectedFilters
       return `No ${CATALOG_SERVICE_FILTER_LABELS[onlyFilter!]} items yet`
     }
     return 'No catalog items for the selected services'
+  })()
+
+  const emptyStateBody = (() => {
+    if (selectedFilters.size === 0) {
+      return 'Choose one or more services above to filter the catalog.'
+    }
+    if (searchValue.trim()) {
+      return 'Try a different search term or clear the search field.'
+    }
+    if (selectedStatus !== 'all') {
+      return 'Try a different publish status or clear filters.'
+    }
+    return 'No approved catalog items match the selected services.'
   })()
 
   const handleViewModeChange = (nextViewMode: CatalogViewMode) => {
@@ -557,6 +580,19 @@ export function TenantAdminCatalogPage({
               serviceCounts={serviceCounts}
               onToggle={handleFilterToggle}
             />
+            <FormSelect
+              className="catalog-status-filter"
+              id="tenant-admin-catalog-status-filter"
+              value={selectedStatus}
+              onChange={(_event, value) =>
+                setSelectedStatus(value as 'all' | 'Live' | 'Unpublished')
+              }
+              aria-label="Filter catalog items by publish status"
+            >
+              <FormSelectOption value="all" label="All publish states" />
+              <FormSelectOption value="Live" label="Published" />
+              <FormSelectOption value="Unpublished" label="Unpublished" />
+            </FormSelect>
             <SearchInput
               className="catalog-search"
               placeholder="Search catalog items"
@@ -574,13 +610,7 @@ export function TenantAdminCatalogPage({
             <Title headingLevel="h2" size="lg">
               {emptyStateTitle}
             </Title>
-            <EmptyStateBody>
-              {selectedFilters.size === 0
-                ? 'Choose one or more services above to filter the catalog.'
-                : searchValue.trim()
-                  ? 'Try a different search term or clear the search field.'
-                  : 'No approved catalog items match the selected services.'}
-            </EmptyStateBody>
+            <EmptyStateBody>{emptyStateBody}</EmptyStateBody>
           </EmptyState>
         ) : viewMode === 'grid' ? (
           <div className="catalog-card-grid tenant-admin-catalog-manager__catalog-list">

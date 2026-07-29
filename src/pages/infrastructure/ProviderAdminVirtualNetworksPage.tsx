@@ -5,6 +5,8 @@ import {
   Content,
   EmptyState,
   EmptyStateBody,
+  FormSelect,
+  FormSelectOption,
   Label,
   SearchInput,
   Title,
@@ -14,7 +16,15 @@ import { CreateVirtualNetworkModal } from '../../components/provider-admin/Creat
 import { VirtualNetworkDetailsDrawer } from '../../components/provider-admin/VirtualNetworkDetailsDrawer'
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
 import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
-import type { ProviderVirtualNetwork } from '../../providerAdmin/networkInventory'
+import type {
+  NetworkInventoryStatus,
+  ProviderVirtualNetwork,
+} from '../../providerAdmin/networkInventory'
+import {
+  getNetworkInventoryStatus,
+  getNetworkInventoryStatusLabelColor,
+  NETWORK_INVENTORY_STATUSES,
+} from '../../providerAdmin/networkInventory'
 import { getProviderVirtualNetworks } from '../../providerSetup/storage'
 
 type ProviderAdminVirtualNetworksPageProps = {
@@ -33,24 +43,35 @@ export function ProviderAdminVirtualNetworksPage({
   const [networks, setNetworks] = useState(() => getProviderVirtualNetworks())
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
+  const [selectedStatus, setSelectedStatus] = useState<'all' | NetworkInventoryStatus>('all')
   const [selectedNetwork, setSelectedNetwork] = useState<ProviderVirtualNetwork | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
 
   const filteredNetworks = useMemo(() => {
     const query = searchValue.trim().toLowerCase()
-    if (!query) {
-      return networks
-    }
 
-    return networks.filter(
-      (network) =>
+    return networks.filter((network) => {
+      const status = getNetworkInventoryStatus(network)
+      if (selectedStatus !== 'all' && status !== selectedStatus) {
+        return false
+      }
+
+      if (!query) {
+        return true
+      }
+
+      return (
         network.name.toLowerCase().includes(query) ||
         network.detail.toLowerCase().includes(query) ||
         network.id.toLowerCase().includes(query) ||
         network.cidr.toLowerCase().includes(query) ||
-        (network.ipv6Cidr?.toLowerCase().includes(query) ?? false),
-    )
-  }, [networks, searchValue])
+        (network.ipv6Cidr?.toLowerCase().includes(query) ?? false) ||
+        status.toLowerCase().includes(query)
+      )
+    })
+  }, [networks, searchValue, selectedStatus])
+
+  const hasActiveFilters = Boolean(searchValue.trim()) || selectedStatus !== 'all'
 
   const openDetails = (network: ProviderVirtualNetwork) => {
     setSelectedNetwork(network)
@@ -103,6 +124,20 @@ export function ProviderAdminVirtualNetworksPage({
 
         <div className="catalog-view-toolbar">
           <div className="catalog-view-toolbar__start">
+            <FormSelect
+              className="catalog-status-filter"
+              id="virtual-networks-status-filter"
+              value={selectedStatus}
+              onChange={(_event, value) =>
+                setSelectedStatus(value as 'all' | NetworkInventoryStatus)
+              }
+              aria-label="Filter virtual networks by status"
+            >
+              <FormSelectOption value="all" label="All statuses" />
+              {NETWORK_INVENTORY_STATUSES.map((status) => (
+                <FormSelectOption key={status} value={status} label={status} />
+              ))}
+            </FormSelect>
             <SearchInput
               className="catalog-search"
               placeholder="Search virtual networks"
@@ -117,13 +152,13 @@ export function ProviderAdminVirtualNetworksPage({
         {filteredNetworks.length === 0 ? (
           <EmptyState>
             <Title headingLevel="h2" size="lg">
-              {searchValue.trim()
-                ? 'No virtual networks match your search'
+              {hasActiveFilters
+                ? 'No virtual networks match your filters'
                 : 'No virtual networks yet'}
             </Title>
             <EmptyStateBody>
-              {searchValue.trim()
-                ? 'Try a different search term or clear the search field.'
+              {hasActiveFilters
+                ? 'Try a different status, search term, or clear filters.'
                 : 'Create a virtual network to get started.'}
             </EmptyStateBody>
           </EmptyState>
@@ -146,55 +181,58 @@ export function ProviderAdminVirtualNetworksPage({
                 </Tr>
               </Thead>
               <Tbody>
-                {filteredNetworks.map((network) => (
-                  <Tr key={network.id}>
-                    <Td
-                      dataLabel="Name"
-                      className="provider-admin-network-inventory__col-name"
-                    >
-                      <Content
-                        component="p"
-                        className="provider-admin-network-inventory__primary-cell"
+                {filteredNetworks.map((network) => {
+                  const status = getNetworkInventoryStatus(network)
+                  return (
+                    <Tr key={network.id}>
+                      <Td
+                        dataLabel="Name"
+                        className="provider-admin-network-inventory__col-name"
                       >
-                        <Button
-                          variant="link"
-                          isInline
-                          className="catalog-table-name-link"
-                          onClick={() => openDetails(network)}
+                        <Content
+                          component="p"
+                          className="provider-admin-network-inventory__primary-cell"
                         >
-                          {network.name}
-                        </Button>
-                      </Content>
-                      <Content component="p" className="provider-admin-network-inventory__meta-cell">
-                        <code>{network.id}</code>
-                      </Content>
-                    </Td>
-                    <Td
-                      dataLabel="Status"
-                      className="provider-admin-network-inventory__col-status"
-                    >
-                      <Label color="green" isCompact>
-                        Ready
-                      </Label>
-                    </Td>
-                    <Td dataLabel="IPv4 CIDR">
-                      <code>{network.cidr}</code>
-                    </Td>
-                    <Td dataLabel="IPv6 CIDR">
-                      <code>{network.ipv6Cidr?.trim() ? network.ipv6Cidr : '—'}</code>
-                    </Td>
-                    <Td isActionCell>
-                      <ActionsColumn
-                        items={[
-                          { title: 'View details', onClick: () => openDetails(network) },
-                          { title: 'Edit', onClick: () => undefined },
-                          { isSeparator: true },
-                          { title: 'Delete', isDanger: true, onClick: () => undefined },
-                        ]}
-                      />
-                    </Td>
-                  </Tr>
-                ))}
+                          <Button
+                            variant="link"
+                            isInline
+                            className="catalog-table-name-link"
+                            onClick={() => openDetails(network)}
+                          >
+                            {network.name}
+                          </Button>
+                        </Content>
+                        <Content component="p" className="provider-admin-network-inventory__meta-cell">
+                          <code>{network.id}</code>
+                        </Content>
+                      </Td>
+                      <Td
+                        dataLabel="Status"
+                        className="provider-admin-network-inventory__col-status"
+                      >
+                        <Label color={getNetworkInventoryStatusLabelColor(status)} isCompact>
+                          {status}
+                        </Label>
+                      </Td>
+                      <Td dataLabel="IPv4 CIDR">
+                        <code>{network.cidr}</code>
+                      </Td>
+                      <Td dataLabel="IPv6 CIDR">
+                        <code>{network.ipv6Cidr?.trim() ? network.ipv6Cidr : '—'}</code>
+                      </Td>
+                      <Td isActionCell>
+                        <ActionsColumn
+                          items={[
+                            { title: 'View details', onClick: () => openDetails(network) },
+                            { title: 'Edit', onClick: () => undefined },
+                            { isSeparator: true },
+                            { title: 'Delete', isDanger: true, onClick: () => undefined },
+                          ]}
+                        />
+                      </Td>
+                    </Tr>
+                  )
+                })}
               </Tbody>
             </Table>
           </div>

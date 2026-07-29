@@ -5,6 +5,8 @@ import {
   Content,
   EmptyState,
   EmptyStateBody,
+  FormSelect,
+  FormSelectOption,
   Label,
   SearchInput,
   Title,
@@ -14,7 +16,15 @@ import { CreateSecurityGroupModal } from '../../components/provider-admin/Create
 import { SecurityGroupDetailsDrawer } from '../../components/provider-admin/SecurityGroupDetailsDrawer'
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
 import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
-import type { ProviderSecurityGroup } from '../../providerAdmin/networkInventory'
+import type {
+  NetworkInventoryStatus,
+  ProviderSecurityGroup,
+} from '../../providerAdmin/networkInventory'
+import {
+  getNetworkInventoryStatus,
+  getNetworkInventoryStatusLabelColor,
+  NETWORK_INVENTORY_STATUSES,
+} from '../../providerAdmin/networkInventory'
 import { getProviderSecurityGroups, getProviderVirtualNetworks } from '../../providerSetup/storage'
 
 type ProviderAdminSecurityGroupsPageProps = {
@@ -32,6 +42,7 @@ export function ProviderAdminSecurityGroupsPage({
   const [virtualNetworks, setVirtualNetworks] = useState(() => getProviderVirtualNetworks())
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
+  const [selectedStatus, setSelectedStatus] = useState<'all' | NetworkInventoryStatus>('all')
   const [selectedGroup, setSelectedGroup] = useState<ProviderSecurityGroup | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
 
@@ -40,11 +51,17 @@ export function ProviderAdminSecurityGroupsPage({
 
   const filteredGroups = useMemo(() => {
     const query = searchValue.trim().toLowerCase()
-    if (!query) {
-      return groups
-    }
 
     return groups.filter((group) => {
+      const status = getNetworkInventoryStatus(group)
+      if (selectedStatus !== 'all' && status !== selectedStatus) {
+        return false
+      }
+
+      if (!query) {
+        return true
+      }
+
       const network = getVirtualNetwork(group.virtualNetworkId)
       return (
         group.name.toLowerCase().includes(query) ||
@@ -54,10 +71,13 @@ export function ProviderAdminSecurityGroupsPage({
         group.outboundRules.toLowerCase().includes(query) ||
         (network?.name.toLowerCase().includes(query) ?? false) ||
         (network?.cidr.toLowerCase().includes(query) ?? false) ||
-        group.virtualNetworkId.toLowerCase().includes(query)
+        group.virtualNetworkId.toLowerCase().includes(query) ||
+        status.toLowerCase().includes(query)
       )
     })
-  }, [groups, searchValue, virtualNetworks])
+  }, [groups, searchValue, selectedStatus, virtualNetworks])
+
+  const hasActiveFilters = Boolean(searchValue.trim()) || selectedStatus !== 'all'
 
   const openCreateModal = () => {
     setVirtualNetworks(getProviderVirtualNetworks())
@@ -124,6 +144,20 @@ export function ProviderAdminSecurityGroupsPage({
 
         <div className="catalog-view-toolbar">
           <div className="catalog-view-toolbar__start">
+            <FormSelect
+              className="catalog-status-filter"
+              id="security-groups-status-filter"
+              value={selectedStatus}
+              onChange={(_event, value) =>
+                setSelectedStatus(value as 'all' | NetworkInventoryStatus)
+              }
+              aria-label="Filter security groups by status"
+            >
+              <FormSelectOption value="all" label="All statuses" />
+              {NETWORK_INVENTORY_STATUSES.map((status) => (
+                <FormSelectOption key={status} value={status} label={status} />
+              ))}
+            </FormSelect>
             <SearchInput
               className="catalog-search"
               placeholder="Search security groups"
@@ -138,13 +172,13 @@ export function ProviderAdminSecurityGroupsPage({
         {filteredGroups.length === 0 ? (
           <EmptyState>
             <Title headingLevel="h2" size="lg">
-              {searchValue.trim()
-                ? 'No security groups match your search'
+              {hasActiveFilters
+                ? 'No security groups match your filters'
                 : 'No security groups yet'}
             </Title>
             <EmptyStateBody>
-              {searchValue.trim()
-                ? 'Try a different search term or clear the search field.'
+              {hasActiveFilters
+                ? 'Try a different status, search term, or clear filters.'
                 : 'Create a security group to get started.'}
             </EmptyStateBody>
           </EmptyState>
@@ -168,89 +202,92 @@ export function ProviderAdminSecurityGroupsPage({
                 </Tr>
               </Thead>
               <Tbody>
-                {filteredGroups.map((group) => (
-                  <Tr key={group.id}>
-                    <Td
-                      dataLabel="Name"
-                      className="provider-admin-network-inventory__col-name"
-                    >
-                      <Content
-                        component="p"
-                        className="provider-admin-network-inventory__primary-cell"
+                {filteredGroups.map((group) => {
+                  const status = getNetworkInventoryStatus(group)
+                  return (
+                    <Tr key={group.id}>
+                      <Td
+                        dataLabel="Name"
+                        className="provider-admin-network-inventory__col-name"
                       >
-                        <Button
-                          variant="link"
-                          isInline
-                          className="catalog-table-name-link"
-                          onClick={() => openDetails(group)}
+                        <Content
+                          component="p"
+                          className="provider-admin-network-inventory__primary-cell"
                         >
-                          {group.name}
-                        </Button>
-                      </Content>
-                      <Content component="p" className="provider-admin-network-inventory__meta-cell">
-                        <code>{group.id}</code>
-                      </Content>
-                    </Td>
-                    <Td
-                      dataLabel="Status"
-                      className="provider-admin-network-inventory__col-status"
-                    >
-                      <Label color="green" isCompact>
-                        Ready
-                      </Label>
-                    </Td>
-                    <Td dataLabel="Virtual network">
-                      {(() => {
-                        const network = getVirtualNetwork(group.virtualNetworkId)
-                        const name = network?.name ?? group.virtualNetworkId
-                        const cidr = network?.cidr
-                        return (
-                          <>
-                            <Content
-                              component="p"
-                              className="provider-admin-network-inventory__primary-cell"
-                            >
-                              {onNavigateToVirtualNetwork ? (
-                                <Button
-                                  variant="link"
-                                  isInline
-                                  className="provider-admin-network-inventory__related-link"
-                                  onClick={() =>
-                                    onNavigateToVirtualNetwork(group.virtualNetworkId)
-                                  }
-                                >
-                                  {name}
-                                </Button>
-                              ) : (
-                                name
-                              )}
-                            </Content>
-                            {cidr ? (
+                          <Button
+                            variant="link"
+                            isInline
+                            className="catalog-table-name-link"
+                            onClick={() => openDetails(group)}
+                          >
+                            {group.name}
+                          </Button>
+                        </Content>
+                        <Content component="p" className="provider-admin-network-inventory__meta-cell">
+                          <code>{group.id}</code>
+                        </Content>
+                      </Td>
+                      <Td
+                        dataLabel="Status"
+                        className="provider-admin-network-inventory__col-status"
+                      >
+                        <Label color={getNetworkInventoryStatusLabelColor(status)} isCompact>
+                          {status}
+                        </Label>
+                      </Td>
+                      <Td dataLabel="Virtual network">
+                        {(() => {
+                          const network = getVirtualNetwork(group.virtualNetworkId)
+                          const name = network?.name ?? group.virtualNetworkId
+                          const cidr = network?.cidr
+                          return (
+                            <>
                               <Content
                                 component="p"
-                                className="provider-admin-network-inventory__meta-cell"
+                                className="provider-admin-network-inventory__primary-cell"
                               >
-                                <code>{cidr}</code>
+                                {onNavigateToVirtualNetwork ? (
+                                  <Button
+                                    variant="link"
+                                    isInline
+                                    className="provider-admin-network-inventory__related-link"
+                                    onClick={() =>
+                                      onNavigateToVirtualNetwork(group.virtualNetworkId)
+                                    }
+                                  >
+                                    {name}
+                                  </Button>
+                                ) : (
+                                  name
+                                )}
                               </Content>
-                            ) : null}
-                          </>
-                        )
-                      })()}
-                    </Td>
-                    <Td dataLabel="Inbound rules">{group.inboundRules}</Td>
-                    <Td dataLabel="Outbound rules">{group.outboundRules}</Td>
-                    <Td isActionCell>
-                      <ActionsColumn
-                        items={[
-                          { title: 'View details', onClick: () => openDetails(group) },
-                          { title: 'Edit', onClick: () => undefined },
-                          { isSeparator: true },
-                          { title: 'Delete', isDanger: true, onClick: () => undefined },
-                        ]}
-                      />
-                    </Td>
-                  </Tr>
-                ))}
+                              {cidr ? (
+                                <Content
+                                  component="p"
+                                  className="provider-admin-network-inventory__meta-cell"
+                                >
+                                  <code>{cidr}</code>
+                                </Content>
+                              ) : null}
+                            </>
+                          )
+                        })()}
+                      </Td>
+                      <Td dataLabel="Inbound rules">{group.inboundRules}</Td>
+                      <Td dataLabel="Outbound rules">{group.outboundRules}</Td>
+                      <Td isActionCell>
+                        <ActionsColumn
+                          items={[
+                            { title: 'View details', onClick: () => openDetails(group) },
+                            { title: 'Edit', onClick: () => undefined },
+                            { isSeparator: true },
+                            { title: 'Delete', isDanger: true, onClick: () => undefined },
+                          ]}
+                        />
+                      </Td>
+                    </Tr>
+                  )
+                })}
               </Tbody>
             </Table>
           </div>

@@ -34,8 +34,8 @@ export const PROVIDER_ADMIN_NETWORKING_NAV_ITEMS: ProviderAdminNavItem[] = [
 export const PROVIDER_ADMIN_INFRASTRUCTURE_NAV_ITEMS: ProviderAdminNavItem[] = [
   { id: 'infrastructure-data-centers', label: 'Data centers' },
   { id: 'infrastructure-hardware-inventory', label: 'Hardware inventory' },
+  { id: 'infrastructure-bmaas-templates', label: 'Profiles & templates' },
   { id: 'infrastructure-compute-images', label: 'Compute images' },
-  { id: 'infrastructure-bmaas-templates', label: 'Bare metal templates' },
   { id: 'infrastructure-external-ip-pools', label: 'External IP pools' },
 ]
 

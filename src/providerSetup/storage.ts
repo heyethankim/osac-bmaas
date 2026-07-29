@@ -19,6 +19,7 @@ import {
   DEFAULT_PROVIDER_SECURITY_GROUPS,
   DEFAULT_PROVIDER_SUBNETS,
   DEFAULT_PROVIDER_VIRTUAL_NETWORKS,
+  getNetworkInventoryStatus,
   toCatalogNetworkOption,
 } from '../providerAdmin/networkInventory'
 import type { CatalogNetworkPolicy, CatalogNetworkResourceOption } from '../providerAdmin/catalogNetworkPolicy'
@@ -1115,6 +1116,7 @@ function normalizeProviderVirtualNetwork(network: ProviderVirtualNetwork): Provi
   return {
     ...network,
     ipv6Cidr: network.ipv6Cidr?.trim() ?? '',
+    status: getNetworkInventoryStatus(network),
   }
 }
 
@@ -1133,6 +1135,13 @@ function isProviderSubnet(value: unknown): value is ProviderSubnet {
     typeof subnet.virtualNetworkId === 'string' &&
     typeof subnet.createdAt === 'string'
   )
+}
+
+function normalizeProviderSubnet(subnet: ProviderSubnet): ProviderSubnet {
+  return {
+    ...subnet,
+    status: getNetworkInventoryStatus(subnet),
+  }
 }
 
 function isProviderSecurityGroup(value: unknown): value is ProviderSecurityGroup & {
@@ -1172,6 +1181,7 @@ function normalizeProviderSecurityGroup(
       : (DEFAULT_PROVIDER_VIRTUAL_NETWORKS[0]?.id ?? ''),
     inboundRules: group.inboundRules?.trim() ? group.inboundRules : 'None',
     outboundRules: group.outboundRules?.trim() ? group.outboundRules : 'Allow all',
+    status: getNetworkInventoryStatus(group),
     createdAt: group.createdAt,
   }
 }
@@ -1239,7 +1249,7 @@ export function getProviderSubnets(): ProviderSubnet[] {
       return [...DEFAULT_PROVIDER_SUBNETS]
     }
 
-    const subnets = parsed.filter(isProviderSubnet)
+    const subnets = parsed.filter(isProviderSubnet).map(normalizeProviderSubnet)
     return subnets.length > 0 ? subnets : [...DEFAULT_PROVIDER_SUBNETS]
   } catch {
     return [...DEFAULT_PROVIDER_SUBNETS]

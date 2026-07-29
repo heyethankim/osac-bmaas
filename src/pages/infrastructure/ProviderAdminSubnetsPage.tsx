@@ -5,6 +5,8 @@ import {
   Content,
   EmptyState,
   EmptyStateBody,
+  FormSelect,
+  FormSelectOption,
   Label,
   SearchInput,
   Title,
@@ -14,7 +16,12 @@ import { CreateSubnetModal } from '../../components/provider-admin/CreateSubnetM
 import { SubnetDetailsDrawer } from '../../components/provider-admin/SubnetDetailsDrawer'
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
 import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
-import type { ProviderSubnet } from '../../providerAdmin/networkInventory'
+import type { NetworkInventoryStatus, ProviderSubnet } from '../../providerAdmin/networkInventory'
+import {
+  getNetworkInventoryStatus,
+  getNetworkInventoryStatusLabelColor,
+  NETWORK_INVENTORY_STATUSES,
+} from '../../providerAdmin/networkInventory'
 import { getProviderSubnets, getProviderVirtualNetworks } from '../../providerSetup/storage'
 
 type ProviderAdminSubnetsPageProps = {
@@ -32,6 +39,7 @@ export function ProviderAdminSubnetsPage({
   const [virtualNetworks, setVirtualNetworks] = useState(() => getProviderVirtualNetworks())
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
+  const [selectedStatus, setSelectedStatus] = useState<'all' | NetworkInventoryStatus>('all')
   const [selectedSubnet, setSelectedSubnet] = useState<ProviderSubnet | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
 
@@ -45,11 +53,17 @@ export function ProviderAdminSubnetsPage({
 
   const filteredSubnets = useMemo(() => {
     const query = searchValue.trim().toLowerCase()
-    if (!query) {
-      return subnets
-    }
 
     return subnets.filter((subnet) => {
+      const status = getNetworkInventoryStatus(subnet)
+      if (selectedStatus !== 'all' && status !== selectedStatus) {
+        return false
+      }
+
+      if (!query) {
+        return true
+      }
+
       const network = getVirtualNetwork(subnet.virtualNetworkId)
       return (
         subnet.name.toLowerCase().includes(query) ||
@@ -59,10 +73,13 @@ export function ProviderAdminSubnetsPage({
         subnet.vlan.toLowerCase().includes(query) ||
         (network?.name.toLowerCase().includes(query) ?? false) ||
         (network?.cidr.toLowerCase().includes(query) ?? false) ||
-        subnet.virtualNetworkId.toLowerCase().includes(query)
+        subnet.virtualNetworkId.toLowerCase().includes(query) ||
+        status.toLowerCase().includes(query)
       )
     })
-  }, [subnets, searchValue, virtualNetworks])
+  }, [subnets, searchValue, selectedStatus, virtualNetworks])
+
+  const hasActiveFilters = Boolean(searchValue.trim()) || selectedStatus !== 'all'
 
   const openDetails = (subnet: ProviderSubnet) => {
     setSelectedSubnet(subnet)
@@ -124,6 +141,20 @@ export function ProviderAdminSubnetsPage({
 
         <div className="catalog-view-toolbar">
           <div className="catalog-view-toolbar__start">
+            <FormSelect
+              className="catalog-status-filter"
+              id="subnets-status-filter"
+              value={selectedStatus}
+              onChange={(_event, value) =>
+                setSelectedStatus(value as 'all' | NetworkInventoryStatus)
+              }
+              aria-label="Filter subnets by status"
+            >
+              <FormSelectOption value="all" label="All statuses" />
+              {NETWORK_INVENTORY_STATUSES.map((status) => (
+                <FormSelectOption key={status} value={status} label={status} />
+              ))}
+            </FormSelect>
             <SearchInput
               className="catalog-search"
               placeholder="Search subnets"
@@ -138,11 +169,11 @@ export function ProviderAdminSubnetsPage({
         {filteredSubnets.length === 0 ? (
           <EmptyState>
             <Title headingLevel="h2" size="lg">
-              {searchValue.trim() ? 'No subnets match your search' : 'No subnets yet'}
+              {hasActiveFilters ? 'No subnets match your filters' : 'No subnets yet'}
             </Title>
             <EmptyStateBody>
-              {searchValue.trim()
-                ? 'Try a different search term or clear the search field.'
+              {hasActiveFilters
+                ? 'Try a different status, search term, or clear filters.'
                 : 'Create a subnet to get started.'}
             </EmptyStateBody>
           </EmptyState>
@@ -166,91 +197,94 @@ export function ProviderAdminSubnetsPage({
                 </Tr>
               </Thead>
               <Tbody>
-                {filteredSubnets.map((subnet) => (
-                  <Tr key={subnet.id}>
-                    <Td
-                      dataLabel="Name"
-                      className="provider-admin-network-inventory__col-name"
-                    >
-                      <Content
-                        component="p"
-                        className="provider-admin-network-inventory__primary-cell"
+                {filteredSubnets.map((subnet) => {
+                  const status = getNetworkInventoryStatus(subnet)
+                  return (
+                    <Tr key={subnet.id}>
+                      <Td
+                        dataLabel="Name"
+                        className="provider-admin-network-inventory__col-name"
                       >
-                        <Button
-                          variant="link"
-                          isInline
-                          className="catalog-table-name-link"
-                          onClick={() => openDetails(subnet)}
+                        <Content
+                          component="p"
+                          className="provider-admin-network-inventory__primary-cell"
                         >
-                          {subnet.name}
-                        </Button>
-                      </Content>
-                      <Content component="p" className="provider-admin-network-inventory__meta-cell">
-                        <code>{subnet.id}</code>
-                      </Content>
-                    </Td>
-                    <Td
-                      dataLabel="Status"
-                      className="provider-admin-network-inventory__col-status"
-                    >
-                      <Label color="green" isCompact>
-                        Ready
-                      </Label>
-                    </Td>
-                    <Td dataLabel="Virtual network">
-                      {(() => {
-                        const network = getVirtualNetwork(subnet.virtualNetworkId)
-                        const name = network?.name ?? subnet.virtualNetworkId
-                        const cidr = network?.cidr
-                        return (
-                          <>
-                            <Content
-                              component="p"
-                              className="provider-admin-network-inventory__primary-cell"
-                            >
-                              {onNavigateToVirtualNetwork ? (
-                                <Button
-                                  variant="link"
-                                  isInline
-                                  className="provider-admin-network-inventory__related-link"
-                                  onClick={() =>
-                                    onNavigateToVirtualNetwork(subnet.virtualNetworkId)
-                                  }
-                                >
-                                  {name}
-                                </Button>
-                              ) : (
-                                name
-                              )}
-                            </Content>
-                            {cidr ? (
+                          <Button
+                            variant="link"
+                            isInline
+                            className="catalog-table-name-link"
+                            onClick={() => openDetails(subnet)}
+                          >
+                            {subnet.name}
+                          </Button>
+                        </Content>
+                        <Content component="p" className="provider-admin-network-inventory__meta-cell">
+                          <code>{subnet.id}</code>
+                        </Content>
+                      </Td>
+                      <Td
+                        dataLabel="Status"
+                        className="provider-admin-network-inventory__col-status"
+                      >
+                        <Label color={getNetworkInventoryStatusLabelColor(status)} isCompact>
+                          {status}
+                        </Label>
+                      </Td>
+                      <Td dataLabel="Virtual network">
+                        {(() => {
+                          const network = getVirtualNetwork(subnet.virtualNetworkId)
+                          const name = network?.name ?? subnet.virtualNetworkId
+                          const cidr = network?.cidr
+                          return (
+                            <>
                               <Content
                                 component="p"
-                                className="provider-admin-network-inventory__meta-cell"
+                                className="provider-admin-network-inventory__primary-cell"
                               >
-                                <code>{cidr}</code>
+                                {onNavigateToVirtualNetwork ? (
+                                  <Button
+                                    variant="link"
+                                    isInline
+                                    className="provider-admin-network-inventory__related-link"
+                                    onClick={() =>
+                                      onNavigateToVirtualNetwork(subnet.virtualNetworkId)
+                                    }
+                                  >
+                                    {name}
+                                  </Button>
+                                ) : (
+                                  name
+                                )}
                               </Content>
-                            ) : null}
-                          </>
-                        )
-                      })()}
-                    </Td>
-                    <Td dataLabel="CIDR">
-                      <code>{subnet.cidr}</code>
-                    </Td>
-                    <Td dataLabel="VLAN">{subnet.vlan}</Td>
-                    <Td isActionCell>
-                      <ActionsColumn
-                        items={[
-                          { title: 'View details', onClick: () => openDetails(subnet) },
-                          { title: 'Edit', onClick: () => undefined },
-                          { isSeparator: true },
-                          { title: 'Delete', isDanger: true, onClick: () => undefined },
-                        ]}
-                      />
-                    </Td>
-                  </Tr>
-                ))}
+                              {cidr ? (
+                                <Content
+                                  component="p"
+                                  className="provider-admin-network-inventory__meta-cell"
+                                >
+                                  <code>{cidr}</code>
+                                </Content>
+                              ) : null}
+                            </>
+                          )
+                        })()}
+                      </Td>
+                      <Td dataLabel="CIDR">
+                        <code>{subnet.cidr}</code>
+                      </Td>
+                      <Td dataLabel="VLAN">{subnet.vlan}</Td>
+                      <Td isActionCell>
+                        <ActionsColumn
+                          items={[
+                            { title: 'View details', onClick: () => openDetails(subnet) },
+                            { title: 'Edit', onClick: () => undefined },
+                            { isSeparator: true },
+                            { title: 'Delete', isDanger: true, onClick: () => undefined },
+                          ]}
+                        />
+                      </Td>
+                    </Tr>
+                  )
+                })}
               </Tbody>
             </Table>
           </div>
