@@ -1,10 +1,15 @@
 import type { ProviderServiceId } from './constants'
 import type { ProviderAdminNavId } from '../providerAdmin/constants'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
+import {
+  createDemoNorthSummitBankOrganization,
+  DEMO_NORTH_SUMMIT_BANK_ORG_ID,
+  DEFAULT_REGISTER_ORGANIZATION_FORM,
+} from '../providerAdmin/organizations'
 import type { ComputeImage } from '../providerAdmin/computeImages'
 import { DEFAULT_COMPUTE_IMAGES } from '../providerAdmin/computeImages'
 import type { ExternalIpPool } from '../providerAdmin/externalIpPools'
-import { DEFAULT_EXTERNAL_IP_POOLS } from '../providerAdmin/externalIpPools'
+import { DEFAULT_EXTERNAL_IP_POOLS, getExternalIpPoolById } from '../providerAdmin/externalIpPools'
 import type {
   ProviderSecurityGroup,
   ProviderSubnet,
@@ -748,6 +753,67 @@ export function getProviderRegisteredOrganizations(): RegisteredOrganization[] {
     return parsed.filter(isRegisteredOrganization).map(normalizeRegisteredOrganization)
   } catch {
     return []
+  }
+}
+
+/**
+ * Seeds North Summit Bank as the Organizations page baseline:
+ * Active, IdP connected, roles defined with multiple admins and users.
+ */
+export function ensureProviderDemoOrganizations(): RegisteredOrganization[] {
+  try {
+    const current = getProviderRegisteredOrganizations()
+    const catalogDraft = getProviderCatalogDraft()
+    const pools = getProviderExternalIpPools()
+    const pool =
+      getExternalIpPoolById(pools, DEFAULT_REGISTER_ORGANIZATION_FORM.externalIpPoolId) ??
+      pools.find((item) => item.assignedOrganizationId === DEMO_NORTH_SUMMIT_BANK_ORG_ID) ??
+      pools[0] ??
+      null
+
+    const demo = createDemoNorthSummitBankOrganization({
+      catalogItemId: catalogDraft?.catalogItemId ?? null,
+      catalogDisplayName: catalogDraft?.displayName ?? null,
+      externalIpPoolId: pool?.id ?? DEFAULT_REGISTER_ORGANIZATION_FORM.externalIpPoolId,
+      externalIpPoolName: pool?.name ?? null,
+      externalIpPoolCidr: pool?.cidr ?? null,
+    })
+
+    const replacedIds = new Set(
+      current
+        .filter(
+          (organization) =>
+            organization.id === demo.id || organization.slug === demo.slug,
+        )
+        .map((organization) => organization.id),
+    )
+    const withoutNorthSummit = current.filter(
+      (organization) => !replacedIds.has(organization.id),
+    )
+
+    if (replacedIds.size > 0) {
+      setProviderExternalIpPools(
+        pools.map((item) =>
+          item.assignedOrganizationId && replacedIds.has(item.assignedOrganizationId)
+            ? {
+                ...item,
+                assignedOrganizationId: null,
+                assignedOrganizationName: null,
+              }
+            : item,
+        ),
+      )
+    }
+
+    setProviderRegisteredOrganizations([demo, ...withoutNorthSummit])
+
+    if (pool) {
+      assignExternalIpPoolToRegisteredOrganization(pool.id, demo.id)
+    }
+
+    return getProviderRegisteredOrganizations()
+  } catch {
+    return getProviderRegisteredOrganizations()
   }
 }
 

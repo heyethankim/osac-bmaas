@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { MinusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/minus-circle-icon'
 import { PlusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/plus-circle-icon'
 import {
@@ -8,6 +8,9 @@ import {
   DescriptionListDescription,
   DescriptionListGroup,
   DescriptionListTerm,
+  DropzoneErrorCode,
+  FileUpload,
+  FileUploadHelperText,
   Form,
   FormGroup,
   FormHelperText,
@@ -18,7 +21,6 @@ import {
   ModalFooter,
   ModalHeader,
   ModalVariant,
-  TextArea,
   TextInput,
 } from '@patternfly/react-core'
 import {
@@ -27,6 +29,13 @@ import {
   type RegisteredOrganization,
 } from '../../providerAdmin/organizations'
 import { updateProviderRegisteredOrganization } from '../../providerSetup/storage'
+import {
+  ORGANIZATION_ACTION_SUCCESS_AUTO_CLOSE_MS,
+  ORGANIZATION_ACTION_WORKING_MS,
+  OrganizationActionSuccessState,
+  OrganizationActionWorkingState,
+  type OrganizationActionCompletionPhase,
+} from './OrganizationActionSuccessState'
 
 type TenantAdminDraft = {
   name: string
@@ -85,20 +94,70 @@ function emailMatchesOrganizationDomain(email: string, primaryDomain: string): b
   return emailDomain === domain
 }
 
-function parseTenantUserEmails(value: string): string[] {
+function splitCsvLine(line: string): string[] {
+  const cells: string[] = []
+  let current = ''
+  let inQuotes = false
+
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index]
+    if (char === '"') {
+      inQuotes = !inQuotes
+      continue
+    }
+    if (char === ',' && !inQuotes) {
+      cells.push(current)
+      current = ''
+      continue
+    }
+    current += char
+  }
+
+  cells.push(current)
+  return cells
+}
+
+function normalizeEmailCell(value: string): string {
+  return value.trim().toLowerCase().replace(/^['"]+|['"]+$/g, '')
+}
+
+/** Accepts a plain email list or a CSV with an email column header. */
+function parseEmailsFromCsv(content: string): string[] {
+  const lines = content
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+  if (lines.length === 0) {
+    return []
+  }
+
+  const headerCells = splitCsvLine(lines[0]).map((cell) => normalizeEmailCell(cell))
+  const emailColumnIndex = headerCells.findIndex((cell) =>
+    /^(e-?mail|user\s*e-?mail|email\s*address)$/i.test(cell),
+  )
+  const startIndex = emailColumnIndex >= 0 ? 1 : 0
   const seen = new Set<string>()
   const emails: string[] = []
 
-  for (const part of value.split(/[\n,;]+/)) {
-    const email = part.trim().toLowerCase()
-    if (!email || seen.has(email)) {
-      continue
+  for (let lineIndex = startIndex; lineIndex < lines.length; lineIndex += 1) {
+    const cells = splitCsvLine(lines[lineIndex]).map((cell) => normalizeEmailCell(cell))
+    const candidates = emailColumnIndex >= 0 ? [cells[emailColumnIndex] ?? ''] : cells
+
+    for (const candidate of candidates) {
+      if (!candidate.includes('@') || seen.has(candidate)) {
+        continue
+      }
+      seen.add(candidate)
+      emails.push(candidate)
     }
-    seen.add(email)
-    emails.push(email)
   }
 
   return emails
+}
+
+function parseTenantUserEmails(value: string): string[] {
+  return parseEmailsFromCsv(value)
 }
 
 type DefineOrganizationRolesModalProps = {
@@ -119,14 +178,36 @@ export function DefineOrganizationRolesModal({
     admins: [{ name: '', email: '' }],
     tenantUserEmailsText: '',
   })
+  const [csvFilename, setCsvFilename] = useState('')
+  const [isCsvLoading, setIsCsvLoading] = useState(false)
+  const [csvUploadError, setCsvUploadError] = useState<string | null>(null)
+  const [completionPhase, setCompletionPhase] =
+    useState<OrganizationActionCompletionPhase>('idle')
+  const completionTimersRef = useRef<number[]>([])
+
+  const clearCompletionTimers = () => {
+    completionTimersRef.current.forEach((timerId) => window.clearTimeout(timerId))
+    completionTimersRef.current = []
+  }
+
+  useEffect(() => {
+    return () => {
+      clearCompletionTimers()
+    }
+  }, [])
 
   useEffect(() => {
     if (!isOpen || !organization) {
       return
     }
 
+    clearCompletionTimers()
+    setCompletionPhase('idle')
     setForm(buildDefaultForm(organization))
     setMode(organization.rbacConfigured ? 'view' : 'define')
+    setCsvFilename('')
+    setIsCsvLoading(false)
+    setCsvUploadError(null)
   }, [isOpen, organization])
 
   if (!organization) {
@@ -154,13 +235,18 @@ export function DefineOrganizationRolesModal({
     form.admins.length === 0 ||
     adminValidity.some((entry) => !entry.isComplete) ||
     invalidInvitedUserEmails.length > 0
+  const isCompleting = completionPhase !== 'idle'
 
   const handleClose = () => {
+    clearCompletionTimers()
+    setCompletionPhase('idle')
     onClose()
   }
 
   const handleCancelEdit = () => {
     setForm(buildDefaultForm(organization))
+    setCsvFilename('')
+    setCsvUploadError(null)
     setMode('view')
   }
 
@@ -186,8 +272,19 @@ export function DefineOrganizationRolesModal({
     }
 
     onConfigured(updated)
+
     if (mode === 'define') {
-      onClose()
+      clearCompletionTimers()
+      setCompletionPhase('working')
+      const successTimer = window.setTimeout(() => {
+        setCompletionPhase('success')
+        const closeTimer = window.setTimeout(() => {
+          setCompletionPhase('idle')
+          onClose()
+        }, ORGANIZATION_ACTION_SUCCESS_AUTO_CLOSE_MS)
+        completionTimersRef.current.push(closeTimer)
+      }, ORGANIZATION_ACTION_WORKING_MS)
+      completionTimersRef.current.push(successTimer)
       return
     }
 
@@ -221,11 +318,24 @@ export function DefineOrganizationRolesModal({
     }))
   }
 
-  const title =
-    mode === 'define' ? 'Define roles' : mode === 'edit' ? 'Edit roles' : 'Roles'
+  const applyTenantUserEmails = (emailsText: string) => {
+    setForm((current) => ({ ...current, tenantUserEmailsText: emailsText }))
+  }
 
-  const description =
-    mode === 'define'
+  const title =
+    completionPhase === 'working'
+      ? 'Assigning roles'
+      : completionPhase === 'success'
+        ? 'Roles assigned'
+        : mode === 'define'
+          ? 'Define roles'
+          : mode === 'edit'
+            ? 'Edit roles'
+            : 'Roles'
+
+  const description = isCompleting
+    ? undefined
+    : mode === 'define'
       ? `Define roles and assign people for ${organization.name}.`
       : mode === 'edit'
         ? `Update roles and assigned people for ${organization.name}.`
@@ -248,7 +358,17 @@ export function DefineOrganizationRolesModal({
     >
       <ModalHeader title={title} labelId="define-organization-roles-title" description={description} />
       <ModalBody>
-        {mode === 'view' ? (
+        {completionPhase === 'working' ? (
+          <OrganizationActionWorkingState
+            title="Assigning roles"
+            body="Saving tenant admins and user invitations…"
+          />
+        ) : completionPhase === 'success' ? (
+          <OrganizationActionSuccessState
+            title="Roles assigned"
+            body="This organization is ready for tenant login."
+          />
+        ) : mode === 'view' ? (
           <DescriptionList
             isCompact
             className="provider-admin-organizations__roles-view-dl"
@@ -368,70 +488,126 @@ export function DefineOrganizationRolesModal({
 
             <div className="provider-admin-organizations__roles-section">
               <Content component="p" className="provider-admin-organizations__roles-section-title">
-                Tenant users <span className="provider-admin-organizations__roles-optional">(optional)</span>
+                Tenant users
               </Content>
               <Content component="p" className="provider-admin-organizations__roles-section-help">
-                Paste a few emails now, separated by commas or new lines. For large groups, upload a
-                CSV later from the organization.
+                Paste emails or upload a CSV. Emails must use @{domain}.
               </Content>
               <FormGroup label="User emails" fieldId="define-roles-user-emails">
-                <TextArea
+                <FileUpload
                   id="define-roles-user-emails"
+                  type="text"
                   value={form.tenantUserEmailsText}
-                  onChange={(_event, value) =>
-                    setForm((current) => ({ ...current, tenantUserEmailsText: value }))
+                  filename={csvFilename}
+                  filenamePlaceholder="Upload a .csv file"
+                  onFileInputChange={(_event, file) => {
+                    setCsvFilename(file.name)
+                    setCsvUploadError(null)
+                  }}
+                  onDataChange={(_event, data) => {
+                    const emails = parseEmailsFromCsv(data)
+                    applyTenantUserEmails(emails.join('\n'))
+                    setCsvUploadError(
+                      emails.length === 0
+                        ? 'No email addresses found in this file.'
+                        : null,
+                    )
+                  }}
+                  onTextChange={(_event, text) => {
+                    applyTenantUserEmails(text)
+                    setCsvUploadError(null)
+                  }}
+                  onReadStarted={() => setIsCsvLoading(true)}
+                  onReadFinished={() => setIsCsvLoading(false)}
+                  onClearClick={() => {
+                    setCsvFilename('')
+                    setCsvUploadError(null)
+                    applyTenantUserEmails('')
+                  }}
+                  isLoading={isCsvLoading}
+                  allowEditingUploadedText
+                  browseButtonText="Upload"
+                  dropzoneProps={{
+                    accept: {
+                      'text/csv': ['.csv'],
+                      'text/plain': ['.csv', '.txt'],
+                    },
+                    maxSize: 1024 * 1024,
+                    onDropRejected: (fileRejections) => {
+                      const code = fileRejections[0]?.errors[0]?.code
+                      if (code === DropzoneErrorCode.FileTooLarge) {
+                        setCsvUploadError('File is too large. Maximum size is 1 MB.')
+                        return
+                      }
+                      if (code === DropzoneErrorCode.FileInvalidType) {
+                        setCsvUploadError('Upload a .csv or .txt file.')
+                        return
+                      }
+                      setCsvUploadError('Could not upload this file.')
+                    },
+                  }}
+                  validated={
+                    csvUploadError || invalidInvitedUserEmails.length > 0 ? 'error' : 'default'
                   }
-                  resizeOrientation="vertical"
-                  rows={4}
-                  validated={invalidInvitedUserEmails.length > 0 ? 'error' : 'default'}
                   aria-label="Tenant user emails"
-                />
-                {invalidInvitedUserEmails.length > 0 ? (
-                  <FormHelperText>
+                >
+                  <FileUploadHelperText>
                     <HelperText>
-                      <HelperTextItem variant="error">
-                        These emails must use @{domain}: {invalidInvitedUserEmails.join(', ')}
+                      <HelperTextItem
+                        variant={
+                          csvUploadError || invalidInvitedUserEmails.length > 0
+                            ? 'error'
+                            : 'default'
+                        }
+                      >
+                        {csvUploadError
+                          ? csvUploadError
+                          : invalidInvitedUserEmails.length > 0
+                            ? `These emails must use @${domain}: ${invalidInvitedUserEmails.join(', ')}`
+                            : 'One email per line, or a CSV with an email column.'}
                       </HelperTextItem>
                     </HelperText>
-                  </FormHelperText>
-                ) : null}
+                  </FileUploadHelperText>
+                </FileUpload>
               </FormGroup>
             </div>
           </Form>
         )}
       </ModalBody>
-      <ModalFooter>
-        {mode === 'view' ? (
-          <>
-            <Button variant="primary" onClick={handleClose}>
-              Close
-            </Button>
-            <Button variant="secondary" onClick={() => setMode('edit')}>
-              Edit
-            </Button>
-          </>
-        ) : null}
-        {mode === 'define' ? (
-          <>
-            <Button variant="primary" onClick={handleSave} isDisabled={isAssignDisabled}>
-              Assign roles
-            </Button>
-            <Button variant="link" onClick={handleClose}>
-              Cancel
-            </Button>
-          </>
-        ) : null}
-        {mode === 'edit' ? (
-          <>
-            <Button variant="primary" onClick={handleSave} isDisabled={isAssignDisabled}>
-              Save
-            </Button>
-            <Button variant="link" onClick={handleCancelEdit}>
-              Cancel
-            </Button>
-          </>
-        ) : null}
-      </ModalFooter>
+      {isCompleting ? null : (
+        <ModalFooter>
+          {mode === 'view' ? (
+            <>
+              <Button variant="primary" onClick={handleClose}>
+                Close
+              </Button>
+              <Button variant="secondary" onClick={() => setMode('edit')}>
+                Edit
+              </Button>
+            </>
+          ) : null}
+          {mode === 'define' ? (
+            <>
+              <Button variant="primary" onClick={handleSave} isDisabled={isAssignDisabled}>
+                Assign roles
+              </Button>
+              <Button variant="link" onClick={handleClose}>
+                Cancel
+              </Button>
+            </>
+          ) : null}
+          {mode === 'edit' ? (
+            <>
+              <Button variant="primary" onClick={handleSave} isDisabled={isAssignDisabled}>
+                Save
+              </Button>
+              <Button variant="link" onClick={handleCancelEdit}>
+                Cancel
+              </Button>
+            </>
+          ) : null}
+        </ModalFooter>
+      )}
     </Modal>
   )
 }

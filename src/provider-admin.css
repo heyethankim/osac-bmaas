@@ -2643,8 +2643,8 @@
 
 .provider-admin-organizations__status-steps {
   list-style: none;
-  margin: var(--pf-t--global--spacer--sm) 0 0;
-  padding: 0;
+  margin: var(--pf-t--global--spacer--md) 0 0;
+  padding: 0 0 0 var(--pf-t--global--spacer--md);
   display: flex;
   flex-direction: column;
   gap: var(--pf-t--global--spacer--sm);
@@ -2777,7 +2777,47 @@
   font-size: var(--pf-t--global--font--size--body--sm);
 }
 
+.provider-admin-organizations__ready-login {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--xs);
+}
+
+.provider-admin-organizations__ready-login-paths {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.provider-admin-organizations__ready-login-link {
+  display: inline-flex;
+  font-size: var(--pf-t--global--font--size--body--sm);
+  color: var(--pf-t--global--text--color--link--default);
+  text-decoration: none;
+}
+
+.provider-admin-organizations__ready-login-link:hover {
+  color: var(--pf-t--global--text--color--link--hover);
+  text-decoration: underline;
+}
+
+.provider-admin-organizations__ready-login-link code {
+  font-family: var(--pf-t--global--font--family--monospace);
+  font-size: inherit;
+}
+
 .provider-admin-organizations__drawer-ready-signal.pf-v6-c-content--p {
+  margin-block-start: var(--pf-t--global--spacer--xs);
+}
+
+.provider-admin-organizations__drawer-section-divider {
+  margin-block: var(--pf-t--global--spacer--md);
+}
+
+.provider-admin-organizations__status-step .provider-admin-organizations__ready-login {
   margin-block-start: var(--pf-t--global--spacer--xs);
 }
 
@@ -2804,6 +2844,10 @@
   overflow-wrap: anywhere;
 }
 
+.provider-admin-organizations__action-progress {
+  padding-block: var(--pf-t--global--spacer--md);
+}
+
 .provider-admin-organizations__roles-modal-lede.pf-v6-c-content--p {
   margin-block-end: var(--pf-t--global--spacer--md);
   color: var(--pf-t--global--text--color--subtle);
@@ -2825,7 +2869,7 @@
 }
 
 .provider-admin-organizations__roles-section + .provider-admin-organizations__roles-section {
-  margin-block-start: var(--pf-t--global--spacer--md);
+  margin-block-start: 0;
   padding-block-start: var(--pf-t--global--spacer--md);
   border-block-start: var(--pf-t--global--border--width--divider--default) solid
     var(--pf-t--global--border--color--default);
@@ -2834,11 +2878,6 @@
 .provider-admin-organizations__roles-section-title.pf-v6-c-content--p {
   margin: 0 0 var(--pf-t--global--spacer--xs);
   font-weight: var(--pf-t--global--font--weight--body--bold);
-}
-
-.provider-admin-organizations__roles-optional {
-  font-weight: var(--pf-t--global--font--weight--body--default);
-  color: var(--pf-t--global--text--color--subtle);
 }
 
 .provider-admin-organizations__roles-section-help.pf-v6-c-content--p {

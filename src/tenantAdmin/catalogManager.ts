@@ -85,6 +85,7 @@ function isCatalogVisibleToTenant(
   }
 
   return (
+    item.enterpriseTenantId === organization.tenantId ||
     item.enterpriseTenantId === organization.id ||
     organization.catalogItemId === item.catalogItemId
   )

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Button,
   Content,
@@ -25,6 +25,13 @@ import {
   type RegisteredOrganization,
 } from '../../providerAdmin/organizations'
 import { updateProviderRegisteredOrganization } from '../../providerSetup/storage'
+import {
+  ORGANIZATION_ACTION_SUCCESS_AUTO_CLOSE_MS,
+  ORGANIZATION_ACTION_WORKING_MS,
+  OrganizationActionSuccessState,
+  OrganizationActionWorkingState,
+  type OrganizationActionCompletionPhase,
+} from './OrganizationActionSuccessState'
 
 type IdentityProviderProtocol = 'OIDC' | 'SAML'
 
@@ -83,12 +90,28 @@ export function ConnectOrganizationIdentityProviderModal({
     issuerUrl: '',
     clientId: '',
   })
+  const [completionPhase, setCompletionPhase] =
+    useState<OrganizationActionCompletionPhase>('idle')
+  const completionTimersRef = useRef<number[]>([])
+
+  const clearCompletionTimers = () => {
+    completionTimersRef.current.forEach((timerId) => window.clearTimeout(timerId))
+    completionTimersRef.current = []
+  }
+
+  useEffect(() => {
+    return () => {
+      clearCompletionTimers()
+    }
+  }, [])
 
   useEffect(() => {
     if (!isOpen || !organization) {
       return
     }
 
+    clearCompletionTimers()
+    setCompletionPhase('idle')
     setForm(buildDefaultForm(organization))
     setMode(organization.identityProviderConnected ? 'view' : 'connect')
   }, [isOpen, organization])
@@ -100,8 +123,11 @@ export function ConnectOrganizationIdentityProviderModal({
   const isFormDisabled = !form.displayName.trim() || !form.issuerUrl.trim() || !form.clientId.trim()
   const issuerLabel = form.protocol === 'SAML' ? 'Metadata URL' : 'Issuer URL'
   const clientLabel = form.protocol === 'SAML' ? 'Entity ID' : 'Client ID'
+  const isCompleting = completionPhase !== 'idle'
 
   const handleClose = () => {
+    clearCompletionTimers()
+    setCompletionPhase('idle')
     onClose()
   }
 
@@ -132,8 +158,19 @@ export function ConnectOrganizationIdentityProviderModal({
     }
 
     onConnected(updated)
+
     if (mode === 'connect') {
-      onClose()
+      clearCompletionTimers()
+      setCompletionPhase('working')
+      const successTimer = window.setTimeout(() => {
+        setCompletionPhase('success')
+        const closeTimer = window.setTimeout(() => {
+          setCompletionPhase('idle')
+          onClose()
+        }, ORGANIZATION_ACTION_SUCCESS_AUTO_CLOSE_MS)
+        completionTimersRef.current.push(closeTimer)
+      }, ORGANIZATION_ACTION_WORKING_MS)
+      completionTimersRef.current.push(successTimer)
       return
     }
 
@@ -141,14 +178,19 @@ export function ConnectOrganizationIdentityProviderModal({
   }
 
   const title =
-    mode === 'connect'
-      ? 'Connect identity provider'
-      : mode === 'edit'
-        ? 'Edit identity provider'
-        : 'Identity provider'
+    completionPhase === 'working'
+      ? 'Connecting identity provider'
+      : completionPhase === 'success'
+        ? 'Identity provider connected'
+        : mode === 'connect'
+          ? 'Connect identity provider'
+          : mode === 'edit'
+            ? 'Edit identity provider'
+            : 'Identity provider'
 
-  const description =
-    mode === 'connect'
+  const description = isCompleting
+    ? undefined
+    : mode === 'connect'
       ? `Map sign-in for ${organization.name} to users from ${organization.primaryDomain || 'the primary domain'}.`
       : mode === 'edit'
         ? `Update the identity provider for ${organization.name}.`
@@ -168,7 +210,17 @@ export function ConnectOrganizationIdentityProviderModal({
         description={description}
       />
       <ModalBody>
-        {mode === 'view' ? (
+        {completionPhase === 'working' ? (
+          <OrganizationActionWorkingState
+            title="Connecting identity provider"
+            body="Validating configuration and mapping the primary domain…"
+          />
+        ) : completionPhase === 'success' ? (
+          <OrganizationActionSuccessState
+            title="Identity provider connected"
+            body="Next, define roles for this organization."
+          />
+        ) : mode === 'view' ? (
           <>
             <Content component="p" className="provider-admin-organizations__idp-modal-lede">
               Review the settings used to authenticate users from the organization primary domain.
@@ -278,38 +330,40 @@ export function ConnectOrganizationIdentityProviderModal({
           </>
         )}
       </ModalBody>
-      <ModalFooter>
-        {mode === 'view' ? (
-          <>
-            <Button variant="primary" onClick={handleClose}>
-              Close
-            </Button>
-            <Button variant="secondary" onClick={() => setMode('edit')}>
-              Edit
-            </Button>
-          </>
-        ) : null}
-        {mode === 'connect' ? (
-          <>
-            <Button variant="primary" onClick={handleSave} isDisabled={isFormDisabled}>
-              Connect identity provider
-            </Button>
-            <Button variant="link" onClick={handleClose}>
-              Cancel
-            </Button>
-          </>
-        ) : null}
-        {mode === 'edit' ? (
-          <>
-            <Button variant="primary" onClick={handleSave} isDisabled={isFormDisabled}>
-              Save
-            </Button>
-            <Button variant="link" onClick={handleCancelEdit}>
-              Cancel
-            </Button>
-          </>
-        ) : null}
-      </ModalFooter>
+      {isCompleting ? null : (
+        <ModalFooter>
+          {mode === 'view' ? (
+            <>
+              <Button variant="primary" onClick={handleClose}>
+                Close
+              </Button>
+              <Button variant="secondary" onClick={() => setMode('edit')}>
+                Edit
+              </Button>
+            </>
+          ) : null}
+          {mode === 'connect' ? (
+            <>
+              <Button variant="primary" onClick={handleSave} isDisabled={isFormDisabled}>
+                Connect identity provider
+              </Button>
+              <Button variant="link" onClick={handleClose}>
+                Cancel
+              </Button>
+            </>
+          ) : null}
+          {mode === 'edit' ? (
+            <>
+              <Button variant="primary" onClick={handleSave} isDisabled={isFormDisabled}>
+                Save
+              </Button>
+              <Button variant="link" onClick={handleCancelEdit}>
+                Cancel
+              </Button>
+            </>
+          ) : null}
+        </ModalFooter>
+      )}
     </Modal>
   )
 }

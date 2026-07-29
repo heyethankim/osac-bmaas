@@ -21,11 +21,13 @@ import {
   Title,
 } from '@patternfly/react-core'
 import {
+  formatOrganizationRolesAssignmentSummary,
   getOrganizationActivationSteps,
   isOrganizationReadyForLogin,
   type OrganizationActivationStep,
   type RegisteredOrganization,
 } from '../../providerAdmin/organizations'
+import { OrganizationReadyForLoginLinks } from './OrganizationReadyForLoginLinks'
 
 type OrganizationDetailsDrawerProps = {
   isExpanded: boolean
@@ -75,7 +77,14 @@ function ActivationStepRow({
   const idpMeta =
     step.id === 'idp' && step.complete ? getIdentityProviderStepMeta(organization) : null
   const rolesMeta =
-    step.id === 'rbac' && step.complete ? organization.tenantAdminEmail || null : null
+    step.id === 'rbac' && step.complete
+      ? formatOrganizationRolesAssignmentSummary(organization)
+      : null
+  const showLoginPaths =
+    step.id === 'ready' &&
+    step.complete &&
+    organization.identityProviderConnected &&
+    organization.rbacConfigured
   const canReviewIdp =
     step.id === 'idp' &&
     step.complete &&
@@ -133,8 +142,11 @@ function ActivationStepRow({
         ) : null}
         {rolesMeta ? (
           <Content component="p" className="provider-admin-organizations__status-step-meta">
-            <code>{rolesMeta}</code>
+            {rolesMeta}
           </Content>
+        ) : null}
+        {showLoginPaths ? (
+          <OrganizationReadyForLoginLinks organization={organization} showHeading={false} />
         ) : null}
       </div>
     </li>
@@ -231,6 +243,7 @@ export function OrganizationDetailsDrawer({
               </ol>
             </DescriptionListDescription>
           </DescriptionListGroup>
+          <Divider className="provider-admin-organizations__drawer-section-divider" />
           <DescriptionListGroup>
             <DescriptionListTerm>Tenant ID</DescriptionListTerm>
             <DescriptionListDescription>
@@ -265,12 +278,6 @@ export function OrganizationDetailsDrawer({
               <Content component="p" className="provider-admin-organizations__secondary-cell">
                 <code>{organization.billingAccountId}</code>
               </Content>
-            </DescriptionListDescription>
-          </DescriptionListGroup>
-          <DescriptionListGroup>
-            <DescriptionListTerm>Login path</DescriptionListTerm>
-            <DescriptionListDescription>
-              <code>/tenant-admin/{organization.slug}</code>
             </DescriptionListDescription>
           </DescriptionListGroup>
           <DescriptionListGroup>

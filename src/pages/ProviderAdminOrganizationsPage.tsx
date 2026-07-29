@@ -34,6 +34,7 @@ import {
   assignCatalogToRegisteredOrganization,
   assignExternalIpPoolToRegisteredOrganization,
   consumeProviderOpenRegisterOrgWizard,
+  ensureProviderDemoOrganizations,
   getProviderCatalogDraft,
   getProviderRegisteredOrganizations,
   peekProviderVipCatalogResumeIntent,
@@ -95,7 +96,7 @@ export function ProviderAdminOrganizationsPage({
   onNavigate?: (navId: ProviderAdminNavId) => void
 }) {
   const [organizations, setOrganizations] = useState<RegisteredOrganization[]>(() =>
-    getProviderRegisteredOrganizations(),
+    ensureProviderDemoOrganizations(),
   )
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [selectedOrganization, setSelectedOrganization] = useState<RegisteredOrganization | null>(

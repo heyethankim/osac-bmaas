@@ -26,6 +26,7 @@ import {
   updateProviderCatalogItem,
   updateProviderCatalogNetworkPolicy,
   upsertProviderSavedTemplate,
+  ensureProviderDemoOrganizations,
   type ProviderCatalogDraft,
 } from './storage'
 import {
@@ -39,6 +40,7 @@ import {
   parseRateCardFromForm,
 } from './templateDemo'
 import { DEFAULT_PROVIDER_SERVICE_SELECTION, type ProviderServiceId } from './constants'
+import { DEMO_NORTH_SUMMIT_BANK_TENANT_ID } from '../providerAdmin/organizations'
 import type { ProviderAdminNavId } from '../providerAdmin/constants'
 
 /** Stable demo IDs so ensure can re-seed without creating duplicates. */
@@ -74,7 +76,8 @@ function createBareMetalAiInferenceCatalogDraft(): ProviderCatalogDraft {
     templateName: GPU_BLUEPRINT_FORM.templateName,
     displayName: SECOND_CATALOG_ITEM_DISPLAY_NAME,
     description: GPU_BLUEPRINT_FORM.description,
-    scope: 'global-public',
+    scope: 'vip-enterprise',
+    enterpriseTenantId: DEMO_NORTH_SUMMIT_BANK_TENANT_ID,
     rateCard,
     serviceId: 'baremetal',
     networkPolicy: DISABLED_CATALOG_NETWORK_POLICY,
@@ -140,7 +143,7 @@ function hasBareMetalAiInferenceCatalogItem(items: ProviderCatalogDraft[]): bool
   return Boolean(findBareMetalAiInferenceCatalogItem(items))
 }
 
-/** Keep stored demo item title + networking-off in sync across personas. */
+/** Keep stored demo item title, VIP scope, and networking-off in sync across personas. */
 function syncBareMetalAiInferenceCatalogItem(): void {
   const items = getProviderCatalogItems()
   const current = findBareMetalAiInferenceCatalogItem(items)
@@ -148,12 +151,17 @@ function syncBareMetalAiInferenceCatalogItem(): void {
     return
   }
 
-  if (current.displayName !== SECOND_CATALOG_ITEM_DISPLAY_NAME) {
+  const needsIdentitySync =
+    current.displayName !== SECOND_CATALOG_ITEM_DISPLAY_NAME ||
+    current.scope !== 'vip-enterprise' ||
+    current.enterpriseTenantId !== DEMO_NORTH_SUMMIT_BANK_TENANT_ID
+
+  if (needsIdentitySync) {
     updateProviderCatalogItem(current.catalogItemId, {
       displayName: SECOND_CATALOG_ITEM_DISPLAY_NAME,
       description: current.description ?? '',
-      scope: current.scope,
-      enterpriseTenantId: current.enterpriseTenantId,
+      scope: 'vip-enterprise',
+      enterpriseTenantId: DEMO_NORTH_SUMMIT_BANK_TENANT_ID,
     })
   }
 
@@ -209,6 +217,8 @@ function ensureDemoBareMetalTemplates(): void {
 /** Ensures demo catalog offerings exist for finished Provider Admin screens. */
 export function ensureProviderCatalogDemoItems(): ProviderCatalogDraft[] {
   ensureDemoBareMetalTemplates()
+  // So VIP enterprise labels can resolve North Summit Bank on catalog cards.
+  ensureProviderDemoOrganizations()
 
   let items = getProviderCatalogItems()
 
@@ -262,6 +272,7 @@ export function ensureProviderPostSetupPrototype(
   setProviderSetupComplete()
 
   const items = ensureProviderCatalogDemoItems()
+  ensureProviderDemoOrganizations()
 
   setProviderActiveNav(navId)
   return items[0] ?? getProviderCatalogDraft()!

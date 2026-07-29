@@ -1,6 +1,7 @@
 import {
   DEMO_TENANT_DISPLAY_ADMIN,
   DEMO_TENANT_LOGIN_EMAIL_ADMIN,
+  DEMO_TENANT_LOGIN_EMAIL_USER,
   DEMO_TENANT_LABEL,
 } from '../demoTenant'
 
@@ -22,9 +23,9 @@ export type RegisteredOrganization = {
   /** Kept for demo activation flows; assigned later via Roles in production. */
   tenantAdminName: string
   tenantAdminEmail: string
-  /** Optional second tenant admin from Define roles (day-0 supports up to two). */
+  /** Optional additional tenant admins from Define roles. */
   additionalTenantAdmins: Array<{ name: string; email: string }>
-  /** Optional day-0 tenant user invites; bulk CSV stays out of this modal. */
+  /** Optional day-0 tenant user invites; supports paste or CSV upload in Define roles. */
   invitedTenantUserEmails: string[]
   /** Org-scoped IdP connected after registration. */
   identityProviderConnected: boolean
@@ -64,6 +65,56 @@ export function isOrganizationReadyForLogin(organization: RegisteredOrganization
     organization.identityProviderConnected &&
     organization.rbacConfigured
   )
+}
+
+/** Count primary + additional tenant admins with an email. */
+export function getOrganizationTenantAdminCount(organization: RegisteredOrganization): number {
+  const emails = [
+    organization.tenantAdminEmail,
+    ...organization.additionalTenantAdmins.map((admin) => admin.email),
+  ]
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean)
+
+  return new Set(emails).size
+}
+
+export function getOrganizationTenantUserCount(organization: RegisteredOrganization): number {
+  return new Set(
+    organization.invitedTenantUserEmails
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean),
+  ).size
+}
+
+export function formatOrganizationRolesAssignmentSummary(
+  organization: RegisteredOrganization,
+): string {
+  const adminCount = getOrganizationTenantAdminCount(organization)
+  const userCount = getOrganizationTenantUserCount(organization)
+  const adminLabel = adminCount === 1 ? '1 tenant admin' : `${adminCount} tenant admins`
+  const userLabel = userCount === 1 ? '1 tenant user' : `${userCount} tenant users`
+  return `${adminLabel} · ${userLabel}`
+}
+
+export type OrganizationTenantLoginRole = 'tenant-admin' | 'tenant-user'
+
+/** In-app route for tenant login (Router `to` value). */
+export function getOrganizationTenantLoginRoute(
+  role: OrganizationTenantLoginRole,
+  slug: string,
+): string {
+  return `/${role}/${slug}`
+}
+
+/** Full browser path including the app basename (e.g. GitHub Pages). */
+export function getOrganizationTenantLoginPath(
+  role: OrganizationTenantLoginRole,
+  slug: string,
+): string {
+  const base = import.meta.env.BASE_URL || '/'
+  const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base
+  return `${normalizedBase}/${role}/${slug}`
 }
 
 /** Single next kebab / Status-link action while setup is incomplete. */
@@ -138,6 +189,10 @@ export function buildDemoIdentityProviderName(
   return `${protocol} · ${domain}`
 }
 
+/** Stable id for the Organizations page baseline row. */
+export const DEMO_NORTH_SUMMIT_BANK_ORG_ID = 'org_northstar_bank'
+export const DEMO_NORTH_SUMMIT_BANK_TENANT_ID = 'tenant-northstar'
+
 export const REGISTER_ORGANIZATION_STEPS = [
   { id: 'organization', label: 'Organization' },
   { id: 'review', label: 'Review' },
@@ -161,6 +216,56 @@ export const DEFAULT_REGISTER_ORGANIZATION_FORM: RegisterOrganizationForm = {
   billingAccountName: 'North Summit Bank — Enterprise Billing',
   externalIpPoolId: 'eipool-northstar-edge',
   maxInstances: '20',
+}
+
+/** Fully activated North Summit Bank — IdP connected, roles defined, Active. */
+export function createDemoNorthSummitBankOrganization(
+  options: {
+    catalogItemId?: string | null
+    catalogDisplayName?: string | null
+    externalIpPoolId?: string | null
+    externalIpPoolName?: string | null
+    externalIpPoolCidr?: string | null
+  } = {},
+): RegisteredOrganization {
+  const primaryDomain = 'northsummitbank.com'
+
+  return {
+    id: DEMO_NORTH_SUMMIT_BANK_ORG_ID,
+    name: DEMO_TENANT_LABEL.northstar,
+    tenantId: DEMO_NORTH_SUMMIT_BANK_TENANT_ID,
+    slug: 'northstar',
+    primaryDomain,
+    billingAccountId: 'ACCT-NSB-2048',
+    billingAccountName: 'North Summit Bank — Enterprise Billing',
+    catalogItemId: options.catalogItemId ?? null,
+    catalogDisplayName: options.catalogDisplayName ?? null,
+    externalIpPoolId: options.externalIpPoolId ?? DEFAULT_REGISTER_ORGANIZATION_FORM.externalIpPoolId,
+    externalIpPoolName: options.externalIpPoolName ?? null,
+    externalIpPoolCidr: options.externalIpPoolCidr ?? null,
+    maxInstances: 20,
+    tenantAdminName: DEMO_TENANT_DISPLAY_ADMIN.northstar,
+    tenantAdminEmail: DEMO_TENANT_LOGIN_EMAIL_ADMIN.northstar,
+    additionalTenantAdmins: [
+      { name: 'Jordan Hale', email: 'jhale@northsummitbank.com' },
+      { name: 'Sam Okonkwo', email: 'sokonkowo@northsummitbank.com' },
+    ],
+    invitedTenantUserEmails: [
+      DEMO_TENANT_LOGIN_EMAIL_USER.northstar,
+      'akim@northsummitbank.com',
+      'rchen@northsummitbank.com',
+      'tbrooks@northsummitbank.com',
+    ],
+    identityProviderConnected: true,
+    identityProviderName: buildDemoIdentityProviderName('OIDC', primaryDomain),
+    identityProviderDisplayName: 'North Summit Bank IdP',
+    identityProviderProtocol: 'OIDC',
+    identityProviderIssuerUrl: `https://login.${primaryDomain}/oauth2`,
+    identityProviderClientId: 'bmaas-northstar',
+    rbacConfigured: true,
+    status: 'Active',
+    createdAt: '2026-06-12T14:30:00.000Z',
+  }
 }
 
 /** Demo presets cycled so the wizard never prefill a name/domain already registered. */
