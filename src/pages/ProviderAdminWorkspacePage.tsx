@@ -71,6 +71,7 @@ export function ProviderAdminWorkspacePage() {
   )
   const [workspaceTransition, setWorkspaceTransition] = useState<WorkspaceTransition>('idle')
   const [openTemplateLookup, setOpenTemplateLookup] = useState<BmaasTemplateLookup | null>(null)
+  const [openVirtualNetworkId, setOpenVirtualNetworkId] = useState<string | null>(null)
 
   useLayoutEffect(() => {
     const requestedNav = searchParams.get('nav')
@@ -201,11 +202,30 @@ export function ProviderAdminWorkspacePage() {
       case 'infrastructure-external-ip-pools':
         return <ProviderAdminExternalIpPoolsPage />
       case 'networking-virtual-networks':
-        return <ProviderAdminVirtualNetworksPage />
+        return (
+          <ProviderAdminVirtualNetworksPage
+            openVirtualNetworkId={openVirtualNetworkId}
+            onOpenVirtualNetworkConsumed={() => setOpenVirtualNetworkId(null)}
+          />
+        )
       case 'networking-subnets':
-        return <ProviderAdminSubnetsPage />
+        return (
+          <ProviderAdminSubnetsPage
+            onNavigateToVirtualNetwork={(virtualNetworkId) => {
+              setOpenVirtualNetworkId(virtualNetworkId)
+              handleNavChange('networking-virtual-networks')
+            }}
+          />
+        )
       case 'networking-security-groups':
-        return <ProviderAdminSecurityGroupsPage />
+        return (
+          <ProviderAdminSecurityGroupsPage
+            onNavigateToVirtualNetwork={(virtualNetworkId) => {
+              setOpenVirtualNetworkId(virtualNetworkId)
+              handleNavChange('networking-virtual-networks')
+            }}
+          />
+        )
       case 'administration-organizations':
         return <ProviderAdminOrganizationsPage onNavigate={handleNavChange} />
       case 'administration-quotas':

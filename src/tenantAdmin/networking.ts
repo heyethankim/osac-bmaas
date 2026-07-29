@@ -239,7 +239,7 @@ export function getTenantNetworkResourceMeta(
       return {
         title: 'Virtual networks',
         fieldLabel: 'Virtual network',
-        lede: 'Organization virtual networks available to projects. Locked catalog defaults cannot be changed.',
+        lede: 'Virtual networks available to your organization for project workloads and catalog networking.',
         fieldKey: 'virtualNetwork',
         overrideKey: 'virtualNetworkId',
         options: getCatalogVirtualNetworkOptions(),

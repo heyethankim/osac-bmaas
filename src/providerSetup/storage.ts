@@ -927,9 +927,17 @@ function isProviderVirtualNetwork(value: unknown): value is ProviderVirtualNetwo
     typeof network.name === 'string' &&
     typeof network.detail === 'string' &&
     typeof network.cidr === 'string' &&
-    typeof network.dataCenter === 'string' &&
+    (network.ipv6Cidr === undefined || typeof network.ipv6Cidr === 'string') &&
+    (network.dataCenter === undefined || typeof network.dataCenter === 'string') &&
     typeof network.createdAt === 'string'
   )
+}
+
+function normalizeProviderVirtualNetwork(network: ProviderVirtualNetwork): ProviderVirtualNetwork {
+  return {
+    ...network,
+    ipv6Cidr: network.ipv6Cidr?.trim() ?? '',
+  }
 }
 
 function isProviderSubnet(value: unknown): value is ProviderSubnet {
@@ -949,18 +957,45 @@ function isProviderSubnet(value: unknown): value is ProviderSubnet {
   )
 }
 
-function isProviderSecurityGroup(value: unknown): value is ProviderSecurityGroup {
+function isProviderSecurityGroup(value: unknown): value is ProviderSecurityGroup & {
+  virtualNetworkId?: string
+  inboundRules?: string
+  outboundRules?: string
+} {
   if (typeof value !== 'object' || value === null) {
     return false
   }
 
-  const group = value as ProviderSecurityGroup
+  const group = value as Record<string, unknown>
   return (
     typeof group.id === 'string' &&
     typeof group.name === 'string' &&
     typeof group.detail === 'string' &&
-    typeof group.createdAt === 'string'
+    typeof group.createdAt === 'string' &&
+    (group.virtualNetworkId === undefined || typeof group.virtualNetworkId === 'string') &&
+    (group.inboundRules === undefined || typeof group.inboundRules === 'string') &&
+    (group.outboundRules === undefined || typeof group.outboundRules === 'string')
   )
+}
+
+function normalizeProviderSecurityGroup(
+  group: ProviderSecurityGroup & {
+    virtualNetworkId?: string
+    inboundRules?: string
+    outboundRules?: string
+  },
+): ProviderSecurityGroup {
+  return {
+    id: group.id,
+    name: group.name,
+    detail: group.detail,
+    virtualNetworkId: group.virtualNetworkId?.trim()
+      ? group.virtualNetworkId
+      : (DEFAULT_PROVIDER_VIRTUAL_NETWORKS[0]?.id ?? ''),
+    inboundRules: group.inboundRules?.trim() ? group.inboundRules : 'None',
+    outboundRules: group.outboundRules?.trim() ? group.outboundRules : 'Allow all',
+    createdAt: group.createdAt,
+  }
 }
 
 export function getProviderVirtualNetworks(): ProviderVirtualNetwork[] {
@@ -979,8 +1014,23 @@ export function getProviderVirtualNetworks(): ProviderVirtualNetwork[] {
       return [...DEFAULT_PROVIDER_VIRTUAL_NETWORKS]
     }
 
-    const networks = parsed.filter(isProviderVirtualNetwork)
-    return networks.length > 0 ? networks : [...DEFAULT_PROVIDER_VIRTUAL_NETWORKS]
+    const networks = parsed.filter(isProviderVirtualNetwork).map(normalizeProviderVirtualNetwork)
+    if (networks.length === 0) {
+      return [...DEFAULT_PROVIDER_VIRTUAL_NETWORKS]
+    }
+
+    const needsPersist = parsed.some((item, index) => {
+      if (!item || typeof item !== 'object') {
+        return true
+      }
+      const original = item as { ipv6Cidr?: unknown }
+      return original.ipv6Cidr !== networks[index]?.ipv6Cidr
+    })
+    if (needsPersist) {
+      sessionStorage.setItem(PROVIDER_VIRTUAL_NETWORKS_KEY, JSON.stringify(networks))
+    }
+
+    return networks
   } catch {
     return [...DEFAULT_PROVIDER_VIRTUAL_NETWORKS]
   }
@@ -1046,8 +1096,32 @@ export function getProviderSecurityGroups(): ProviderSecurityGroup[] {
       return [...DEFAULT_PROVIDER_SECURITY_GROUPS]
     }
 
-    const groups = parsed.filter(isProviderSecurityGroup)
-    return groups.length > 0 ? groups : [...DEFAULT_PROVIDER_SECURITY_GROUPS]
+    const groups = parsed.filter(isProviderSecurityGroup).map(normalizeProviderSecurityGroup)
+    if (groups.length === 0) {
+      return [...DEFAULT_PROVIDER_SECURITY_GROUPS]
+    }
+
+    const needsPersist = parsed.some((item, index) => {
+      if (!item || typeof item !== 'object') {
+        return true
+      }
+      const original = item as {
+        virtualNetworkId?: unknown
+        inboundRules?: unknown
+        outboundRules?: unknown
+      }
+      const normalized = groups[index]
+      return (
+        original.virtualNetworkId !== normalized?.virtualNetworkId ||
+        original.inboundRules !== normalized?.inboundRules ||
+        original.outboundRules !== normalized?.outboundRules
+      )
+    })
+    if (needsPersist) {
+      sessionStorage.setItem(PROVIDER_SECURITY_GROUPS_KEY, JSON.stringify(groups))
+    }
+
+    return groups
   } catch {
     return [...DEFAULT_PROVIDER_SECURITY_GROUPS]
   }

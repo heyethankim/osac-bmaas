@@ -122,6 +122,14 @@
   max-width: 42rem;
 }
 
+.tenant-admin-networking > .catalog-view-toolbar {
+  margin-block-end: var(--pf-t--global--spacer--md);
+}
+
+.tenant-admin-networking > .catalog-table-panel {
+  margin-block-start: 0;
+}
+
 .tenant-admin-networking__alert {
   margin-block-end: var(--pf-t--global--spacer--lg);
 }
@@ -132,6 +140,22 @@
 
 .tenant-admin-networking__form {
   max-width: 32rem;
+}
+
+.tenant-admin-networking__primary-cell.pf-v6-c-content--p,
+.tenant-admin-networking__meta-cell.pf-v6-c-content--p {
+  margin: 0;
+}
+
+.tenant-admin-networking__meta-cell.pf-v6-c-content--p {
+  margin-block-start: var(--pf-t--global--spacer--xs);
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.tenant-admin-networking__meta-cell code,
+.tenant-admin-networking__table code {
+  font-family: var(--pf-t--global--font--family--monospace);
 }
 
 .tenant-admin-overview__cards {

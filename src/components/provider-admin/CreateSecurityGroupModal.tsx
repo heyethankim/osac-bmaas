@@ -4,6 +4,8 @@ import {
   Content,
   Form,
   FormGroup,
+  FormSelect,
+  FormSelectOption,
   Modal,
   ModalBody,
   ModalFooter,
@@ -14,39 +16,55 @@ import {
 import {
   generateProviderSecurityGroupId,
   type ProviderSecurityGroup,
+  type ProviderVirtualNetwork,
 } from '../../providerAdmin/networkInventory'
 import { addProviderSecurityGroup } from '../../providerSetup/storage'
 
 type CreateSecurityGroupForm = {
   name: string
   detail: string
+  virtualNetworkId: string
+  inboundRules: string
+  outboundRules: string
 }
 
-const DEFAULT_FORM: CreateSecurityGroupForm = {
-  name: '',
-  detail: '',
+/** Demo prefills so the create flow is ready to submit. */
+function buildDemoForm(virtualNetworks: ProviderVirtualNetwork[]): CreateSecurityGroupForm {
+  return {
+    name: 'allow-demo-workload',
+    detail: 'Demo ingress for SSH, HTTPS, and API',
+    virtualNetworkId: virtualNetworks[0]?.id ?? '',
+    inboundRules: 'SSH (22), HTTPS (443), API (6443)',
+    outboundRules: 'Allow all',
+  }
 }
 
 type CreateSecurityGroupModalProps = {
   isOpen: boolean
+  virtualNetworks: ProviderVirtualNetwork[]
   onClose: () => void
   onCreated: (group: ProviderSecurityGroup) => void
 }
 
 export function CreateSecurityGroupModal({
   isOpen,
+  virtualNetworks,
   onClose,
   onCreated,
 }: CreateSecurityGroupModalProps) {
-  const [form, setForm] = useState<CreateSecurityGroupForm>(DEFAULT_FORM)
+  const [form, setForm] = useState<CreateSecurityGroupForm>(() => buildDemoForm(virtualNetworks))
 
   useEffect(() => {
-    if (!isOpen) {
-      setForm(DEFAULT_FORM)
+    if (isOpen) {
+      setForm(buildDemoForm(virtualNetworks))
     }
-  }, [isOpen])
+  }, [isOpen, virtualNetworks])
 
-  const isCreateDisabled = !form.name.trim() || !form.detail.trim()
+  const isCreateDisabled =
+    !form.name.trim() ||
+    !form.detail.trim() ||
+    !form.virtualNetworkId.trim() ||
+    virtualNetworks.length === 0
 
   const handleCreate = () => {
     if (isCreateDisabled) {
@@ -57,6 +75,9 @@ export function CreateSecurityGroupModal({
       id: generateProviderSecurityGroupId(),
       name: form.name.trim(),
       detail: form.detail.trim(),
+      virtualNetworkId: form.virtualNetworkId,
+      inboundRules: form.inboundRules.trim() || 'None',
+      outboundRules: form.outboundRules.trim() || 'Allow all',
       createdAt: new Date().toISOString(),
     }
 
@@ -75,16 +96,15 @@ export function CreateSecurityGroupModal({
     >
       <ModalHeader title="Create security group" labelId="create-security-group-title" />
       <ModalBody>
+        <Content component="p" className="provider-admin-network-inventory__modal-lede">
+          Security groups become available as catalog defaults after creation.
+        </Content>
         <Form autoComplete="off" className="provider-admin-network-inventory__form">
-          <Content component="p" className="provider-admin-network-inventory__modal-lede">
-            Security groups become available as catalog defaults after creation.
-          </Content>
           <FormGroup label="Name" fieldId="create-sg-name" isRequired>
             <TextInput
               id="create-sg-name"
               value={form.name}
               onChange={(_event, value) => setForm((current) => ({ ...current, name: value }))}
-              placeholder="allow-ssh-https"
             />
           </FormGroup>
           <FormGroup label="Description" fieldId="create-sg-detail" isRequired>
@@ -92,7 +112,47 @@ export function CreateSecurityGroupModal({
               id="create-sg-detail"
               value={form.detail}
               onChange={(_event, value) => setForm((current) => ({ ...current, detail: value }))}
-              placeholder="SSH + HTTPS ingress"
+            />
+          </FormGroup>
+          <FormGroup label="Virtual network" fieldId="create-sg-vnet" isRequired>
+            <FormSelect
+              id="create-sg-vnet"
+              value={form.virtualNetworkId}
+              onChange={(_event, value) =>
+                setForm((current) => ({ ...current, virtualNetworkId: value }))
+              }
+              aria-label="Virtual network"
+              isDisabled={virtualNetworks.length === 0}
+            >
+              {virtualNetworks.length === 0 ? (
+                <FormSelectOption value="" label="No virtual networks available" />
+              ) : (
+                virtualNetworks.map((network) => (
+                  <FormSelectOption
+                    key={network.id}
+                    value={network.id}
+                    label={`${network.name} (${network.cidr})`}
+                  />
+                ))
+              )}
+            </FormSelect>
+          </FormGroup>
+          <FormGroup label="Inbound rules" fieldId="create-sg-inbound">
+            <TextInput
+              id="create-sg-inbound"
+              value={form.inboundRules}
+              onChange={(_event, value) =>
+                setForm((current) => ({ ...current, inboundRules: value }))
+              }
+            />
+          </FormGroup>
+          <FormGroup label="Outbound rules" fieldId="create-sg-outbound">
+            <TextInput
+              id="create-sg-outbound"
+              value={form.outboundRules}
+              onChange={(_event, value) =>
+                setForm((current) => ({ ...current, outboundRules: value }))
+              }
             />
           </FormGroup>
         </Form>

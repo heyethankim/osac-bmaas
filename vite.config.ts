@@ -19,7 +19,7 @@ const LANDING_DATE_FORMAT: Intl.DateTimeFormatOptions = {
 }
 
 /** Landing footer date — bump when shipping a prototype update. */
-const LANDING_LAST_UPDATED_LABEL = 'July 28, 2026'
+const LANDING_LAST_UPDATED_LABEL = 'July 29, 2026'
 
 /** Prefer explicit label; fall back to latest git commit or today. */
 function getLandingLastUpdatedLabel(): string {

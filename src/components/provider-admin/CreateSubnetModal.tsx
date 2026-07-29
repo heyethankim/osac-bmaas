@@ -97,11 +97,11 @@ export function CreateSubnetModal({
     >
       <ModalHeader title="Create subnet" labelId="create-subnet-title" />
       <ModalBody>
+        <Content component="p" className="provider-admin-network-inventory__modal-lede">
+          Subnets are scoped to a virtual network and appear in catalog defaults for that
+          network.
+        </Content>
         <Form autoComplete="off" className="provider-admin-network-inventory__form">
-          <Content component="p" className="provider-admin-network-inventory__modal-lede">
-            Subnets are scoped to a virtual network and appear in catalog defaults for that
-            network.
-          </Content>
           <FormGroup label="Name" fieldId="create-subnet-name" isRequired>
             <TextInput
               id="create-subnet-name"
@@ -121,7 +121,11 @@ export function CreateSubnetModal({
               isDisabled={virtualNetworks.length === 0}
             >
               {virtualNetworks.map((network) => (
-                <FormSelectOption key={network.id} value={network.id} label={network.name} />
+                <FormSelectOption
+                  key={network.id}
+                  value={network.id}
+                  label={`${network.name} (${network.cidr})`}
+                />
               ))}
             </FormSelect>
           </FormGroup>

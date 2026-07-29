@@ -82,6 +82,7 @@ export function TenantAdminWorkspacePage() {
     isValidTenant ? readInitialTenantAdminNav(tenant, searchParams) : 'overview',
   )
   const [projects, setProjects] = useState<TenantProject[]>(() => getTenantProjects(tenant))
+  const [openVirtualNetworkId, setOpenVirtualNetworkId] = useState<string | null>(null)
 
   useLayoutEffect(() => {
     if (!isValidTenant) {
@@ -173,6 +174,8 @@ export function TenantAdminWorkspacePage() {
             organization={organization}
             catalogDraft={catalogDraft}
             kind="virtual-network"
+            openVirtualNetworkId={openVirtualNetworkId}
+            onOpenVirtualNetworkConsumed={() => setOpenVirtualNetworkId(null)}
           />
         )
       case 'networking-subnets':
@@ -182,6 +185,10 @@ export function TenantAdminWorkspacePage() {
             organization={organization}
             catalogDraft={catalogDraft}
             kind="subnet"
+            onNavigateToVirtualNetwork={(virtualNetworkId) => {
+              setOpenVirtualNetworkId(virtualNetworkId)
+              handleNavChange('networking-virtual-networks')
+            }}
           />
         )
       case 'networking-security-groups':
@@ -191,6 +198,10 @@ export function TenantAdminWorkspacePage() {
             organization={organization}
             catalogDraft={catalogDraft}
             kind="security-group"
+            onNavigateToVirtualNetwork={(virtualNetworkId) => {
+              setOpenVirtualNetworkId(virtualNetworkId)
+              handleNavChange('networking-virtual-networks')
+            }}
           />
         )
       case 'overview':

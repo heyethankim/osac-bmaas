@@ -4,8 +4,6 @@ import {
   Content,
   Form,
   FormGroup,
-  FormSelect,
-  FormSelectOption,
   Modal,
   ModalBody,
   ModalFooter,
@@ -15,7 +13,6 @@ import {
 } from '@patternfly/react-core'
 import {
   generateProviderVirtualNetworkId,
-  NETWORK_INVENTORY_DATA_CENTERS,
   type ProviderVirtualNetwork,
 } from '../../providerAdmin/networkInventory'
 import { addProviderVirtualNetwork } from '../../providerSetup/storage'
@@ -24,14 +21,15 @@ type CreateVirtualNetworkForm = {
   name: string
   detail: string
   cidr: string
-  dataCenter: string
+  ipv6Cidr: string
 }
 
+/** Demo prefills so the create flow is ready to submit. */
 const DEFAULT_FORM: CreateVirtualNetworkForm = {
-  name: '',
-  detail: '',
-  cidr: '',
-  dataCenter: NETWORK_INVENTORY_DATA_CENTERS[0],
+  name: 'Demo workload VNet',
+  detail: 'Prefilled demo virtual network for tenant workloads',
+  cidr: '10.60.0.0/16',
+  ipv6Cidr: '2001:db8:60::/48',
 }
 
 type CreateVirtualNetworkModalProps = {
@@ -53,8 +51,7 @@ export function CreateVirtualNetworkModal({
     }
   }, [isOpen])
 
-  const isCreateDisabled =
-    !form.name.trim() || !form.detail.trim() || !form.cidr.trim() || !form.dataCenter.trim()
+  const isCreateDisabled = !form.name.trim() || !form.detail.trim() || !form.cidr.trim()
 
   const handleCreate = () => {
     if (isCreateDisabled) {
@@ -66,7 +63,7 @@ export function CreateVirtualNetworkModal({
       name: form.name.trim(),
       detail: form.detail.trim(),
       cidr: form.cidr.trim(),
-      dataCenter: form.dataCenter.trim(),
+      ipv6Cidr: form.ipv6Cidr.trim(),
       createdAt: new Date().toISOString(),
     }
 
@@ -85,16 +82,15 @@ export function CreateVirtualNetworkModal({
     >
       <ModalHeader title="Create virtual network" labelId="create-virtual-network-title" />
       <ModalBody>
+        <Content component="p" className="provider-admin-network-inventory__modal-lede">
+          Create a virtual network to make address space available for workloads, subnets, and catalog networking.
+        </Content>
         <Form autoComplete="off" className="provider-admin-network-inventory__form">
-          <Content component="p" className="provider-admin-network-inventory__modal-lede">
-            Virtual networks become available as catalog defaults after creation.
-          </Content>
           <FormGroup label="Name" fieldId="create-vnet-name" isRequired>
             <TextInput
               id="create-vnet-name"
               value={form.name}
               onChange={(_event, value) => setForm((current) => ({ ...current, name: value }))}
-              placeholder="Tenant workload VNet"
             />
           </FormGroup>
           <FormGroup label="Description" fieldId="create-vnet-detail" isRequired>
@@ -102,30 +98,21 @@ export function CreateVirtualNetworkModal({
               id="create-vnet-detail"
               value={form.detail}
               onChange={(_event, value) => setForm((current) => ({ ...current, detail: value }))}
-              placeholder="Primary tenant compute network"
             />
           </FormGroup>
-          <FormGroup label="CIDR" fieldId="create-vnet-cidr" isRequired>
+          <FormGroup label="IPv4 CIDR" fieldId="create-vnet-ipv4-cidr" isRequired>
             <TextInput
-              id="create-vnet-cidr"
+              id="create-vnet-ipv4-cidr"
               value={form.cidr}
               onChange={(_event, value) => setForm((current) => ({ ...current, cidr: value }))}
-              placeholder="10.42.0.0/16"
             />
           </FormGroup>
-          <FormGroup label="Data center" fieldId="create-vnet-data-center" isRequired>
-            <FormSelect
-              id="create-vnet-data-center"
-              value={form.dataCenter}
-              onChange={(_event, value) =>
-                setForm((current) => ({ ...current, dataCenter: value }))
-              }
-              aria-label="Data center"
-            >
-              {NETWORK_INVENTORY_DATA_CENTERS.map((dataCenter) => (
-                <FormSelectOption key={dataCenter} value={dataCenter} label={dataCenter} />
-              ))}
-            </FormSelect>
+          <FormGroup label="IPv6 CIDR" fieldId="create-vnet-ipv6-cidr">
+            <TextInput
+              id="create-vnet-ipv6-cidr"
+              value={form.ipv6Cidr}
+              onChange={(_event, value) => setForm((current) => ({ ...current, ipv6Cidr: value }))}
+            />
           </FormGroup>
         </Form>
       </ModalBody>
