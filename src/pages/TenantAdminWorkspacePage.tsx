@@ -18,7 +18,7 @@ import {
   setTenantOnboardingComplete,
 } from '../tenantAdmin/storage'
 import type { TenantProject } from '../tenantAdmin/projects'
-import { getProviderCatalogDraft } from '../providerSetup/storage'
+import { activateProviderRegisteredOrganizationBySlug, getProviderCatalogDraft } from '../providerSetup/storage'
 
 const TENANT_ADMIN_PLACEHOLDER_PAGES: Partial<
   Record<TenantAdminNavId, { title: string; description: string }>
@@ -45,6 +45,7 @@ function isTenantAdminNavId(value: string | null): value is TenantAdminNavId {
 function ensureTenantAdminPostOnboardingPrototype(tenant: string, navId: TenantAdminNavId) {
   setTenantOnboardingComplete(tenant)
   setTenantActiveNav(tenant, navId)
+  activateProviderRegisteredOrganizationBySlug(tenant)
 }
 
 function readInitialTenantAdminNav(
@@ -116,6 +117,7 @@ export function TenantAdminWorkspacePage() {
   }
 
   const handleInvitationAccepted = () => {
+    activateProviderRegisteredOrganizationBySlug(tenant)
     setTenantOnboardingComplete(tenant)
 
     const refreshedOrganization = getWorkspaceOrganization(tenant)

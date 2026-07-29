@@ -48,9 +48,13 @@ const ENTER_PHASE_MS = 700
 
 function readInitialProviderNav(searchParams: URLSearchParams): ProviderAdminNavId {
   const requestedNav = searchParams.get('nav')
-  if (isProviderAdminNavId(requestedNav)) {
-    ensureProviderPostSetupPrototype(requestedNav)
-    return requestedNav
+  const normalizedNav =
+    requestedNav === 'administration-rbac' || requestedNav === 'administration-roles'
+      ? 'administration-organizations'
+      : requestedNav
+  if (isProviderAdminNavId(normalizedNav)) {
+    ensureProviderPostSetupPrototype(normalizedNav)
+    return normalizedNav
   }
 
   return getProviderActiveNav()
@@ -77,13 +81,17 @@ export function ProviderAdminWorkspacePage() {
 
   useLayoutEffect(() => {
     const requestedNav = searchParams.get('nav')
-    if (isProviderAdminNavId(requestedNav)) {
-      ensureProviderPostSetupPrototype(requestedNav)
+    const normalizedNav =
+      requestedNav === 'administration-rbac' || requestedNav === 'administration-roles'
+        ? 'administration-organizations'
+        : requestedNav
+    if (isProviderAdminNavId(normalizedNav)) {
+      ensureProviderPostSetupPrototype(normalizedNav)
       setCatalogItems(getProviderCatalogItems())
       setSelectedServices(getProviderSelectedServices())
       setServicesSelected(true)
       setSetupComplete(true)
-      setActiveNavId(requestedNav)
+      setActiveNavId(normalizedNav)
       return
     }
 
@@ -244,13 +252,6 @@ export function ProviderAdminWorkspacePage() {
         return <ProviderAdminOrganizationsPage onNavigate={handleNavChange} />
       case 'administration-quotas':
         return <ProviderAdminQuotasPage />
-      case 'administration-rbac':
-        return (
-          <PlaceholderProviderAdminPage
-            title="RBAC"
-            description="Configure roles and permissions for provider administrators and tenant users."
-          />
-        )
       case 'billing-metering':
         return <ProviderAdminBillingMeteringPage />
       case 'system':

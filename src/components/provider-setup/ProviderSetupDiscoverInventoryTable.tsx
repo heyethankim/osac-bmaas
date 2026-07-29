@@ -82,6 +82,9 @@ function InventoryRow({
           {host.serial}
         </Button>
       </Td>
+      <Td dataLabel="Status">
+        <HostStatusLabel status={status} />
+      </Td>
       <Td dataLabel="Vendor / model">
         <Content component="p">
           <strong>{host.vendor}</strong>
@@ -102,9 +105,6 @@ function InventoryRow({
       </Td>
       <Td dataLabel="GPU">
         <SpecCell status={status} value={host.gpu ?? '—'} />
-      </Td>
-      <Td dataLabel="Status">
-        <HostStatusLabel status={status} />
       </Td>
     </Tr>
   )
@@ -129,12 +129,12 @@ export function ProviderSetupDiscoverInventoryTable({
       <Thead>
         <Tr>
           <Th width={15}>Serial number</Th>
+          <Th width={10}>Status</Th>
           <Th width={20}>Vendor / model</Th>
           <Th width={15}>Rack / port</Th>
           <Th width={20}>CPU</Th>
-          <Th width={15}>Memory</Th>
-          <Th width={15}>GPU</Th>
-          <Th width={10}>Status</Th>
+          <Th width={10}>Memory</Th>
+          <Th width={10}>GPU</Th>
         </Tr>
       </Thead>
       <Tbody>

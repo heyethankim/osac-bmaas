@@ -2596,14 +2596,107 @@
   font-family: var(--pf-t--global--font--family--monospace);
 }
 
-.provider-admin-organizations__open-as-user {
-  margin-block-start: var(--pf-t--global--spacer--xs);
-}
-
 .provider-admin-organizations__table,
 .provider-admin-quotas__table,
 .provider-admin-billing__table {
   margin-block-start: var(--pf-t--global--spacer--md);
+}
+
+.provider-admin-organizations__drawer-panel {
+  --pf-v6-c-drawer__panel--PaddingBlockStart: var(--pf-t--global--spacer--md);
+}
+
+.provider-admin-organizations__drawer-title.pf-v6-c-title {
+  word-break: break-word;
+}
+
+.provider-admin-organizations__drawer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.provider-admin-organizations__drawer-lede.pf-v6-c-content--p {
+  color: var(--pf-t--global--text--color--subtle);
+  margin-block-end: var(--pf-t--global--spacer--md);
+}
+
+.provider-admin-organizations__drawer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--md);
+  margin-block-end: var(--pf-t--global--spacer--md);
+}
+
+.provider-admin-organizations__drawer-divider.pf-v6-c-divider {
+  margin-block: var(--pf-t--global--spacer--md);
+}
+
+.provider-admin-organizations__drawer-dl .pf-v6-c-description-list__group {
+  margin-block-end: var(--pf-t--global--spacer--sm);
+}
+
+.provider-admin-organizations__drawer-dl .pf-v6-c-description-list__description code {
+  font-family: var(--pf-t--global--font--family--monospace);
+}
+
+.provider-admin-organizations__status-steps {
+  list-style: none;
+  margin: var(--pf-t--global--spacer--sm) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.provider-admin-organizations__status-step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.provider-admin-organizations__status-step-icon {
+  display: inline-flex;
+  margin-block-start: 0.2rem;
+}
+
+.provider-admin-organizations__status-step-check {
+  color: var(--pf-t--global--icon--color--status--success--default);
+  font-size: var(--pf-t--global--icon--size--md);
+}
+
+.provider-admin-organizations__status-step-pending {
+  color: var(--pf-t--global--icon--color--subtle);
+  font-size: var(--pf-t--global--icon--size--md);
+}
+
+.provider-admin-organizations__status-step-content {
+  min-inline-size: 0;
+}
+
+.provider-admin-organizations__status-step-label,
+.provider-admin-organizations__status-step-link.pf-v6-c-button {
+  font-size: var(--pf-t--global--font--size--body--default);
+  font-weight: var(--pf-t--global--font--weight--body--default);
+}
+
+.provider-admin-organizations__status-step-link.pf-v6-c-button {
+  padding: 0;
+}
+
+.provider-admin-organizations__status-step-meta.pf-v6-c-content--p {
+  margin: var(--pf-t--global--spacer--xs) 0 0;
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.provider-admin-organizations__status-step-meta code {
+  font-family: var(--pf-t--global--font--family--monospace);
+}
+
+.provider-admin-organizations__status-step--pending .provider-admin-organizations__status-step-label {
+  color: var(--pf-t--global--text--color--subtle);
 }
 
 .provider-admin-organizations__table .pf-v6-c-table__tbody .pf-v6-c-content--p,
@@ -2663,11 +2756,164 @@
 }
 
 .provider-admin-organizations__table {
+  --pf-v6-c-table--cell--PaddingBlock: var(--pf-t--global--spacer--md);
   margin-block-start: var(--pf-t--global--spacer--md);
 }
 
 .provider-admin-organizations__table .pf-v6-c-table__thead .pf-v6-c-table__th {
   white-space: nowrap;
+}
+
+.provider-admin-organizations__status-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--pf-t--global--spacer--xs);
+}
+
+.provider-admin-organizations__setup-signal.pf-v6-c-content--p {
+  margin: 0;
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.provider-admin-organizations__drawer-ready-signal.pf-v6-c-content--p {
+  margin-block-start: var(--pf-t--global--spacer--xs);
+}
+
+.provider-admin-organizations__setup-signal-link.pf-v6-c-button {
+  padding: 0;
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.provider-admin-organizations__idp-modal-lede.pf-v6-c-content--p {
+  margin-block-end: var(--pf-t--global--spacer--md);
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.provider-admin-organizations__idp-form .pf-v6-c-form__group:last-child {
+  margin-block-end: 0;
+}
+
+.provider-admin-organizations__idp-view-dl .pf-v6-c-description-list__group {
+  margin-block-end: var(--pf-t--global--spacer--sm);
+}
+
+.provider-admin-organizations__idp-view-dl .pf-v6-c-description-list__description code {
+  font-family: var(--pf-t--global--font--family--monospace);
+  overflow-wrap: anywhere;
+}
+
+.provider-admin-organizations__roles-modal-lede.pf-v6-c-content--p {
+  margin-block-end: var(--pf-t--global--spacer--md);
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.provider-admin-organizations__roles-presets {
+  margin-block-end: var(--pf-t--global--spacer--lg);
+}
+
+.provider-admin-organizations__roles-presets-label.pf-v6-c-content--p {
+  margin: 0 0 var(--pf-t--global--spacer--sm);
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+}
+
+.provider-admin-organizations__roles-presets-note.pf-v6-c-content--p {
+  margin: var(--pf-t--global--spacer--sm) 0 0;
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.provider-admin-organizations__roles-section + .provider-admin-organizations__roles-section {
+  margin-block-start: var(--pf-t--global--spacer--md);
+  padding-block-start: var(--pf-t--global--spacer--md);
+  border-block-start: var(--pf-t--global--border--width--divider--default) solid
+    var(--pf-t--global--border--color--default);
+}
+
+.provider-admin-organizations__roles-section-title.pf-v6-c-content--p {
+  margin: 0 0 var(--pf-t--global--spacer--xs);
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+}
+
+.provider-admin-organizations__roles-optional {
+  font-weight: var(--pf-t--global--font--weight--body--default);
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.provider-admin-organizations__roles-section-help.pf-v6-c-content--p {
+  margin: 0 0 var(--pf-t--global--spacer--md);
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.provider-admin-organizations__roles-admin-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: var(--pf-t--global--spacer--md);
+  align-items: start;
+  margin-block-end: var(--pf-t--global--spacer--md);
+}
+
+.provider-admin-organizations__roles-admin-row:last-of-type {
+  margin-block-end: var(--pf-t--global--spacer--sm);
+}
+
+.provider-admin-organizations__roles-admin-remove {
+  margin-block-start: 1.75rem;
+}
+
+.provider-admin-organizations__roles-people-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.provider-admin-organizations__roles-form {
+  --pf-v6-c-form--GridGap: 0;
+  row-gap: 0;
+}
+
+.provider-admin-organizations__roles-form .pf-v6-c-form__group:last-child {
+  margin-block-end: 0;
+}
+
+.provider-admin-organizations__roles-view-dl .pf-v6-c-description-list__group {
+  margin-block-end: var(--pf-t--global--spacer--sm);
+}
+
+.provider-admin-organizations__roles-view-dl .pf-v6-c-description-list__description code {
+  font-family: var(--pf-t--global--font--family--monospace);
+}
+
+@media (max-width: 768px) {
+  .provider-admin-organizations__roles-admin-row {
+    grid-template-columns: 1fr;
+  }
+
+  .provider-admin-organizations__roles-admin-remove {
+    margin-block-start: 0;
+    justify-self: start;
+  }
+}
+
+.provider-admin-roles__presets-lede.pf-v6-c-content--p {
+  margin: 0 0 var(--pf-t--global--spacer--md);
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.provider-admin-roles__table {
+  --pf-v6-c-table--cell--PaddingBlock: var(--pf-t--global--spacer--md);
+  margin-block-start: var(--pf-t--global--spacer--md);
+}
+
+.provider-admin-roles__empty {
+  margin-block-start: var(--pf-t--global--spacer--lg);
+  padding: var(--pf-t--global--spacer--2xl);
+  border: 1px dashed var(--pf-t--global--border--color--default);
+  border-radius: var(--pf-t--global--border--radius--medium);
 }
 
 .provider-admin-organizations__alert-title {
@@ -2698,6 +2944,14 @@
 .provider-admin-organizations__wizard-lede,
 .provider-admin-organizations__wizard-note {
   color: var(--pf-t--global--text--color--subtle);
+}
+
+.provider-admin-organizations__wizard-lede.pf-v6-c-content--p {
+  margin-block: 0 var(--pf-t--global--spacer--md);
+}
+
+.provider-admin-organizations__wizard-form .pf-v6-c-form__group:last-child {
+  margin-block-end: 0;
 }
 
 .provider-admin-organizations__wizard-alert {

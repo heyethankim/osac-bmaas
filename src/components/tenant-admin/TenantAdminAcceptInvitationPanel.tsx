@@ -76,6 +76,12 @@ export function TenantAdminAcceptInvitationPanel({
                 <DescriptionListDescription>{catalogAccessLabel}</DescriptionListDescription>
               </DescriptionListGroup>
               <DescriptionListGroup>
+                <DescriptionListTerm>Primary email domain</DescriptionListTerm>
+                <DescriptionListDescription>
+                  <code>{organization.primaryDomain || '—'}</code>
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
                 <DescriptionListTerm>Instance quota</DescriptionListTerm>
                 <DescriptionListDescription>
                   {organization.maxInstances} BMaaS instances
@@ -84,12 +90,6 @@ export function TenantAdminAcceptInvitationPanel({
               <DescriptionListGroup>
                 <DescriptionListTerm>External IP pool</DescriptionListTerm>
                 <DescriptionListDescription>{externalIpPoolLabel}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Tenant admin</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {organization.tenantAdminName} · {organization.tenantAdminEmail}
-                </DescriptionListDescription>
               </DescriptionListGroup>
             </DescriptionList>
             <div className="tenant-admin-onboarding__step-actions">

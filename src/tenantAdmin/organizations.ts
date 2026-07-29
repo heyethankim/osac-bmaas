@@ -1,5 +1,8 @@
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
-import { DEFAULT_REGISTER_ORGANIZATION_FORM } from '../providerAdmin/organizations'
+import {
+  DEFAULT_REGISTER_ORGANIZATION_FORM,
+  DEFAULT_REGISTER_ORGANIZATION_TENANT_ADMIN,
+} from '../providerAdmin/organizations'
 import { getExternalIpPoolById } from '../providerAdmin/externalIpPools'
 import { getProviderCatalogDraft, getProviderExternalIpPools, getProviderRegisteredOrganizations } from '../providerSetup/storage'
 import { resolveTenantCatalogView, DEFAULT_TENANT_CATALOG_DISPLAY_NAME } from '../tenantAdmin/catalog'
@@ -78,7 +81,8 @@ export function getWorkspaceOrganization(slug: string): RegisteredOrganization {
     name: tenantLabel,
     tenantId: 'tenant-demo',
     slug,
-    billingAccountId: DEFAULT_REGISTER_ORGANIZATION_FORM.billingAccountId,
+    primaryDomain: DEFAULT_REGISTER_ORGANIZATION_FORM.primaryDomain,
+    billingAccountId: 'ACCT-NSB-0042',
     billingAccountName: DEFAULT_REGISTER_ORGANIZATION_FORM.billingAccountName,
     catalogItemId: catalogDraft?.catalogItemId ?? null,
     catalogDisplayName: catalogDraft?.displayName ?? defaultCatalogDisplayName,
@@ -86,8 +90,17 @@ export function getWorkspaceOrganization(slug: string): RegisteredOrganization {
     maxInstances: Number.parseInt(DEFAULT_REGISTER_ORGANIZATION_FORM.maxInstances, 10),
     tenantAdminName: isDemoTenantId(slug)
       ? DEMO_TENANT_DISPLAY_ADMIN[slug]
-      : DEFAULT_REGISTER_ORGANIZATION_FORM.tenantAdminName,
-    tenantAdminEmail: DEFAULT_REGISTER_ORGANIZATION_FORM.tenantAdminEmail,
+      : DEFAULT_REGISTER_ORGANIZATION_TENANT_ADMIN.name,
+    tenantAdminEmail: DEFAULT_REGISTER_ORGANIZATION_TENANT_ADMIN.email,
+    additionalTenantAdmins: [],
+    invitedTenantUserEmails: [],
+    identityProviderConnected: false,
+    identityProviderName: null,
+    identityProviderDisplayName: null,
+    identityProviderProtocol: null,
+    identityProviderIssuerUrl: null,
+    identityProviderClientId: null,
+    rbacConfigured: false,
     status: 'Pending activation',
     createdAt: new Date().toISOString(),
   }

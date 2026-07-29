@@ -9,7 +9,7 @@ import {
   getProviderViewingAsTenantUser,
   returnFromTenantUserPreview,
 } from '../providerAdmin/openAsTenantUser'
-import { getProviderRegisteredOrganizations } from '../providerSetup/storage'
+import { getProviderRegisteredOrganizations, activateProviderRegisteredOrganizationBySlug } from '../providerSetup/storage'
 import { getProviderCatalogDraft, getProviderCatalogItems } from '../providerSetup/storage'
 import { getRegisteredOrganizationBySlug } from '../tenantAdmin/organizations'
 import { getTenantUserProjectInvitation } from '../tenantUser/invitation'
@@ -38,6 +38,7 @@ function isTenantUserNavId(value: string | null): value is TenantUserNavId {
 function ensureTenantUserPostOnboardingPrototype(tenantSlug: string, navId: TenantUserNavId) {
   setTenantUserOnboardingComplete(tenantSlug)
   setTenantUserActiveNav(tenantSlug, navId)
+  activateProviderRegisteredOrganizationBySlug(tenantSlug)
 }
 
 function readInitialTenantUserNav(
@@ -233,6 +234,7 @@ export function TenantUserWorkspacePage() {
   const displayName = DEMO_TENANT_DISPLAY_USER[tenantSlug]
 
   const handleInvitationAccepted = () => {
+    activateProviderRegisteredOrganizationBySlug(tenantSlug)
     setTenantUserOnboardingComplete(tenantSlug)
     setOnboardingComplete(true)
     setActiveNavId('catalog')

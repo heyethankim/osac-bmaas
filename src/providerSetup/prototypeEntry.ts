@@ -281,7 +281,6 @@ export function isProviderAdminNavId(value: string | null): value is ProviderAdm
     value === 'networking-security-groups' ||
     value === 'administration-organizations' ||
     value === 'administration-quotas' ||
-    value === 'administration-rbac' ||
     value === 'billing-metering' ||
     value === 'system'
   )

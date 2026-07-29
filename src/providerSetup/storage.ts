@@ -126,11 +126,14 @@ export function getProviderActiveNav(): ProviderAdminNavId {
       value === 'networking-security-groups' ||
       value === 'administration-organizations' ||
       value === 'administration-quotas' ||
-      value === 'administration-rbac' ||
       value === 'billing-metering' ||
       value === 'system'
     ) {
       return value
+    }
+
+    if (value === 'administration-rbac' || value === 'administration-roles') {
+      return 'administration-organizations'
     }
 
     if (value === 'infrastructure') {
@@ -643,13 +646,68 @@ export function clearProviderSavedTemplate(): void {
 }
 
 function normalizeRegisteredOrganization(org: RegisteredOrganization): RegisteredOrganization {
+  const emailDomain = org.tenantAdminEmail.includes('@')
+    ? org.tenantAdminEmail.split('@')[1]?.toLowerCase() ?? ''
+    : ''
+
   return {
     ...org,
+    primaryDomain:
+      typeof org.primaryDomain === 'string' && org.primaryDomain.trim()
+        ? org.primaryDomain.trim().toLowerCase()
+        : emailDomain,
     catalogItemId: org.catalogItemId ?? null,
     catalogDisplayName: org.catalogDisplayName ?? null,
     externalIpPoolId: org.externalIpPoolId ?? null,
     externalIpPoolName: org.externalIpPoolName ?? null,
     externalIpPoolCidr: org.externalIpPoolCidr ?? null,
+    identityProviderName:
+      typeof org.identityProviderName === 'string' && org.identityProviderName.trim()
+        ? org.identityProviderName.trim()
+        : null,
+    identityProviderDisplayName:
+      typeof org.identityProviderDisplayName === 'string' && org.identityProviderDisplayName.trim()
+        ? org.identityProviderDisplayName.trim()
+        : null,
+    identityProviderProtocol:
+      org.identityProviderProtocol === 'OIDC' || org.identityProviderProtocol === 'SAML'
+        ? org.identityProviderProtocol
+        : null,
+    identityProviderIssuerUrl:
+      typeof org.identityProviderIssuerUrl === 'string' && org.identityProviderIssuerUrl.trim()
+        ? org.identityProviderIssuerUrl.trim()
+        : null,
+    identityProviderClientId:
+      typeof org.identityProviderClientId === 'string' && org.identityProviderClientId.trim()
+        ? org.identityProviderClientId.trim()
+        : null,
+    // Name is the source of truth — clears stub-only "connected" flags from earlier demos.
+    identityProviderConnected:
+      typeof org.identityProviderName === 'string' && Boolean(org.identityProviderName.trim()),
+    additionalTenantAdmins: Array.isArray(org.additionalTenantAdmins)
+      ? org.additionalTenantAdmins
+          .filter(
+            (admin): admin is { name: string; email: string } =>
+              typeof admin === 'object' &&
+              admin !== null &&
+              typeof admin.name === 'string' &&
+              typeof admin.email === 'string' &&
+              Boolean(admin.email.trim()),
+          )
+          .map((admin) => ({
+            name: admin.name.trim(),
+            email: admin.email.trim().toLowerCase(),
+          }))
+      : [],
+    invitedTenantUserEmails: Array.isArray(org.invitedTenantUserEmails)
+      ? org.invitedTenantUserEmails
+          .filter((email): email is string => typeof email === 'string' && Boolean(email.trim()))
+          .map((email) => email.trim().toLowerCase())
+      : [],
+    rbacConfigured:
+      typeof org.identityProviderName === 'string' &&
+      Boolean(org.identityProviderName.trim()) &&
+      Boolean(org.rbacConfigured),
   }
 }
 
@@ -658,7 +716,7 @@ function isRegisteredOrganization(value: unknown): value is RegisteredOrganizati
     return false
   }
 
-  const org = value as RegisteredOrganization
+  const org = value as Partial<RegisteredOrganization>
   return (
     typeof org.id === 'string' &&
     typeof org.name === 'string' &&
@@ -669,6 +727,7 @@ function isRegisteredOrganization(value: unknown): value is RegisteredOrganizati
     typeof org.maxInstances === 'number' &&
     typeof org.tenantAdminName === 'string' &&
     typeof org.tenantAdminEmail === 'string' &&
+    (org.primaryDomain === undefined || typeof org.primaryDomain === 'string') &&
     (org.status === 'Pending activation' || org.status === 'Active') &&
     typeof org.createdAt === 'string'
   )
@@ -698,6 +757,59 @@ export function addProviderRegisteredOrganization(org: RegisteredOrganization): 
     sessionStorage.setItem(PROVIDER_REGISTERED_ORGS_KEY, JSON.stringify([...current, org]))
   } catch {
     /* demo storage unavailable */
+  }
+}
+
+export function updateProviderRegisteredOrganization(
+  organizationId: string,
+  patch: Partial<RegisteredOrganization>,
+): RegisteredOrganization | null {
+  try {
+    const organizations = getProviderRegisteredOrganizations()
+    const current = organizations.find((item) => item.id === organizationId)
+    if (!current) {
+      return null
+    }
+
+    const updated = normalizeRegisteredOrganization({ ...current, ...patch, id: current.id })
+    setProviderRegisteredOrganizations(
+      organizations.map((item) => (item.id === organizationId ? updated : item)),
+    )
+    return updated
+  } catch {
+    return null
+  }
+}
+
+export function removeProviderRegisteredOrganization(organizationId: string): boolean {
+  try {
+    const organizations = getProviderRegisteredOrganizations()
+    const next = organizations.filter((organization) => organization.id !== organizationId)
+    if (next.length === organizations.length) {
+      return false
+    }
+
+    setProviderRegisteredOrganizations(next)
+
+    const pools = getProviderExternalIpPools()
+    const hasAssignedPool = pools.some((pool) => pool.assignedOrganizationId === organizationId)
+    if (hasAssignedPool) {
+      setProviderExternalIpPools(
+        pools.map((pool) =>
+          pool.assignedOrganizationId === organizationId
+            ? {
+                ...pool,
+                assignedOrganizationId: null,
+                assignedOrganizationName: null,
+              }
+            : pool,
+        ),
+      )
+    }
+
+    return true
+  } catch {
+    return false
   }
 }
 

@@ -129,10 +129,10 @@ export function ProviderAdminExternalIpPoolsPage() {
         <Thead>
           <Tr>
             <Th modifier="wrap">Pool</Th>
+            <Th modifier="wrap">Status</Th>
             <Th modifier="wrap">CIDR</Th>
             <Th modifier="wrap">Data center</Th>
             <Th modifier="wrap">Capacity</Th>
-            <Th modifier="wrap">Assignment</Th>
             <Th screenReaderText="Actions" />
           </Tr>
         </Thead>
@@ -147,22 +147,22 @@ export function ProviderAdminExternalIpPoolsPage() {
                   <code>{pool.id}</code>
                 </Content>
               </Td>
-              <Td dataLabel="CIDR">
-                <code>{pool.cidr}</code>
-              </Td>
-              <Td dataLabel="Data center">{pool.dataCenter}</Td>
-              <Td dataLabel="Capacity">{pool.totalAddresses.toLocaleString()} addresses</Td>
-              <Td dataLabel="Assignment">
+              <Td dataLabel="Status">
                 {pool.assignedOrganizationName ? (
-                  <Content component="p" className="provider-admin-external-ip-pools__primary-cell">
-                    {pool.assignedOrganizationName}
-                  </Content>
+                  <Label color="blue" isCompact>
+                    Assigned
+                  </Label>
                 ) : (
                   <Label color="green" isCompact>
                     Available
                   </Label>
                 )}
               </Td>
+              <Td dataLabel="CIDR">
+                <code>{pool.cidr}</code>
+              </Td>
+              <Td dataLabel="Data center">{pool.dataCenter}</Td>
+              <Td dataLabel="Capacity">{pool.totalAddresses.toLocaleString()} addresses</Td>
               <Td isActionCell>
                 <ActionsColumn
                   items={getExternalIpPoolActions(

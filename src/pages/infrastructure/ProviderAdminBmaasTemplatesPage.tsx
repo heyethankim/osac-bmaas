@@ -208,11 +208,11 @@ export function ProviderAdminBmaasTemplatesPage({
           <Thead>
             <Tr>
               <Th modifier="wrap">Template</Th>
+              <Th modifier="wrap">Status</Th>
               <Th modifier="wrap">Hardware profile</Th>
               <Th modifier="wrap">OS image</Th>
               <Th modifier="wrap">Network</Th>
               <Th modifier="wrap">Rate card</Th>
-              <Th modifier="wrap">Status</Th>
               <Th screenReaderText="Actions" />
             </Tr>
           </Thead>
@@ -234,6 +234,17 @@ export function ProviderAdminBmaasTemplatesPage({
                       {template.templateName}
                     </Button>
                   </Td>
+                  <Td dataLabel="Status">
+                    {isPublished ? (
+                      <Label color="green" isCompact>
+                        Published
+                      </Label>
+                    ) : (
+                      <Label color="grey" isCompact>
+                        {status === 'draft' ? 'Draft' : 'Private'}
+                      </Label>
+                    )}
+                  </Td>
                   <Td dataLabel="Hardware profile">
                     {getHardwareProfileLabel(template.hardwareProfileId)}
                   </Td>
@@ -252,17 +263,6 @@ export function ProviderAdminBmaasTemplatesPage({
                   </Td>
                   <Td dataLabel="Rate card">
                     {formatRateCardSummary(resolveRateCard(template))}
-                  </Td>
-                  <Td dataLabel="Status">
-                    {isPublished ? (
-                      <Label color="green" isCompact>
-                        Published
-                      </Label>
-                    ) : (
-                      <Label color="grey" isCompact>
-                        {status === 'draft' ? 'Draft' : 'Private'}
-                      </Label>
-                    )}
                   </Td>
                   <Td isActionCell>
                     <ActionsColumn

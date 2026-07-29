@@ -11,7 +11,6 @@ export type ProviderAdminNavId =
   | 'infrastructure-external-ip-pools'
   | 'administration-organizations'
   | 'administration-quotas'
-  | 'administration-rbac'
   | 'billing-metering'
   | 'system'
 
@@ -24,7 +23,6 @@ export const PROVIDER_ADMIN_NAV_ITEMS: ProviderAdminNavItem[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'catalog', label: 'Catalog' },
   { id: 'billing-metering', label: 'Billing & metering' },
-  { id: 'system', label: 'System' },
 ]
 
 export const PROVIDER_ADMIN_NETWORKING_NAV_ITEMS: ProviderAdminNavItem[] = [
@@ -44,7 +42,6 @@ export const PROVIDER_ADMIN_INFRASTRUCTURE_NAV_ITEMS: ProviderAdminNavItem[] = [
 export const PROVIDER_ADMIN_ADMINISTRATION_NAV_ITEMS: ProviderAdminNavItem[] = [
   { id: 'administration-organizations', label: 'Organizations' },
   { id: 'administration-quotas', label: 'Quotas' },
-  { id: 'administration-rbac', label: 'RBAC' },
 ]
 
 export function isNetworkingNavId(navId: string): boolean {

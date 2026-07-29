@@ -34,7 +34,6 @@ import {
 import {
   PROVIDER_ADMIN_ADMINISTRATION_NAV_ITEMS,
   PROVIDER_ADMIN_INFRASTRUCTURE_NAV_ITEMS,
-  PROVIDER_ADMIN_NAV_ITEMS,
   PROVIDER_ADMIN_NETWORKING_NAV_ITEMS,
   isAdministrationNavId,
   isInfrastructureNavId,
@@ -174,6 +173,32 @@ export function ProviderAdminShell({
               Catalog
             </NavItem>
             <NavExpandable
+              id="provider-admin-administration-nav"
+              title="Administration"
+              isExpanded
+              isActive={isAdministrationNavId(activeNavId)}
+            >
+              {PROVIDER_ADMIN_ADMINISTRATION_NAV_ITEMS.map((item) => (
+                <NavItem
+                  key={item.id}
+                  itemId={item.id}
+                  isActive={activeNavId === item.id}
+                  to="#"
+                  preventDefault
+                >
+                  {item.label}
+                </NavItem>
+              ))}
+            </NavExpandable>
+            <NavItem
+              itemId="billing-metering"
+              isActive={activeNavId === 'billing-metering'}
+              to="#"
+              preventDefault
+            >
+              Billing & metering
+            </NavItem>
+            <NavExpandable
               id="provider-admin-networking-nav"
               title="Networking"
               isExpanded
@@ -209,46 +234,6 @@ export function ProviderAdminShell({
                 </NavItem>
               ))}
             </NavExpandable>
-            <NavExpandable
-              id="provider-admin-administration-nav"
-              title="Administration"
-              isExpanded
-              isActive={isAdministrationNavId(activeNavId)}
-            >
-              {PROVIDER_ADMIN_ADMINISTRATION_NAV_ITEMS.map((item) => (
-                <NavItem
-                  key={item.id}
-                  itemId={item.id}
-                  isActive={activeNavId === item.id}
-                  to="#"
-                  preventDefault
-                >
-                  {item.label}
-                </NavItem>
-              ))}
-            </NavExpandable>
-            <NavItem
-              itemId="billing-metering"
-              isActive={activeNavId === 'billing-metering'}
-              to="#"
-              preventDefault
-            >
-              Billing & metering
-            </NavItem>
-            {PROVIDER_ADMIN_NAV_ITEMS.filter(
-              (item) =>
-                item.id !== 'overview' && item.id !== 'catalog' && item.id !== 'billing-metering',
-            ).map((item) => (
-              <NavItem
-                key={item.id}
-                itemId={item.id}
-                isActive={activeNavId === item.id}
-                to="#"
-                preventDefault
-              >
-                {item.label}
-              </NavItem>
-            ))}
           </NavList>
         </Nav>
       </PageSidebarBody>

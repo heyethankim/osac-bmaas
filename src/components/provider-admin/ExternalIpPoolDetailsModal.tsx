@@ -85,9 +85,9 @@ export function ExternalIpPoolDetailsModal({
             {organization ? (
               <>
                 <DescriptionListGroup>
-                  <DescriptionListTerm>Tenant admin</DescriptionListTerm>
+                  <DescriptionListTerm>Primary email domain</DescriptionListTerm>
                   <DescriptionListDescription>
-                    {organization.tenantAdminName} · {organization.tenantAdminEmail}
+                    <code>{organization.primaryDomain || '—'}</code>
                   </DescriptionListDescription>
                 </DescriptionListGroup>
                 <DescriptionListGroup>

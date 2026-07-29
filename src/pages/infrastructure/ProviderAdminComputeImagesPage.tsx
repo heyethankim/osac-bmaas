@@ -82,10 +82,10 @@ export function ProviderAdminComputeImagesPage() {
         <Thead>
           <Tr>
             <Th modifier="wrap">Image</Th>
+            <Th modifier="wrap">Status</Th>
             <Th modifier="wrap">Architecture</Th>
             <Th modifier="wrap">Format</Th>
             <Th modifier="wrap">Size</Th>
-            <Th modifier="wrap">Status</Th>
             <Th screenReaderText="Actions" />
           </Tr>
         </Thead>
@@ -103,9 +103,6 @@ export function ProviderAdminComputeImagesPage() {
                     <code>{image.id}</code>
                   </Content>
                 </Td>
-                <Td dataLabel="Architecture">{image.architecture}</Td>
-                <Td dataLabel="Format">{image.format}</Td>
-                <Td dataLabel="Size">{image.sizeLabel}</Td>
                 <Td dataLabel="Status">
                   {inUse ? (
                     <Label color="blue" isCompact>
@@ -121,6 +118,9 @@ export function ProviderAdminComputeImagesPage() {
                     </Label>
                   )}
                 </Td>
+                <Td dataLabel="Architecture">{image.architecture}</Td>
+                <Td dataLabel="Format">{image.format}</Td>
+                <Td dataLabel="Size">{image.sizeLabel}</Td>
                 <Td isActionCell>
                   <ActionsColumn
                     items={getComputeImageActions(image, inUse, setDetailsImage)}

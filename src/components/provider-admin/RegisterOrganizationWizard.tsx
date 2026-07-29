@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { ArrowRightIcon } from '@patternfly/react-icons/dist/esm/icons/arrow-right-icon'
 import { UsersIcon } from '@patternfly/react-icons/dist/esm/icons/users-icon'
 import {
-  Alert,
   Content,
   DescriptionList,
   DescriptionListDescription,
@@ -10,8 +9,9 @@ import {
   DescriptionListTerm,
   Form,
   FormGroup,
-  FormSelect,
-  FormSelectOption,
+  FormHelperText,
+  HelperText,
+  HelperTextItem,
   Modal,
   ModalVariant,
   TextInput,
@@ -24,11 +24,21 @@ import {
   getAssignableExternalIpPools,
   getExternalIpPoolById,
 } from '../../providerAdmin/externalIpPools'
-import { getProviderExternalIpPools } from '../../providerSetup/storage'
+import {
+  getProviderExternalIpPools,
+  getProviderRegisteredOrganizations,
+} from '../../providerSetup/storage'
 import {
   DEFAULT_REGISTER_ORGANIZATION_FORM,
+  DEFAULT_REGISTER_ORGANIZATION_TENANT_ADMIN,
+  buildNextRegisterOrganizationForm,
   generateOrganizationId,
   generateTenantId,
+  isOrganizationDomainTaken,
+  isOrganizationNameTaken,
+  isOrganizationSlugTaken,
+  isValidPrimaryDomain,
+  normalizePrimaryDomain,
   REGISTER_ORGANIZATION_STEPS,
   slugifyOrganizationName,
   type RegisterOrganizationForm,
@@ -43,17 +53,23 @@ type RegisterOrganizationWizardProps = {
   onRegister: (organization: RegisteredOrganization) => void
 }
 
-function isEmailValid(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
-}
-
 export function RegisterOrganizationWizard({
   isOpen,
   catalogDraft,
   onClose,
   onRegister,
 }: RegisterOrganizationWizardProps) {
-  const [form, setForm] = useState<RegisterOrganizationForm>(DEFAULT_REGISTER_ORGANIZATION_FORM)
+  const [form, setForm] = useState<RegisterOrganizationForm>(() =>
+    buildNextRegisterOrganizationForm(getProviderRegisteredOrganizations()),
+  )
+  const existingOrganizations = useMemo(() => {
+    if (!isOpen) {
+      return []
+    }
+
+    return getProviderRegisteredOrganizations()
+  }, [isOpen])
+
   const assignablePools = useMemo(() => {
     if (!isOpen) {
       return []
@@ -63,7 +79,7 @@ export function RegisterOrganizationWizard({
   }, [isOpen])
 
   const resetWizard = () => {
-    setForm(DEFAULT_REGISTER_ORGANIZATION_FORM)
+    setForm(buildNextRegisterOrganizationForm(getProviderRegisteredOrganizations()))
   }
 
   const handleClose = () => {
@@ -78,30 +94,47 @@ export function RegisterOrganizationWizard({
     }
 
     const pools = getAssignableExternalIpPools(getProviderExternalIpPools())
-    const defaultPoolAvailable = pools.some((pool) => pool.id === DEFAULT_REGISTER_ORGANIZATION_FORM.externalIpPoolId)
+    const nextForm = buildNextRegisterOrganizationForm(getProviderRegisteredOrganizations())
+    const defaultPoolAvailable = pools.some(
+      (pool) => pool.id === DEFAULT_REGISTER_ORGANIZATION_FORM.externalIpPoolId,
+    )
 
-    setForm((current) => ({
-      ...current,
+    setForm({
+      ...nextForm,
       externalIpPoolId: defaultPoolAvailable
         ? DEFAULT_REGISTER_ORGANIZATION_FORM.externalIpPoolId
         : (pools[0]?.id ?? ''),
-    }))
+    })
   }, [isOpen])
+
+  const primaryDomain = normalizePrimaryDomain(form.primaryDomain)
+  const nameTaken = isOrganizationNameTaken(form.organizationName, existingOrganizations)
+  const domainTaken = isOrganizationDomainTaken(form.primaryDomain, existingOrganizations)
+  const slugTaken = isOrganizationSlugTaken(form.organizationName, existingOrganizations)
+  const isOrganizationStepValid =
+    Boolean(form.organizationName.trim()) &&
+    Boolean(form.billingAccountName.trim()) &&
+    isValidPrimaryDomain(form.primaryDomain) &&
+    !nameTaken &&
+    !domainTaken &&
+    !slugTaken
 
   const handleRegister = () => {
     const maxInstances = Number.parseInt(form.maxInstances, 10)
     const selectedPool = getExternalIpPoolById(getProviderExternalIpPools(), form.externalIpPoolId)
+    const latestOrganizations = getProviderRegisteredOrganizations()
     if (
-      !form.organizationName.trim() ||
+      !isOrganizationStepValid ||
+      isOrganizationNameTaken(form.organizationName, latestOrganizations) ||
+      isOrganizationDomainTaken(form.primaryDomain, latestOrganizations) ||
+      isOrganizationSlugTaken(form.organizationName, latestOrganizations) ||
       !form.billingAccountId.trim() ||
-      !form.billingAccountName.trim() ||
       !form.externalIpPoolId.trim() ||
       !selectedPool ||
       selectedPool.assignedOrganizationId !== null ||
-      !form.tenantAdminName.trim() ||
-      !isEmailValid(form.tenantAdminEmail) ||
       !Number.isFinite(maxInstances) ||
-      maxInstances <= 0
+      maxInstances <= 0 ||
+      assignablePools.length === 0
     ) {
       return
     }
@@ -111,6 +144,7 @@ export function RegisterOrganizationWizard({
       name: form.organizationName.trim(),
       tenantId: generateTenantId(),
       slug: slugifyOrganizationName(form.organizationName),
+      primaryDomain,
       billingAccountId: form.billingAccountId.trim(),
       billingAccountName: form.billingAccountName.trim(),
       catalogItemId: catalogDraft?.catalogItemId ?? null,
@@ -119,8 +153,17 @@ export function RegisterOrganizationWizard({
       externalIpPoolName: selectedPool.name,
       externalIpPoolCidr: selectedPool.cidr,
       maxInstances,
-      tenantAdminName: form.tenantAdminName.trim(),
-      tenantAdminEmail: form.tenantAdminEmail.trim(),
+      tenantAdminName: DEFAULT_REGISTER_ORGANIZATION_TENANT_ADMIN.name,
+      tenantAdminEmail: DEFAULT_REGISTER_ORGANIZATION_TENANT_ADMIN.email,
+      additionalTenantAdmins: [],
+      invitedTenantUserEmails: [],
+      identityProviderConnected: false,
+      identityProviderName: null,
+      identityProviderDisplayName: null,
+      identityProviderProtocol: null,
+      identityProviderIssuerUrl: null,
+      identityProviderClientId: null,
+      rbacConfigured: false,
       status: 'Pending activation',
       createdAt: new Date().toISOString(),
     }
@@ -133,160 +176,90 @@ export function RegisterOrganizationWizard({
     switch (stepId) {
       case 'organization':
         return (
-          <Form autoComplete="off" className="provider-admin-organizations__wizard-form">
+          <div className="provider-admin-organizations__wizard-step">
             <Content component="p" className="provider-admin-organizations__wizard-lede">
-              Create the tenant organization and map its billing account before inviting an admin.
+              Create the tenant organization and map its billing account.
             </Content>
-            <FormGroup label="Organization name" fieldId="register-org-name" isRequired>
-              <TextInput
-                id="register-org-name"
-                value={form.organizationName}
-                onChange={(_event, value) =>
-                  setForm((current) => ({ ...current, organizationName: value }))
-                }
-              />
-            </FormGroup>
-            <FormGroup label="Billing account ID" fieldId="register-billing-id" isRequired>
-              <TextInput
-                id="register-billing-id"
-                value={form.billingAccountId}
-                onChange={(_event, value) =>
-                  setForm((current) => ({ ...current, billingAccountId: value }))
-                }
-                placeholder="ACCT-ORG-0001"
-              />
-            </FormGroup>
-            <FormGroup label="Billing account name" fieldId="register-billing-name" isRequired>
-              <TextInput
-                id="register-billing-name"
-                value={form.billingAccountName}
-                onChange={(_event, value) =>
-                  setForm((current) => ({ ...current, billingAccountName: value }))
-                }
-              />
-            </FormGroup>
-          </Form>
-        )
-      case 'access':
-        return (
-          <div className="provider-admin-organizations__wizard-access">
-            <Content component="p" className="provider-admin-organizations__wizard-lede">
-              Assign catalog access, instance quota, and an external IP pool for this organization.
-            </Content>
-            <Alert
-              variant="info"
-              isInline
-              title="Catalog assignment is optional"
-              className="provider-admin-organizations__wizard-alert"
-            >
-              <Content component="p">
-                You can register this organization now and assign a catalog item later. If a catalog
-                item is already published, it can be assigned during onboarding.
-              </Content>
-            </Alert>
-            {catalogDraft ? (
-              <Alert
-                variant="info"
-                isInline
-                title="Catalog item available"
-                className="provider-admin-organizations__wizard-alert"
-              >
-                <Content component="p">
-                  {catalogDraft.displayName} will be available to assign to this organization after
-                  the tenant admin activates.
-                </Content>
-              </Alert>
-            ) : null}
-            <Form autoComplete="off">
-              <FormGroup label="External IP pool" fieldId="register-external-ip-pool" isRequired>
-                {assignablePools.length > 0 ? (
-                  <FormSelect
-                    id="register-external-ip-pool"
-                    value={form.externalIpPoolId}
-                    onChange={(_event, value) =>
-                      setForm((current) => ({ ...current, externalIpPoolId: value }))
-                    }
-                    aria-label="External IP pool"
-                  >
-                    {assignablePools.map((pool) => (
-                      <FormSelectOption
-                        key={pool.id}
-                        value={pool.id}
-                        label={`${pool.name} (${pool.cidr})`}
-                      />
-                    ))}
-                  </FormSelect>
-                ) : (
-                  <Alert
-                    variant="warning"
-                    isInline
-                    title="No available external IP pools"
-                    className="provider-admin-organizations__wizard-alert"
-                  >
-                    Create a pool under Infrastructure → External IP pools before registering this
-                    organization.
-                  </Alert>
-                )}
-              </FormGroup>
-              <FormGroup
-                label="Maximum BMaaS instances"
-                fieldId="register-max-instances"
-                isRequired
-              >
+            <Form autoComplete="off" className="provider-admin-organizations__wizard-form">
+              <FormGroup label="Organization name" fieldId="register-org-name" isRequired>
                 <TextInput
-                  id="register-max-instances"
-                  type="number"
-                  min={1}
-                  value={form.maxInstances}
+                  id="register-org-name"
+                  value={form.organizationName}
+                  validated={nameTaken || slugTaken ? 'error' : 'default'}
                   onChange={(_event, value) =>
-                    setForm((current) => ({ ...current, maxInstances: value }))
+                    setForm((current) => ({
+                      ...current,
+                      organizationName: value,
+                      billingAccountName: `${value.trim() || 'Organization'} — Enterprise Billing`,
+                    }))
+                  }
+                />
+                <FormHelperText>
+                  <HelperText>
+                    <HelperTextItem variant={nameTaken || slugTaken ? 'error' : 'default'}>
+                      {nameTaken
+                        ? 'An organization with this name is already registered.'
+                        : slugTaken
+                          ? 'An organization with this login path already exists. Choose a different name.'
+                          : 'Prefills the next available demo organization.'}
+                    </HelperTextItem>
+                  </HelperText>
+                </FormHelperText>
+              </FormGroup>
+              <FormGroup label="Primary email domain" fieldId="register-primary-domain" isRequired>
+                <TextInput
+                  id="register-primary-domain"
+                  value={form.primaryDomain}
+                  validated={domainTaken ? 'error' : 'default'}
+                  onChange={(_event, value) =>
+                    setForm((current) => ({ ...current, primaryDomain: value }))
+                  }
+                  placeholder="example.com"
+                />
+                <FormHelperText>
+                  <HelperText>
+                    <HelperTextItem variant={domainTaken ? 'error' : 'default'}>
+                      {domainTaken
+                        ? 'This email domain is already mapped to another organization.'
+                        : 'Used to associate identity-provider users with this organization. Tenant admins are assigned later under Roles.'}
+                    </HelperTextItem>
+                  </HelperText>
+                </FormHelperText>
+              </FormGroup>
+              <FormGroup label="Billing account ID" fieldId="register-billing-id">
+                <TextInput
+                  id="register-billing-id"
+                  value={form.billingAccountId}
+                  readOnlyVariant="default"
+                  aria-readonly="true"
+                />
+              </FormGroup>
+              <FormGroup label="Billing account name" fieldId="register-billing-name" isRequired>
+                <TextInput
+                  id="register-billing-name"
+                  value={form.billingAccountName}
+                  onChange={(_event, value) =>
+                    setForm((current) => ({ ...current, billingAccountName: value }))
                   }
                 />
               </FormGroup>
             </Form>
           </div>
         )
-      case 'tenant-admin':
-        return (
-          <Form autoComplete="off" className="provider-admin-organizations__wizard-form">
-            <Content component="p" className="provider-admin-organizations__wizard-lede">
-              Invite the first tenant admin. They receive access to configure the organization and
-              let tenant users consume assigned catalog items.
-            </Content>
-            <FormGroup label="Tenant admin name" fieldId="register-admin-name" isRequired>
-              <TextInput
-                id="register-admin-name"
-                value={form.tenantAdminName}
-                onChange={(_event, value) =>
-                  setForm((current) => ({ ...current, tenantAdminName: value }))
-                }
-              />
-            </FormGroup>
-            <FormGroup label="Tenant admin email" fieldId="register-admin-email" isRequired>
-              <TextInput
-                id="register-admin-email"
-                type="email"
-                value={form.tenantAdminEmail}
-                onChange={(_event, value) =>
-                  setForm((current) => ({ ...current, tenantAdminEmail: value }))
-                }
-                placeholder="admin@organization.com"
-              />
-            </FormGroup>
-            <Content component="p" className="provider-admin-organizations__wizard-note">
-              RBAC assigns the tenant admin role automatically when this invite is sent.
-            </Content>
-          </Form>
-        )
       case 'review':
         return (
-          <DescriptionList
-            isCompact
-            className="provider-admin-organizations__wizard-review"
-          >
+          <DescriptionList isCompact className="provider-admin-organizations__wizard-review">
             <DescriptionListGroup>
               <DescriptionListTerm>Organization</DescriptionListTerm>
-              <DescriptionListDescription>{form.organizationName.trim() || '—'}</DescriptionListDescription>
+              <DescriptionListDescription>
+                {form.organizationName.trim() || '—'}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Primary email domain</DescriptionListTerm>
+              <DescriptionListDescription>
+                <code>{primaryDomain || '—'}</code>
+              </DescriptionListDescription>
             </DescriptionListGroup>
             <DescriptionListGroup>
               <DescriptionListTerm>Billing account</DescriptionListTerm>
@@ -295,41 +268,6 @@ export function RegisterOrganizationWizard({
                 {form.billingAccountId.trim() ? (
                   <code>{form.billingAccountId.trim()}</code>
                 ) : null}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Catalog access</DescriptionListTerm>
-              <DescriptionListDescription>
-                {catalogDraft?.displayName ?? 'No catalog item assigned'}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>External IP pool</DescriptionListTerm>
-              <DescriptionListDescription>
-                {getExternalIpPoolById(getProviderExternalIpPools(), form.externalIpPoolId)?.name ??
-                  '—'}
-                {form.externalIpPoolId ? (
-                  <>
-                    {' '}
-                    ·{' '}
-                    <code>
-                      {getExternalIpPoolById(getProviderExternalIpPools(), form.externalIpPoolId)
-                        ?.cidr ?? '—'}
-                    </code>
-                  </>
-                ) : null}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Instance quota</DescriptionListTerm>
-              <DescriptionListDescription>
-                {form.maxInstances.trim() || '—'} BMaaS instances
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Tenant admin</DescriptionListTerm>
-              <DescriptionListDescription>
-                {form.tenantAdminName.trim() || '—'} · {form.tenantAdminEmail.trim() || '—'}
               </DescriptionListDescription>
             </DescriptionListGroup>
           </DescriptionList>
@@ -342,31 +280,19 @@ export function RegisterOrganizationWizard({
   function getStepFooter(stepId: RegisterOrganizationStepId) {
     if (stepId === 'organization') {
       return {
-        isNextDisabled:
-          !form.organizationName.trim() ||
-          !form.billingAccountId.trim() ||
-          !form.billingAccountName.trim(),
-      }
-    }
-
-    if (stepId === 'access') {
-      const maxInstances = Number.parseInt(form.maxInstances, 10)
-      return {
-        isNextDisabled:
-          !form.externalIpPoolId.trim() ||
-          assignablePools.length === 0 ||
-          !Number.isFinite(maxInstances) ||
-          maxInstances <= 0,
-      }
-    }
-
-    if (stepId === 'tenant-admin') {
-      return {
-        isNextDisabled: !form.tenantAdminName.trim() || !isEmailValid(form.tenantAdminEmail),
+        isNextDisabled: !isOrganizationStepValid,
       }
     }
 
     if (stepId === 'review') {
+      const maxInstances = Number.parseInt(form.maxInstances, 10)
+      const canRegister =
+        isOrganizationStepValid &&
+        Boolean(form.externalIpPoolId.trim()) &&
+        assignablePools.length > 0 &&
+        Number.isFinite(maxInstances) &&
+        maxInstances > 0
+
       return {
         nextButtonText: (
           <span className="provider-admin-organizations__register-label">
@@ -376,6 +302,7 @@ export function RegisterOrganizationWizard({
           </span>
         ),
         onNext: handleRegister,
+        isNextDisabled: !canRegister,
       }
     }
 
