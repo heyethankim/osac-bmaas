@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   Button,
   Card,
@@ -35,6 +34,7 @@ import {
 import { CatalogViewToggle } from '../../components/catalog/CatalogViewToggle'
 import { CatalogPublishScopeIcon } from '../../components/provider-admin/CatalogPublishScopeIcon'
 import { TenantCatalogItemDetailsDrawer } from '../../components/tenant-admin/TenantCatalogItemDetailsDrawer'
+import { TenantUserLaunchInstanceWizard } from '../../components/tenant-user/TenantUserLaunchInstanceWizard'
 import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import { formatCatalogConfigurationSummary } from '../../catalog/catalogSpecs'
@@ -42,6 +42,7 @@ import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
 import { getCatalogViewMode, setCatalogViewMode, type CatalogViewMode } from '../../catalog/viewMode'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
+import { getProviderCatalogItems } from '../../providerSetup/storage'
 import { CATALOG_SERVICE_FILTER_LABELS, type CatalogServiceId } from '../../providerSetup/templateDemo'
 import {
   getTenantCatalogGovernanceItems,
@@ -56,13 +57,17 @@ import {
   type TenantNetworkResourceKind,
 } from '../../tenantAdmin/networking'
 import type { TenantProject } from '../../tenantAdmin/projects'
-import { openAsTenantUser } from '../../providerAdmin/openAsTenantUser'
+import { getTenantUserCatalogCardFromDraft, TENANT_USER_CATALOG_FALLBACK } from '../../tenantUser/catalog'
+import type { TenantInstance } from '../../tenantUser/instances'
 
 type TenantAdminCatalogPageProps = {
   organization: RegisteredOrganization
   catalogDraft: ProviderCatalogDraft | null
   projects: TenantProject[]
   onNavigateToProjectsTeams: () => void
+  existingInstanceNames?: readonly string[]
+  onProvisioningStarted?: (instance: TenantInstance) => void
+  onInstancesRefresh?: () => void
 }
 
 function getVisibilityTooltip(scope: TenantCatalogGovernanceItemWithNetworking['scope']): string {
@@ -73,6 +78,35 @@ function getVisibilityTooltip(scope: TenantCatalogGovernanceItemWithNetworking['
 
 function getVisibilityLabel(scope: TenantCatalogGovernanceItemWithNetworking['scope']): string {
   return scope === 'vip-enterprise' ? 'VIP enterprise' : 'Global public'
+}
+
+function toLaunchCatalogCard(
+  item: TenantCatalogGovernanceItemWithNetworking,
+): ReturnType<typeof getTenantUserCatalogCardFromDraft> {
+  const draft = getProviderCatalogItems().find(
+    (catalogItem) => catalogItem.catalogItemId === item.catalogItemId,
+  )
+  if (draft) {
+    return getTenantUserCatalogCardFromDraft(draft)
+  }
+
+  return {
+    ...TENANT_USER_CATALOG_FALLBACK,
+    serviceId: item.serviceId,
+    service: item.service,
+    status: item.status,
+    displayName: item.displayName,
+    description: item.description,
+    categoryLabel: item.categoryLabel,
+    specRows: item.specRows,
+    cpu: item.cpu,
+    ram: item.ram,
+    gpu: item.gpu,
+    osImage: item.osImage,
+    catalogItemId: item.catalogItemId,
+    templateRefId: item.templateRefId,
+    templateName: item.templateName,
+  }
 }
 
 function NetworkingSummary({
@@ -193,7 +227,6 @@ function AccessSummary({
 function getCatalogItemActions(
   item: TenantCatalogGovernanceItemWithNetworking,
   onViewDetails: () => void,
-  onOpenAsTenantUser: () => void,
   onEdit: () => void,
   onDuplicate: () => void,
   onTogglePublish: () => void,
@@ -205,15 +238,6 @@ function getCatalogItemActions(
     {
       title: 'View details',
       onClick: onViewDetails,
-    },
-    {
-      title: 'Open as tenant user',
-      isAriaDisabled: isUnpublished,
-      onClick: () => {
-        if (!isUnpublished) {
-          onOpenAsTenantUser()
-        }
-      },
     },
     {
       title: 'Edit',
@@ -243,8 +267,10 @@ export function TenantAdminCatalogPage({
   catalogDraft,
   projects,
   onNavigateToProjectsTeams,
+  existingInstanceNames = [],
+  onProvisioningStarted,
+  onInstancesRefresh,
 }: TenantAdminCatalogPageProps) {
-  const navigate = useNavigate()
   const [catalogItems, setCatalogItems] = useState(() =>
     getTenantCatalogGovernanceItems(organization, catalogDraft),
   )
@@ -259,6 +285,7 @@ export function TenantAdminCatalogPage({
   const [selectedCatalogItem, setSelectedCatalogItem] =
     useState<TenantCatalogGovernanceItemWithNetworking | null>(null)
   const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false)
+  const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editDisplayName, setEditDisplayName] = useState('')
   const [isUnpublishModalOpen, setIsUnpublishModalOpen] = useState(false)
@@ -362,6 +389,21 @@ export function TenantAdminCatalogPage({
     setIsDetailsDrawerOpen(true)
   }
 
+  const openLaunchWizard = (item: TenantCatalogGovernanceItemWithNetworking) => {
+    setSelectedCatalogItem(item)
+    setIsDetailsDrawerOpen(false)
+    setIsWizardOpen(true)
+  }
+
+  const launchCatalogCard = selectedCatalogItem ? toLaunchCatalogCard(selectedCatalogItem) : null
+  const launchCatalogDraft =
+    selectedCatalogItem
+      ? (getProviderCatalogItems().find(
+          (item) => item.catalogItemId === selectedCatalogItem.catalogItemId,
+        ) ??
+        catalogDraft)
+      : catalogDraft
+
   const closeDetails = () => {
     setIsDetailsDrawerOpen(false)
   }
@@ -430,25 +472,6 @@ export function TenantAdminCatalogPage({
       }
       return next
     })
-  }
-
-  const openAsTenantUserForItem = (item: TenantCatalogGovernanceItemWithNetworking) => {
-    if (item.status === 'Unpublished') {
-      return
-    }
-
-    navigate(
-      openAsTenantUser(organization, {
-        source: 'tenant-admin',
-        catalogItem: {
-          catalogItemId: item.catalogItemId,
-          displayName: item.displayName,
-        },
-        autoLaunch: false,
-        returnTenantSlug: organization.slug,
-        returnTenantAdminNav: 'catalog',
-      }),
-    )
   }
 
   const openEdit = (item: TenantCatalogGovernanceItemWithNetworking) => {
@@ -530,7 +553,6 @@ export function TenantAdminCatalogPage({
     getCatalogItemActions(
       item,
       () => openDetails(item),
-      () => openAsTenantUserForItem(item),
       () => openEdit(item),
       () => handleDuplicate(item),
       () => openTogglePublish(item),
@@ -547,6 +569,11 @@ export function TenantAdminCatalogPage({
       onNavigateToProjectsTeams={onNavigateToProjectsTeams}
       onChangeNetworkField={handleChangeNetworkField}
       onChangeLockForUsers={handleChangeLockForUsers}
+      onLaunch={() => {
+        if (selectedCatalogItem) {
+          openLaunchWizard(selectedCatalogItem)
+        }
+      }}
     >
       <div className="tenant-admin-workspace-page tenant-admin-catalog-manager">
         <Flex
@@ -877,6 +904,32 @@ export function TenantAdminCatalogPage({
           </Button>
         </ModalFooter>
       </Modal>
+
+      {launchCatalogCard ? (
+        <TenantUserLaunchInstanceWizard
+          isOpen={isWizardOpen}
+          catalogItem={launchCatalogCard}
+          organization={organization}
+          catalogDraft={launchCatalogDraft}
+          preferCatalogDraft
+          scopeKind="organization"
+          scopeLabel={organization.name}
+          scopeFieldLabel="Organization"
+          existingInstanceNames={existingInstanceNames}
+          onClose={() => setIsWizardOpen(false)}
+          onProvisioningStarted={(instance) => {
+            onProvisioningStarted?.(instance)
+          }}
+          onDismissDuringProvisioning={() => {
+            setIsWizardOpen(false)
+            onInstancesRefresh?.()
+          }}
+          onWizardFinished={() => {
+            setIsWizardOpen(false)
+            onInstancesRefresh?.()
+          }}
+        />
+      ) : null}
     </TenantCatalogItemDetailsDrawer>
   )
 }

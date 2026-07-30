@@ -1,4 +1,11 @@
-import type { TenantInstance } from './instances'
+import { DEMO_TENANT_LABEL } from '../demoTenant'
+import {
+  createDemoTenantBareMetalInstance,
+  createDemoTenantVirtualMachineInstance,
+  DEMO_TENANT_BARE_METAL_INSTANCE_ID,
+  DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID,
+  type TenantInstance,
+} from './instances'
 
 const TENANT_USER_ONBOARDING_COMPLETE_KEY_PREFIX = 'bmaas-tenant-user-onboarding-complete-'
 const TENANT_USER_ACTIVE_NAV_KEY_PREFIX = 'bmaas-tenant-user-active-nav-'
@@ -6,7 +13,10 @@ const TENANT_USER_INSTANCES_KEY_PREFIX = 'bmaas-tenant-user-instances-'
 
 export type TenantUserNavId =
   | 'catalog'
-  | 'my-instances'
+  | 'services-baremetal'
+  | 'services-clusters'
+  | 'services-models'
+  | 'services-virtual-machines'
   | 'networking-virtual-networks'
   | 'networking-subnets'
   | 'networking-security-groups'
@@ -14,12 +24,20 @@ export type TenantUserNavId =
 
 const TENANT_USER_NAV_IDS: TenantUserNavId[] = [
   'catalog',
-  'my-instances',
+  'services-baremetal',
+  'services-clusters',
+  'services-models',
+  'services-virtual-machines',
   'networking-virtual-networks',
   'networking-subnets',
   'networking-security-groups',
   'activity-log',
 ]
+
+const LEGACY_TENANT_USER_NAV_IDS: Record<string, TenantUserNavId> = {
+  'my-instances': 'services-baremetal',
+  services: 'services-baremetal',
+}
 
 function getSlugKey(prefix: string, slug: string): string {
   return `${prefix}${slug}`
@@ -120,6 +138,11 @@ export function getTenantUserActiveNav(slug: string): TenantUserNavId {
     if (stored && isTenantUserNavId(stored)) {
       return stored
     }
+    if (stored && LEGACY_TENANT_USER_NAV_IDS[stored]) {
+      const normalized = LEGACY_TENANT_USER_NAV_IDS[stored]
+      setTenantUserActiveNav(slug, normalized)
+      return normalized
+    }
   } catch {
     /* demo storage unavailable */
   }
@@ -154,6 +177,35 @@ export function getTenantUserInstances(slug: string): TenantInstance[] {
   } catch {
     return []
   }
+}
+
+/**
+ * Ensures Tenant Admin / shared demo Services lists include one Bare metal and one
+ * Virtual machine instance. Stable IDs avoid duplicates across reloads.
+ */
+export function ensureTenantDemoInstances(
+  slug: string,
+  organizationName: string = DEMO_TENANT_LABEL.northstar,
+): TenantInstance[] {
+  const existing = getTenantUserInstances(slug)
+  const next = [...existing]
+  let changed = false
+
+  if (!next.some((instance) => instance.id === DEMO_TENANT_BARE_METAL_INSTANCE_ID)) {
+    next.push(createDemoTenantBareMetalInstance(organizationName))
+    changed = true
+  }
+
+  if (!next.some((instance) => instance.id === DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID)) {
+    next.push(createDemoTenantVirtualMachineInstance(organizationName))
+    changed = true
+  }
+
+  if (changed) {
+    setTenantUserInstances(slug, next)
+  }
+
+  return next
 }
 
 export function setTenantUserInstances(slug: string, instances: TenantInstance[]): void {

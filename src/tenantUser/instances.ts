@@ -168,6 +168,74 @@ export function getTenantInstanceScopeFieldLabel(
   return instance.scopeKind === 'organization' ? 'Organization' : 'Project'
 }
 
+/** Stable demo instance IDs so ensure can re-seed without duplicates. */
+export const DEMO_TENANT_BARE_METAL_INSTANCE_ID = 'instance_demo_bm_01'
+export const DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID = 'instance_demo_vm_01'
+
+export function createDemoTenantBareMetalInstance(organizationName: string): TenantInstance {
+  const createdAt = new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString()
+
+  return {
+    id: DEMO_TENANT_BARE_METAL_INSTANCE_ID,
+    name: 'BM-Server-01',
+    catalogItemDisplayName: 'Bare Metal - GPU Training Server',
+    serviceId: 'baremetal',
+    hardwareProfile: 'Dell PowerEdge R750',
+    osImage: 'RHEL 9.4',
+    networkLabel: 'Tenant workload VNet / bm-compute-a · allow-ssh-https',
+    networking: {
+      enabled: true,
+      virtualNetwork: 'Tenant workload VNet',
+      subnet: 'bm-compute-a',
+      securityGroup: 'allow-ssh-https',
+    },
+    gpuLabel: 'CPU-only',
+    specRows: [
+      { label: 'CPU', value: 'Intel Xeon Gold 6338 × 2' },
+      { label: 'RAM', value: '512 GB DDR4' },
+      { label: 'GPU', value: 'CPU-only' },
+      { label: 'OS image', value: 'RHEL 9.4' },
+    ],
+    projectName: organizationName,
+    scopeKind: 'organization',
+    status: 'running',
+    createdAt,
+    provisionedAt: createdAt,
+  }
+}
+
+export function createDemoTenantVirtualMachineInstance(organizationName: string): TenantInstance {
+  const createdAt = new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString()
+  const specRows = resolveCatalogSpecRows(
+    { serviceId: 'virtual-machine', templateRefId: '', templateName: '' },
+    { includeDetails: true },
+  )
+
+  return {
+    id: DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID,
+    name: 'VM-Instance-01',
+    catalogItemDisplayName: 'VM with Configurable Network Attachments',
+    serviceId: 'virtual-machine',
+    hardwareProfile:
+      specRows.find((row) => row.label === 'Instance type')?.value ?? 'Standard VM',
+    osImage: specRows.find((row) => row.label === 'OS image')?.value ?? 'RHEL 9.4',
+    networkLabel: 'Tenant workload VNet / bm-compute-a · allow-ssh-https',
+    networking: {
+      enabled: true,
+      virtualNetwork: 'Tenant workload VNet',
+      subnet: 'bm-compute-a',
+      securityGroup: 'allow-ssh-https',
+    },
+    gpuLabel: specRows.find((row) => row.label === 'Size')?.value ?? 'medium',
+    specRows,
+    projectName: organizationName,
+    scopeKind: 'organization',
+    status: 'running',
+    createdAt,
+    provisionedAt: createdAt,
+  }
+}
+
 /** Normalize legacy instances that only stored a combined networkLabel. */
 export function resolveTenantInstanceNetworking(
   instance: TenantInstance,

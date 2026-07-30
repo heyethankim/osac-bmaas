@@ -1,7 +1,10 @@
 export type TenantAdminNavId =
   | 'overview'
   | 'catalog'
-  | 'services'
+  | 'services-baremetal'
+  | 'services-clusters'
+  | 'services-models'
+  | 'services-virtual-machines'
   | 'projects-teams'
   | 'networking-virtual-networks'
   | 'networking-subnets'
@@ -19,6 +22,16 @@ export type TenantAdminNavGroup = {
   items: TenantAdminNavItem[]
 }
 
+export const TENANT_ADMIN_SERVICES_NAV_ITEMS: ReadonlyArray<{
+  id: TenantAdminNavId
+  label: string
+}> = [
+  { id: 'services-baremetal', label: 'Bare metal' },
+  { id: 'services-clusters', label: 'Clusters' },
+  { id: 'services-models', label: 'Models' },
+  { id: 'services-virtual-machines', label: 'Virtual machines' },
+]
+
 export const TENANT_ADMIN_NETWORKING_NAV_ITEMS: ReadonlyArray<{
   id: TenantAdminNavId
   label: string
@@ -31,6 +44,11 @@ export const TENANT_ADMIN_NETWORKING_NAV_ITEMS: ReadonlyArray<{
 export const TENANT_ADMIN_NAV_ITEMS: TenantAdminNavItem[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'catalog', label: 'Catalog' },
+  {
+    id: 'services',
+    label: 'Services',
+    children: TENANT_ADMIN_SERVICES_NAV_ITEMS,
+  },
   { id: 'projects-teams', label: 'Projects & teams' },
   {
     id: 'networking',
@@ -51,6 +69,10 @@ export function getTenantAdminLeafNavItems(
 
 export function isNetworkingNavId(navId: string): boolean {
   return navId.startsWith('networking-')
+}
+
+export function isServicesNavId(navId: string): boolean {
+  return navId.startsWith('services-')
 }
 
 /** @deprecated Use TENANT_ADMIN_NAV_ITEMS for navigation. */

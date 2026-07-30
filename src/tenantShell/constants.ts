@@ -27,9 +27,20 @@ export function flattenTenantNavItems(
   )
 }
 
+export const TENANT_USER_SERVICES_NAV_ITEMS: ReadonlyArray<{ id: string; label: string }> = [
+  { id: 'services-baremetal', label: 'Bare metal' },
+  { id: 'services-clusters', label: 'Clusters' },
+  { id: 'services-models', label: 'Models' },
+  { id: 'services-virtual-machines', label: 'Virtual machines' },
+]
+
 export const TENANT_USER_NAV_ITEMS: TenantNavItem[] = [
   { id: 'catalog', label: 'Catalog' },
-  { id: 'my-instances', label: 'My instances' },
+  {
+    id: 'services',
+    label: 'Services',
+    children: TENANT_USER_SERVICES_NAV_ITEMS,
+  },
   {
     id: 'networking',
     label: 'Networking',

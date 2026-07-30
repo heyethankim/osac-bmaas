@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { RocketIcon } from '@patternfly/react-icons/dist/esm/icons/rocket-icon'
 import {
   Button,
   Content,
@@ -54,6 +55,7 @@ import {
   getDraftServiceId,
   resolveCatalogSpecRows,
 } from '../../catalog/catalogSpecs'
+import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
 
 type CatalogItemDetailsDrawerProps = {
   isExpanded: boolean
@@ -64,6 +66,7 @@ type CatalogItemDetailsDrawerProps = {
   canAssign: boolean
   onAssignToOrganization: () => void
   onPublish?: () => void
+  onLaunch?: () => void
   onNetworkPolicyChange?: (networkPolicy: CatalogNetworkPolicy) => void
   onNavigateToLinkedTemplate?: (template: {
     templateRefId: string
@@ -91,6 +94,7 @@ export function CatalogItemDetailsDrawer({
   canAssign,
   onAssignToOrganization,
   onPublish,
+  onLaunch,
   onNetworkPolicyChange,
   onNavigateToLinkedTemplate,
   children,
@@ -194,10 +198,21 @@ export function CatalogItemDetailsDrawer({
           {catalog.description?.trim() || templateDescription}
         </Content>
 
+        {onLaunch ? (
+          <Button
+            variant="primary"
+            icon={<RocketIcon />}
+            onClick={onLaunch}
+            className="provider-admin-catalog-items__drawer-launch"
+          >
+            {LAUNCH_INSTANCE_WIZARD_DEMO.launchInstanceLabel}
+          </Button>
+        ) : null}
+
         {!isLive ? (
           <div className="provider-admin-catalog-items__drawer-actions">
             <Button
-              variant="primary"
+              variant="secondary"
               className="provider-admin-catalog-items__drawer-action"
               onClick={onPublish}
             >
@@ -207,7 +222,7 @@ export function CatalogItemDetailsDrawer({
         ) : catalog.scope === 'global-public' ? null : (
           <div className="provider-admin-catalog-items__drawer-actions">
             <Button
-              variant="primary"
+              variant="secondary"
               className="provider-admin-catalog-items__drawer-action"
               isDisabled={!canAssign}
               onClick={onAssignToOrganization}

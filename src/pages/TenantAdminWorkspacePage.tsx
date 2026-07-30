@@ -10,7 +10,11 @@ import { TenantAdminCatalogPage } from './tenant-admin/TenantAdminCatalogPage'
 import { TenantAdminOverviewPage } from './tenant-admin/TenantAdminOverviewPage'
 import { TenantAdminProjectsTeamsPage } from './tenant-admin/TenantAdminProjectsTeamsPage'
 import { TenantUserInstancesPage } from './tenant-user/TenantUserInstancesPage'
-import { TENANT_ADMIN_NAV_ITEMS, type TenantAdminNavId } from '../tenantAdmin/constants'
+import {
+  TENANT_ADMIN_NAV_ITEMS,
+  isServicesNavId,
+  type TenantAdminNavId,
+} from '../tenantAdmin/constants'
 import { getWorkspaceOrganization } from '../tenantAdmin/organizations'
 import {
   getTenantActiveNav,
@@ -19,8 +23,15 @@ import {
   setTenantOnboardingComplete,
 } from '../tenantAdmin/storage'
 import type { TenantProject } from '../tenantAdmin/projects'
+import type { CatalogServiceId } from '../providerSetup/templateDemo'
 import { activateProviderRegisteredOrganizationBySlug, getProviderCatalogDraft } from '../providerSetup/storage'
-import { getTenantUserInstances } from '../tenantUser/storage'
+import {
+  addTenantUserInstance,
+  ensureTenantDemoInstances,
+  updateTenantUserInstance,
+} from '../tenantUser/storage'
+import type { TenantInstance } from '../tenantUser/instances'
+import { LAUNCH_INSTANCE_PROVISIONING_DURATION_MS } from '../tenantUser/launchInstanceWizard'
 
 const TENANT_ADMIN_PLACEHOLDER_PAGES: Partial<
   Record<TenantAdminNavId, { title: string; description: string }>
@@ -30,11 +41,40 @@ function isTenantAdminNavId(value: string | null): value is TenantAdminNavId {
   return (
     value === 'overview' ||
     value === 'catalog' ||
+    value === 'services-baremetal' ||
+    value === 'services-clusters' ||
+    value === 'services-models' ||
+    value === 'services-virtual-machines' ||
     value === 'projects-teams' ||
     value === 'networking-virtual-networks' ||
     value === 'networking-subnets' ||
     value === 'networking-security-groups'
   )
+}
+
+function normalizeTenantAdminNavParam(value: string | null): TenantAdminNavId | null {
+  if (isTenantAdminNavId(value)) {
+    return value
+  }
+  if (value === 'services' || value === 'my-instances' || value === 'instances') {
+    return 'services-baremetal'
+  }
+  return null
+}
+
+function getLockedServiceIdFromNav(navId: TenantAdminNavId): CatalogServiceId | null {
+  switch (navId) {
+    case 'services-baremetal':
+      return 'baremetal'
+    case 'services-clusters':
+      return 'cluster'
+    case 'services-models':
+      return 'models'
+    case 'services-virtual-machines':
+      return 'virtual-machine'
+    default:
+      return null
+  }
 }
 
 /** Seeds Tenant Admin state so landing-page prototype links can open finished screens. */
@@ -48,8 +88,8 @@ function readInitialTenantAdminNav(
   tenant: string,
   searchParams: URLSearchParams,
 ): TenantAdminNavId {
-  const requestedNav = searchParams.get('nav')
-  if (isTenantAdminNavId(requestedNav)) {
+  const requestedNav = normalizeTenantAdminNavParam(searchParams.get('nav'))
+  if (requestedNav) {
     ensureTenantAdminPostOnboardingPrototype(tenant, requestedNav)
     return requestedNav
   }
@@ -70,7 +110,11 @@ export function TenantAdminWorkspacePage() {
     isValidTenant ? readInitialTenantAdminNav(tenant, searchParams) : 'overview',
   )
   const [projects, setProjects] = useState<TenantProject[]>(() => getTenantProjects(tenant))
-  const [instances, setInstances] = useState(() => getTenantUserInstances(tenant))
+  const [instances, setInstances] = useState(() =>
+    isValidTenant
+      ? ensureTenantDemoInstances(tenant, getWorkspaceOrganization(tenant).name)
+      : [],
+  )
   const [openVirtualNetworkId, setOpenVirtualNetworkId] = useState<string | null>(null)
   const [openSubnetId, setOpenSubnetId] = useState<string | null>(null)
   const [openSecurityGroupId, setOpenSecurityGroupId] = useState<string | null>(null)
@@ -83,10 +127,12 @@ export function TenantAdminWorkspacePage() {
     // Login and prototype shortcuts both land here with onboarding already complete.
     setTenantOnboardingComplete(tenant)
     activateProviderRegisteredOrganizationBySlug(tenant)
-    setOrganization(getWorkspaceOrganization(tenant))
+    const workspaceOrganization = getWorkspaceOrganization(tenant)
+    setOrganization(workspaceOrganization)
+    setInstances(ensureTenantDemoInstances(tenant, workspaceOrganization.name))
 
-    const requestedNav = searchParams.get('nav')
-    if (!isTenantAdminNavId(requestedNav)) {
+    const requestedNav = normalizeTenantAdminNavParam(searchParams.get('nav'))
+    if (!requestedNav) {
       return
     }
 
@@ -100,11 +146,31 @@ export function TenantAdminWorkspacePage() {
 
   const catalogDraft = getProviderCatalogDraft()
   const displayName = organization.tenantAdminName ?? DEMO_TENANT_DISPLAY_ADMIN.northstar
+  const lockedServiceId = getLockedServiceIdFromNav(activeNavId)
 
   const handleNavChange = (navId: string) => {
     const nextNavId = navId as TenantAdminNavId
     setActiveNavId(nextNavId)
     setTenantActiveNav(tenant, nextNavId)
+    if (isServicesNavId(nextNavId)) {
+      setInstances(ensureTenantDemoInstances(tenant, organization.name))
+    }
+  }
+
+  const handleProvisioningStarted = (instance: TenantInstance) => {
+    setInstances(addTenantUserInstance(tenant, instance))
+    window.setTimeout(() => {
+      setInstances(
+        updateTenantUserInstance(tenant, instance.id, {
+          status: 'running',
+          provisionedAt: new Date().toISOString(),
+        }),
+      )
+    }, LAUNCH_INSTANCE_PROVISIONING_DURATION_MS)
+  }
+
+  const handleInstancesChange = (nextInstances: TenantInstance[]) => {
+    setInstances(nextInstances)
   }
 
   const renderWorkspaceContent = () => {
@@ -119,13 +185,17 @@ export function TenantAdminWorkspacePage() {
     }
 
     switch (activeNavId) {
-      case 'services':
+      case 'services-baremetal':
+      case 'services-clusters':
+      case 'services-models':
+      case 'services-virtual-machines':
         return (
           <TenantUserInstancesPage
             tenantSlug={tenant}
             instances={instances}
-            onInstancesChange={setInstances}
+            onInstancesChange={handleInstancesChange}
             defaultScopeFieldLabel="Organization"
+            lockedServiceId={lockedServiceId ?? 'baremetal'}
           />
         )
       case 'catalog':
@@ -135,6 +205,11 @@ export function TenantAdminWorkspacePage() {
             catalogDraft={catalogDraft}
             projects={projects}
             onNavigateToProjectsTeams={() => handleNavChange('projects-teams')}
+            existingInstanceNames={instances.map((instance) => instance.name)}
+            onProvisioningStarted={handleProvisioningStarted}
+            onInstancesRefresh={() =>
+              setInstances(ensureTenantDemoInstances(tenant, organization.name))
+            }
           />
         )
       case 'projects-teams':

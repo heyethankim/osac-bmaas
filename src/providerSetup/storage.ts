@@ -122,6 +122,10 @@ export function getProviderActiveNav(): ProviderAdminNavId {
     if (
       value === 'overview' ||
       value === 'catalog' ||
+      value === 'services-baremetal' ||
+      value === 'services-clusters' ||
+      value === 'services-models' ||
+      value === 'services-virtual-machines' ||
       value === 'infrastructure-data-centers' ||
       value === 'infrastructure-hardware-inventory' ||
       value === 'infrastructure-compute-images' ||
@@ -136,6 +140,10 @@ export function getProviderActiveNav(): ProviderAdminNavId {
       value === 'system'
     ) {
       return value
+    }
+
+    if (value === 'services' || value === 'my-instances' || value === 'instances') {
+      return 'services-baremetal'
     }
 
     if (value === 'administration-rbac' || value === 'administration-roles') {

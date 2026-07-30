@@ -18,8 +18,10 @@ import { ProviderAdminOrganizationsPage } from './ProviderAdminOrganizationsPage
 import { ProviderAdminQuotasPage } from './ProviderAdminQuotasPage'
 import { PlaceholderProviderAdminPage } from './PlaceholderProviderAdminPage'
 import { ProviderServiceSelectionPage } from './provider-setup/ProviderServiceSelectionPage'
+import { TenantUserInstancesPage } from './tenant-user/TenantUserInstancesPage'
 import type { ProviderServiceId } from '../providerSetup/constants'
 import { generateCatalogItemId, type PublishedTemplatePayload } from '../providerSetup/templateDemo'
+import type { CatalogServiceId } from '../providerSetup/templateDemo'
 import { DEFAULT_CATALOG_NETWORK_POLICY } from '../providerAdmin/catalogNetworkPolicy'
 import {
   ensureProviderCatalogDemoItems,
@@ -39,22 +41,45 @@ import {
   setProviderSelectedServices,
   setProviderSetupComplete,
 } from '../providerSetup/storage'
+import { getTenantUserInstances } from '../tenantUser/storage'
 
 import type { WorkspaceTransition } from '../providerAdmin/workspace'
 import type { BmaasTemplateLookup } from '../providerAdmin/bmaasTemplates'
 
 const PUBLISH_PHASE_MS = 900
 const ENTER_PHASE_MS = 700
+const PROVIDER_SERVICES_DEMO_TENANT = 'northstar'
+
+function normalizeProviderNavParam(value: string | null): ProviderAdminNavId | null {
+  const normalizedNav =
+    value === 'administration-rbac' || value === 'administration-roles'
+      ? 'administration-organizations'
+      : value === 'services' || value === 'my-instances' || value === 'instances'
+        ? 'services-baremetal'
+        : value
+  return isProviderAdminNavId(normalizedNav) ? normalizedNav : null
+}
+
+function getLockedServiceIdFromNav(navId: ProviderAdminNavId): CatalogServiceId | null {
+  switch (navId) {
+    case 'services-baremetal':
+      return 'baremetal'
+    case 'services-clusters':
+      return 'cluster'
+    case 'services-models':
+      return 'models'
+    case 'services-virtual-machines':
+      return 'virtual-machine'
+    default:
+      return null
+  }
+}
 
 function readInitialProviderNav(searchParams: URLSearchParams): ProviderAdminNavId {
-  const requestedNav = searchParams.get('nav')
-  const normalizedNav =
-    requestedNav === 'administration-rbac' || requestedNav === 'administration-roles'
-      ? 'administration-organizations'
-      : requestedNav
-  if (isProviderAdminNavId(normalizedNav)) {
-    ensureProviderPostSetupPrototype(normalizedNav)
-    return normalizedNav
+  const requestedNav = normalizeProviderNavParam(searchParams.get('nav'))
+  if (requestedNav) {
+    ensureProviderPostSetupPrototype(requestedNav)
+    return requestedNav
   }
 
   return getProviderActiveNav()
@@ -78,20 +103,20 @@ export function ProviderAdminWorkspacePage() {
   const [openVirtualNetworkId, setOpenVirtualNetworkId] = useState<string | null>(null)
   const [openSubnetId, setOpenSubnetId] = useState<string | null>(null)
   const [openSecurityGroupId, setOpenSecurityGroupId] = useState<string | null>(null)
+  const [instances, setInstances] = useState(() =>
+    getTenantUserInstances(PROVIDER_SERVICES_DEMO_TENANT),
+  )
 
   useLayoutEffect(() => {
-    const requestedNav = searchParams.get('nav')
-    const normalizedNav =
-      requestedNav === 'administration-rbac' || requestedNav === 'administration-roles'
-        ? 'administration-organizations'
-        : requestedNav
-    if (isProviderAdminNavId(normalizedNav)) {
-      ensureProviderPostSetupPrototype(normalizedNav)
+    const requestedNav = normalizeProviderNavParam(searchParams.get('nav'))
+    if (requestedNav) {
+      ensureProviderPostSetupPrototype(requestedNav)
       setCatalogItems(getProviderCatalogItems())
       setSelectedServices(getProviderSelectedServices())
       setServicesSelected(true)
       setSetupComplete(true)
-      setActiveNavId(normalizedNav)
+      setActiveNavId(requestedNav)
+      setInstances(getTenantUserInstances(PROVIDER_SERVICES_DEMO_TENANT))
       return
     }
 
@@ -99,6 +124,8 @@ export function ProviderAdminWorkspacePage() {
       setCatalogItems(ensureProviderCatalogDemoItems())
     }
   }, [searchParams])
+
+  const lockedServiceId = getLockedServiceIdFromNav(activeNavId)
 
   const handleServicesContinue = (nextSelectedServices: ProviderServiceId[]) => {
     setProviderSelectedServices(nextSelectedServices)
@@ -181,6 +208,19 @@ export function ProviderAdminWorkspacePage() {
     }
 
     switch (activeNavId) {
+      case 'services-baremetal':
+      case 'services-clusters':
+      case 'services-models':
+      case 'services-virtual-machines':
+        return (
+          <TenantUserInstancesPage
+            tenantSlug={PROVIDER_SERVICES_DEMO_TENANT}
+            instances={instances}
+            onInstancesChange={setInstances}
+            defaultScopeFieldLabel="Organization"
+            lockedServiceId={lockedServiceId ?? 'baremetal'}
+          />
+        )
       case 'catalog':
         return (
           <ProviderAdminCatalogPage

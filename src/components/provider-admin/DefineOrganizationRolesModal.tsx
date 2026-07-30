@@ -8,9 +8,6 @@ import {
   DescriptionListDescription,
   DescriptionListGroup,
   DescriptionListTerm,
-  DropzoneErrorCode,
-  FileUpload,
-  FileUploadHelperText,
   Form,
   FormGroup,
   FormHelperText,
@@ -44,7 +41,6 @@ type TenantAdminDraft = {
 
 type DefineRolesForm = {
   admins: TenantAdminDraft[]
-  tenantUserEmailsText: string
 }
 
 type ModalMode = 'define' | 'view' | 'edit'
@@ -74,13 +70,11 @@ function buildDefaultForm(organization: RegisteredOrganization): DefineRolesForm
 
     return {
       admins: admins.length > 0 ? admins : [buildDefaultAdmin(organization)],
-      tenantUserEmailsText: organization.invitedTenantUserEmails.join('\n'),
     }
   }
 
   return {
     admins: [buildDefaultAdmin(organization)],
-    tenantUserEmailsText: '',
   }
 }
 
@@ -92,72 +86,6 @@ function emailMatchesOrganizationDomain(email: string, primaryDomain: string): b
 
   const emailDomain = email.split('@')[1]?.toLowerCase() ?? ''
   return emailDomain === domain
-}
-
-function splitCsvLine(line: string): string[] {
-  const cells: string[] = []
-  let current = ''
-  let inQuotes = false
-
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index]
-    if (char === '"') {
-      inQuotes = !inQuotes
-      continue
-    }
-    if (char === ',' && !inQuotes) {
-      cells.push(current)
-      current = ''
-      continue
-    }
-    current += char
-  }
-
-  cells.push(current)
-  return cells
-}
-
-function normalizeEmailCell(value: string): string {
-  return value.trim().toLowerCase().replace(/^['"]+|['"]+$/g, '')
-}
-
-/** Accepts a plain email list or a CSV with an email column header. */
-function parseEmailsFromCsv(content: string): string[] {
-  const lines = content
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-
-  if (lines.length === 0) {
-    return []
-  }
-
-  const headerCells = splitCsvLine(lines[0]).map((cell) => normalizeEmailCell(cell))
-  const emailColumnIndex = headerCells.findIndex((cell) =>
-    /^(e-?mail|user\s*e-?mail|email\s*address)$/i.test(cell),
-  )
-  const startIndex = emailColumnIndex >= 0 ? 1 : 0
-  const seen = new Set<string>()
-  const emails: string[] = []
-
-  for (let lineIndex = startIndex; lineIndex < lines.length; lineIndex += 1) {
-    const cells = splitCsvLine(lines[lineIndex]).map((cell) => normalizeEmailCell(cell))
-    const candidates = emailColumnIndex >= 0 ? [cells[emailColumnIndex] ?? ''] : cells
-
-    for (const candidate of candidates) {
-      if (!candidate.includes('@') || seen.has(candidate)) {
-        continue
-      }
-      seen.add(candidate)
-      emails.push(candidate)
-    }
-  }
-
-  return emails
-}
-
-function parseTenantUserEmails(value: string): string[] {
-  return parseEmailsFromCsv(value)
 }
 
 type DefineOrganizationRolesModalProps = {
@@ -176,11 +104,7 @@ export function DefineOrganizationRolesModal({
   const [mode, setMode] = useState<ModalMode>('define')
   const [form, setForm] = useState<DefineRolesForm>({
     admins: [{ name: '', email: '' }],
-    tenantUserEmailsText: '',
   })
-  const [csvFilename, setCsvFilename] = useState('')
-  const [isCsvLoading, setIsCsvLoading] = useState(false)
-  const [csvUploadError, setCsvUploadError] = useState<string | null>(null)
   const [completionPhase, setCompletionPhase] =
     useState<OrganizationActionCompletionPhase>('idle')
   const completionTimersRef = useRef<number[]>([])
@@ -205,9 +129,6 @@ export function DefineOrganizationRolesModal({
     setCompletionPhase('idle')
     setForm(buildDefaultForm(organization))
     setMode(organization.rbacConfigured ? 'view' : 'define')
-    setCsvFilename('')
-    setIsCsvLoading(false)
-    setCsvUploadError(null)
   }, [isOpen, organization])
 
   if (!organization) {
@@ -227,14 +148,8 @@ export function DefineOrganizationRolesModal({
       isComplete: hasName && hasEmail && domainOk,
     }
   })
-  const invitedUserEmails = parseTenantUserEmails(form.tenantUserEmailsText)
-  const invalidInvitedUserEmails = invitedUserEmails.filter(
-    (email) => !emailMatchesOrganizationDomain(email, organization.primaryDomain),
-  )
   const isAssignDisabled =
-    form.admins.length === 0 ||
-    adminValidity.some((entry) => !entry.isComplete) ||
-    invalidInvitedUserEmails.length > 0
+    form.admins.length === 0 || adminValidity.some((entry) => !entry.isComplete)
   const isCompleting = completionPhase !== 'idle'
 
   const handleClose = () => {
@@ -245,8 +160,6 @@ export function DefineOrganizationRolesModal({
 
   const handleCancelEdit = () => {
     setForm(buildDefaultForm(organization))
-    setCsvFilename('')
-    setCsvUploadError(null)
     setMode('view')
   }
 
@@ -264,7 +177,8 @@ export function DefineOrganizationRolesModal({
         name: admin.name.trim(),
         email: admin.email.trim().toLowerCase(),
       })),
-      invitedTenantUserEmails: invitedUserEmails,
+      // Tenant users sign in by email domain; no invite list is required.
+      invitedTenantUserEmails: [],
     })
 
     if (!updated) {
@@ -318,10 +232,6 @@ export function DefineOrganizationRolesModal({
     }))
   }
 
-  const applyTenantUserEmails = (emailsText: string) => {
-    setForm((current) => ({ ...current, tenantUserEmailsText: emailsText }))
-  }
-
   const title =
     completionPhase === 'working'
       ? 'Assigning roles'
@@ -336,10 +246,10 @@ export function DefineOrganizationRolesModal({
   const description = isCompleting
     ? undefined
     : mode === 'define'
-      ? `Define roles and assign people for ${organization.name}.`
+      ? `Optionally assign tenant admins for ${organization.name}. Anyone with an @${domain} email can sign in as a tenant user.`
       : mode === 'edit'
-        ? `Update roles and assigned people for ${organization.name}.`
-        : `Roles and assigned people for ${organization.name}.`
+        ? `Update tenant admins for ${organization.name}. Anyone with an @${domain} email can sign in as a tenant user.`
+        : `Tenant admins for ${organization.name}. Anyone with an @${domain} email can sign in as a tenant user.`
 
   const allAdminsForView: TenantAdminDraft[] = organization.rbacConfigured
     ? [
@@ -361,7 +271,7 @@ export function DefineOrganizationRolesModal({
         {completionPhase === 'working' ? (
           <OrganizationActionWorkingState
             title="Assigning roles"
-            body="Saving tenant admins and user invitations…"
+            body="Saving tenant admin assignments…"
           />
         ) : completionPhase === 'success' ? (
           <OrganizationActionSuccessState
@@ -372,7 +282,7 @@ export function DefineOrganizationRolesModal({
           <DescriptionList
             isCompact
             className="provider-admin-organizations__roles-view-dl"
-            aria-label="Assigned roles and people"
+            aria-label="Assigned tenant admins"
           >
             <DescriptionListGroup>
               <DescriptionListTerm>Tenant admins</DescriptionListTerm>
@@ -401,22 +311,6 @@ export function DefineOrganizationRolesModal({
                 )}
               </DescriptionListDescription>
             </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Tenant users</DescriptionListTerm>
-              <DescriptionListDescription>
-                {organization.invitedTenantUserEmails.length === 0 ? (
-                  'None invited yet'
-                ) : (
-                  <ul className="provider-admin-organizations__roles-people-list">
-                    {organization.invitedTenantUserEmails.map((email) => (
-                      <li key={email}>
-                        <code>{email}</code>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
           </DescriptionList>
         ) : (
           <Form autoComplete="off" className="provider-admin-organizations__roles-form">
@@ -425,7 +319,8 @@ export function DefineOrganizationRolesModal({
                 Tenant admins
               </Content>
               <Content component="p" className="provider-admin-organizations__roles-section-help">
-                Emails must use @{domain}.
+                Emails must use @{domain}. Tenant users do not need to be invited—anyone on this
+                domain can sign in.
               </Content>
               {form.admins.map((admin, index) => {
                 const validity = adminValidity[index]
@@ -484,92 +379,6 @@ export function DefineOrganizationRolesModal({
               <Button variant="link" icon={<PlusCircleIcon />} onClick={addAdmin}>
                 Add tenant admin
               </Button>
-            </div>
-
-            <div className="provider-admin-organizations__roles-section">
-              <Content component="p" className="provider-admin-organizations__roles-section-title">
-                Tenant users
-              </Content>
-              <Content component="p" className="provider-admin-organizations__roles-section-help">
-                Paste emails or upload a CSV. Emails must use @{domain}.
-              </Content>
-              <FormGroup label="User emails" fieldId="define-roles-user-emails">
-                <FileUpload
-                  id="define-roles-user-emails"
-                  type="text"
-                  value={form.tenantUserEmailsText}
-                  filename={csvFilename}
-                  filenamePlaceholder="Upload a .csv file"
-                  onFileInputChange={(_event, file) => {
-                    setCsvFilename(file.name)
-                    setCsvUploadError(null)
-                  }}
-                  onDataChange={(_event, data) => {
-                    const emails = parseEmailsFromCsv(data)
-                    applyTenantUserEmails(emails.join('\n'))
-                    setCsvUploadError(
-                      emails.length === 0
-                        ? 'No email addresses found in this file.'
-                        : null,
-                    )
-                  }}
-                  onTextChange={(_event, text) => {
-                    applyTenantUserEmails(text)
-                    setCsvUploadError(null)
-                  }}
-                  onReadStarted={() => setIsCsvLoading(true)}
-                  onReadFinished={() => setIsCsvLoading(false)}
-                  onClearClick={() => {
-                    setCsvFilename('')
-                    setCsvUploadError(null)
-                    applyTenantUserEmails('')
-                  }}
-                  isLoading={isCsvLoading}
-                  allowEditingUploadedText
-                  browseButtonText="Upload"
-                  dropzoneProps={{
-                    accept: {
-                      'text/csv': ['.csv'],
-                      'text/plain': ['.csv', '.txt'],
-                    },
-                    maxSize: 1024 * 1024,
-                    onDropRejected: (fileRejections) => {
-                      const code = fileRejections[0]?.errors[0]?.code
-                      if (code === DropzoneErrorCode.FileTooLarge) {
-                        setCsvUploadError('File is too large. Maximum size is 1 MB.')
-                        return
-                      }
-                      if (code === DropzoneErrorCode.FileInvalidType) {
-                        setCsvUploadError('Upload a .csv or .txt file.')
-                        return
-                      }
-                      setCsvUploadError('Could not upload this file.')
-                    },
-                  }}
-                  validated={
-                    csvUploadError || invalidInvitedUserEmails.length > 0 ? 'error' : 'default'
-                  }
-                  aria-label="Tenant user emails"
-                >
-                  <FileUploadHelperText>
-                    <HelperText>
-                      <HelperTextItem
-                        variant={
-                          csvUploadError || invalidInvitedUserEmails.length > 0
-                            ? 'error'
-                            : 'default'
-                        }
-                      >
-                        {csvUploadError
-                          ? csvUploadError
-                          : invalidInvitedUserEmails.length > 0
-                            ? `These emails must use @${domain}: ${invalidInvitedUserEmails.join(', ')}`
-                            : 'One email per line, or a CSV with an email column.'}
-                      </HelperTextItem>
-                    </HelperText>
-                  </FileUploadHelperText>
-                </FileUpload>
-              </FormGroup>
             </div>
           </Form>
         )}

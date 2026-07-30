@@ -476,6 +476,10 @@ export function isProviderAdminNavId(value: string | null): value is ProviderAdm
   return (
     value === 'overview' ||
     value === 'catalog' ||
+    value === 'services-baremetal' ||
+    value === 'services-clusters' ||
+    value === 'services-models' ||
+    value === 'services-virtual-machines' ||
     value === 'infrastructure-data-centers' ||
     value === 'infrastructure-hardware-inventory' ||
     value === 'infrastructure-compute-images' ||

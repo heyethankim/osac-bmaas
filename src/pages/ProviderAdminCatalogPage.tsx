@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
@@ -33,7 +32,6 @@ import { AssignCatalogToOrganizationModal } from '../components/provider-admin/A
 import { CatalogItemDetailsDrawer } from '../components/provider-admin/CatalogItemDetailsDrawer'
 import { CatalogPublishScopeIcon } from '../components/provider-admin/CatalogPublishScopeIcon'
 import { formatVipEnterpriseVisibilityLabel } from '../components/provider-admin/VipEnterpriseOrganizationField'
-import { OpenCatalogAsTenantUserModal } from '../components/provider-admin/OpenCatalogAsTenantUserModal'
 import {
   EditCatalogItemModal,
   type CatalogItemEditFields,
@@ -49,7 +47,6 @@ import { CatalogSpecRowsList } from '../components/catalog/CatalogSpecRowsList'
 import { getCatalogViewMode, setCatalogViewMode, type CatalogViewMode } from '../catalog/viewMode'
 import { getCatalogNetworkLockSummary } from '../providerAdmin/catalogNetworkPolicy'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
-import { openAsTenantUser, resolveOrganizationForTenantUserPreview } from '../providerAdmin/openAsTenantUser'
 import { sortByDemoCatalogOrder } from '../providerSetup/prototypeEntry'
 import type { CatalogItemStatus, ProviderCatalogDraft } from '../providerSetup/storage'
 import {
@@ -78,6 +75,16 @@ import {
   type PublishedTemplatePayload,
 } from '../providerSetup/templateDemo'
 import { ProviderSetupPublishCatalogWizard } from './provider-setup/ProviderSetupPublishCatalogWizard'
+import { TenantUserLaunchInstanceWizard } from '../components/tenant-user/TenantUserLaunchInstanceWizard'
+import { getTenantUserCatalogCardFromDraft } from '../tenantUser/catalog'
+import {
+  LAUNCH_INSTANCE_PROVISIONING_DURATION_MS,
+} from '../tenantUser/launchInstanceWizard'
+import {
+  addTenantUserInstance,
+  getTenantUserInstances,
+  updateTenantUserInstance,
+} from '../tenantUser/storage'
 
 type ProviderAdminCatalogPageProps = {
   catalogItems: ProviderCatalogDraft[]
@@ -94,6 +101,7 @@ type ProviderAdminCatalogPageProps = {
 
 /** Intentional create latency before revealing the new catalog card. */
 const CATALOG_ITEM_CREATE_REVEAL_MS = 1600
+const PROVIDER_LAUNCH_DEMO_TENANT = 'northstar'
 
 function getDraftServiceId(catalogDraft: ProviderCatalogDraft): CatalogServiceId {
   return catalogDraft.serviceId ?? 'baremetal'
@@ -238,7 +246,6 @@ function getCatalogItemActions(
   item: ProviderCatalogDraft,
   onViewDetails: () => void,
   onAssignToOrganization: () => void,
-  onOpenAsTenantUser: () => void,
   onEdit: () => void,
   onDuplicate: () => void,
   onTogglePublish: () => void,
@@ -250,15 +257,6 @@ function getCatalogItemActions(
     {
       title: 'View details',
       onClick: onViewDetails,
-    },
-    {
-      title: 'Open as tenant user',
-      isAriaDisabled: isUnpublished,
-      onClick: () => {
-        if (!isUnpublished) {
-          onOpenAsTenantUser()
-        }
-      },
     },
   ]
 
@@ -304,7 +302,6 @@ export function ProviderAdminCatalogPage({
   onRegisterOrganization,
   onNavigateToLinkedTemplate,
 }: ProviderAdminCatalogPageProps) {
-  const navigate = useNavigate()
   const initialServiceFilters = catalogItems.map(getDraftServiceId)
   const [selectedFilters, setSelectedFilters] = useState<Set<CatalogServiceId>>(
     () => new Set(initialServiceFilters.length > 0 ? initialServiceFilters : ['baremetal']),
@@ -317,11 +314,14 @@ export function ProviderAdminCatalogPage({
   const [isPublishWizardOpen, setIsPublishWizardOpen] = useState(false)
   const [selectedCatalogItem, setSelectedCatalogItem] = useState<ProviderCatalogDraft | null>(null)
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
-  const [isOpenAsTenantUserModalOpen, setIsOpenAsTenantUserModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isUnpublishModalOpen, setIsUnpublishModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false)
+  const [isWizardOpen, setIsWizardOpen] = useState(false)
+  const [existingInstanceNames, setExistingInstanceNames] = useState(() =>
+    getTenantUserInstances(PROVIDER_LAUNCH_DEMO_TENANT).map((instance) => instance.name),
+  )
   const [publishResumeScope, setPublishResumeScope] = useState<'global-public' | 'vip-enterprise'>(
     'global-public',
   )
@@ -529,35 +529,6 @@ export function ProviderAdminCatalogPage({
     setIsAssignModalOpen(true)
   }
 
-  const openAsTenantUserForItem = (item: ProviderCatalogDraft) => {
-    setSelectedCatalogItem(item)
-    if (organizations.length <= 1) {
-      navigate(
-        openAsTenantUser(resolveOrganizationForTenantUserPreview(organizations), {
-          catalogItem: item,
-          autoLaunch: false,
-          returnNav: 'catalog',
-        }),
-      )
-      return
-    }
-    setIsOpenAsTenantUserModalOpen(true)
-  }
-
-  const handleOpenAsTenantUser = (organization: RegisteredOrganization) => {
-    if (!selectedCatalogItem) {
-      return
-    }
-
-    navigate(
-      openAsTenantUser(organization, {
-        catalogItem: selectedCatalogItem,
-        autoLaunch: false,
-        returnNav: 'catalog',
-      }),
-    )
-  }
-
   const openEdit = (item: ProviderCatalogDraft) => {
     setSelectedCatalogItem(item)
     setIsEditModalOpen(true)
@@ -686,6 +657,19 @@ export function ProviderAdminCatalogPage({
   })()
 
   const drawerCatalog = selectedCatalogItem ?? newestCatalogItem
+  const launchOrganization =
+    organizations.find((organization) => organization.slug === PROVIDER_LAUNCH_DEMO_TENANT) ??
+    organizations[0] ??
+    null
+  const launchCatalogCard = drawerCatalog
+    ? getTenantUserCatalogCardFromDraft(drawerCatalog)
+    : null
+
+  const openLaunchWizard = (catalog: ProviderCatalogDraft) => {
+    setSelectedCatalogItem(catalog)
+    setIsDetailsDrawerOpen(false)
+    setIsWizardOpen(true)
+  }
 
   return (
     <CatalogItemDetailsDrawer
@@ -704,6 +688,11 @@ export function ProviderAdminCatalogPage({
           return
         }
         openTogglePublish(drawerCatalog)
+      }}
+      onLaunch={() => {
+        if (drawerCatalog) {
+          openLaunchWizard(drawerCatalog)
+        }
       }}
       onNavigateToLinkedTemplate={
         onNavigateToLinkedTemplate
@@ -863,7 +852,6 @@ export function ProviderAdminCatalogPage({
               item,
               () => openDetails(item),
               () => openAssign(item),
-              () => openAsTenantUserForItem(item),
               () => openEdit(item),
               () => handleDuplicate(item),
               () => openTogglePublish(item),
@@ -1001,7 +989,6 @@ export function ProviderAdminCatalogPage({
                 item,
                 () => openDetails(item),
                 () => openAssign(item),
-                () => openAsTenantUserForItem(item),
                 () => openEdit(item),
                 () => handleDuplicate(item),
                 () => openTogglePublish(item),
@@ -1100,13 +1087,6 @@ export function ProviderAdminCatalogPage({
         onAssign={handleAssignCatalog}
       />
 
-      <OpenCatalogAsTenantUserModal
-        catalog={isOpenAsTenantUserModalOpen ? selectedCatalogItem : null}
-        organizations={organizations}
-        onClose={() => setIsOpenAsTenantUserModalOpen(false)}
-        onConfirm={handleOpenAsTenantUser}
-      />
-
       <EditCatalogItemModal
         catalog={isEditModalOpen ? selectedCatalogItem : null}
         serviceId={
@@ -1192,6 +1172,41 @@ export function ProviderAdminCatalogPage({
           </Button>
         </ModalFooter>
       </Modal>
+      {launchCatalogCard ? (
+        <TenantUserLaunchInstanceWizard
+          isOpen={isWizardOpen}
+          catalogItem={launchCatalogCard}
+          organization={launchOrganization}
+          catalogDraft={drawerCatalog}
+          preferCatalogDraft
+          scopeKind="organization"
+          scopeLabel={launchOrganization?.name ?? 'Organization'}
+          scopeFieldLabel="Organization"
+          existingInstanceNames={existingInstanceNames}
+          onClose={() => setIsWizardOpen(false)}
+          onProvisioningStarted={(instance) => {
+            addTenantUserInstance(PROVIDER_LAUNCH_DEMO_TENANT, instance)
+            setExistingInstanceNames(
+              getTenantUserInstances(PROVIDER_LAUNCH_DEMO_TENANT).map((item) => item.name),
+            )
+            window.setTimeout(() => {
+              updateTenantUserInstance(PROVIDER_LAUNCH_DEMO_TENANT, instance.id, {
+                status: 'running',
+                provisionedAt: new Date().toISOString(),
+              })
+            }, LAUNCH_INSTANCE_PROVISIONING_DURATION_MS)
+          }}
+          onDismissDuringProvisioning={() => {
+            setIsWizardOpen(false)
+          }}
+          onWizardFinished={() => {
+            setIsWizardOpen(false)
+            setExistingInstanceNames(
+              getTenantUserInstances(PROVIDER_LAUNCH_DEMO_TENANT).map((item) => item.name),
+            )
+          }}
+        />
+      ) : null}
     </div>
     </CatalogItemDetailsDrawer>
   )

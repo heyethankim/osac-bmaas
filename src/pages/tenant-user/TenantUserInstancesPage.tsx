@@ -54,6 +54,8 @@ type TenantUserInstancesPageProps = {
   instances: TenantInstance[]
   onInstancesChange: (instances: TenantInstance[]) => void
   defaultScopeFieldLabel?: 'Organization' | 'Project'
+  /** When set, page is scoped to one service (nav-driven) and hides service filters. */
+  lockedServiceId?: CatalogServiceId
   showBackgroundProvisioningNotice?: boolean
   onDismissBackgroundProvisioningNotice?: () => void
 }
@@ -98,6 +100,7 @@ export function TenantUserInstancesPage({
   instances,
   onInstancesChange,
   defaultScopeFieldLabel = 'Project',
+  lockedServiceId,
   showBackgroundProvisioningNotice = false,
   onDismissBackgroundProvisioningNotice,
 }: TenantUserInstancesPageProps) {
@@ -114,11 +117,22 @@ export function TenantUserInstancesPage({
     () => instances.map((instance) => getTenantInstanceServiceId(instance)),
     [instances],
   )
-  const initialServiceFilters = instanceServiceIds.length > 0 ? instanceServiceIds : (['baremetal'] as const)
+  const initialServiceFilters = lockedServiceId
+    ? [lockedServiceId]
+    : instanceServiceIds.length > 0
+      ? instanceServiceIds
+      : (['baremetal'] as const)
   const [selectedFilters, setSelectedFilters] = useState<Set<CatalogServiceId>>(
     () => new Set(initialServiceFilters),
   )
   const knownServiceFiltersRef = useRef(new Set(initialServiceFilters))
+
+  useEffect(() => {
+    if (!lockedServiceId) {
+      return
+    }
+    setSelectedFilters(new Set([lockedServiceId]))
+  }, [lockedServiceId])
 
   const scopeColumnLabel = useMemo(() => {
     if (instances.length === 0) {
@@ -179,6 +193,9 @@ export function TenantUserInstancesPage({
   )
 
   useEffect(() => {
+    if (lockedServiceId) {
+      return
+    }
     setSelectedFilters((current) => {
       const next = new Set(current)
       let changed = false
@@ -191,7 +208,7 @@ export function TenantUserInstancesPage({
       }
       return changed ? next : current
     })
-  }, [instanceServiceIds])
+  }, [instanceServiceIds, lockedServiceId])
 
   useEffect(() => {
     return () => {
@@ -278,15 +295,25 @@ export function TenantUserInstancesPage({
     setSelectedFilters((current) => toggleCatalogServiceFilter(current, serviceId, isSelected))
   }
 
+  const pageTitle = lockedServiceId
+    ? CATALOG_SERVICE_FILTER_LABELS[lockedServiceId]
+    : 'Services'
+  const pageLede = lockedServiceId
+    ? `Monitor and manage ${CATALOG_SERVICE_FILTER_LABELS[lockedServiceId].toLowerCase()} instances provisioned in your project.`
+    : 'Monitor and manage instances provisioned in your project.'
+
   const emptyStateTitle = (() => {
+    if (searchValue.trim()) {
+      return 'No instances match your search'
+    }
+    if (lockedServiceId) {
+      return `No ${CATALOG_SERVICE_FILTER_LABELS[lockedServiceId]} instances yet`
+    }
     if (instances.length === 0) {
       return 'No instances yet'
     }
     if (selectedFilters.size === 0) {
       return 'Select a service to view instances'
-    }
-    if (searchValue.trim()) {
-      return 'No instances match your search'
     }
     if (selectedFilters.size === 1) {
       const [onlyFilter] = selectedFilters
@@ -306,21 +333,23 @@ export function TenantUserInstancesPage({
     >
       <div className="tenant-user-workspace-page tenant-user-instances">
         <Title headingLevel="h1" size="3xl" className="tenant-user-instances__title">
-          My instances
+          {pageTitle}
         </Title>
         <Content component="p" className="tenant-user-instances__lede">
-          Monitor and manage instances provisioned in your project.
+          {pageLede}
         </Content>
 
         <div className="catalog-view-toolbar tenant-user-instances__toolbar">
           <div className="catalog-view-toolbar__start">
-            <CatalogServiceFilterToggle
-              selectedFilters={selectedFilters}
-              serviceCounts={serviceCounts}
-              onToggle={handleFilterToggle}
-              idPrefix="instances-filter-"
-              ariaLabel="Instance service filters"
-            />
+            {lockedServiceId ? null : (
+              <CatalogServiceFilterToggle
+                selectedFilters={selectedFilters}
+                serviceCounts={serviceCounts}
+                onToggle={handleFilterToggle}
+                idPrefix="instances-filter-"
+                ariaLabel="Instance service filters"
+              />
+            )}
             <SearchInput
               className="catalog-search"
               placeholder="Search instances"
@@ -334,7 +363,7 @@ export function TenantUserInstancesPage({
             <ViewModeToggle
               viewMode={viewMode}
               onChange={handleViewModeChange}
-              ariaLabel="My instances view"
+              ariaLabel="Services view"
               idPrefix="instances-view"
             />
           ) : null}

@@ -79,22 +79,12 @@ export function getOrganizationTenantAdminCount(organization: RegisteredOrganiza
   return new Set(emails).size
 }
 
-export function getOrganizationTenantUserCount(organization: RegisteredOrganization): number {
-  return new Set(
-    organization.invitedTenantUserEmails
-      .map((email) => email.trim().toLowerCase())
-      .filter(Boolean),
-  ).size
-}
-
 export function formatOrganizationRolesAssignmentSummary(
   organization: RegisteredOrganization,
 ): string {
   const adminCount = getOrganizationTenantAdminCount(organization)
-  const userCount = getOrganizationTenantUserCount(organization)
   const adminLabel = adminCount === 1 ? '1 tenant admin' : `${adminCount} tenant admins`
-  const userLabel = userCount === 1 ? '1 tenant user' : `${userCount} tenant users`
-  return `${adminLabel} · ${userLabel}`
+  return `${adminLabel} · Tenant users by email domain`
 }
 
 export type OrganizationTenantLoginRole = 'tenant-admin' | 'tenant-user'

@@ -786,6 +786,10 @@
   gap: var(--pf-t--global--spacer--md);
 }
 
+.tenant-admin-catalog-manager__drawer-launch.pf-v6-c-button {
+  align-self: flex-start;
+}
+
 .tenant-admin-catalog-manager__drawer-section {
   display: flex;
   flex-direction: column;

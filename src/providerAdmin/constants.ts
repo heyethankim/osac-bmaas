@@ -1,6 +1,10 @@
 export type ProviderAdminNavId =
   | 'overview'
   | 'catalog'
+  | 'services-baremetal'
+  | 'services-clusters'
+  | 'services-models'
+  | 'services-virtual-machines'
   | 'networking-virtual-networks'
   | 'networking-subnets'
   | 'networking-security-groups'
@@ -25,6 +29,13 @@ export const PROVIDER_ADMIN_NAV_ITEMS: ProviderAdminNavItem[] = [
   { id: 'billing-metering', label: 'Billing & metering' },
 ]
 
+export const PROVIDER_ADMIN_SERVICES_NAV_ITEMS: ProviderAdminNavItem[] = [
+  { id: 'services-baremetal', label: 'Bare metal' },
+  { id: 'services-clusters', label: 'Clusters' },
+  { id: 'services-models', label: 'Models' },
+  { id: 'services-virtual-machines', label: 'Virtual machines' },
+]
+
 export const PROVIDER_ADMIN_NETWORKING_NAV_ITEMS: ProviderAdminNavItem[] = [
   { id: 'networking-virtual-networks', label: 'Virtual networks' },
   { id: 'networking-subnets', label: 'Subnets' },
@@ -43,6 +54,10 @@ export const PROVIDER_ADMIN_ADMINISTRATION_NAV_ITEMS: ProviderAdminNavItem[] = [
   { id: 'administration-organizations', label: 'Organizations' },
   { id: 'administration-quotas', label: 'Quotas' },
 ]
+
+export function isServicesNavId(navId: string): boolean {
+  return navId.startsWith('services-')
+}
 
 export function isNetworkingNavId(navId: string): boolean {
   return navId.startsWith('networking-')

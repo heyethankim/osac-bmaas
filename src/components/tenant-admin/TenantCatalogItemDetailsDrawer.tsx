@@ -22,6 +22,7 @@ import {
   Title,
 } from '@patternfly/react-core'
 import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
+import { RocketIcon } from '@patternfly/react-icons/dist/esm/icons/rocket-icon'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import { getCatalogProfileFieldLabel, getCatalogSpecsSectionLabel } from '../../catalog/catalogSpecs'
 import { NetworkFieldLockButton } from '../catalog/NetworkFieldLockButton'
@@ -38,6 +39,7 @@ import {
   getTenantNetworkResourceMeta,
   type TenantNetworkResourceKind,
 } from '../../tenantAdmin/networking'
+import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
 
 function getVisibilityLabel(scope: TenantCatalogGovernanceItemWithNetworking['scope']): string {
   return scope === 'vip-enterprise' ? 'VIP enterprise' : 'Global public'
@@ -52,6 +54,7 @@ type TenantCatalogItemDetailsDrawerProps = {
   onNavigateToProjectsTeams: () => void
   onChangeNetworkField: (kind: TenantNetworkResourceKind, optionId: string) => void
   onChangeLockForUsers: (kind: TenantNetworkResourceKind, locked: boolean) => void
+  onLaunch?: () => void
   children: ReactNode
 }
 
@@ -64,6 +67,7 @@ export function TenantCatalogItemDetailsDrawer({
   onNavigateToProjectsTeams,
   onChangeNetworkField,
   onChangeLockForUsers,
+  onLaunch,
   children,
 }: TenantCatalogItemDetailsDrawerProps) {
   const overrides = getTenantNetworkOverrides(organizationSlug)
@@ -109,6 +113,17 @@ export function TenantCatalogItemDetailsDrawer({
         <Content component="p" className="tenant-admin-catalog-manager__drawer-lede">
           {item.description?.trim() || TENANT_CATALOG_MANAGER_DEMO.drawerAccessLede}
         </Content>
+
+        {onLaunch ? (
+          <Button
+            variant="primary"
+            icon={<RocketIcon />}
+            onClick={onLaunch}
+            className="tenant-admin-catalog-manager__drawer-launch"
+          >
+            {LAUNCH_INSTANCE_WIZARD_DEMO.launchInstanceLabel}
+          </Button>
+        ) : null}
 
         <Divider className="tenant-admin-catalog-manager__drawer-divider" />
 

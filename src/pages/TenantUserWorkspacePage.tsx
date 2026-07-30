@@ -1,18 +1,20 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Alert, AlertActionLink } from '@patternfly/react-core'
+import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { TenantShell } from '../components/tenant/TenantShell'
 import { DEMO_TENANT_DISPLAY_USER, isDemoTenantId } from '../demoTenant'
 import {
   getDemoTenantUserOrganization,
   getProviderViewingAsTenantUser,
-  returnFromTenantUserPreview,
 } from '../providerAdmin/openAsTenantUser'
 import { getProviderRegisteredOrganizations, activateProviderRegisteredOrganizationBySlug } from '../providerSetup/storage'
 import { getProviderCatalogDraft, getProviderCatalogItems } from '../providerSetup/storage'
+import type { CatalogServiceId } from '../providerSetup/templateDemo'
 import { getRegisteredOrganizationBySlug } from '../tenantAdmin/organizations'
 import { getTenantUserProjectInvitation } from '../tenantUser/invitation'
-import type { TenantInstance } from '../tenantUser/instances'
+import {
+  getTenantInstanceServiceId,
+  type TenantInstance,
+} from '../tenantUser/instances'
 import { LAUNCH_INSTANCE_PROVISIONING_DURATION_MS } from '../tenantUser/launchInstanceWizard'
 import {
   addTenantUserInstance,
@@ -34,12 +36,48 @@ import { TenantUserInstancesPage } from './tenant-user/TenantUserInstancesPage'
 function isTenantUserNavId(value: string | null): value is TenantUserNavId {
   return (
     value === 'catalog' ||
-    value === 'my-instances' ||
+    value === 'services-baremetal' ||
+    value === 'services-clusters' ||
+    value === 'services-models' ||
+    value === 'services-virtual-machines' ||
     value === 'networking-virtual-networks' ||
     value === 'networking-subnets' ||
     value === 'networking-security-groups' ||
     value === 'activity-log'
   )
+}
+
+function isServicesNavId(navId: TenantUserNavId): boolean {
+  return navId.startsWith('services-')
+}
+
+function getServicesNavId(serviceId: CatalogServiceId): TenantUserNavId {
+  switch (serviceId) {
+    case 'cluster':
+      return 'services-clusters'
+    case 'models':
+      return 'services-models'
+    case 'virtual-machine':
+      return 'services-virtual-machines'
+    case 'baremetal':
+    default:
+      return 'services-baremetal'
+  }
+}
+
+function getLockedServiceIdFromNav(navId: TenantUserNavId): CatalogServiceId | null {
+  switch (navId) {
+    case 'services-baremetal':
+      return 'baremetal'
+    case 'services-clusters':
+      return 'cluster'
+    case 'services-models':
+      return 'models'
+    case 'services-virtual-machines':
+      return 'virtual-machine'
+    default:
+      return null
+  }
 }
 
 /** Seeds post-onboarding Tenant User state so landing-page prototype links can open finished screens. */
@@ -49,12 +87,22 @@ function ensureTenantUserPostOnboardingPrototype(tenantSlug: string, navId: Tena
   activateProviderRegisteredOrganizationBySlug(tenantSlug)
 }
 
+function normalizeTenantUserNavParam(value: string | null): TenantUserNavId | null {
+  if (isTenantUserNavId(value)) {
+    return value
+  }
+  if (value === 'my-instances' || value === 'services') {
+    return 'services-baremetal'
+  }
+  return null
+}
+
 function readInitialTenantUserNav(
   tenantSlug: string,
   searchParams: URLSearchParams,
 ): TenantUserNavId {
-  const requestedNav = searchParams.get('nav')
-  if (isTenantUserNavId(requestedNav)) {
+  const requestedNav = normalizeTenantUserNavParam(searchParams.get('nav'))
+  if (requestedNav) {
     ensureTenantUserPostOnboardingPrototype(tenantSlug, requestedNav)
     return requestedNav
   }
@@ -63,7 +111,6 @@ function readInitialTenantUserNav(
 }
 
 export function TenantUserWorkspacePage() {
-  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { tenant } = useParams<{ tenant: string }>()
   const tenantSlug =
@@ -159,8 +206,8 @@ export function TenantUserWorkspacePage() {
     setTenantUserOnboardingComplete(tenantSlug)
     activateProviderRegisteredOrganizationBySlug(tenantSlug)
 
-    const requestedNav = searchParams.get('nav')
-    if (!isTenantUserNavId(requestedNav)) {
+    const requestedNav = normalizeTenantUserNavParam(searchParams.get('nav'))
+    if (!requestedNav) {
       return
     }
 
@@ -174,7 +221,7 @@ export function TenantUserWorkspacePage() {
       setActiveNavId(nextNavId)
       setTenantUserActiveNav(tenantSlug, nextNavId)
 
-      if (nextNavId !== 'my-instances') {
+      if (!isServicesNavId(nextNavId)) {
         setShowBackgroundProvisioningNotice(false)
       }
     },
@@ -182,9 +229,12 @@ export function TenantUserWorkspacePage() {
   )
 
   const handleNavigateToInstances = useCallback(
-    (options?: { showBackgroundProvisioningNotice?: boolean }) => {
+    (options?: {
+      showBackgroundProvisioningNotice?: boolean
+      serviceId?: CatalogServiceId
+    }) => {
       setShowBackgroundProvisioningNotice(Boolean(options?.showBackgroundProvisioningNotice))
-      handleNavChange('my-instances')
+      handleNavChange(getServicesNavId(options?.serviceId ?? 'baremetal'))
     },
     [handleNavChange],
   )
@@ -198,18 +248,29 @@ export function TenantUserWorkspacePage() {
   )
 
   const handleDismissDuringProvisioning = useCallback(
-    (_instanceId: string) => {
-      handleNavigateToInstances({ showBackgroundProvisioningNotice: true })
+    (instanceId: string) => {
+      const instance =
+        instances.find((item) => item.id === instanceId) ??
+        getTenantUserInstances(tenantSlug).find((item) => item.id === instanceId)
+      handleNavigateToInstances({
+        showBackgroundProvisioningNotice: true,
+        serviceId: instance ? getTenantInstanceServiceId(instance) : 'baremetal',
+      })
     },
-    [handleNavigateToInstances],
+    [handleNavigateToInstances, instances, tenantSlug],
   )
 
   const handleWizardFinished = useCallback(
     (instanceId: string) => {
       markInstanceRunning(instanceId)
-      handleNavigateToInstances()
+      const instance =
+        instances.find((item) => item.id === instanceId) ??
+        getTenantUserInstances(tenantSlug).find((item) => item.id === instanceId)
+      handleNavigateToInstances({
+        serviceId: instance ? getTenantInstanceServiceId(instance) : 'baremetal',
+      })
     },
-    [handleNavigateToInstances, markInstanceRunning],
+    [handleNavigateToInstances, instances, markInstanceRunning, tenantSlug],
   )
 
   if (!isValidTenant) {
@@ -236,23 +297,21 @@ export function TenantUserWorkspacePage() {
   const catalogDraft = focusedCatalogDraft
   const invitation = getTenantUserProjectInvitation(tenantSlug, organization)
   const displayName = DEMO_TENANT_DISPLAY_USER[tenantSlug]
-
-  const handleReturnFromPreview = () => {
-    navigate(returnFromTenantUserPreview())
-  }
-
-  const returnActionLabel =
-    previewSession?.source === 'tenant-admin' ? 'Return to Tenant Admin' : 'Return to Provider Admin'
+  const lockedServiceId = getLockedServiceIdFromNav(activeNavId)
 
   const renderWorkspaceContent = () => {
     switch (activeNavId) {
-      case 'my-instances':
+      case 'services-baremetal':
+      case 'services-clusters':
+      case 'services-models':
+      case 'services-virtual-machines':
         return (
           <TenantUserInstancesPage
             tenantSlug={tenantSlug}
             instances={instances}
             onInstancesChange={setInstances}
             defaultScopeFieldLabel={invitation.scopeFieldLabel}
+            lockedServiceId={lockedServiceId ?? 'baremetal'}
             showBackgroundProvisioningNotice={
               showBackgroundProvisioningNotice && hasProvisioningInstances
             }
@@ -329,25 +388,6 @@ export function TenantUserWorkspacePage() {
       activeNavId={activeNavId}
       onNavChange={handleNavChange}
     >
-      {isPreviewSession && previewSession ? (
-        <Alert
-          variant="info"
-          isInline
-          title="Viewing as tenant user"
-          className="tenant-user-provider-preview-banner"
-          actionLinks={
-            <AlertActionLink component="button" onClick={handleReturnFromPreview}>
-              {returnActionLabel}
-            </AlertActionLink>
-          }
-        >
-          You are previewing {previewSession.organizationName} as a tenant user
-          {previewSession.catalogDisplayName
-            ? ` for “${previewSession.catalogDisplayName}”`
-            : ' to browse the catalog'}
-          .
-        </Alert>
-      ) : null}
       {renderWorkspaceContent()}
     </TenantShell>
   )

@@ -2144,6 +2144,7 @@
   gap: var(--pf-t--global--spacer--sm);
 }
 
+.provider-admin-catalog-items__drawer-launch.pf-v6-c-button,
 .provider-admin-catalog-items__drawer-action.pf-v6-c-button {
   align-self: flex-start;
 }
