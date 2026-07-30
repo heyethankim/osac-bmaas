@@ -764,7 +764,12 @@ export function getProviderRegisteredOrganizations(): RegisteredOrganization[] {
 export function ensureProviderDemoOrganizations(): RegisteredOrganization[] {
   try {
     const current = getProviderRegisteredOrganizations()
-    const catalogDraft = getProviderCatalogDraft()
+    const catalogItems = getProviderCatalogItems()
+    const denseGpu =
+      catalogItems.find((item) => item.catalogItemId === 'cat_BM_AI_INFERENCE') ??
+      catalogItems.find((item) => item.displayName === 'Bare Metal - Dense GPU Node') ??
+      null
+    const catalogDraft = denseGpu ?? getProviderCatalogDraft()
     const pools = getProviderExternalIpPools()
     const pool =
       getExternalIpPoolById(pools, DEFAULT_REGISTER_ORGANIZATION_FORM.externalIpPoolId) ??

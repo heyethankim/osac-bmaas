@@ -49,6 +49,7 @@ import { getCatalogViewMode, setCatalogViewMode, type CatalogViewMode } from '..
 import { getCatalogNetworkLockSummary } from '../providerAdmin/catalogNetworkPolicy'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
 import { openAsTenantUser, resolveOrganizationForTenantUserPreview } from '../providerAdmin/openAsTenantUser'
+import { sortByDemoCatalogOrder } from '../providerSetup/prototypeEntry'
 import type { CatalogItemStatus, ProviderCatalogDraft } from '../providerSetup/storage'
 import {
   assignCatalogToRegisteredOrganization,
@@ -231,7 +232,6 @@ function getTemplateRowData() {
 
 function getCatalogItemActions(
   item: ProviderCatalogDraft,
-  hasUnassignedOrganizations: boolean,
   onViewDetails: () => void,
   onAssignToOrganization: () => void,
   onOpenAsTenantUser: () => void,
@@ -239,7 +239,6 @@ function getCatalogItemActions(
   onDuplicate: () => void,
   onTogglePublish: () => void,
   onDelete: () => void,
-  onRegisterOrganization?: () => void,
 ): IAction[] {
   const isGlobalPublic = item.scope === 'global-public'
   const isUnpublished = getCatalogItemStatus(item) === 'unpublished'
@@ -260,23 +259,10 @@ function getCatalogItemActions(
   ]
 
   if (!isGlobalPublic) {
-    actions.push(
-      {
-        title: 'Assign to organization',
-        isAriaDisabled: !hasUnassignedOrganizations || isUnpublished,
-        onClick: () => {
-          if (hasUnassignedOrganizations && !isUnpublished) {
-            onAssignToOrganization()
-          }
-        },
-      },
-      {
-        title: 'Register organization',
-        onClick: () => {
-          onRegisterOrganization?.()
-        },
-      },
-    )
+    actions.push({
+      title: 'Assign to organization',
+      onClick: onAssignToOrganization,
+    })
   }
 
   actions.push(
@@ -379,30 +365,32 @@ export function ProviderAdminCatalogPage({
         )
       : null
 
-    return catalogItems.filter((item) => {
-      if (!selectedFilters.has(getDraftServiceId(item))) {
-        return false
-      }
+    return sortByDemoCatalogOrder(
+      catalogItems.filter((item) => {
+        if (!selectedFilters.has(getDraftServiceId(item))) {
+          return false
+        }
 
-      if (selectedStatus !== 'all' && getCatalogItemStatus(item) !== selectedStatus) {
-        return false
-      }
+        if (selectedStatus !== 'all' && getCatalogItemStatus(item) !== selectedStatus) {
+          return false
+        }
 
-      if (selectedOrganization && !catalogItemMatchesOrganization(item, selectedOrganization)) {
-        return false
-      }
+        if (selectedOrganization && !catalogItemMatchesOrganization(item, selectedOrganization)) {
+          return false
+        }
 
-      if (!query) {
-        return true
-      }
+        if (!query) {
+          return true
+        }
 
-      return (
-        item.displayName.toLowerCase().includes(query) ||
-        item.catalogItemId.toLowerCase().includes(query) ||
-        item.templateName.toLowerCase().includes(query) ||
-        item.templateRefId.toLowerCase().includes(query)
-      )
-    })
+        return (
+          item.displayName.toLowerCase().includes(query) ||
+          item.catalogItemId.toLowerCase().includes(query) ||
+          item.templateName.toLowerCase().includes(query) ||
+          item.templateRefId.toLowerCase().includes(query)
+        )
+      }),
+    )
   }, [
     catalogItems,
     selectedFilters,
@@ -654,11 +642,7 @@ export function ProviderAdminCatalogPage({
       catalog={drawerCatalog}
       serviceId={drawerCatalog ? getDraftServiceId(drawerCatalog) : 'baremetal'}
       templateDescription={linkedTemplate.description}
-      canAssign={
-        Boolean(drawerCatalog) &&
-        hasUnassignedOrganizations &&
-        drawerCatalog!.scope !== 'global-public'
-      }
+      canAssign={Boolean(drawerCatalog) && drawerCatalog!.scope !== 'global-public'}
       onAssignToOrganization={() => {
         setIsDetailsDrawerOpen(false)
         setIsAssignModalOpen(true)
@@ -821,7 +805,6 @@ export function ProviderAdminCatalogPage({
             const serviceId = getDraftServiceId(item)
             const catalogItemActions = getCatalogItemActions(
               item,
-              hasUnassignedOrganizations,
               () => openDetails(item),
               () => openAssign(item),
               () => openAsTenantUserForItem(item),
@@ -829,7 +812,6 @@ export function ProviderAdminCatalogPage({
               () => handleDuplicate(item),
               () => openTogglePublish(item),
               () => openDelete(item),
-              onRegisterOrganization,
             )
             const visibilityDetail =
               item.scope === 'vip-enterprise'
@@ -940,7 +922,6 @@ export function ProviderAdminCatalogPage({
             {filteredCatalogItems.map((item) => {
               const catalogItemActions = getCatalogItemActions(
                 item,
-                hasUnassignedOrganizations,
                 () => openDetails(item),
                 () => openAssign(item),
                 () => openAsTenantUserForItem(item),
@@ -948,7 +929,6 @@ export function ProviderAdminCatalogPage({
                 () => handleDuplicate(item),
                 () => openTogglePublish(item),
                 () => openDelete(item),
-                onRegisterOrganization,
               )
 
               return (

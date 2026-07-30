@@ -1,15 +1,16 @@
 import type { CatalogSpecRow } from '../catalog/catalogSpecs'
-import {
-  resolveCatalogSpecRows,
-  VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID,
-} from '../catalog/catalogSpecs'
+import { resolveCatalogSpecRows } from '../catalog/catalogSpecs'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../providerSetup/storage'
 import {
   getCatalogItemStatus,
   getProviderCatalogItems,
 } from '../providerSetup/storage'
-import { ensureProviderCatalogDemoItems } from '../providerSetup/prototypeEntry'
+import {
+  BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID,
+  ensureProviderCatalogDemoItems,
+  sortByDemoCatalogOrder,
+} from '../providerSetup/prototypeEntry'
 import {
   CATALOG_SERVICE_LABELS,
   resolveRateCard,
@@ -112,20 +113,19 @@ function isCatalogVisibleToTenantUser(
     return false
   }
 
-  if (
-    organization &&
-    item.catalogItemId === VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID &&
-    (organization.slug === 'northstar' || organization.slug === 'evergreen')
-  ) {
-    return false
-  }
-
   if (item.scope === 'global-public') {
     return true
   }
 
   if (!organization) {
     return false
+  }
+
+  if (
+    item.catalogItemId === BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID &&
+    organization.slug === 'northstar'
+  ) {
+    return true
   }
 
   return (
@@ -176,10 +176,9 @@ export function getTenantUserCatalogCards(
   )
 
   if (providerItems.length > 0) {
-    const serviceOrder: CatalogServiceId[] = ['baremetal', 'cluster', 'models', 'virtual-machine']
-    const cards = providerItems
-      .map((item) => getTenantUserCatalogCardFromDraft(item))
-      .sort((a, b) => serviceOrder.indexOf(a.serviceId) - serviceOrder.indexOf(b.serviceId))
+    const cards = sortByDemoCatalogOrder(providerItems).map((item) =>
+      getTenantUserCatalogCardFromDraft(item),
+    )
 
     if (options?.preferCatalogDraft && catalogDraft) {
       const preferredId = catalogDraft.catalogItemId

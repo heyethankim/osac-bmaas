@@ -265,6 +265,10 @@ export function TenantAdminCatalogPage({
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
 
   useEffect(() => {
+    setCatalogItems(getTenantCatalogGovernanceItems(organization, catalogDraft))
+  }, [organization, catalogDraft])
+
+  useEffect(() => {
     setSelectedFilters((current) => {
       const next = new Set(current)
       let changed = false
@@ -674,7 +678,6 @@ export function TenantAdminCatalogPage({
                         organizationSlug={organization.slug}
                         onViewDetails={() => openDetails(item)}
                       />
-                      <AccessSummary onViewDetails={() => openDetails(item)} />
                     </dl>
 
                     <div className="tenant-admin-catalog-manager__card-footer">

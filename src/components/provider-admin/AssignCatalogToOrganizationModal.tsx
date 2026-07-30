@@ -37,8 +37,13 @@ export function AssignCatalogToOrganizationModal({
   onAssign,
 }: AssignCatalogToOrganizationModalProps) {
   const eligibleOrganizations = useMemo(
-    () => organizations.filter((organization) => !organization.catalogItemId),
-    [organizations],
+    () =>
+      organizations.filter(
+        (organization) =>
+          !organization.catalogItemId ||
+          (catalog !== null && organization.catalogItemId === catalog.catalogItemId),
+      ),
+    [organizations, catalog],
   )
   const [selectedOrganizationId, setSelectedOrganizationId] = useState('')
 

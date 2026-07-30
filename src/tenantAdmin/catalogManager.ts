@@ -13,7 +13,11 @@ import {
   type CatalogSpecRow,
   resolveCatalogSpecRows,
 } from '../catalog/catalogSpecs'
-import { ensureProviderCatalogDemoItems } from '../providerSetup/prototypeEntry'
+import {
+  BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID,
+  ensureProviderCatalogDemoItems,
+  sortByDemoCatalogOrder,
+} from '../providerSetup/prototypeEntry'
 import {
   applyTenantNetworkOverrides,
   getTenantNetworkOverrides,
@@ -81,6 +85,14 @@ function isCatalogVisibleToTenant(
   }
 
   if (item.scope === 'global-public') {
+    return true
+  }
+
+  // VIP Dense GPU Node is curated for North Summit Bank tenant admin/user.
+  if (
+    item.catalogItemId === BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID &&
+    organization.slug === 'northstar'
+  ) {
     return true
   }
 
@@ -164,7 +176,9 @@ export function getTenantCatalogGovernanceItems(
   )
 
   if (visibleItems.length > 0) {
-    return visibleItems.map((item) => mapProviderCatalogToGovernanceItem(item, organization))
+    return sortByDemoCatalogOrder(visibleItems).map((item) =>
+      mapProviderCatalogToGovernanceItem(item, organization),
+    )
   }
 
   return TENANT_CATALOG_GOVERNANCE_ITEMS.map((item) => ({

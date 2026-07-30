@@ -63,6 +63,124 @@ export const DISABLED_CATALOG_NETWORK_POLICY: CatalogNetworkPolicy = {
   enabled: false,
 }
 
+export type CatalogNetworkEditableField = 'virtualNetwork' | 'subnet' | 'securityGroup'
+
+export type CatalogNetworkLockPattern =
+  | 'all-editable'
+  | 'all-locked'
+  | 'two-locked-one-editable'
+
+const CATALOG_NETWORK_EDITABLE_FIELDS: CatalogNetworkEditableField[] = [
+  'virtualNetwork',
+  'subnet',
+  'securityGroup',
+]
+
+function withFieldLocks(
+  locks: Record<CatalogNetworkEditableField, boolean>,
+): CatalogNetworkPolicy {
+  return {
+    enabled: true,
+    virtualNetwork: {
+      id: CATALOG_VIRTUAL_NETWORK_OPTIONS[0]!.id,
+      name: CATALOG_VIRTUAL_NETWORK_OPTIONS[0]!.name,
+      locked: locks.virtualNetwork,
+    },
+    subnet: {
+      id: CATALOG_SUBNET_OPTIONS[0]!.id,
+      name: CATALOG_SUBNET_OPTIONS[0]!.name,
+      locked: locks.subnet,
+    },
+    securityGroup: {
+      id: CATALOG_SECURITY_GROUP_OPTIONS[0]!.id,
+      name: CATALOG_SECURITY_GROUP_OPTIONS[0]!.name,
+      locked: locks.securityGroup,
+    },
+  }
+}
+
+export function createAllEditableCatalogNetworkPolicy(): CatalogNetworkPolicy {
+  return withFieldLocks({
+    virtualNetwork: false,
+    subnet: false,
+    securityGroup: false,
+  })
+}
+
+export function createAllLockedCatalogNetworkPolicy(): CatalogNetworkPolicy {
+  return withFieldLocks({
+    virtualNetwork: true,
+    subnet: true,
+    securityGroup: true,
+  })
+}
+
+/** Exactly two fields locked; `editableField` stays tenant-editable. */
+export function createTwoLockedOneEditableCatalogNetworkPolicy(
+  editableField: CatalogNetworkEditableField = 'securityGroup',
+): CatalogNetworkPolicy {
+  return withFieldLocks({
+    virtualNetwork: editableField !== 'virtualNetwork',
+    subnet: editableField !== 'subnet',
+    securityGroup: editableField !== 'securityGroup',
+  })
+}
+
+/** Stable pick so demo seeds stay consistent across reloads. */
+export function pickStableCatalogEditableField(seed: string): CatalogNetworkEditableField {
+  let hash = 0
+  for (let index = 0; index < seed.length; index += 1) {
+    hash = (hash + seed.charCodeAt(index) * (index + 1)) % CATALOG_NETWORK_EDITABLE_FIELDS.length
+  }
+  return CATALOG_NETWORK_EDITABLE_FIELDS[hash]!
+}
+
+export function createCatalogNetworkPolicyForLockPattern(
+  pattern: CatalogNetworkLockPattern,
+  seed = 'default',
+): CatalogNetworkPolicy {
+  switch (pattern) {
+    case 'all-editable':
+      return createAllEditableCatalogNetworkPolicy()
+    case 'all-locked':
+      return createAllLockedCatalogNetworkPolicy()
+    case 'two-locked-one-editable':
+      return createTwoLockedOneEditableCatalogNetworkPolicy(pickStableCatalogEditableField(seed))
+  }
+}
+
+function getCatalogNetworkFieldLocks(policy: CatalogNetworkPolicy): {
+  virtualNetwork: boolean
+  subnet: boolean
+  securityGroup: boolean
+} {
+  return {
+    virtualNetwork: policy.virtualNetwork.locked,
+    subnet: policy.subnet.locked,
+    securityGroup: policy.securityGroup.locked,
+  }
+}
+
+export function catalogNetworkPolicyMatchesLockPattern(
+  policy: CatalogNetworkPolicy,
+  pattern: CatalogNetworkLockPattern,
+): boolean {
+  if (!policy.enabled) {
+    return false
+  }
+
+  const locks = getCatalogNetworkFieldLocks(policy)
+  const lockedCount = Object.values(locks).filter(Boolean).length
+
+  if (pattern === 'all-editable') {
+    return lockedCount === 0
+  }
+  if (pattern === 'all-locked') {
+    return lockedCount === 3
+  }
+  return lockedCount === 2
+}
+
 /** Previous seed default (off + all unlocked) — migrate to current defaults on read. */
 function isLegacyDefaultNetworkPolicy(policy: CatalogNetworkPolicy): boolean {
   return (
@@ -184,7 +302,10 @@ export function getCatalogNetworkLockSummary(
 
   return {
     kind: 'partial',
-    label: `${lockedCount} locked · ${editableCount} editable`,
+    label:
+      lockedCount === 2 && editableCount === 1
+        ? '2 locked · 1 editable'
+        : `${lockedCount} locked · ${editableCount} editable`,
     lockedCount,
     editableCount,
   }
