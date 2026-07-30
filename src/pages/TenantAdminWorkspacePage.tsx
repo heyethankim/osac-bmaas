@@ -30,7 +30,6 @@ function isTenantAdminNavId(value: string | null): value is TenantAdminNavId {
   return (
     value === 'overview' ||
     value === 'catalog' ||
-    value === 'services' ||
     value === 'projects-teams' ||
     value === 'networking-virtual-networks' ||
     value === 'networking-subnets' ||

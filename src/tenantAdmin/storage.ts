@@ -72,11 +72,12 @@ const LEGACY_TENANT_ADMIN_NAV_IDS: Record<string, TenantAdminNavId> = {
   billing: 'overview',
   'financial-audit': 'overview',
   'usage-budget': 'overview',
-  instances: 'services',
-  'services-bare-metal': 'services',
-  'services-clusters': 'services',
-  'services-models': 'services',
-  'services-virtual-machines': 'services',
+  instances: 'overview',
+  services: 'overview',
+  'services-bare-metal': 'overview',
+  'services-clusters': 'overview',
+  'services-models': 'overview',
+  'services-virtual-machines': 'overview',
 }
 
 const VALID_TENANT_ADMIN_NAV_IDS = new Set<TenantAdminNavId>(

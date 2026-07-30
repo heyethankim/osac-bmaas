@@ -31,7 +31,6 @@ export const TENANT_ADMIN_NETWORKING_NAV_ITEMS: ReadonlyArray<{
 export const TENANT_ADMIN_NAV_ITEMS: TenantAdminNavItem[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'catalog', label: 'Catalog' },
-  { id: 'services', label: 'My instances' },
   { id: 'projects-teams', label: 'Projects & teams' },
   {
     id: 'networking',
