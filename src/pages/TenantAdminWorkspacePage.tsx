@@ -28,6 +28,7 @@ import { activateProviderRegisteredOrganizationBySlug, getProviderCatalogDraft }
 import {
   addTenantUserInstance,
   ensureTenantDemoInstances,
+  getOrEnsureTenantUserInstances,
   updateTenantUserInstance,
 } from '../tenantUser/storage'
 import type { TenantInstance } from '../tenantUser/instances'
@@ -112,7 +113,7 @@ export function TenantAdminWorkspacePage() {
   const [projects, setProjects] = useState<TenantProject[]>(() => getTenantProjects(tenant))
   const [instances, setInstances] = useState(() =>
     isValidTenant
-      ? ensureTenantDemoInstances(tenant, getWorkspaceOrganization(tenant).name)
+      ? getOrEnsureTenantUserInstances(tenant, getWorkspaceOrganization(tenant).name)
       : [],
   )
   const [openVirtualNetworkId, setOpenVirtualNetworkId] = useState<string | null>(null)

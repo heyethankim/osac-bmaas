@@ -179,13 +179,20 @@ export function getTenantUserInstances(slug: string): TenantInstance[] {
   }
 }
 
+function getDemoOrganizationName(slug: string): string {
+  if (slug === 'northstar' || slug === 'evergreen') {
+    return DEMO_TENANT_LABEL[slug]
+  }
+  return DEMO_TENANT_LABEL.northstar
+}
+
 /**
- * Ensures Tenant Admin / shared demo Services lists include one Bare metal and one
+ * Ensures Tenant Admin / Tenant User Services lists include one Bare metal and one
  * Virtual machine instance. Stable IDs avoid duplicates across reloads.
  */
 export function ensureTenantDemoInstances(
   slug: string,
-  organizationName: string = DEMO_TENANT_LABEL.northstar,
+  organizationName: string = getDemoOrganizationName(slug),
 ): TenantInstance[] {
   const existing = getTenantUserInstances(slug)
   const next = [...existing]
@@ -206,6 +213,14 @@ export function ensureTenantDemoInstances(
   }
 
   return next
+}
+
+/** Read instances and seed Bare metal / VM demos when missing (shared by Admin + User). */
+export function getOrEnsureTenantUserInstances(
+  slug: string,
+  organizationName?: string,
+): TenantInstance[] {
+  return ensureTenantDemoInstances(slug, organizationName ?? getDemoOrganizationName(slug))
 }
 
 export function setTenantUserInstances(slug: string, instances: TenantInstance[]): void {

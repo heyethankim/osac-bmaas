@@ -18,6 +18,7 @@ import {
 import { LAUNCH_INSTANCE_PROVISIONING_DURATION_MS } from '../tenantUser/launchInstanceWizard'
 import {
   addTenantUserInstance,
+  ensureTenantDemoInstances,
   getTenantUserActiveNav,
   getTenantUserInstances,
   setTenantUserActiveNav,
@@ -122,7 +123,7 @@ export function TenantUserWorkspacePage() {
     isValidTenant ? readInitialTenantUserNav(tenantSlug, searchParams) : 'catalog',
   )
   const [instances, setInstances] = useState<TenantInstance[]>(() =>
-    isValidTenant ? getTenantUserInstances(tenantSlug) : [],
+    isValidTenant ? ensureTenantDemoInstances(tenantSlug) : [],
   )
   const [showBackgroundProvisioningNotice, setShowBackgroundProvisioningNotice] = useState(false)
   const [openVirtualNetworkId, setOpenVirtualNetworkId] = useState<string | null>(null)
@@ -205,6 +206,7 @@ export function TenantUserWorkspacePage() {
 
     setTenantUserOnboardingComplete(tenantSlug)
     activateProviderRegisteredOrganizationBySlug(tenantSlug)
+    setInstances(ensureTenantDemoInstances(tenantSlug))
 
     const requestedNav = normalizeTenantUserNavParam(searchParams.get('nav'))
     if (!requestedNav) {
@@ -221,7 +223,9 @@ export function TenantUserWorkspacePage() {
       setActiveNavId(nextNavId)
       setTenantUserActiveNav(tenantSlug, nextNavId)
 
-      if (!isServicesNavId(nextNavId)) {
+      if (isServicesNavId(nextNavId)) {
+        setInstances(ensureTenantDemoInstances(tenantSlug))
+      } else {
         setShowBackgroundProvisioningNotice(false)
       }
     },

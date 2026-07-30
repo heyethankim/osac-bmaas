@@ -41,7 +41,7 @@ import {
   setProviderSelectedServices,
   setProviderSetupComplete,
 } from '../providerSetup/storage'
-import { getTenantUserInstances } from '../tenantUser/storage'
+import { ensureTenantDemoInstances } from '../tenantUser/storage'
 
 import type { WorkspaceTransition } from '../providerAdmin/workspace'
 import type { BmaasTemplateLookup } from '../providerAdmin/bmaasTemplates'
@@ -104,7 +104,7 @@ export function ProviderAdminWorkspacePage() {
   const [openSubnetId, setOpenSubnetId] = useState<string | null>(null)
   const [openSecurityGroupId, setOpenSecurityGroupId] = useState<string | null>(null)
   const [instances, setInstances] = useState(() =>
-    getTenantUserInstances(PROVIDER_SERVICES_DEMO_TENANT),
+    ensureTenantDemoInstances(PROVIDER_SERVICES_DEMO_TENANT),
   )
 
   useLayoutEffect(() => {
@@ -116,7 +116,7 @@ export function ProviderAdminWorkspacePage() {
       setServicesSelected(true)
       setSetupComplete(true)
       setActiveNavId(requestedNav)
-      setInstances(getTenantUserInstances(PROVIDER_SERVICES_DEMO_TENANT))
+      setInstances(ensureTenantDemoInstances(PROVIDER_SERVICES_DEMO_TENANT))
       return
     }
 

@@ -58,6 +58,7 @@ import {
 } from '../../tenantAdmin/networking'
 import type { TenantProject } from '../../tenantAdmin/projects'
 import { getTenantUserCatalogCardFromDraft, TENANT_USER_CATALOG_FALLBACK } from '../../tenantUser/catalog'
+import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
 import type { TenantInstance } from '../../tenantUser/instances'
 
 type TenantAdminCatalogPageProps = {
@@ -227,6 +228,7 @@ function AccessSummary({
 function getCatalogItemActions(
   item: TenantCatalogGovernanceItemWithNetworking,
   onViewDetails: () => void,
+  onLaunch: () => void,
   onEdit: () => void,
   onDuplicate: () => void,
   onTogglePublish: () => void,
@@ -238,6 +240,10 @@ function getCatalogItemActions(
     {
       title: 'View details',
       onClick: onViewDetails,
+    },
+    {
+      title: LAUNCH_INSTANCE_WIZARD_DEMO.launchInstanceLabel,
+      onClick: onLaunch,
     },
     {
       title: 'Edit',
@@ -553,6 +559,7 @@ export function TenantAdminCatalogPage({
     getCatalogItemActions(
       item,
       () => openDetails(item),
+      () => openLaunchWizard(item),
       () => openEdit(item),
       () => handleDuplicate(item),
       () => openTogglePublish(item),

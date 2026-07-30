@@ -79,6 +79,7 @@ import { TenantUserLaunchInstanceWizard } from '../components/tenant-user/Tenant
 import { getTenantUserCatalogCardFromDraft } from '../tenantUser/catalog'
 import {
   LAUNCH_INSTANCE_PROVISIONING_DURATION_MS,
+  LAUNCH_INSTANCE_WIZARD_DEMO,
 } from '../tenantUser/launchInstanceWizard'
 import {
   addTenantUserInstance,
@@ -245,6 +246,7 @@ function getTemplateRowData() {
 function getCatalogItemActions(
   item: ProviderCatalogDraft,
   onViewDetails: () => void,
+  onLaunch: () => void,
   onAssignToOrganization: () => void,
   onEdit: () => void,
   onDuplicate: () => void,
@@ -257,6 +259,10 @@ function getCatalogItemActions(
     {
       title: 'View details',
       onClick: onViewDetails,
+    },
+    {
+      title: LAUNCH_INSTANCE_WIZARD_DEMO.launchInstanceLabel,
+      onClick: onLaunch,
     },
   ]
 
@@ -851,6 +857,7 @@ export function ProviderAdminCatalogPage({
             const catalogItemActions = getCatalogItemActions(
               item,
               () => openDetails(item),
+              () => openLaunchWizard(item),
               () => openAssign(item),
               () => openEdit(item),
               () => handleDuplicate(item),
@@ -988,6 +995,7 @@ export function ProviderAdminCatalogPage({
               const catalogItemActions = getCatalogItemActions(
                 item,
                 () => openDetails(item),
+                () => openLaunchWizard(item),
                 () => openAssign(item),
                 () => openEdit(item),
                 () => handleDuplicate(item),
