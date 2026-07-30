@@ -210,14 +210,6 @@ export function ProviderAdminShell({
                 </NavItem>
               ))}
             </NavExpandable>
-            <NavItem
-              itemId="billing-metering"
-              isActive={activeNavId === 'billing-metering'}
-              to="#"
-              preventDefault
-            >
-              Billing & metering
-            </NavItem>
             <NavExpandable
               id="provider-admin-networking-nav"
               title="Networking"
@@ -254,6 +246,14 @@ export function ProviderAdminShell({
                 </NavItem>
               ))}
             </NavExpandable>
+            <NavItem
+              itemId="billing-metering"
+              isActive={activeNavId === 'billing-metering'}
+              to="#"
+              preventDefault
+            >
+              Billing & metering
+            </NavItem>
           </NavList>
         </Nav>
       </PageSidebarBody>
