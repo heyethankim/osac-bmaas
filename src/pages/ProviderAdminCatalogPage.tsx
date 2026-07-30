@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
@@ -328,7 +328,9 @@ export function ProviderAdminCatalogPage({
   const [publishResumeTenantId, setPublishResumeTenantId] = useState('')
   const [editResumeTenantId, setEditResumeTenantId] = useState<string | undefined>(undefined)
   const [creatingCatalogItemId, setCreatingCatalogItemId] = useState<string | null>(null)
+  const [creatingCardHeightPx, setCreatingCardHeightPx] = useState<number | null>(null)
   const createRevealTimeoutRef = useRef<number | null>(null)
+  const catalogCardGridRef = useRef<HTMLDivElement | null>(null)
 
   const newestCatalogItem = catalogItems[0] ?? null
   const knownServiceFiltersRef = useRef(new Set(initialServiceFilters))
@@ -345,9 +347,11 @@ export function ProviderAdminCatalogPage({
     if (createRevealTimeoutRef.current !== null) {
       window.clearTimeout(createRevealTimeoutRef.current)
     }
+    setCreatingCardHeightPx(null)
     setCreatingCatalogItemId(catalogItemId)
     createRevealTimeoutRef.current = window.setTimeout(() => {
       setCreatingCatalogItemId((current) => (current === catalogItemId ? null : current))
+      setCreatingCardHeightPx(null)
       createRevealTimeoutRef.current = null
     }, CATALOG_ITEM_CREATE_REVEAL_MS)
   }
@@ -425,7 +429,30 @@ export function ProviderAdminCatalogPage({
     searchValue,
   ])
 
-  const unassignedOrganizations = useMemo(
+  useLayoutEffect(() => {
+    if (!creatingCatalogItemId || viewMode !== 'grid') {
+      setCreatingCardHeightPx(null)
+      return
+    }
+
+    const grid = catalogCardGridRef.current
+    if (!grid) {
+      return
+    }
+
+    const referenceCard = Array.from(
+      grid.querySelectorAll<HTMLElement>('.provider-admin-catalog-items__card'),
+    ).find((card) => !card.classList.contains('provider-admin-catalog-items__card--creating'))
+
+    if (!referenceCard) {
+      setCreatingCardHeightPx(null)
+      return
+    }
+
+    setCreatingCardHeightPx(Math.round(referenceCard.getBoundingClientRect().height))
+  }, [creatingCatalogItemId, filteredCatalogItems, viewMode])
+
+  const unassignedOrganizations = useMemo((
     () => organizations.filter((organization) => !organization.catalogItemId),
     [organizations],
   )
@@ -825,7 +852,10 @@ export function ProviderAdminCatalogPage({
           <EmptyStateBody>{emptyStateBody}</EmptyStateBody>
         </EmptyState>
       ) : viewMode === 'grid' ? (
-        <div className="catalog-card-grid provider-admin-catalog-items__card-grid">
+        <div
+          ref={catalogCardGridRef}
+          className="catalog-card-grid provider-admin-catalog-items__card-grid"
+        >
           {filteredCatalogItems.map((item) => {
             const serviceId = getDraftServiceId(item)
             const isCreating = creatingCatalogItemId === item.catalogItemId
@@ -858,6 +888,11 @@ export function ProviderAdminCatalogPage({
                 ]
                   .filter(Boolean)
                   .join(' ')}
+                style={
+                  isCreating && creatingCardHeightPx
+                    ? { height: creatingCardHeightPx, minBlockSize: creatingCardHeightPx }
+                    : undefined
+                }
               >
                 {isCreating ? (
                   <CardBody className="provider-admin-catalog-items__card-body--creating">

@@ -2366,7 +2366,7 @@
 }
 
 .provider-admin-catalog-items__card--creating {
-  min-block-size: 22rem;
+  box-sizing: border-box;
 }
 
 .provider-admin-catalog-items__card-body--creating {
@@ -2375,7 +2375,8 @@
   align-items: center;
   justify-content: center;
   gap: var(--pf-t--global--spacer--md);
-  min-block-size: 22rem;
+  block-size: 100%;
+  min-block-size: 100%;
   text-align: center;
   padding-block-end: var(--pf-t--global--spacer--lg) !important;
 }
