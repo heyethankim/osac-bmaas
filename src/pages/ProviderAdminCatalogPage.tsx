@@ -22,6 +22,7 @@ import {
   ModalHeader,
   ModalVariant,
   SearchInput,
+  Spinner,
   Title,
   Tooltip,
 } from '@patternfly/react-core'
@@ -81,7 +82,7 @@ import { ProviderSetupPublishCatalogWizard } from './provider-setup/ProviderSetu
 type ProviderAdminCatalogPageProps = {
   catalogItems: ProviderCatalogDraft[]
   isEntering?: boolean
-  onCreateCatalogItem: (payload: PublishedTemplatePayload) => void
+  onCreateCatalogItem: (payload: PublishedTemplatePayload) => ProviderCatalogDraft | void
   onCatalogItemsChange?: () => void
   isPublishing?: boolean
   onRegisterOrganization?: () => void
@@ -90,6 +91,9 @@ type ProviderAdminCatalogPageProps = {
     templateName: string
   }) => void
 }
+
+/** Intentional create latency before revealing the new catalog card. */
+const CATALOG_ITEM_CREATE_REVEAL_MS = 1600
 
 function getDraftServiceId(catalogDraft: ProviderCatalogDraft): CatalogServiceId {
   return catalogDraft.serviceId ?? 'baremetal'
@@ -323,9 +327,30 @@ export function ProviderAdminCatalogPage({
   )
   const [publishResumeTenantId, setPublishResumeTenantId] = useState('')
   const [editResumeTenantId, setEditResumeTenantId] = useState<string | undefined>(undefined)
+  const [creatingCatalogItemId, setCreatingCatalogItemId] = useState<string | null>(null)
+  const createRevealTimeoutRef = useRef<number | null>(null)
 
   const newestCatalogItem = catalogItems[0] ?? null
   const knownServiceFiltersRef = useRef(new Set(initialServiceFilters))
+
+  useEffect(() => {
+    return () => {
+      if (createRevealTimeoutRef.current !== null) {
+        window.clearTimeout(createRevealTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const beginCatalogItemCreateReveal = (catalogItemId: string) => {
+    if (createRevealTimeoutRef.current !== null) {
+      window.clearTimeout(createRevealTimeoutRef.current)
+    }
+    setCreatingCatalogItemId(catalogItemId)
+    createRevealTimeoutRef.current = window.setTimeout(() => {
+      setCreatingCatalogItemId((current) => (current === catalogItemId ? null : current))
+      createRevealTimeoutRef.current = null
+    }, CATALOG_ITEM_CREATE_REVEAL_MS)
+  }
 
   useEffect(() => {
     setSelectedFilters((current) => {
@@ -803,6 +828,7 @@ export function ProviderAdminCatalogPage({
         <div className="catalog-card-grid provider-admin-catalog-items__card-grid">
           {filteredCatalogItems.map((item) => {
             const serviceId = getDraftServiceId(item)
+            const isCreating = creatingCatalogItemId === item.catalogItemId
             const catalogItemActions = getCatalogItemActions(
               item,
               () => openDetails(item),
@@ -828,10 +854,25 @@ export function ProviderAdminCatalogPage({
                   getCatalogItemStatus(item) === 'unpublished'
                     ? 'provider-admin-catalog-items__card--unpublished'
                     : '',
+                  isCreating ? 'provider-admin-catalog-items__card--creating' : '',
                 ]
                   .filter(Boolean)
                   .join(' ')}
               >
+                {isCreating ? (
+                  <CardBody className="provider-admin-catalog-items__card-body--creating">
+                    <Spinner
+                      size="lg"
+                      aria-label={`Creating ${item.displayName}`}
+                    />
+                    <Content
+                      component="p"
+                      className="provider-admin-catalog-items__creating-kicker"
+                    >
+                      Creating catalog item…
+                    </Content>
+                  </CardBody>
+                ) : (
                 <CardBody>
                   <div className="provider-admin-catalog-items__card-header">
                     <span className="provider-admin-catalog-items__card-icon" aria-hidden>
@@ -892,6 +933,7 @@ export function ProviderAdminCatalogPage({
                     </Tooltip>
                   </div>
                 </CardBody>
+                )}
               </Card>
             )
           })}
@@ -1003,7 +1045,14 @@ export function ProviderAdminCatalogPage({
           setIsPublishWizardOpen(false)
           setPublishResumeScope('global-public')
           setPublishResumeTenantId('')
-          onCreateCatalogItem(payload)
+          const created = onCreateCatalogItem(payload)
+          if (created?.catalogItemId) {
+            setViewMode('grid')
+            setCatalogViewMode('grid')
+            setSelectedStatus('all')
+            setSearchValue('')
+            beginCatalogItemCreateReveal(created.catalogItemId)
+          }
         }}
         onRegisterOrganization={() => handleRegisterOrganizationFromVip({ kind: 'publish' })}
         isPublishing={isPublishing}

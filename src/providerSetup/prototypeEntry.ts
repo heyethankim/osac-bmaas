@@ -72,17 +72,34 @@ export const DEMO_CATALOG_ITEM_ORDER = [
 ] as const
 
 function demoCatalogItemOrderIndex(catalogItemId: string): number {
-  const index = (DEMO_CATALOG_ITEM_ORDER as readonly string[]).indexOf(catalogItemId)
-  return index === -1 ? DEMO_CATALOG_ITEM_ORDER.length : index
+  return (DEMO_CATALOG_ITEM_ORDER as readonly string[]).indexOf(catalogItemId)
 }
 
-/** Stable display sort for demo catalog lists (unknown IDs keep relative order at the end). */
-export function sortByDemoCatalogOrder<T extends { catalogItemId: string }>(items: T[]): T[] {
-  return [...items].sort(
-    (left, right) =>
-      demoCatalogItemOrderIndex(left.catalogItemId) -
-      demoCatalogItemOrderIndex(right.catalogItemId),
-  )
+/**
+ * Demo storefront order for known offerings. Newly added items (unknown IDs) sort first
+ * by createdAt (newest first) so they appear at the top-left of the catalog grid.
+ */
+export function sortByDemoCatalogOrder<
+  T extends { catalogItemId: string; createdAt?: string },
+>(items: T[]): T[] {
+  return [...items].sort((left, right) => {
+    const leftIndex = demoCatalogItemOrderIndex(left.catalogItemId)
+    const rightIndex = demoCatalogItemOrderIndex(right.catalogItemId)
+    const leftKnown = leftIndex !== -1
+    const rightKnown = rightIndex !== -1
+
+    if (!leftKnown && rightKnown) {
+      return -1
+    }
+    if (leftKnown && !rightKnown) {
+      return 1
+    }
+    if (!leftKnown && !rightKnown) {
+      return (right.createdAt ?? '').localeCompare(left.createdAt ?? '')
+    }
+
+    return leftIndex - rightIndex
+  })
 }
 
 function createDefaultCatalogDraft(): ProviderCatalogDraft {

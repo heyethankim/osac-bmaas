@@ -2365,6 +2365,27 @@
   padding-block-end: 0;
 }
 
+.provider-admin-catalog-items__card--creating {
+  min-block-size: 22rem;
+}
+
+.provider-admin-catalog-items__card-body--creating {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pf-t--global--spacer--md);
+  min-block-size: 22rem;
+  text-align: center;
+  padding-block-end: var(--pf-t--global--spacer--lg) !important;
+}
+
+.provider-admin-catalog-items__creating-kicker.pf-v6-c-content--p {
+  margin: 0;
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
 .provider-admin-catalog-items__card--unpublished.pf-v6-c-card {
   --pf-v6-c-card--BackgroundColor: var(--pf-t--global--background--color--secondary--default);
 }

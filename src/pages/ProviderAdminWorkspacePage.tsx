@@ -143,7 +143,7 @@ export function ProviderAdminWorkspacePage() {
       setActiveNavId('catalog')
       setSetupComplete(true)
       setWorkspaceTransition('idle')
-      return
+      return draft
     }
 
     setWorkspaceTransition('publishing')
@@ -159,6 +159,8 @@ export function ProviderAdminWorkspacePage() {
     window.setTimeout(() => {
       setWorkspaceTransition('idle')
     }, PUBLISH_PHASE_MS + ENTER_PHASE_MS)
+
+    return draft
   }
 
   const handleRegisterOrganization = () => {

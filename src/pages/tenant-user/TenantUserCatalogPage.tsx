@@ -26,9 +26,11 @@ import { formatCatalogConfigurationSummary } from '../../catalog/catalogSpecs'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
 import { getCatalogViewMode, setCatalogViewMode, type CatalogViewMode } from '../../catalog/viewMode'
+import { getCatalogNetworkLockSummary } from '../../providerAdmin/catalogNetworkPolicy'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import { CATALOG_SERVICE_FILTER_LABELS, type CatalogServiceId } from '../../providerSetup/templateDemo'
+import { TENANT_CATALOG_MANAGER_DEMO } from '../../tenantAdmin/catalogManager'
 import {
   getTenantUserCatalogCards,
   type TenantUserCatalogCard,
@@ -53,6 +55,81 @@ type TenantUserCatalogPageProps = {
   onProvisioningStarted: (instance: TenantInstance) => void
   onDismissDuringProvisioning: (instanceId: string) => void
   onWizardFinished: (instanceId: string) => void
+}
+
+function NetworkingSummary({
+  item,
+  organization,
+  catalogDraft,
+  preferCatalogDraft,
+  compact = false,
+  onViewDetails,
+}: {
+  item: TenantUserCatalogCard
+  organization: RegisteredOrganization | null
+  catalogDraft: ProviderCatalogDraft | null
+  preferCatalogDraft: boolean
+  compact?: boolean
+  onViewDetails?: () => void
+}) {
+  const networkContext = resolveLaunchNetworkContext(
+    organization,
+    catalogDraft,
+    preferCatalogDraft,
+    item.catalogItemId,
+  )
+  const lockSummary = getCatalogNetworkLockSummary(networkContext.policy)
+
+  const statusContent = lockSummary ? (
+    <span className="tenant-user-catalog__networking-status">
+      <Label
+        color={
+          lockSummary.kind === 'all-locked'
+            ? 'grey'
+            : lockSummary.kind === 'all-editable'
+              ? 'blue'
+              : 'orange'
+        }
+        isCompact
+        icon={lockSummary.kind === 'all-locked' ? <LockIcon /> : undefined}
+        className="tenant-user-catalog__networking-status-label"
+      >
+        {lockSummary.label}
+      </Label>
+      {onViewDetails ? (
+        <Button
+          variant="link"
+          isInline
+          className="tenant-user-catalog__inline-link"
+          onClick={onViewDetails}
+        >
+          {TENANT_CATALOG_MANAGER_DEMO.networkingViewDetailsLabel}
+        </Button>
+      ) : null}
+    </span>
+  ) : (
+    <Content
+      component="p"
+      className={compact ? 'tenant-user-catalog__networking-table-summary' : undefined}
+    >
+      {compact
+        ? TENANT_CATALOG_MANAGER_DEMO.networkingNotConfiguredTableLabel
+        : TENANT_CATALOG_MANAGER_DEMO.networkingNotConfiguredSummary}
+    </Content>
+  )
+
+  if (compact) {
+    return statusContent
+  }
+
+  return (
+    <div className="tenant-user-catalog__spec-row">
+      <dt className="tenant-user-catalog__spec-label">
+        {TENANT_CATALOG_MANAGER_DEMO.networkingLabel}
+      </dt>
+      <dd className="tenant-user-catalog__spec-value">{statusContent}</dd>
+    </div>
+  )
 }
 
 function getCatalogItemActions(
@@ -328,6 +405,16 @@ export function TenantUserCatalogPage({
                       valueClassName="tenant-user-catalog__spec-value"
                     />
 
+                    <dl className="tenant-user-catalog__networking-list">
+                      <NetworkingSummary
+                        item={item}
+                        organization={organization}
+                        catalogDraft={catalogDraft}
+                        preferCatalogDraft={preferCatalogDraft}
+                        onViewDetails={() => openDetails(item)}
+                      />
+                    </dl>
+
                     <div className="tenant-user-catalog__footer-note">
                       <LockIcon aria-hidden />
                       <span>{item.footerNote}</span>
@@ -360,6 +447,7 @@ export function TenantUserCatalogPage({
                   <Th>Name</Th>
                   <Th>Status</Th>
                   <Th>Configuration</Th>
+                  <Th>Networking</Th>
                   <Th>Action</Th>
                 </Tr>
               </Thead>
@@ -392,6 +480,16 @@ export function TenantUserCatalogPage({
                         templateRefId: item.templateRefId,
                         templateName: item.templateName,
                       })}
+                    </Td>
+                    <Td dataLabel="Networking">
+                      <NetworkingSummary
+                        item={item}
+                        organization={organization}
+                        catalogDraft={catalogDraft}
+                        preferCatalogDraft={preferCatalogDraft}
+                        compact
+                        onViewDetails={() => openDetails(item)}
+                      />
                     </Td>
                     <Td dataLabel="Action">
                       <Button
