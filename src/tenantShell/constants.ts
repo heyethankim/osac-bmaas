@@ -1,5 +1,11 @@
+import { TENANT_ADMIN_NETWORKING_NAV_ITEMS } from '../tenantAdmin/constants'
+
 export type { TenantAdminNavGroup, TenantAdminNavItem } from '../tenantAdmin/constants'
-export { TENANT_ADMIN_NAV_GROUPS, TENANT_ADMIN_NAV_ITEMS } from '../tenantAdmin/constants'
+export {
+  TENANT_ADMIN_NAV_GROUPS,
+  TENANT_ADMIN_NAV_ITEMS,
+  TENANT_ADMIN_NETWORKING_NAV_ITEMS,
+} from '../tenantAdmin/constants'
 
 export type TenantNavItem = {
   id: string
@@ -24,5 +30,10 @@ export function flattenTenantNavItems(
 export const TENANT_USER_NAV_ITEMS: TenantNavItem[] = [
   { id: 'catalog', label: 'Catalog' },
   { id: 'my-instances', label: 'My instances' },
+  {
+    id: 'networking',
+    label: 'Networking',
+    children: TENANT_ADMIN_NETWORKING_NAV_ITEMS,
+  },
   { id: 'activity-log', label: 'Activity log' },
 ]

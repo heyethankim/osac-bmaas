@@ -24,12 +24,22 @@ import {
   type TenantUserNavId,
 } from '../tenantUser/storage'
 import { TENANT_USER_NAV_ITEMS } from '../tenantShell/constants'
+import { ProviderAdminSecurityGroupsPage } from './infrastructure/ProviderAdminSecurityGroupsPage'
+import { ProviderAdminSubnetsPage } from './infrastructure/ProviderAdminSubnetsPage'
+import { ProviderAdminVirtualNetworksPage } from './infrastructure/ProviderAdminVirtualNetworksPage'
 import { TenantUserActivityLogPage } from './tenant-user/TenantUserActivityLogPage'
 import { TenantUserCatalogPage } from './tenant-user/TenantUserCatalogPage'
 import { TenantUserInstancesPage } from './tenant-user/TenantUserInstancesPage'
 
 function isTenantUserNavId(value: string | null): value is TenantUserNavId {
-  return value === 'catalog' || value === 'my-instances' || value === 'activity-log'
+  return (
+    value === 'catalog' ||
+    value === 'my-instances' ||
+    value === 'networking-virtual-networks' ||
+    value === 'networking-subnets' ||
+    value === 'networking-security-groups' ||
+    value === 'activity-log'
+  )
 }
 
 /** Seeds post-onboarding Tenant User state so landing-page prototype links can open finished screens. */
@@ -68,6 +78,9 @@ export function TenantUserWorkspacePage() {
     isValidTenant ? getTenantUserInstances(tenantSlug) : [],
   )
   const [showBackgroundProvisioningNotice, setShowBackgroundProvisioningNotice] = useState(false)
+  const [openVirtualNetworkId, setOpenVirtualNetworkId] = useState<string | null>(null)
+  const [openSubnetId, setOpenSubnetId] = useState<string | null>(null)
+  const [openSecurityGroupId, setOpenSecurityGroupId] = useState<string | null>(null)
   const provisioningTimersRef = useRef<Map<string, number>>(new Map())
 
   const hasProvisioningInstances = instances.some(
@@ -246,6 +259,43 @@ export function TenantUserWorkspacePage() {
             onDismissBackgroundProvisioningNotice={() =>
               setShowBackgroundProvisioningNotice(false)
             }
+          />
+        )
+      case 'networking-virtual-networks':
+        return (
+          <ProviderAdminVirtualNetworksPage
+            openVirtualNetworkId={openVirtualNetworkId}
+            onOpenVirtualNetworkConsumed={() => setOpenVirtualNetworkId(null)}
+            onNavigateToSubnet={(subnetId) => {
+              setOpenSubnetId(subnetId)
+              handleNavChange('networking-subnets')
+            }}
+            onNavigateToSecurityGroup={(securityGroupId) => {
+              setOpenSecurityGroupId(securityGroupId)
+              handleNavChange('networking-security-groups')
+            }}
+          />
+        )
+      case 'networking-subnets':
+        return (
+          <ProviderAdminSubnetsPage
+            openSubnetId={openSubnetId}
+            onOpenSubnetConsumed={() => setOpenSubnetId(null)}
+            onNavigateToVirtualNetwork={(virtualNetworkId) => {
+              setOpenVirtualNetworkId(virtualNetworkId)
+              handleNavChange('networking-virtual-networks')
+            }}
+          />
+        )
+      case 'networking-security-groups':
+        return (
+          <ProviderAdminSecurityGroupsPage
+            openSecurityGroupId={openSecurityGroupId}
+            onOpenSecurityGroupConsumed={() => setOpenSecurityGroupId(null)}
+            onNavigateToVirtualNetwork={(virtualNetworkId) => {
+              setOpenVirtualNetworkId(virtualNetworkId)
+              handleNavChange('networking-virtual-networks')
+            }}
           />
         )
       case 'activity-log':

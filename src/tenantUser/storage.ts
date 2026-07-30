@@ -4,9 +4,22 @@ const TENANT_USER_ONBOARDING_COMPLETE_KEY_PREFIX = 'bmaas-tenant-user-onboarding
 const TENANT_USER_ACTIVE_NAV_KEY_PREFIX = 'bmaas-tenant-user-active-nav-'
 const TENANT_USER_INSTANCES_KEY_PREFIX = 'bmaas-tenant-user-instances-'
 
-export type TenantUserNavId = 'catalog' | 'my-instances' | 'activity-log'
+export type TenantUserNavId =
+  | 'catalog'
+  | 'my-instances'
+  | 'networking-virtual-networks'
+  | 'networking-subnets'
+  | 'networking-security-groups'
+  | 'activity-log'
 
-const TENANT_USER_NAV_IDS: TenantUserNavId[] = ['catalog', 'my-instances', 'activity-log']
+const TENANT_USER_NAV_IDS: TenantUserNavId[] = [
+  'catalog',
+  'my-instances',
+  'networking-virtual-networks',
+  'networking-subnets',
+  'networking-security-groups',
+  'activity-log',
+]
 
 function getSlugKey(prefix: string, slug: string): string {
   return `${prefix}${slug}`
