@@ -452,7 +452,7 @@ export function ProviderAdminCatalogPage({
     setCreatingCardHeightPx(Math.round(referenceCard.getBoundingClientRect().height))
   }, [creatingCatalogItemId, filteredCatalogItems, viewMode])
 
-  const unassignedOrganizations = useMemo((
+  const unassignedOrganizations = useMemo(
     () => organizations.filter((organization) => !organization.catalogItemId),
     [organizations],
   )
