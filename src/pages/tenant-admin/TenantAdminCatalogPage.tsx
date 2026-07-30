@@ -103,7 +103,7 @@ function toLaunchCatalogCard(
     ram: item.ram,
     gpu: item.gpu,
     osImage: item.osImage,
-    catalogItemId: item.catalogItemId,
+    catalogItemId: item.catalogItemId ?? item.id,
     templateRefId: item.templateRefId,
     templateName: item.templateName,
   }
