@@ -194,6 +194,11 @@ export const VM_LAUNCH_INSTANCE_DEMO = {
   defaultInstanceType: 'small - 1 vCPU, 2 GiB',
   bootDiskSizeGiB: 120,
   bootDiskSizeHelper: 'Size in GiB',
+  imageSourceType: 'registry',
+  imageSourceTypeHelper: 'Fixed by the catalog item.',
+  runStrategyOptions: ['Always', 'RerunOnFailure', 'Manual', 'Halted'] as const,
+  defaultRunStrategy: 'Always',
+  runStrategyHelper: 'Controls when the virtual machine should be running.',
   cloudInitUserData: `#cloud-config
 hostname: demo-vm
 `,
@@ -244,6 +249,8 @@ export type LaunchInstanceWizardForm = {
   containerDiskImage: string
   instanceType: string
   bootDiskSizeGiB: number
+  imageSourceType: string
+  runStrategy: string
   cloudInitUserData: string
   virtualNetworkId: string
   subnetId: string
@@ -325,6 +332,8 @@ export const DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM: LaunchInstanceWizardForm = {
   containerDiskImage: '',
   instanceType: '',
   bootDiskSizeGiB: VM_LAUNCH_INSTANCE_DEMO.bootDiskSizeGiB,
+  imageSourceType: VM_LAUNCH_INSTANCE_DEMO.imageSourceType,
+  runStrategy: VM_LAUNCH_INSTANCE_DEMO.defaultRunStrategy,
   cloudInitUserData: '',
   virtualNetworkId: '',
   subnetId: '',
@@ -364,6 +373,12 @@ export function createLaunchInstanceWizardForm(options: {
     bootDiskSizeGiB: isVm
       ? VM_LAUNCH_INSTANCE_DEMO.bootDiskSizeGiB
       : DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM.bootDiskSizeGiB,
+    imageSourceType: isVm
+      ? VM_LAUNCH_INSTANCE_DEMO.imageSourceType
+      : DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM.imageSourceType,
+    runStrategy: isVm
+      ? VM_LAUNCH_INSTANCE_DEMO.defaultRunStrategy
+      : DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM.runStrategy,
     cloudInitUserData: isVm
       ? VM_LAUNCH_INSTANCE_DEMO.cloudInitUserData
       : isBaremetal
@@ -414,7 +429,9 @@ export function isVmConfigureStepValid(form: LaunchInstanceWizardForm): boolean 
   return (
     form.containerDiskImage.trim().length > 0 &&
     form.instanceType.trim().length > 0 &&
-    form.bootDiskSizeGiB >= 1
+    form.bootDiskSizeGiB >= 1 &&
+    form.imageSourceType.trim().length > 0 &&
+    form.runStrategy.trim().length > 0
   )
 }
 

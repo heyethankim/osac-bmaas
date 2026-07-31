@@ -25,6 +25,7 @@ import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
 import { RocketIcon } from '@patternfly/react-icons/dist/esm/icons/rocket-icon'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import { getCatalogProfileFieldLabel, getCatalogSpecsSectionLabel } from '../../catalog/catalogSpecs'
+import { CatalogVmDefaultsSections } from '../catalog/CatalogVmDefaultsSections'
 import { NetworkFieldLockButton } from '../catalog/NetworkFieldLockButton'
 import { CatalogPublishScopeIcon } from '../provider-admin/CatalogPublishScopeIcon'
 import {
@@ -76,6 +77,7 @@ export function TenantCatalogItemDetailsDrawer({
     : []
   const virtualNetworkId = item?.networkPolicy.virtualNetwork.id
   const specRows = item ? getTenantCatalogItemDetailSpecRows(item) : []
+  const isVirtualMachine = item?.serviceId === 'virtual-machine'
   const specsSectionLabel = item
     ? getCatalogSpecsSectionLabel(item.serviceId)
     : 'Hardware specifications'
@@ -162,7 +164,12 @@ export function TenantCatalogItemDetailsDrawer({
           </DescriptionListGroup>
         </DescriptionList>
 
-        {specRows.length > 0 ? (
+        {isVirtualMachine ? (
+          <>
+            <Divider className="tenant-admin-catalog-manager__drawer-divider" />
+            <CatalogVmDefaultsSections idPrefix="tenant-admin-catalog-vm" />
+          </>
+        ) : specRows.length > 0 ? (
           <>
             <Divider className="tenant-admin-catalog-manager__drawer-divider" />
             <DescriptionList

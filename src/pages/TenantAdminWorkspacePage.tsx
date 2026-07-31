@@ -185,11 +185,16 @@ export function TenantAdminWorkspacePage() {
   const scheduleProvisioningCompletion = (instanceId: string, delayMs: number) => {
     clearProvisioningTimer(instanceId)
     const timeoutId = window.setTimeout(() => {
-      setInstances(
-        updateTenantUserInstance(tenant, instanceId, {
-          status: 'running',
-          provisionedAt: new Date().toISOString(),
-        }),
+      setInstances((current) =>
+        updateTenantUserInstance(
+          tenant,
+          instanceId,
+          {
+            status: 'running',
+            provisionedAt: new Date().toISOString(),
+          },
+          current,
+        ),
       )
       provisioningTimersRef.current.delete(instanceId)
     }, Math.max(0, delayMs))
@@ -197,24 +202,25 @@ export function TenantAdminWorkspacePage() {
   }
 
   const handleProvisioningStarted = (instance: TenantInstance) => {
-    setInstances(addTenantUserInstance(tenant, instance))
+    setInstances((current) => addTenantUserInstance(tenant, instance, current))
     scheduleProvisioningCompletion(instance.id, LAUNCH_INSTANCE_PROVISIONING_DURATION_MS)
   }
 
   const handleNavigateToServices = (instanceId: string, serviceId: CatalogServiceId) => {
     clearProvisioningTimer(instanceId)
-    setInstances(
-      updateTenantUserInstance(tenant, instanceId, {
-        status: 'provisioning',
-        provisionedAt: null,
-      }),
+    setInstances((current) =>
+      updateTenantUserInstance(
+        tenant,
+        instanceId,
+        {
+          status: 'provisioning',
+          provisionedAt: null,
+        },
+        current,
+      ),
     )
     scheduleProvisioningCompletion(instanceId, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS)
     handleNavChange(getServicesNavId(serviceId))
-  }
-
-  const handleInstancesChange = (nextInstances: TenantInstance[]) => {
-    setInstances(nextInstances)
   }
 
   const renderWorkspaceContent = () => {
@@ -237,7 +243,7 @@ export function TenantAdminWorkspacePage() {
           <TenantUserInstancesPage
             tenantSlug={tenant}
             instances={instances}
-            onInstancesChange={handleInstancesChange}
+            onInstancesChange={setInstances}
             defaultScopeFieldLabel="Organization"
             lockedServiceId={lockedServiceId ?? 'baremetal'}
             activeNavId={activeNavId}

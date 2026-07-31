@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import {
   Alert,
   AlertActionCloseButton,
@@ -67,7 +67,7 @@ import { removeTenantUserInstance, updateTenantUserInstance } from '../../tenant
 type TenantUserInstancesPageProps = {
   tenantSlug: string
   instances: TenantInstance[]
-  onInstancesChange: (instances: TenantInstance[]) => void
+  onInstancesChange: Dispatch<SetStateAction<TenantInstance[]>>
   defaultScopeFieldLabel?: 'Organization' | 'Project'
   /** When set, page is scoped to one service (nav-driven) and hides service filters. */
   lockedServiceId?: CatalogServiceId
@@ -454,7 +454,7 @@ export function TenantUserInstancesPage({
       window.clearTimeout(timeoutId)
       restartTimersRef.current.delete(instanceId)
     }
-    onInstancesChange(removeTenantUserInstance(tenantSlug, instanceId))
+    onInstancesChange((current) => removeTenantUserInstance(tenantSlug, instanceId, current))
     if (selectedInstanceId === instanceId) {
       setSelectedInstanceId(null)
       setIsDetailsDrawerOpen(false)
@@ -489,18 +489,28 @@ export function TenantUserInstancesPage({
       window.clearTimeout(existingTimeout)
     }
 
-    onInstancesChange(
-      updateTenantUserInstance(tenantSlug, instanceId, {
-        status: 'restarting',
-      }),
+    onInstancesChange((current) =>
+      updateTenantUserInstance(
+        tenantSlug,
+        instanceId,
+        {
+          status: 'restarting',
+        },
+        current,
+      ),
     )
 
     const timeoutId = window.setTimeout(() => {
       restartTimersRef.current.delete(instanceId)
-      onInstancesChange(
-        updateTenantUserInstance(tenantSlug, instanceId, {
-          status: 'running',
-        }),
+      onInstancesChange((current) =>
+        updateTenantUserInstance(
+          tenantSlug,
+          instanceId,
+          {
+            status: 'running',
+          },
+          current,
+        ),
       )
     }, TENANT_INSTANCE_RESTART_DURATION_MS)
     restartTimersRef.current.set(instanceId, timeoutId)
@@ -511,10 +521,15 @@ export function TenantUserInstancesPage({
     if (!instance || instance.status !== 'stopped') {
       return
     }
-    onInstancesChange(
-      updateTenantUserInstance(tenantSlug, instanceId, {
-        status: 'running',
-      }),
+    onInstancesChange((current) =>
+      updateTenantUserInstance(
+        tenantSlug,
+        instanceId,
+        {
+          status: 'running',
+        },
+        current,
+      ),
     )
   }
 
@@ -528,10 +543,15 @@ export function TenantUserInstancesPage({
       window.clearTimeout(existingTimeout)
       restartTimersRef.current.delete(instanceId)
     }
-    onInstancesChange(
-      updateTenantUserInstance(tenantSlug, instanceId, {
-        status: 'stopped',
-      }),
+    onInstancesChange((current) =>
+      updateTenantUserInstance(
+        tenantSlug,
+        instanceId,
+        {
+          status: 'stopped',
+        },
+        current,
+      ),
     )
   }
 
@@ -578,14 +598,20 @@ export function TenantUserInstancesPage({
 
     const currentConfig = resolveVmConfig(instancePendingPublicIp)
     const publicIp = createDemoPublicIp(publicIpFamily, instancePendingPublicIp.id)
-    onInstancesChange(
-      updateTenantUserInstance(tenantSlug, instancePendingPublicIp.id, {
-        vmConfig: {
-          ...currentConfig,
-          publicIp,
-          publicIpFamily,
+    const instanceId = instancePendingPublicIp.id
+    onInstancesChange((current) =>
+      updateTenantUserInstance(
+        tenantSlug,
+        instanceId,
+        {
+          vmConfig: {
+            ...currentConfig,
+            publicIp,
+            publicIpFamily,
+          },
         },
-      }),
+        current,
+      ),
     )
     closeAttachPublicIp()
   }
@@ -634,6 +660,7 @@ export function TenantUserInstancesPage({
       instance={isDetailsDrawerOpen ? selectedInstance : null}
       onRequestTerminate={openTerminateConfirm}
       onRestart={handleRestartInstance}
+      onStart={handleStartInstance}
       onStop={handleStopInstance}
       onAttachPublicIp={(instance) => {
         setPublicIpFamily('IPv4')
@@ -981,7 +1008,7 @@ export function TenantUserInstancesPage({
               : instancePendingTerminate &&
                   getTenantInstanceServiceId(instancePendingTerminate) === 'virtual-machine'
                 ? 'Delete virtual machine?'
-                : 'Terminate instance?'
+                : 'Delete instance?'
           }
           titleIconVariant="warning"
           labelId="terminate-instance-title"
@@ -1000,11 +1027,7 @@ export function TenantUserInstancesPage({
         </ModalBody>
         <ModalFooter>
           <Button variant="danger" onClick={handleConfirmTerminate}>
-            {instancePendingTerminate &&
-            (getTenantInstanceServiceId(instancePendingTerminate) === 'cluster' ||
-              getTenantInstanceServiceId(instancePendingTerminate) === 'virtual-machine')
-              ? 'Delete'
-              : 'Terminate'}
+            Delete
           </Button>
           <Button variant="link" onClick={closeTerminateConfirm}>
             Cancel

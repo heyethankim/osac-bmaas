@@ -51,6 +51,7 @@ type TenantUserInstanceDetailsDrawerProps = {
   instance: TenantInstance | null
   onRequestTerminate: (instance: TenantInstance) => void
   onRestart: (instanceId: string) => void
+  onStart?: (instanceId: string) => void
   onStop?: (instanceId: string) => void
   onAttachPublicIp?: (instance: TenantInstance) => void
   children: ReactNode
@@ -273,12 +274,14 @@ function VmInstanceDetails({
   instance,
   onRequestTerminate,
   onRestart,
+  onStart,
   onStop,
   onAttachPublicIp,
 }: {
   instance: TenantInstance
   onRequestTerminate: (instance: TenantInstance) => void
   onRestart: (instanceId: string) => void
+  onStart?: (instanceId: string) => void
   onStop?: (instanceId: string) => void
   onAttachPublicIp?: (instance: TenantInstance) => void
 }) {
@@ -286,6 +289,7 @@ function VmInstanceDetails({
   const isStopped = instance.status === 'stopped'
   const isRestarting = instance.status === 'restarting'
   const isBusy = instance.status === 'provisioning' || isRestarting
+  const canStart = isStopped
   const canStop = isRunning
   const canRestart = isRunning || isStopped
   const canDelete = !isBusy
@@ -301,6 +305,25 @@ function VmInstanceDetails({
       </Content>
 
       <div className="tenant-user-instances__drawer-actions">
+        {canStart ? (
+          <Button variant="secondary" onClick={() => onStart?.(instance.id)}>
+            Start
+          </Button>
+        ) : (
+          <Tooltip
+            content={
+              isRunning
+                ? 'Instance is already running'
+                : isRestarting
+                  ? 'Start is unavailable while restarting'
+                  : 'Start is available when the instance is stopped'
+            }
+          >
+            <Button variant="secondary" isAriaDisabled>
+              Start
+            </Button>
+          </Tooltip>
+        )}
         {canStop ? (
           <Button variant="secondary" onClick={() => onStop?.(instance.id)}>
             Stop
@@ -478,11 +501,13 @@ function DefaultInstanceDetails({
   instance,
   onRequestTerminate,
   onRestart,
+  onStart,
   onStop,
 }: {
   instance: TenantInstance
   onRequestTerminate: (instance: TenantInstance) => void
   onRestart: (instanceId: string) => void
+  onStart?: (instanceId: string) => void
   onStop?: (instanceId: string) => void
 }) {
   const isRunning = instance.status === 'running'
@@ -490,6 +515,7 @@ function DefaultInstanceDetails({
   const isRestarting = instance.status === 'restarting'
   const isBareMetal = getTenantInstanceServiceId(instance) === 'baremetal'
   const canRestart = isBareMetal ? isRunning || isStopped : isRunning
+  const canStart = isBareMetal && isStopped
   const canStop = isBareMetal && isRunning
   const canTerminate =
     instance.status !== 'provisioning' && instance.status !== 'restarting'
@@ -504,6 +530,27 @@ function DefaultInstanceDetails({
       </Content>
 
       <div className="tenant-user-instances__drawer-actions">
+        {isBareMetal ? (
+          canStart ? (
+            <Button variant="secondary" onClick={() => onStart?.(instance.id)}>
+              Start
+            </Button>
+          ) : (
+            <Tooltip
+              content={
+                isRunning
+                  ? 'Instance is already running'
+                  : isRestarting
+                    ? 'Start is unavailable while restarting'
+                    : 'Start is available when the instance is stopped'
+              }
+            >
+              <Button variant="secondary" isAriaDisabled>
+                Start
+              </Button>
+            </Tooltip>
+          )
+        ) : null}
         {canRestart ? (
           <Button variant="secondary" onClick={() => onRestart(instance.id)}>
             Restart
@@ -559,18 +606,18 @@ function DefaultInstanceDetails({
         ) : null}
         {canTerminate ? (
           <Button variant="secondary" isDanger onClick={() => onRequestTerminate(instance)}>
-            Terminate
+            Delete
           </Button>
         ) : (
           <Tooltip
             content={
               isRestarting
-                ? 'Terminate is unavailable while restarting'
-                : 'Terminate is unavailable while provisioning'
+                ? 'Delete is unavailable while restarting'
+                : 'Delete is unavailable while provisioning'
             }
           >
             <Button variant="secondary" isDanger isAriaDisabled>
-              Terminate
+              Delete
             </Button>
           </Tooltip>
         )}
@@ -716,6 +763,7 @@ export function TenantUserInstanceDetailsDrawer({
   instance,
   onRequestTerminate,
   onRestart,
+  onStart,
   onStop,
   onAttachPublicIp,
   children,
@@ -758,6 +806,7 @@ export function TenantUserInstanceDetailsDrawer({
             instance={instance}
             onRequestTerminate={onRequestTerminate}
             onRestart={onRestart}
+            onStart={onStart}
             onStop={onStop}
             onAttachPublicIp={onAttachPublicIp}
           />
@@ -766,6 +815,7 @@ export function TenantUserInstanceDetailsDrawer({
             instance={instance}
             onRequestTerminate={onRequestTerminate}
             onRestart={onRestart}
+            onStart={onStart}
             onStop={onStop}
           />
         )}

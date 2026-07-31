@@ -27,6 +27,7 @@ import {
   getCatalogSpecsSectionLabel,
   resolveCatalogSpecRows,
 } from '../../catalog/catalogSpecs'
+import { CatalogVmDefaultsSections } from '../catalog/CatalogVmDefaultsSections'
 import type { TenantUserCatalogCard } from '../../tenantUser/catalog'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
 import type { LaunchNetworkContext } from '../../tenantUser/launchNetworking'
@@ -58,6 +59,7 @@ export function TenantUserCatalogItemDetailsDrawer({
         { includeDetails: catalogItem.serviceId !== 'baremetal' },
       )
     : []
+  const isVirtualMachine = catalogItem?.serviceId === 'virtual-machine'
   const specsSectionLabel = catalogItem
     ? getCatalogSpecsSectionLabel(catalogItem.serviceId)
     : 'Hardware specifications'
@@ -137,7 +139,12 @@ export function TenantUserCatalogItemDetailsDrawer({
           </DescriptionListGroup>
         </DescriptionList>
 
-        {specRows.length > 0 ? (
+        {isVirtualMachine ? (
+          <>
+            <Divider className="tenant-user-catalog__drawer-divider" />
+            <CatalogVmDefaultsSections idPrefix="tenant-user-catalog-vm" />
+          </>
+        ) : specRows.length > 0 ? (
           <>
             <Divider className="tenant-user-catalog__drawer-divider" />
             <DescriptionList

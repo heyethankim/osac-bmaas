@@ -250,11 +250,16 @@ export function ProviderAdminWorkspacePage() {
   const scheduleProvisioningCompletion = (instanceId: string, delayMs: number) => {
     clearProvisioningTimer(instanceId)
     const timeoutId = window.setTimeout(() => {
-      setInstances(
-        updateTenantUserInstance(PROVIDER_SERVICES_DEMO_TENANT, instanceId, {
-          status: 'running',
-          provisionedAt: new Date().toISOString(),
-        }),
+      setInstances((current) =>
+        updateTenantUserInstance(
+          PROVIDER_SERVICES_DEMO_TENANT,
+          instanceId,
+          {
+            status: 'running',
+            provisionedAt: new Date().toISOString(),
+          },
+          current,
+        ),
       )
       provisioningTimersRef.current.delete(instanceId)
     }, Math.max(0, delayMs))
@@ -262,17 +267,24 @@ export function ProviderAdminWorkspacePage() {
   }
 
   const handleProvisioningStarted = (instance: TenantInstance) => {
-    setInstances(addTenantUserInstance(PROVIDER_SERVICES_DEMO_TENANT, instance))
+    setInstances((current) =>
+      addTenantUserInstance(PROVIDER_SERVICES_DEMO_TENANT, instance, current),
+    )
     scheduleProvisioningCompletion(instance.id, LAUNCH_INSTANCE_PROVISIONING_DURATION_MS)
   }
 
   const handleNavigateToServices = (instanceId: string, serviceId: CatalogServiceId) => {
     clearProvisioningTimer(instanceId)
-    setInstances(
-      updateTenantUserInstance(PROVIDER_SERVICES_DEMO_TENANT, instanceId, {
-        status: 'provisioning',
-        provisionedAt: null,
-      }),
+    setInstances((current) =>
+      updateTenantUserInstance(
+        PROVIDER_SERVICES_DEMO_TENANT,
+        instanceId,
+        {
+          status: 'provisioning',
+          provisionedAt: null,
+        },
+        current,
+      ),
     )
     scheduleProvisioningCompletion(instanceId, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS)
     handleNavChange(getServicesNavId(serviceId))

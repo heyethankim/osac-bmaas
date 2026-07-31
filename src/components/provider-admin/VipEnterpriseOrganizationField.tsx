@@ -1,10 +1,12 @@
 import {
   Alert,
   AlertActionLink,
+  Button,
   Checkbox,
   Content,
   FormGroup,
 } from '@patternfly/react-core'
+import { InfoCircleIcon } from '@patternfly/react-icons/dist/esm/icons/info-circle-icon'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 
 export function normalizeEnterpriseTenantIds(
@@ -104,24 +106,30 @@ export function VipEnterpriseOrganizationField({
         </div>
       </FormGroup>
 
-      <Alert
-        variant="info"
-        isInline
-        title="Need to add a new enterprise?"
-        className="provider-admin-catalog__vip-orgs-ack"
-        actionLinks={
-          onRegisterOrganization ? (
-            <AlertActionLink component="button" onClick={onRegisterOrganization}>
+      <div className="provider-admin-catalog__vip-orgs-hint">
+        <span className="provider-admin-catalog__vip-orgs-hint-icon" aria-hidden>
+          <InfoCircleIcon />
+        </span>
+        <div className="provider-admin-catalog__vip-orgs-hint-content">
+          <Content component="p" className="provider-admin-catalog__vip-orgs-hint-title">
+            Need to add a new enterprise?
+          </Content>
+          <Content component="p" className="provider-admin-catalog__vip-orgs-hint-body">
+            Register the organization on the Organizations page first, then return here to select
+            it.
+          </Content>
+          {onRegisterOrganization ? (
+            <Button
+              variant="link"
+              isInline
+              className="provider-admin-catalog__vip-orgs-hint-link"
+              onClick={onRegisterOrganization}
+            >
               Go to Organizations
-            </AlertActionLink>
-          ) : undefined
-        }
-      >
-        <Content component="p">
-          Register the organization on the Organizations page first. After it is created, return to
-          this wizard and select it here.
-        </Content>
-      </Alert>
+            </Button>
+          ) : null}
+        </div>
+      </div>
     </div>
   )
 }

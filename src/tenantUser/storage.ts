@@ -97,6 +97,12 @@ function isTenantInstance(value: unknown): value is TenantInstance {
           typeof (row as { label?: unknown }).label === 'string' &&
           typeof (row as { value?: unknown }).value === 'string',
       ))
+  const validStatus =
+    instance.status === 'provisioning' ||
+    instance.status === 'restarting' ||
+    instance.status === 'running' ||
+    instance.status === 'stopped' ||
+    instance.status === 'failed'
 
   return (
     typeof instance.id === 'string' &&
@@ -113,10 +119,7 @@ function isTenantInstance(value: unknown): value is TenantInstance {
     (instance.scopeKind === undefined ||
       instance.scopeKind === 'organization' ||
       instance.scopeKind === 'project') &&
-    (instance.status === 'provisioning' ||
-      instance.status === 'restarting' ||
-      instance.status === 'running' ||
-      instance.status === 'failed') &&
+    validStatus &&
     typeof instance.createdAt === 'string' &&
     (instance.provisionedAt === null || typeof instance.provisionedAt === 'string')
   )
@@ -260,8 +263,15 @@ export function setTenantUserInstances(slug: string, instances: TenantInstance[]
   }
 }
 
-export function addTenantUserInstance(slug: string, instance: TenantInstance): TenantInstance[] {
-  const instances = [...getTenantUserInstances(slug), instance]
+export function addTenantUserInstance(
+  slug: string,
+  instance: TenantInstance,
+  knownInstances?: TenantInstance[],
+): TenantInstance[] {
+  const source = knownInstances ?? getTenantUserInstances(slug)
+  const instances = source.some((item) => item.id === instance.id)
+    ? source.map((item) => (item.id === instance.id ? instance : item))
+    : [...source, instance]
   setTenantUserInstances(slug, instances)
   return instances
 }
@@ -270,16 +280,23 @@ export function updateTenantUserInstance(
   slug: string,
   instanceId: string,
   patch: Partial<TenantInstance>,
+  knownInstances?: TenantInstance[],
 ): TenantInstance[] {
-  const instances = getTenantUserInstances(slug).map((instance) =>
+  const source = knownInstances ?? getTenantUserInstances(slug)
+  const instances = source.map((instance) =>
     instance.id === instanceId ? { ...instance, ...patch } : instance,
   )
   setTenantUserInstances(slug, instances)
   return instances
 }
 
-export function removeTenantUserInstance(slug: string, instanceId: string): TenantInstance[] {
-  const instances = getTenantUserInstances(slug).filter((instance) => instance.id !== instanceId)
+export function removeTenantUserInstance(
+  slug: string,
+  instanceId: string,
+  knownInstances?: TenantInstance[],
+): TenantInstance[] {
+  const source = knownInstances ?? getTenantUserInstances(slug)
+  const instances = source.filter((instance) => instance.id !== instanceId)
   setTenantUserInstances(slug, instances)
   return instances
 }

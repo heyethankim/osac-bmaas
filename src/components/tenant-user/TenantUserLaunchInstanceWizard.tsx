@@ -324,6 +324,8 @@ export function TenantUserLaunchInstanceWizard({
               { label: 'Container disk image', value: form.containerDiskImage.trim() },
               { label: 'Instance type', value: form.instanceType.trim() },
               { label: 'Boot disk', value: `${form.bootDiskSizeGiB} GiB` },
+              { label: 'Image source type', value: form.imageSourceType.trim() },
+              { label: 'Run strategy', value: form.runStrategy.trim() },
               ...(form.cloudInitUserData.trim()
                 ? [{ label: 'Cloud-init', value: form.cloudInitUserData.trim() }]
                 : []),
@@ -591,6 +593,40 @@ export function TenantUserLaunchInstanceWizard({
           <FormHelperText>
             <HelperText>
               <HelperTextItem>{VM_LAUNCH_INSTANCE_DEMO.bootDiskSizeHelper}</HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        </FormGroup>
+
+        <FormGroup label="Image Source Type" fieldId="launch-vm-image-source">
+          <TextInput
+            id="launch-vm-image-source"
+            value={form.imageSourceType}
+            isDisabled
+            readOnly
+          />
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem>{VM_LAUNCH_INSTANCE_DEMO.imageSourceTypeHelper}</HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        </FormGroup>
+
+        <FormGroup label="Run Strategy" fieldId="launch-vm-run-strategy" isRequired>
+          <FormSelect
+            id="launch-vm-run-strategy"
+            value={form.runStrategy}
+            onChange={(_event, value) =>
+              setForm((current) => ({ ...current, runStrategy: value }))
+            }
+            aria-label="Run Strategy"
+          >
+            {VM_LAUNCH_INSTANCE_DEMO.runStrategyOptions.map((option) => (
+              <FormSelectOption key={option} value={option} label={option} />
+            ))}
+          </FormSelect>
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem>{VM_LAUNCH_INSTANCE_DEMO.runStrategyHelper}</HelperTextItem>
             </HelperText>
           </FormHelperText>
         </FormGroup>
@@ -1026,6 +1062,14 @@ export function TenantUserLaunchInstanceWizard({
                 <DescriptionListDescription>
                   {form.bootDiskSizeGiB} GiB
                 </DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Image source type</DescriptionListTerm>
+                <DescriptionListDescription>{form.imageSourceType.trim()}</DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Run strategy</DescriptionListTerm>
+                <DescriptionListDescription>{form.runStrategy.trim()}</DescriptionListDescription>
               </DescriptionListGroup>
               {form.cloudInitUserData.trim() ? (
                 <DescriptionListGroup>

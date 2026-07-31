@@ -55,6 +55,7 @@ import {
   getDraftServiceId,
   resolveCatalogSpecRows,
 } from '../../catalog/catalogSpecs'
+import { CatalogVmDefaultsSections } from '../catalog/CatalogVmDefaultsSections'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
 
 type CatalogItemDetailsDrawerProps = {
@@ -99,6 +100,7 @@ export function CatalogItemDetailsDrawer({
   const scopeLabel = catalog?.scope === 'vip-enterprise' ? 'VIP enterprise' : 'Global public'
   const isLive = catalog ? getCatalogItemStatus(catalog) === 'live' : false
   const catalogServiceId = catalog ? getDraftServiceId(catalog) : serviceId
+  const isVirtualMachine = catalogServiceId === 'virtual-machine'
   const specRows = catalog
     ? resolveCatalogSpecRows(catalog, { includeDetails: true })
     : []
@@ -279,7 +281,13 @@ export function CatalogItemDetailsDrawer({
           ) : null}
         </DescriptionList>
 
-        {specRows.length > 0 ? (
+        {isVirtualMachine ? (
+          <>
+            <Divider className="provider-admin-catalog-items__drawer-divider" />
+            <CatalogVmDefaultsSections idPrefix="provider-admin-catalog-vm" />
+            <Divider className="provider-admin-catalog-items__drawer-divider" />
+          </>
+        ) : specRows.length > 0 ? (
           <>
             <Divider className="provider-admin-catalog-items__drawer-divider" />
             <DescriptionList

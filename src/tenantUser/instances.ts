@@ -263,7 +263,7 @@ export function getTenantInstanceActions(
         },
       },
       {
-        title: 'Terminate',
+        title: 'Delete',
         isDanger: true,
         isAriaDisabled: isBusy,
         onClick: () => {
@@ -279,6 +279,13 @@ export function getTenantInstanceActions(
         title: 'View details',
         onClick: () => {
           onViewDetails?.(instance)
+        },
+      },
+      {
+        title: 'Start',
+        isAriaDisabled: !isStopped,
+        onClick: () => {
+          powerActions?.onStart?.(instance.id)
         },
       },
       {
@@ -321,8 +328,22 @@ export function getTenantInstanceActions(
       },
     },
     {
-      title: 'Restart instance',
+      title: 'Start',
+      isAriaDisabled: !isStopped,
+      onClick: () => {
+        powerActions?.onStart?.(instance.id)
+      },
+    },
+    {
+      title: 'Stop',
       isAriaDisabled: !isRunning,
+      onClick: () => {
+        powerActions?.onStop?.(instance.id)
+      },
+    },
+    {
+      title: 'Restart instance',
+      isAriaDisabled: !isRunning && !isStopped,
       onClick: () => {
         onRestart?.(instance.id)
       },

@@ -257,7 +257,6 @@ function getCatalogItemActions(
   onTogglePublish: () => void,
   onDelete: () => void,
 ): IAction[] {
-  const isGlobalPublic = item.scope === 'global-public'
   const isUnpublished = getCatalogItemStatus(item) === 'unpublished'
   const actions: IAction[] = [
     {
@@ -270,7 +269,7 @@ function getCatalogItemActions(
     },
   ]
 
-  if (!isGlobalPublic) {
+  if (item.scope !== 'vip-enterprise') {
     actions.push({
       title: 'Assign to organization',
       onClick: onAssignToOrganization,

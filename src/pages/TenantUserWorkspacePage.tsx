@@ -140,11 +140,16 @@ export function TenantUserWorkspacePage() {
   const markInstanceRunning = useCallback(
     (instanceId: string) => {
       clearProvisioningTimer(instanceId)
-      setInstances(
-        updateTenantUserInstance(tenantSlug, instanceId, {
-          status: 'running',
-          provisionedAt: new Date().toISOString(),
-        }),
+      setInstances((current) =>
+        updateTenantUserInstance(
+          tenantSlug,
+          instanceId,
+          {
+            status: 'running',
+            provisionedAt: new Date().toISOString(),
+          },
+          current,
+        ),
       )
     },
     [clearProvisioningTimer, tenantSlug],
@@ -226,7 +231,7 @@ export function TenantUserWorkspacePage() {
 
   const handleProvisioningStarted = useCallback(
     (instance: TenantInstance) => {
-      setInstances(addTenantUserInstance(tenantSlug, instance))
+      setInstances((current) => addTenantUserInstance(tenantSlug, instance, current))
       scheduleProvisioningCompletion(instance.id, LAUNCH_INSTANCE_PROVISIONING_DURATION_MS)
     },
     [scheduleProvisioningCompletion, tenantSlug],
@@ -235,11 +240,16 @@ export function TenantUserWorkspacePage() {
   const handleDismissDuringProvisioning = useCallback(
     (instanceId: string, serviceId: CatalogServiceId) => {
       clearProvisioningTimer(instanceId)
-      setInstances(
-        updateTenantUserInstance(tenantSlug, instanceId, {
-          status: 'provisioning',
-          provisionedAt: null,
-        }),
+      setInstances((current) =>
+        updateTenantUserInstance(
+          tenantSlug,
+          instanceId,
+          {
+            status: 'provisioning',
+            provisionedAt: null,
+          },
+          current,
+        ),
       )
       scheduleProvisioningCompletion(instanceId, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS)
       handleNavigateToInstances({ serviceId })
@@ -255,11 +265,16 @@ export function TenantUserWorkspacePage() {
   const handleWizardFinished = useCallback(
     (instanceId: string, serviceId: CatalogServiceId) => {
       clearProvisioningTimer(instanceId)
-      setInstances(
-        updateTenantUserInstance(tenantSlug, instanceId, {
-          status: 'provisioning',
-          provisionedAt: null,
-        }),
+      setInstances((current) =>
+        updateTenantUserInstance(
+          tenantSlug,
+          instanceId,
+          {
+            status: 'provisioning',
+            provisionedAt: null,
+          },
+          current,
+        ),
       )
       scheduleProvisioningCompletion(instanceId, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS)
       handleNavigateToInstances({ serviceId })
