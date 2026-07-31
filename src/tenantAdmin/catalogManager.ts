@@ -1,3 +1,4 @@
+import type { CatalogFieldPolicy } from '../catalog/catalogPublishConfig'
 import type { CatalogServiceId, PublishCatalogScope } from '../providerSetup/templateDemo'
 import { CATALOG_SERVICE_LABELS } from '../providerSetup/templateDemo'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
@@ -32,6 +33,9 @@ export type TenantCatalogGovernanceItem = {
   description?: string
   templateRefId: string
   templateName: string
+  instanceTypeLabel?: string
+  diskImageLabel?: string
+  fieldPolicies?: CatalogFieldPolicy[]
   /** Card/table configuration rows (service-aware). */
   specRows: CatalogSpecRow[]
   /** Legacy hardware fields kept for search/summary helpers. */
@@ -130,6 +134,9 @@ function mapProviderCatalogToGovernanceItem(
     description: draft.description,
     templateRefId: draft.templateRefId,
     templateName: draft.templateName,
+    instanceTypeLabel: draft.instanceTypeLabel,
+    diskImageLabel: draft.diskImageLabel,
+    fieldPolicies: draft.fieldPolicies,
     specRows,
     categoryLabel: specRows.map((row) => row.value).join(' · '),
     cpu: specRows[0]?.value ?? '—',
@@ -213,6 +220,8 @@ export function getTenantCatalogItemDetailSpecRows(
       serviceId: item.serviceId,
       templateRefId: item.templateRefId,
       templateName: item.templateName,
+      instanceTypeLabel: item.instanceTypeLabel,
+      diskImageLabel: item.diskImageLabel,
     },
     { includeDetails: true },
   )

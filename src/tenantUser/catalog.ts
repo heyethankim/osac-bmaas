@@ -1,5 +1,6 @@
 import type { CatalogSpecRow } from '../catalog/catalogSpecs'
 import { resolveCatalogSpecRows } from '../catalog/catalogSpecs'
+import type { CatalogFieldPolicy } from '../catalog/catalogPublishConfig'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../providerSetup/storage'
 import {
@@ -36,6 +37,9 @@ export type TenantUserCatalogCard = {
   catalogItemId: string
   templateRefId: string
   templateName: string
+  instanceTypeLabel?: string
+  diskImageLabel?: string
+  fieldPolicies?: CatalogFieldPolicy[]
   rateCard: RateCard
 }
 
@@ -165,6 +169,9 @@ export function getTenantUserCatalogCardFromDraft(
     catalogItemId: catalog.catalogItemId,
     templateRefId: catalog.templateRefId,
     templateName: catalog.templateName,
+    instanceTypeLabel: catalog.instanceTypeLabel,
+    diskImageLabel: catalog.diskImageLabel,
+    fieldPolicies: catalog.fieldPolicies,
     rateCard,
   }
 }

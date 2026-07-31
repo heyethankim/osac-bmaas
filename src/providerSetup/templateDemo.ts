@@ -1,6 +1,8 @@
+import type { CatalogFieldPolicy } from '../catalog/catalogPublishConfig'
 import type { CatalogNetworkPolicy } from '../providerAdmin/catalogNetworkPolicy'
 
 export type { CatalogNetworkPolicy }
+export type { CatalogFieldPolicy }
 
 export type HardwareProfileCategory = 'compute' | 'gpu-ai'
 
@@ -316,7 +318,9 @@ export function getCatalogServiceOffering(serviceId: CatalogServiceId): CatalogS
 
 export const PUBLISH_CATALOG_STEPS = [
   { id: 'service', label: 'Service' },
-  { id: 'template', label: 'Template' },
+  { id: 'template', label: 'Provisioning' },
+  { id: 'hardware-os', label: 'Hardware & OS' },
+  { id: 'field-policies', label: 'Lock fields' },
   { id: 'display-name', label: 'Name' },
   { id: 'publish-scope', label: 'Visibility' },
   { id: 'review', label: 'Review' },
@@ -349,4 +353,12 @@ export type PublishedTemplatePayload = {
   vipOrganizationIds?: string[]
   /** Defaults to unpublished. Publish later from the catalog. */
   status?: 'live' | 'unpublished'
+  /** Instance type / hardware flavor shown to tenants. */
+  instanceTypeId?: string
+  instanceTypeLabel?: string
+  /** Disk / OS image shown to tenants. */
+  diskImageId?: string
+  diskImageLabel?: string
+  /** Locked vs exposed field policies for launch. */
+  fieldPolicies?: CatalogFieldPolicy[]
 }

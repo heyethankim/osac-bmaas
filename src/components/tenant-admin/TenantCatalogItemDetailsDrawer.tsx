@@ -24,7 +24,8 @@ import {
 import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
 import { RocketIcon } from '@patternfly/react-icons/dist/esm/icons/rocket-icon'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
-import { getCatalogProfileFieldLabel, getCatalogSpecsSectionLabel } from '../../catalog/catalogSpecs'
+import { getCatalogSpecsSectionLabel } from '../../catalog/catalogSpecs'
+import { formatCatalogFieldPolicyMode } from '../../catalog/catalogPublishConfig'
 import { CatalogVmDefaultsSections } from '../catalog/CatalogVmDefaultsSections'
 import { NetworkFieldLockButton } from '../catalog/NetworkFieldLockButton'
 import { CatalogPublishScopeIcon } from '../provider-admin/CatalogPublishScopeIcon'
@@ -77,11 +78,16 @@ export function TenantCatalogItemDetailsDrawer({
     : []
   const virtualNetworkId = item?.networkPolicy.virtualNetwork.id
   const specRows = item ? getTenantCatalogItemDetailSpecRows(item) : []
+  const displaySpecRows =
+    item?.instanceTypeLabel || item?.diskImageLabel
+      ? specRows.filter(
+          (row) => row.label !== 'Instance type' && row.label !== 'Disk image',
+        )
+      : specRows
   const isVirtualMachine = item?.serviceId === 'virtual-machine'
   const specsSectionLabel = item
     ? getCatalogSpecsSectionLabel(item.serviceId)
     : 'Hardware specifications'
-  const profileLabel = item ? getCatalogProfileFieldLabel(item.serviceId) : 'Linked template'
 
   const panelContent = item ? (
     <DrawerPanelContent
@@ -158,18 +164,51 @@ export function TenantCatalogItemDetailsDrawer({
               </span>
             </DescriptionListDescription>
           </DescriptionListGroup>
-          <DescriptionListGroup>
-            <DescriptionListTerm>{profileLabel}</DescriptionListTerm>
-            <DescriptionListDescription>{item.templateName}</DescriptionListDescription>
-          </DescriptionListGroup>
+          {item.instanceTypeLabel ? (
+            <DescriptionListGroup>
+              <DescriptionListTerm>Instance type</DescriptionListTerm>
+              <DescriptionListDescription>{item.instanceTypeLabel}</DescriptionListDescription>
+            </DescriptionListGroup>
+          ) : null}
+          {item.diskImageLabel ? (
+            <DescriptionListGroup>
+              <DescriptionListTerm>Disk image</DescriptionListTerm>
+              <DescriptionListDescription>{item.diskImageLabel}</DescriptionListDescription>
+            </DescriptionListGroup>
+          ) : null}
         </DescriptionList>
+
+        {item.fieldPolicies && item.fieldPolicies.length > 0 ? (
+          <>
+            <Divider className="tenant-admin-catalog-manager__drawer-divider" />
+            <DescriptionList
+              isCompact
+              className="tenant-admin-catalog-manager__drawer-dl"
+              aria-label="Launch field policies"
+            >
+              {item.fieldPolicies.map((policy) => (
+                <DescriptionListGroup key={policy.id}>
+                  <DescriptionListTerm>{policy.label}</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    <span className="tenant-admin-catalog-manager__field-policy-value">
+                      <span>{policy.defaultValue}</span>
+                      <Label color={policy.mode === 'exposed' ? 'blue' : 'grey'} isCompact>
+                        {formatCatalogFieldPolicyMode(policy.mode)}
+                      </Label>
+                    </span>
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              ))}
+            </DescriptionList>
+          </>
+        ) : null}
 
         {isVirtualMachine ? (
           <>
             <Divider className="tenant-admin-catalog-manager__drawer-divider" />
             <CatalogVmDefaultsSections idPrefix="tenant-admin-catalog-vm" />
           </>
-        ) : specRows.length > 0 ? (
+        ) : displaySpecRows.length > 0 ? (
           <>
             <Divider className="tenant-admin-catalog-manager__drawer-divider" />
             <DescriptionList
@@ -177,7 +216,7 @@ export function TenantCatalogItemDetailsDrawer({
               className="tenant-admin-catalog-manager__drawer-dl"
               aria-label={specsSectionLabel}
             >
-              {specRows.map((row) => (
+              {displaySpecRows.map((row) => (
                 <DescriptionListGroup key={row.label}>
                   <DescriptionListTerm>{row.label}</DescriptionListTerm>
                   <DescriptionListDescription>{row.value}</DescriptionListDescription>

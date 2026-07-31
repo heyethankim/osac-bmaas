@@ -27,6 +27,7 @@ import {
   normalizeCatalogNetworkPolicy,
   resolveCatalogNetworkPolicy,
 } from '../providerAdmin/catalogNetworkPolicy'
+import type { CatalogFieldPolicy } from '../catalog/catalogPublishConfig'
 import type {
   CatalogServiceId,
   PublishCatalogScope,
@@ -210,6 +211,14 @@ export type ProviderCatalogDraft = {
   status?: CatalogItemStatus
   /** Optional for items created before network policy existed. */
   networkPolicy?: CatalogNetworkPolicy
+  /** Instance type / hardware flavor (optional; falls back to template hardware). */
+  instanceTypeId?: string
+  instanceTypeLabel?: string
+  /** Disk / OS image (optional). */
+  diskImageId?: string
+  diskImageLabel?: string
+  /** Locked vs exposed field policies for launch. */
+  fieldPolicies?: CatalogFieldPolicy[]
 }
 
 export function getCatalogItemNetworkPolicy(
@@ -361,6 +370,13 @@ export function duplicateProviderCatalogItem(catalogItemId: string): ProviderCat
     ...(source.enterpriseTenantId ? { enterpriseTenantId: source.enterpriseTenantId } : {}),
     ...(source.enterpriseTenantIds?.length
       ? { enterpriseTenantIds: [...source.enterpriseTenantIds] }
+      : {}),
+    ...(source.instanceTypeId ? { instanceTypeId: source.instanceTypeId } : {}),
+    ...(source.instanceTypeLabel ? { instanceTypeLabel: source.instanceTypeLabel } : {}),
+    ...(source.diskImageId ? { diskImageId: source.diskImageId } : {}),
+    ...(source.diskImageLabel ? { diskImageLabel: source.diskImageLabel } : {}),
+    ...(source.fieldPolicies?.length
+      ? { fieldPolicies: source.fieldPolicies.map((policy) => ({ ...policy })) }
       : {}),
   }
 

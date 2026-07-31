@@ -73,10 +73,36 @@ export function getDraftServiceId(
 }
 
 export function resolveCatalogSpecRows(
-  item: Pick<ProviderCatalogDraft, 'serviceId' | 'templateRefId' | 'templateName'>,
+  item: Pick<
+    ProviderCatalogDraft,
+    | 'serviceId'
+    | 'templateRefId'
+    | 'templateName'
+    | 'instanceTypeLabel'
+    | 'diskImageLabel'
+  >,
   options?: { includeDetails?: boolean },
 ): CatalogSpecRow[] {
   const serviceId = getDraftServiceId(item)
+
+  if (item.instanceTypeLabel || item.diskImageLabel) {
+    const rows: CatalogSpecRow[] = []
+    if (item.instanceTypeLabel) {
+      rows.push({ label: 'Instance type', value: item.instanceTypeLabel })
+    }
+    if (item.diskImageLabel) {
+      rows.push({ label: 'Disk image', value: item.diskImageLabel })
+    }
+
+    if (serviceId === 'cluster' && options?.includeDetails) {
+      return [...rows, ...CLUSTER_NODE_SETS_DETAIL_ROWS]
+    }
+    if (serviceId === 'virtual-machine' && options?.includeDetails) {
+      return [...rows, ...VM_NETWORK_ATTACHMENTS_DETAIL_ROWS]
+    }
+
+    return rows
+  }
 
   if (serviceId === 'cluster') {
     return options?.includeDetails
@@ -100,7 +126,14 @@ export function resolveCatalogSpecRows(
 }
 
 export function formatCatalogConfigurationSummary(
-  item: Pick<ProviderCatalogDraft, 'serviceId' | 'templateRefId' | 'templateName'>,
+  item: Pick<
+    ProviderCatalogDraft,
+    | 'serviceId'
+    | 'templateRefId'
+    | 'templateName'
+    | 'instanceTypeLabel'
+    | 'diskImageLabel'
+  >,
 ): string {
   return resolveCatalogSpecRows(item)
     .map((row) => row.value)

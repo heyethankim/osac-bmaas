@@ -176,6 +176,11 @@ export function ProviderAdminWorkspacePage() {
       ...(payload.enterpriseTenantIds?.length
         ? { enterpriseTenantIds: payload.enterpriseTenantIds }
         : {}),
+      ...(payload.instanceTypeId ? { instanceTypeId: payload.instanceTypeId } : {}),
+      ...(payload.instanceTypeLabel ? { instanceTypeLabel: payload.instanceTypeLabel } : {}),
+      ...(payload.diskImageId ? { diskImageId: payload.diskImageId } : {}),
+      ...(payload.diskImageLabel ? { diskImageLabel: payload.diskImageLabel } : {}),
+      ...(payload.fieldPolicies?.length ? { fieldPolicies: payload.fieldPolicies } : {}),
       status,
       createdAt: new Date().toISOString(),
     }

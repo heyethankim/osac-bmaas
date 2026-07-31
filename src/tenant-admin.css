@@ -820,6 +820,13 @@
   margin-block-start: 0;
 }
 
+.tenant-admin-catalog-manager__field-policy-value {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm);
+  flex-wrap: wrap;
+}
+
 .tenant-admin-catalog-manager__drawer-dl .pf-v6-c-description-list__group {
   display: flex;
   flex-direction: column;
@@ -1494,6 +1501,13 @@
 
 .tenant-user-catalog__drawer-dl {
   margin-block-start: 0;
+}
+
+.tenant-user-catalog__field-policy-value {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm);
+  flex-wrap: wrap;
 }
 
 .tenant-user-catalog__drawer-dl .pf-v6-c-description-list__group {

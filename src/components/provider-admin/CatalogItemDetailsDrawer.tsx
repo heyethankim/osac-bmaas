@@ -50,11 +50,15 @@ import {
   type CatalogNetworkResourceOption,
 } from '../../providerAdmin/catalogNetworkPolicy'
 import {
-  getCatalogProfileFieldLabel,
   getCatalogSpecsSectionLabel,
   getDraftServiceId,
   resolveCatalogSpecRows,
 } from '../../catalog/catalogSpecs'
+import {
+  formatCatalogFieldPolicyMode,
+  getProvisioningTemplatePresentation,
+} from '../../catalog/catalogPublishConfig'
+import { findCatalogLinkedTemplate } from '../../catalog/hardwareSpecs'
 import { CatalogVmDefaultsSections } from '../catalog/CatalogVmDefaultsSections'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
 
@@ -104,6 +108,12 @@ export function CatalogItemDetailsDrawer({
   const specRows = catalog
     ? resolveCatalogSpecRows(catalog, { includeDetails: true })
     : []
+  const displaySpecRows =
+    catalog?.instanceTypeLabel || catalog?.diskImageLabel
+      ? specRows.filter(
+          (row) => row.label !== 'Instance type' && row.label !== 'Disk image',
+        )
+      : specRows
   const specsSectionLabel = getCatalogSpecsSectionLabel(catalogServiceId)
   const canLinkToBareMetalTemplate =
     Boolean(onNavigateToLinkedTemplate) && catalogServiceId === 'baremetal'
@@ -287,7 +297,7 @@ export function CatalogItemDetailsDrawer({
             <CatalogVmDefaultsSections idPrefix="provider-admin-catalog-vm" />
             <Divider className="provider-admin-catalog-items__drawer-divider" />
           </>
-        ) : specRows.length > 0 ? (
+        ) : displaySpecRows.length > 0 ? (
           <>
             <Divider className="provider-admin-catalog-items__drawer-divider" />
             <DescriptionList
@@ -295,7 +305,7 @@ export function CatalogItemDetailsDrawer({
               className="provider-admin-catalog-items__drawer-dl"
               aria-label={specsSectionLabel}
             >
-              {specRows.map((row) => (
+              {displaySpecRows.map((row) => (
                 <DescriptionListGroup key={row.label}>
                   <DescriptionListTerm>{row.label}</DescriptionListTerm>
                   <DescriptionListDescription>{row.value}</DescriptionListDescription>
@@ -312,9 +322,7 @@ export function CatalogItemDetailsDrawer({
           aria-label="Catalog item publishing details"
         >
           <DescriptionListGroup>
-            <DescriptionListTerm>
-              {getCatalogProfileFieldLabel(catalogServiceId)}
-            </DescriptionListTerm>
+            <DescriptionListTerm>Provisioning template</DescriptionListTerm>
             <DescriptionListDescription>
               {canLinkToBareMetalTemplate && onNavigateToLinkedTemplate ? (
                 <Button
@@ -328,13 +336,50 @@ export function CatalogItemDetailsDrawer({
                     })
                   }
                 >
-                  {catalog.templateName}
+                  {
+                    getProvisioningTemplatePresentation(
+                      findCatalogLinkedTemplate(catalog.templateRefId, catalog.templateName),
+                      catalogServiceId,
+                    ).title
+                  }
                 </Button>
               ) : (
-                catalog.templateName
+                getProvisioningTemplatePresentation(
+                  findCatalogLinkedTemplate(catalog.templateRefId, catalog.templateName),
+                  catalogServiceId,
+                ).title
               )}
             </DescriptionListDescription>
           </DescriptionListGroup>
+          {catalog.instanceTypeLabel ? (
+            <DescriptionListGroup>
+              <DescriptionListTerm>Instance type</DescriptionListTerm>
+              <DescriptionListDescription>{catalog.instanceTypeLabel}</DescriptionListDescription>
+            </DescriptionListGroup>
+          ) : null}
+          {catalog.diskImageLabel ? (
+            <DescriptionListGroup>
+              <DescriptionListTerm>Disk image</DescriptionListTerm>
+              <DescriptionListDescription>{catalog.diskImageLabel}</DescriptionListDescription>
+            </DescriptionListGroup>
+          ) : null}
+          {catalog.fieldPolicies && catalog.fieldPolicies.length > 0 ? (
+            <DescriptionListGroup>
+              <DescriptionListTerm>Field policies</DescriptionListTerm>
+              <DescriptionListDescription>
+                <ul className="provider-admin-catalog-items__field-policy-list">
+                  {catalog.fieldPolicies.map((policy) => (
+                    <li key={policy.id}>
+                      <span>{policy.label}</span>
+                      <Label color={policy.mode === 'exposed' ? 'blue' : 'grey'} isCompact>
+                        {formatCatalogFieldPolicyMode(policy.mode)}
+                      </Label>
+                    </li>
+                  ))}
+                </ul>
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+          ) : null}
           <DescriptionListGroup>
             <DescriptionListTerm>Rate</DescriptionListTerm>
             <DescriptionListDescription>

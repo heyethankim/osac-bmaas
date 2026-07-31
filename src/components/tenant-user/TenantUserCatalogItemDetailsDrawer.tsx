@@ -23,10 +23,10 @@ import {
 } from '@patternfly/react-core'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import {
-  getCatalogProfileFieldLabel,
   getCatalogSpecsSectionLabel,
   resolveCatalogSpecRows,
 } from '../../catalog/catalogSpecs'
+import { formatCatalogFieldPolicyMode } from '../../catalog/catalogPublishConfig'
 import { CatalogVmDefaultsSections } from '../catalog/CatalogVmDefaultsSections'
 import type { TenantUserCatalogCard } from '../../tenantUser/catalog'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
@@ -55,17 +55,22 @@ export function TenantUserCatalogItemDetailsDrawer({
           serviceId: catalogItem.serviceId,
           templateRefId: catalogItem.templateRefId,
           templateName: catalogItem.templateName,
+          instanceTypeLabel: catalogItem.instanceTypeLabel,
+          diskImageLabel: catalogItem.diskImageLabel,
         },
         { includeDetails: catalogItem.serviceId !== 'baremetal' },
       )
     : []
+  const displaySpecRows =
+    catalogItem?.instanceTypeLabel || catalogItem?.diskImageLabel
+      ? specRows.filter(
+          (row) => row.label !== 'Instance type' && row.label !== 'Disk image',
+        )
+      : specRows
   const isVirtualMachine = catalogItem?.serviceId === 'virtual-machine'
   const specsSectionLabel = catalogItem
     ? getCatalogSpecsSectionLabel(catalogItem.serviceId)
     : 'Hardware specifications'
-  const profileLabel = catalogItem
-    ? getCatalogProfileFieldLabel(catalogItem.serviceId)
-    : 'Linked template'
 
   const panelContent = catalogItem ? (
     <DrawerPanelContent
@@ -133,18 +138,53 @@ export function TenantUserCatalogItemDetailsDrawer({
               </Label>
             </DescriptionListDescription>
           </DescriptionListGroup>
-          <DescriptionListGroup>
-            <DescriptionListTerm>{profileLabel}</DescriptionListTerm>
-            <DescriptionListDescription>{catalogItem.templateName}</DescriptionListDescription>
-          </DescriptionListGroup>
+          {catalogItem.instanceTypeLabel ? (
+            <DescriptionListGroup>
+              <DescriptionListTerm>Instance type</DescriptionListTerm>
+              <DescriptionListDescription>
+                {catalogItem.instanceTypeLabel}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+          ) : null}
+          {catalogItem.diskImageLabel ? (
+            <DescriptionListGroup>
+              <DescriptionListTerm>Disk image</DescriptionListTerm>
+              <DescriptionListDescription>{catalogItem.diskImageLabel}</DescriptionListDescription>
+            </DescriptionListGroup>
+          ) : null}
         </DescriptionList>
+
+        {catalogItem.fieldPolicies && catalogItem.fieldPolicies.length > 0 ? (
+          <>
+            <Divider className="tenant-user-catalog__drawer-divider" />
+            <DescriptionList
+              isCompact
+              className="tenant-user-catalog__drawer-dl"
+              aria-label="Launch field policies"
+            >
+              {catalogItem.fieldPolicies.map((policy) => (
+                <DescriptionListGroup key={policy.id}>
+                  <DescriptionListTerm>{policy.label}</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    <span className="tenant-user-catalog__field-policy-value">
+                      <span>{policy.defaultValue}</span>
+                      <Label color={policy.mode === 'exposed' ? 'blue' : 'grey'} isCompact>
+                        {formatCatalogFieldPolicyMode(policy.mode)}
+                      </Label>
+                    </span>
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              ))}
+            </DescriptionList>
+          </>
+        ) : null}
 
         {isVirtualMachine ? (
           <>
             <Divider className="tenant-user-catalog__drawer-divider" />
             <CatalogVmDefaultsSections idPrefix="tenant-user-catalog-vm" />
           </>
-        ) : specRows.length > 0 ? (
+        ) : displaySpecRows.length > 0 ? (
           <>
             <Divider className="tenant-user-catalog__drawer-divider" />
             <DescriptionList
@@ -152,7 +192,7 @@ export function TenantUserCatalogItemDetailsDrawer({
               className="tenant-user-catalog__drawer-dl"
               aria-label={specsSectionLabel}
             >
-              {specRows.map((row) => (
+              {displaySpecRows.map((row) => (
                 <DescriptionListGroup key={row.label}>
                   <DescriptionListTerm>{row.label}</DescriptionListTerm>
                   <DescriptionListDescription>{row.value}</DescriptionListDescription>

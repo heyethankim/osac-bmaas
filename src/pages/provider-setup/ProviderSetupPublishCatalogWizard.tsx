@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowRightIcon } from '@patternfly/react-icons/dist/esm/icons/arrow-right-icon'
 import { CatalogIcon } from '@patternfly/react-icons/dist/esm/icons/catalog-icon'
+import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
+import { OutlinedQuestionCircleIcon } from '@patternfly/react-icons/dist/esm/icons/outlined-question-circle-icon'
+import { UnlockIcon } from '@patternfly/react-icons/dist/esm/icons/unlock-icon'
 import {
   Alert,
+  Button,
   Card,
   CardBody,
   Content,
@@ -10,17 +14,18 @@ import {
   DescriptionListDescription,
   DescriptionListGroup,
   DescriptionListTerm,
+  Divider,
   Form,
   FormGroup,
   Icon,
   Label,
   Modal,
   ModalVariant,
-  Radio,
   Spinner,
   TextArea,
   TextInput,
   Title,
+  Tooltip,
   Wizard,
   WizardHeader,
   WizardStep,
@@ -31,9 +36,14 @@ import {
   normalizeEnterpriseTenantIds,
   VipEnterpriseOrganizationField,
 } from '../../components/provider-admin/VipEnterpriseOrganizationField'
-import { CatalogHardwareSpecsList } from '../../components/catalog/CatalogHardwareSpecsList'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
-import { resolveHardwareSpecsFromTemplate } from '../../catalog/hardwareSpecs'
+import {
+  buildDefaultCatalogFieldPolicies,
+  getCatalogDiskImageOptions,
+  getCatalogInstanceTypeOptions,
+  getProvisioningTemplatePresentation,
+  type CatalogFieldPolicy,
+} from '../../catalog/catalogPublishConfig'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import {
   CATALOG_SERVICE_OFFERINGS,
@@ -78,6 +88,9 @@ export function ProviderSetupPublishCatalogWizard({
 }: ProviderSetupPublishCatalogWizardProps) {
   const [selectedServiceId, setSelectedServiceId] = useState<CatalogServiceId | null>(null)
   const [selectedTemplateRefId, setSelectedTemplateRefId] = useState('')
+  const [selectedInstanceTypeId, setSelectedInstanceTypeId] = useState('')
+  const [selectedDiskImageId, setSelectedDiskImageId] = useState('')
+  const [fieldPolicies, setFieldPolicies] = useState<CatalogFieldPolicy[]>([])
   const [displayName, setDisplayName] = useState('')
   const [description, setDescription] = useState('')
   const [publishScope, setPublishScope] = useState<PublishCatalogScope>('global-public')
@@ -85,6 +98,15 @@ export function ProviderSetupPublishCatalogWizard({
 
   const selectedTemplate =
     templates.find((template) => template.templateRefId === selectedTemplateRefId) ?? null
+  const instanceTypeOptions = useMemo(
+    () => getCatalogInstanceTypeOptions(selectedServiceId),
+    [selectedServiceId],
+  )
+  const diskImageOptions = useMemo(() => getCatalogDiskImageOptions(), [])
+  const selectedInstanceType =
+    instanceTypeOptions.find((option) => option.id === selectedInstanceTypeId) ?? null
+  const selectedDiskImage =
+    diskImageOptions.find((option) => option.id === selectedDiskImageId) ?? null
   const isVipEnterprise = publishScope === 'vip-enterprise'
   const selectedVipOrganizations = useMemo(
     () =>
@@ -95,7 +117,19 @@ export function ProviderSetupPublishCatalogWizard({
   )
   const isVipUnassigned = isVipEnterprise && enterpriseTenantIds.length === 0
   const canCreateCatalogItem =
-    Boolean(selectedServiceId) && Boolean(selectedTemplate) && Boolean(displayName.trim())
+    Boolean(selectedServiceId) &&
+    Boolean(selectedTemplate) &&
+    Boolean(selectedInstanceType) &&
+    Boolean(selectedDiskImage) &&
+    Boolean(displayName.trim())
+  const hasLockableParameters = fieldPolicies.length > 0
+  const publishSteps = useMemo(
+    () =>
+      PUBLISH_CATALOG_STEPS.filter(
+        (step) => step.id !== 'field-policies' || hasLockableParameters,
+      ),
+    [hasLockableParameters],
+  )
 
   const selectVipEnterprise = () => {
     setPublishScope('vip-enterprise')
@@ -113,6 +147,9 @@ export function ProviderSetupPublishCatalogWizard({
   const resetWizard = () => {
     setSelectedServiceId(null)
     setSelectedTemplateRefId('')
+    setSelectedInstanceTypeId('')
+    setSelectedDiskImageId('')
+    setFieldPolicies([])
     setDisplayName('')
     setDescription('')
     setPublishScope('global-public')
@@ -180,8 +217,57 @@ export function ProviderSetupPublishCatalogWizard({
     setDescription(selectedTemplate.description)
   }, [selectedTemplate?.templateRefId, defaultDisplayName])
 
+  useEffect(() => {
+    if (!selectedServiceId) {
+      setSelectedInstanceTypeId('')
+      setSelectedDiskImageId('')
+      setFieldPolicies([])
+      return
+    }
+
+    const nextInstanceOptions = getCatalogInstanceTypeOptions(selectedServiceId)
+    const nextDiskOptions = getCatalogDiskImageOptions()
+    setSelectedInstanceTypeId(nextInstanceOptions[0]?.id ?? '')
+    setSelectedDiskImageId(nextDiskOptions[0]?.id ?? '')
+  }, [selectedServiceId])
+
+  useEffect(() => {
+    if (!selectedServiceId || !selectedTemplate) {
+      setFieldPolicies([])
+      return
+    }
+
+    const provisionerParameters = getProvisioningTemplatePresentation(
+      selectedTemplate,
+      selectedServiceId,
+    ).parameters
+
+    setFieldPolicies((current) => {
+      const defaults = buildDefaultCatalogFieldPolicies({ provisionerParameters })
+
+      if (current.length === 0) {
+        return defaults
+      }
+
+      return defaults.map((policy) => {
+        const existing = current.find((entry) => entry.id === policy.id)
+        if (!existing) {
+          return policy
+        }
+
+        return { ...policy, mode: existing.mode, defaultValue: existing.defaultValue }
+      })
+    })
+  }, [selectedServiceId, selectedTemplate?.templateRefId])
+
   const handleCreateCatalogItem = () => {
-    if (!canCreateCatalogItem || !selectedServiceId || !selectedTemplate) {
+    if (
+      !canCreateCatalogItem ||
+      !selectedServiceId ||
+      !selectedTemplate ||
+      !selectedInstanceType ||
+      !selectedDiskImage
+    ) {
       return
     }
 
@@ -196,6 +282,11 @@ export function ProviderSetupPublishCatalogWizard({
       scope: publishScope,
       rateCard: resolveRateCard(selectedTemplate),
       status: 'unpublished',
+      instanceTypeId: selectedInstanceType.id,
+      instanceTypeLabel: `${selectedInstanceType.label} (${selectedInstanceType.detail})`,
+      diskImageId: selectedDiskImage.id,
+      diskImageLabel: selectedDiskImage.label,
+      fieldPolicies,
       ...(isVipEnterprise && enterpriseTenantIds.length > 0
         ? {
             enterpriseTenantId: enterpriseTenantIds[0],
@@ -209,6 +300,24 @@ export function ProviderSetupPublishCatalogWizard({
           }
         : {}),
     })
+  }
+
+  const toggleFieldPolicyMode = (policyId: string) => {
+    setFieldPolicies((current) =>
+      current.map((policy) =>
+        policy.id === policyId
+          ? { ...policy, mode: policy.mode === 'exposed' ? 'locked' : 'exposed' }
+          : policy,
+      ),
+    )
+  }
+
+  const updateFieldPolicyValue = (policyId: string, defaultValue: string) => {
+    setFieldPolicies((current) =>
+      current.map((policy) =>
+        policy.id === policyId ? { ...policy, defaultValue } : policy,
+      ),
+    )
   }
 
   function renderStepContent(stepId: (typeof PUBLISH_CATALOG_STEPS)[number]['id']) {
@@ -281,55 +390,213 @@ export function ProviderSetupPublishCatalogWizard({
         return (
           <div className="provider-setup-template__publish-template-step">
             <Content component="p" className="provider-setup-template__publish-step-lede">
-              Choose the master template to link to this catalog item.
+              Choose how this offering is provisioned.
             </Content>
             <div
               className="provider-setup-template__card-group"
               role="radiogroup"
-              aria-label="Master template"
+              aria-label="Provisioning template"
             >
               {templates.map((template) => {
                 const isSelected = template.templateRefId === selectedTemplateRefId
-                const hardwareSpecs = resolveHardwareSpecsFromTemplate(template)
+                const presentation = getProvisioningTemplatePresentation(
+                  template,
+                  selectedServiceId,
+                )
 
                 return (
-                  <button
+                  <div
                     key={template.templateRefId}
-                    type="button"
                     role="radio"
+                    tabIndex={0}
                     aria-checked={isSelected}
                     className={`provider-setup-template__select-card provider-setup-template__select-card--template${
                       isSelected ? ' provider-setup-template__select-card--selected' : ''
                     }`}
                     onClick={() => setSelectedTemplateRefId(template.templateRefId)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        setSelectedTemplateRefId(template.templateRefId)
+                      }
+                    }}
                   >
                     <div className="provider-setup-template__select-card-header">
                       <Label color="green" isCompact className="provider-setup-template__select-card-badge">
                         Saved
                       </Label>
-                      <span
-                        className={`provider-setup-template__select-card-radio${
-                          isSelected ? ' provider-setup-template__select-card-radio--selected' : ''
-                        }`}
-                        aria-hidden
-                      />
+                      {isSelected ? (
+                        <Label
+                          color="grey"
+                          isCompact
+                          className="provider-setup-template__select-card-selected-badge"
+                        >
+                          Selected
+                        </Label>
+                      ) : null}
                     </div>
                     <Title
                       headingLevel="h3"
                       size="md"
                       className="provider-setup-template__select-card-title"
                     >
-                      {template.templateName}
+                      {presentation.title}
                     </Title>
                     <Content component="p" className="provider-setup-template__select-card-detail">
-                      {template.description}
+                      {presentation.description}
                     </Content>
-                    <CatalogHardwareSpecsList
-                      specs={hardwareSpecs}
-                      className="provider-setup-template__select-card-specs"
-                    />
-                    <Content component="p" className="provider-setup-template__select-card-rate">
-                      {formatRateCardSummary(resolveRateCard(template))}
+                    {presentation.parameters.length > 0 ? (
+                      <>
+                        <Divider className="provider-setup-template__select-card-params-divider" />
+                        <div className="provider-setup-template__select-card-params-title-row">
+                          <Content
+                            component="p"
+                            className="provider-setup-template__select-card-params-title"
+                          >
+                            Parameters
+                          </Content>
+                          <Tooltip content="These parameters come with this method. You’ll choose Locked or Unlocked later.">
+                            <Button
+                              variant="plain"
+                              aria-label="About parameters"
+                              className="provider-setup-template__select-card-params-help"
+                              onClick={(event) => event.stopPropagation()}
+                              onKeyDown={(event) => event.stopPropagation()}
+                            >
+                              <OutlinedQuestionCircleIcon />
+                            </Button>
+                          </Tooltip>
+                        </div>
+                        <ul className="provider-setup-template__select-card-params">
+                          {presentation.parameters.map((parameter) => (
+                            <li
+                              key={parameter.name}
+                              className="provider-setup-template__select-card-param"
+                            >
+                              <code className="provider-setup-template__select-card-param-name">
+                                {parameter.name}
+                              </code>
+                              <span className="provider-setup-template__select-card-param-description">
+                                {parameter.description}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    ) : null}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      case 'hardware-os':
+        return (
+          <div className="provider-setup-template__publish-hardware-step">
+            <Content component="p" className="provider-setup-template__publish-step-lede">
+              Choose the hardware flavor and OS image for this catalog item.
+            </Content>
+            <Content component="p" className="provider-setup-template__publish-subsection-title">
+              Instance type
+            </Content>
+            <div
+              className="provider-setup-template__card-group provider-setup-template__card-group--instance-types"
+              role="radiogroup"
+              aria-label="Instance type"
+            >
+              {instanceTypeOptions.map((option) => {
+                const isSelected = option.id === selectedInstanceTypeId
+
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    className={`provider-setup-template__select-card provider-setup-template__select-card--instance-type${
+                      isSelected ? ' provider-setup-template__select-card--selected' : ''
+                    }`}
+                    onClick={() => setSelectedInstanceTypeId(option.id)}
+                  >
+                    {isSelected ? (
+                      <Label
+                        color="grey"
+                        isCompact
+                        className="provider-setup-template__select-card-selected-badge"
+                      >
+                        Selected
+                      </Label>
+                    ) : null}
+                    <Title
+                      headingLevel="h3"
+                      size="md"
+                      className="provider-setup-template__select-card-title"
+                    >
+                      {option.label}
+                    </Title>
+                    <Content component="p" className="provider-setup-template__select-card-detail">
+                      {option.detail}
+                    </Content>
+                    {option.accelerator ? (
+                      <Content
+                        component="p"
+                        className="provider-setup-template__select-card-accelerator"
+                      >
+                        {option.accelerator}
+                      </Content>
+                    ) : null}
+                    {option.hourlyRate ? (
+                      <Content
+                        component="p"
+                        className="provider-setup-template__select-card-rate"
+                      >
+                        {option.hourlyRate}
+                      </Content>
+                    ) : null}
+                  </button>
+                )
+              })}
+            </div>
+            <Content component="p" className="provider-setup-template__publish-subsection-title">
+              Disk image
+            </Content>
+            <div
+              className="provider-setup-template__card-group provider-setup-template__card-group--disk-images"
+              role="radiogroup"
+              aria-label="Disk image"
+            >
+              {diskImageOptions.map((option) => {
+                const isSelected = option.id === selectedDiskImageId
+
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    className={`provider-setup-template__select-card provider-setup-template__select-card--disk-image${
+                      isSelected ? ' provider-setup-template__select-card--selected' : ''
+                    }`}
+                    onClick={() => setSelectedDiskImageId(option.id)}
+                  >
+                    {isSelected ? (
+                      <Label
+                        color="grey"
+                        isCompact
+                        className="provider-setup-template__select-card-selected-badge"
+                      >
+                        Selected
+                      </Label>
+                    ) : null}
+                    <Title
+                      headingLevel="h3"
+                      size="md"
+                      className="provider-setup-template__select-card-title"
+                    >
+                      {option.label}
+                    </Title>
+                    <Content component="p" className="provider-setup-template__select-card-detail">
+                      {option.detail}
                     </Content>
                   </button>
                 )
@@ -337,12 +604,103 @@ export function ProviderSetupPublishCatalogWizard({
             </div>
           </div>
         )
+      case 'field-policies':
+        return (
+          <div className="provider-setup-template__publish-policies-step">
+            <Content component="p" className="provider-setup-template__publish-step-lede">
+              Choose Unlocked or Locked for each provisioning parameter.
+            </Content>
+            {fieldPolicies.length > 0 ? (
+              <Alert
+                variant="info"
+                isInline
+                title="Locked fields stay fixed for the tenant."
+                className="provider-setup-template__publish-policies-alert"
+              >
+                Unlocked fields can be changed by the tenant when they order.
+              </Alert>
+            ) : null}
+            {fieldPolicies.length === 0 ? (
+              <Alert variant="info" isInline title="Select a provisioning method first">
+                Lock fields apply to parameters from the method you chose in Provisioning.
+              </Alert>
+            ) : (
+              <div className="provider-setup-template__field-policy-list" role="list">
+                {fieldPolicies.map((policy) => {
+                  const isUnlocked = policy.mode === 'exposed'
+
+                  return (
+                    <div
+                      key={policy.id}
+                      className={`provider-setup-template__field-policy-card${
+                        isUnlocked ? ' provider-setup-template__field-policy-card--exposed' : ''
+                      }`}
+                      role="listitem"
+                    >
+                      <div className="provider-setup-template__field-policy-meta">
+                        <span className="provider-setup-template__field-policy-label">
+                          {policy.label}
+                        </span>
+                      </div>
+                      <div className="provider-setup-template__field-policy-controls">
+                        <Button
+                          variant="tertiary"
+                          size="sm"
+                          className="provider-setup-template__field-policy-toggle"
+                          icon={isUnlocked ? <UnlockIcon /> : <LockIcon />}
+                          onClick={() => toggleFieldPolicyMode(policy.id)}
+                          aria-pressed={isUnlocked}
+                          aria-label={`${policy.label} is ${isUnlocked ? 'Unlocked' : 'Locked'}`}
+                        >
+                          {isUnlocked ? 'Unlocked' : 'Locked'}
+                        </Button>
+                        {isUnlocked ? (
+                          <span className="provider-setup-template__field-policy-hint">
+                            Tenant will configure · default: {policy.defaultValue}
+                          </span>
+                        ) : (
+                          <span className="provider-setup-template__field-policy-value-field">
+                            <span className="provider-setup-template__field-policy-value-label">
+                              Value:
+                            </span>
+                            <TextInput
+                              id={`publish-field-policy-value-${policy.id}`}
+                              value={policy.defaultValue}
+                              onChange={(_event, value) =>
+                                updateFieldPolicyValue(policy.id, value)
+                              }
+                              aria-label={`${policy.label} locked value`}
+                            />
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
       case 'display-name':
         return (
           <div className="provider-setup-template__publish-display-step">
             <Content component="p" className="provider-setup-template__publish-step-lede">
-              This name appears in the tenant catalog when they browse available offerings.
+              Name this product for the tenant storefront. Pricing is inherited from the linked
+              blueprint and cannot be changed here.
             </Content>
+            {selectedTemplate ? (
+              <Alert
+                variant="info"
+                isInline
+                title="Inherited pricing"
+                className="provider-setup-template__publish-review-alert"
+              >
+                <Content component="p">
+                  This catalog item will publish with{' '}
+                  <strong>{formatRateCardSummary(resolveRateCard(selectedTemplate))}</strong>.
+                </Content>
+              </Alert>
+            ) : null}
             <Form autoComplete="off" className="provider-setup-template__publish-display-form">
               <FormGroup label="Name" fieldId="publish-catalog-display-name" isRequired>
                 <TextInput
@@ -387,6 +745,15 @@ export function ProviderSetupPublishCatalogWizard({
                 role="radio"
                 aria-checked={publishScope === 'global-public'}
               >
+                {publishScope === 'global-public' ? (
+                  <Label
+                    color="grey"
+                    isCompact
+                    className="provider-admin-catalog__scope-selected-badge"
+                  >
+                    Selected
+                  </Label>
+                ) : null}
                 <CatalogPublishScopeIcon
                   scope="global-public"
                   className="provider-admin-catalog__scope-icon"
@@ -395,16 +762,6 @@ export function ProviderSetupPublishCatalogWizard({
                   <span className="provider-admin-catalog__scope-title">Global public</span>
                   <span className="provider-admin-catalog__scope-detail">Visible to all tenants.</span>
                 </span>
-                <Radio
-                  id="publish-scope-global-public"
-                  name="publish-scope"
-                  isChecked={publishScope === 'global-public'}
-                  onChange={() => {
-                    setPublishScope('global-public')
-                    setEnterpriseTenantIds([])
-                  }}
-                  aria-label="Global public"
-                />
               </button>
               <button
                 type="button"
@@ -415,6 +772,15 @@ export function ProviderSetupPublishCatalogWizard({
                 role="radio"
                 aria-checked={publishScope === 'vip-enterprise'}
               >
+                {publishScope === 'vip-enterprise' ? (
+                  <Label
+                    color="grey"
+                    isCompact
+                    className="provider-admin-catalog__scope-selected-badge"
+                  >
+                    Selected
+                  </Label>
+                ) : null}
                 <CatalogPublishScopeIcon
                   scope="vip-enterprise"
                   className="provider-admin-catalog__scope-icon"
@@ -425,13 +791,6 @@ export function ProviderSetupPublishCatalogWizard({
                     Visible only to selected enterprise tenants.
                   </span>
                 </span>
-                <Radio
-                  id="publish-scope-vip-enterprise"
-                  name="publish-scope"
-                  isChecked={publishScope === 'vip-enterprise'}
-                  onChange={selectVipEnterprise}
-                  aria-label="VIP enterprise"
-                />
               </button>
             </div>
             {isVipEnterprise ? (
@@ -448,29 +807,15 @@ export function ProviderSetupPublishCatalogWizard({
           </div>
         )
       case 'review': {
-        const reviewHardwareSpecs = selectedTemplate
-          ? resolveHardwareSpecsFromTemplate(selectedTemplate)
+        const provisioner = selectedTemplate
+          ? getProvisioningTemplatePresentation(selectedTemplate, selectedServiceId)
           : null
 
         return (
           <div className="provider-setup-template__publish-review-step">
             <Content component="p" className="provider-setup-template__publish-step-lede">
-              Confirm the catalog item details before publishing.
+              Confirm the catalog item details before creating.
             </Content>
-            {selectedTemplate ? (
-              <Alert
-                variant="info"
-                isInline
-                title="Inherited pricing"
-                className="provider-setup-template__publish-review-alert"
-              >
-                <Content component="p">
-                  This catalog item will publish with{' '}
-                  <strong>{formatRateCardSummary(resolveRateCard(selectedTemplate))}</strong> from
-                  the master template. Pricing cannot be changed at publish time.
-                </Content>
-              </Alert>
-            ) : null}
             <DescriptionList
               isCompact
               className="provider-setup-template__publish-review-list"
@@ -485,32 +830,34 @@ export function ProviderSetupPublishCatalogWizard({
                 </DescriptionListDescription>
               </DescriptionListGroup>
               <DescriptionListGroup>
-                <DescriptionListTerm>Template</DescriptionListTerm>
+                <DescriptionListTerm>Provisioning template</DescriptionListTerm>
                 <DescriptionListDescription>
-                  {selectedTemplate?.templateName ?? '—'}
+                  {provisioner?.title ?? '—'}
                 </DescriptionListDescription>
               </DescriptionListGroup>
-              {reviewHardwareSpecs ? (
-                <>
-                  <DescriptionListGroup>
-                    <DescriptionListTerm>CPU</DescriptionListTerm>
-                    <DescriptionListDescription>{reviewHardwareSpecs.cpu}</DescriptionListDescription>
-                  </DescriptionListGroup>
-                  <DescriptionListGroup>
-                    <DescriptionListTerm>RAM</DescriptionListTerm>
-                    <DescriptionListDescription>{reviewHardwareSpecs.ram}</DescriptionListDescription>
-                  </DescriptionListGroup>
-                  <DescriptionListGroup>
-                    <DescriptionListTerm>GPU</DescriptionListTerm>
-                    <DescriptionListDescription>{reviewHardwareSpecs.gpu}</DescriptionListDescription>
-                  </DescriptionListGroup>
-                  <DescriptionListGroup>
-                    <DescriptionListTerm>OS image</DescriptionListTerm>
-                    <DescriptionListDescription>
-                      {reviewHardwareSpecs.osImage}
-                    </DescriptionListDescription>
-                  </DescriptionListGroup>
-                </>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Instance type</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {selectedInstanceType
+                    ? `${selectedInstanceType.label} (${selectedInstanceType.detail})`
+                    : '—'}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Disk image</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {selectedDiskImage?.label ?? '—'}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+              {hasLockableParameters ? (
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Field policies</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {`${fieldPolicies.filter((policy) => policy.mode === 'locked').length} locked · ${
+                      fieldPolicies.filter((policy) => policy.mode === 'exposed').length
+                    } unlocked`}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
               ) : null}
               <DescriptionListGroup>
                 <DescriptionListTerm>Name</DescriptionListTerm>
@@ -560,6 +907,16 @@ export function ProviderSetupPublishCatalogWizard({
 
     if (stepId === 'template') {
       return { isNextDisabled: !selectedTemplateRefId }
+    }
+
+    if (stepId === 'hardware-os') {
+      return {
+        isNextDisabled: !selectedInstanceTypeId || !selectedDiskImageId,
+      }
+    }
+
+    if (stepId === 'field-policies') {
+      return { isNextDisabled: fieldPolicies.length === 0 }
     }
 
     if (stepId === 'display-name') {
@@ -621,7 +978,7 @@ export function ProviderSetupPublishCatalogWizard({
             />
           }
         >
-          {PUBLISH_CATALOG_STEPS.map((step) => (
+          {publishSteps.map((step) => (
             <WizardStep
               key={step.id}
               name={step.label}
