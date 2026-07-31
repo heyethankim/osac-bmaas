@@ -15,7 +15,7 @@ import {
   getTenantInstanceServiceId,
   type TenantInstance,
 } from '../tenantUser/instances'
-import { LAUNCH_INSTANCE_PROVISIONING_DURATION_MS } from '../tenantUser/launchInstanceWizard'
+import { LAUNCH_INSTANCE_PROVISIONING_DURATION_MS, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS } from '../tenantUser/launchInstanceWizard'
 import {
   addTenantUserInstance,
   ensureTenantDemoInstances,
@@ -125,21 +125,10 @@ export function TenantUserWorkspacePage() {
   const [instances, setInstances] = useState<TenantInstance[]>(() =>
     isValidTenant ? ensureTenantDemoInstances(tenantSlug) : [],
   )
-  const [showBackgroundProvisioningNotice, setShowBackgroundProvisioningNotice] = useState(false)
   const [openVirtualNetworkId, setOpenVirtualNetworkId] = useState<string | null>(null)
   const [openSubnetId, setOpenSubnetId] = useState<string | null>(null)
   const [openSecurityGroupId, setOpenSecurityGroupId] = useState<string | null>(null)
   const provisioningTimersRef = useRef<Map<string, number>>(new Map())
-
-  const hasProvisioningInstances = instances.some(
-    (instance) => instance.status === 'provisioning',
-  )
-
-  useEffect(() => {
-    if (!hasProvisioningInstances) {
-      setShowBackgroundProvisioningNotice(false)
-    }
-  }, [hasProvisioningInstances])
 
   const clearProvisioningTimer = useCallback((instanceId: string) => {
     const timeoutId = provisioningTimersRef.current.get(instanceId)
@@ -158,7 +147,6 @@ export function TenantUserWorkspacePage() {
           provisionedAt: new Date().toISOString(),
         }),
       )
-      setShowBackgroundProvisioningNotice(false)
     },
     [clearProvisioningTimer, tenantSlug],
   )
@@ -225,19 +213,13 @@ export function TenantUserWorkspacePage() {
 
       if (isServicesNavId(nextNavId)) {
         setInstances(ensureTenantDemoInstances(tenantSlug))
-      } else {
-        setShowBackgroundProvisioningNotice(false)
       }
     },
     [tenantSlug],
   )
 
   const handleNavigateToInstances = useCallback(
-    (options?: {
-      showBackgroundProvisioningNotice?: boolean
-      serviceId?: CatalogServiceId
-    }) => {
-      setShowBackgroundProvisioningNotice(Boolean(options?.showBackgroundProvisioningNotice))
+    (options?: { serviceId?: CatalogServiceId }) => {
       handleNavChange(getServicesNavId(options?.serviceId ?? 'baremetal'))
     },
     [handleNavChange],
@@ -252,29 +234,43 @@ export function TenantUserWorkspacePage() {
   )
 
   const handleDismissDuringProvisioning = useCallback(
-    (instanceId: string) => {
-      const instance =
-        instances.find((item) => item.id === instanceId) ??
-        getTenantUserInstances(tenantSlug).find((item) => item.id === instanceId)
-      handleNavigateToInstances({
-        showBackgroundProvisioningNotice: true,
-        serviceId: instance ? getTenantInstanceServiceId(instance) : 'baremetal',
-      })
+    (instanceId: string, serviceId: CatalogServiceId) => {
+      clearProvisioningTimer(instanceId)
+      setInstances(
+        updateTenantUserInstance(tenantSlug, instanceId, {
+          status: 'provisioning',
+          provisionedAt: null,
+        }),
+      )
+      scheduleProvisioningCompletion(instanceId, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS)
+      handleNavigateToInstances({ serviceId })
     },
-    [handleNavigateToInstances, instances, tenantSlug],
+    [
+      clearProvisioningTimer,
+      handleNavigateToInstances,
+      scheduleProvisioningCompletion,
+      tenantSlug,
+    ],
   )
 
   const handleWizardFinished = useCallback(
-    (instanceId: string) => {
-      markInstanceRunning(instanceId)
-      const instance =
-        instances.find((item) => item.id === instanceId) ??
-        getTenantUserInstances(tenantSlug).find((item) => item.id === instanceId)
-      handleNavigateToInstances({
-        serviceId: instance ? getTenantInstanceServiceId(instance) : 'baremetal',
-      })
+    (instanceId: string, serviceId: CatalogServiceId) => {
+      clearProvisioningTimer(instanceId)
+      setInstances(
+        updateTenantUserInstance(tenantSlug, instanceId, {
+          status: 'provisioning',
+          provisionedAt: null,
+        }),
+      )
+      scheduleProvisioningCompletion(instanceId, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS)
+      handleNavigateToInstances({ serviceId })
     },
-    [handleNavigateToInstances, instances, markInstanceRunning, tenantSlug],
+    [
+      clearProvisioningTimer,
+      handleNavigateToInstances,
+      scheduleProvisioningCompletion,
+      tenantSlug,
+    ],
   )
 
   if (!isValidTenant) {
@@ -316,12 +312,7 @@ export function TenantUserWorkspacePage() {
             onInstancesChange={setInstances}
             defaultScopeFieldLabel={invitation.scopeFieldLabel}
             lockedServiceId={lockedServiceId ?? 'baremetal'}
-            showBackgroundProvisioningNotice={
-              showBackgroundProvisioningNotice && hasProvisioningInstances
-            }
-            onDismissBackgroundProvisioningNotice={() =>
-              setShowBackgroundProvisioningNotice(false)
-            }
+            activeNavId={activeNavId}
           />
         )
       case 'networking-virtual-networks':

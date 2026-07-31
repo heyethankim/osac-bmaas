@@ -53,8 +53,8 @@ type TenantUserCatalogPageProps = {
   preferCatalogDraft?: boolean
   existingInstanceNames?: readonly string[]
   onProvisioningStarted: (instance: TenantInstance) => void
-  onDismissDuringProvisioning: (instanceId: string) => void
-  onWizardFinished: (instanceId: string) => void
+  onDismissDuringProvisioning: (instanceId: string, serviceId: CatalogServiceId) => void
+  onWizardFinished: (instanceId: string, serviceId: CatalogServiceId) => void
 }
 
 function NetworkingSummary({
@@ -521,13 +521,13 @@ export function TenantUserCatalogPage({
             existingInstanceNames={existingInstanceNames}
             onClose={() => setIsWizardOpen(false)}
             onProvisioningStarted={onProvisioningStarted}
-            onDismissDuringProvisioning={(instanceId) => {
+            onDismissDuringProvisioning={(instanceId, serviceId) => {
+              onDismissDuringProvisioning(instanceId, serviceId)
               setIsWizardOpen(false)
-              onDismissDuringProvisioning(instanceId)
             }}
-            onWizardFinished={(instanceId) => {
+            onWizardFinished={(instanceId, serviceId) => {
+              onWizardFinished(instanceId, serviceId)
               setIsWizardOpen(false)
-              onWizardFinished(instanceId)
             }}
           />
         ) : null}

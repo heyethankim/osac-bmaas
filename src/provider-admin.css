@@ -1067,6 +1067,25 @@
   margin-block-start: var(--pf-t--global--spacer--lg);
 }
 
+.provider-admin-catalog__vip-enterprise-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+}
+
+.provider-admin-catalog__vip-org-checklist {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.provider-admin-catalog__vip-orgs-ack {
+  margin-block-start: 0;
+}
+
 .provider-admin-catalog__vip-empty-alert {
   margin-block-start: 0;
 }

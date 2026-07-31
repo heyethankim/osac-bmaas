@@ -1,6 +1,7 @@
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
 
 export type LaunchInstanceWizardStepId =
+  | 'general'
   | 'configure'
   | 'networking'
   | 'review'
@@ -13,6 +14,7 @@ export type ProvisioningBootLogStep = {
   label: string
 }
 
+/** Legacy / models flow with optional networking. */
 export const LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   id: LaunchInstanceWizardStepId
   label: string
@@ -40,8 +42,61 @@ export const LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   },
 ]
 
-export function getLaunchInstanceWizardSteps(includeNetworking: boolean) {
-  return includeNetworking
+/** Bare metal launch flow: General → Configure → Review → Provisioning. */
+export const BAREMETAL_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
+  id: LaunchInstanceWizardStepId
+  label: string
+  description: string
+}> = [
+  { id: 'general', label: 'General', description: '' },
+  { id: 'configure', label: 'Configure', description: '' },
+  { id: 'review', label: 'Review', description: '' },
+  { id: 'provisioning', label: 'Provisioning', description: '' },
+]
+
+/** Cluster launch flow: General → Configure → Networking → Review → Provisioning. */
+export const CLUSTER_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
+  id: LaunchInstanceWizardStepId
+  label: string
+  description: string
+}> = [
+  { id: 'general', label: 'General', description: '' },
+  { id: 'configure', label: 'Configure', description: '' },
+  { id: 'networking', label: 'Networking', description: '' },
+  { id: 'review', label: 'Review', description: '' },
+  { id: 'provisioning', label: 'Provisioning', description: '' },
+]
+
+/** VM launch flow: General → Configure → Networking → Review → Provisioning. */
+export const VM_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
+  id: LaunchInstanceWizardStepId
+  label: string
+  description: string
+}> = [
+  { id: 'general', label: 'General', description: '' },
+  { id: 'configure', label: 'Configure', description: '' },
+  { id: 'networking', label: 'Networking', description: '' },
+  { id: 'review', label: 'Review', description: '' },
+  { id: 'provisioning', label: 'Provisioning', description: '' },
+]
+
+export function getLaunchInstanceWizardSteps(options: {
+  includeNetworking: boolean
+  serviceId?: CatalogServiceId
+}) {
+  if (options.serviceId === 'cluster') {
+    return CLUSTER_LAUNCH_INSTANCE_WIZARD_STEPS
+  }
+
+  if (options.serviceId === 'virtual-machine') {
+    return VM_LAUNCH_INSTANCE_WIZARD_STEPS
+  }
+
+  if (options.serviceId === 'baremetal') {
+    return BAREMETAL_LAUNCH_INSTANCE_WIZARD_STEPS
+  }
+
+  return options.includeNetworking
     ? LAUNCH_INSTANCE_WIZARD_STEPS
     : LAUNCH_INSTANCE_WIZARD_STEPS.filter((step) => step.id !== 'networking')
 }
@@ -74,13 +129,83 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   provisioningLede:
     'Provisioning is underway. This takes 10–20 minutes in production.',
   provisioningDismissibleNote:
-    'Provisioning will continue in the background—check status in My instances.',
+    'Provisioning will continue in the background—check status under Services.',
   bootLogRemaining: '~10 sec remaining',
   launchInstanceLabel: 'Launch instance',
   closeWhileProvisioningLabel: 'Close',
   backgroundProvisioningAlertTitle: 'Provisioning continues in the background',
   backgroundProvisioningAlertBody:
-    'Your instance stays in Provisioning on My instances until setup finishes.',
+    'Your instance stays in Provisioning on Services until setup finishes.',
+} as const
+
+export const CLUSTER_LAUNCH_INSTANCE_DEMO = {
+  defaultName: 'ocp-cluster-01',
+  nameHelper: 'Name must be a valid DNS label (RFC 1035).',
+  sshPublicKey:
+    'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBJACfzqANDyWlygNn0FWP7YBZ6XLt+XPGpSw5PyknOW brotman@redhat.com',
+  sshHelper:
+    'Paste a public SSH key for remote access. Supported types: ssh-rsa, ssh-ed25519, and ecdsa-sha2-nistp256/384/521.',
+  pullSecret: JSON.stringify(
+    {
+      auths: {
+        'cloud.openshift.com': {
+          auth: 'ZGVtbzpwdWxsLXNlY3JldA==',
+          email: 'brotman@redhat.com',
+        },
+        'quay.io': {
+          auth: 'ZGVtbzpwdWxsLXNlY3JldA==',
+          email: 'brotman@redhat.com',
+        },
+        'registry.connect.redhat.com': {
+          auth: 'ZGVtbzpwdWxsLXNlY3JldA==',
+          email: 'brotman@redhat.com',
+        },
+        'registry.redhat.io': {
+          auth: 'ZGVtbzpwdWxsLXNlY3JldA==',
+          email: 'brotman@redhat.com',
+        },
+      },
+    },
+    null,
+    2,
+  ),
+  releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.21.0-multi',
+  hostTypeOptions: ['Standard Host', 'GPU Host', 'Storage Host'] as const,
+  defaultHostType: 'Standard Host',
+  defaultNodeCount: 1,
+  podCidr: '10.128.0.0/24',
+  podCidrHelper: 'Use CIDR notation (for example 10.128.0.0/14 or fd01::/48).',
+  serviceCidr: '10.1.0.0/24',
+  serviceCidrHelper: 'Use CIDR notation (for example 172.30.0.0/16 or fd02::/112).',
+  addNodeSetLabel: 'Add node set',
+} as const
+
+export const VM_LAUNCH_INSTANCE_DEMO = {
+  nameHelper: CLUSTER_LAUNCH_INSTANCE_DEMO.nameHelper,
+  sshPublicKey: CLUSTER_LAUNCH_INSTANCE_DEMO.sshPublicKey,
+  sshHelper: CLUSTER_LAUNCH_INSTANCE_DEMO.sshHelper,
+  containerDiskImage: 'quay.io/containerdisks/fedora:latest',
+  containerDiskImageHelper: 'OCI reference',
+  instanceTypeOptions: [
+    'small - 1 vCPU, 2 GiB',
+    'medium - 2 vCPU, 4 GiB',
+    'large - 4 vCPU, 16 GiB',
+  ] as const,
+  defaultInstanceType: 'small - 1 vCPU, 2 GiB',
+  bootDiskSizeGiB: 120,
+  bootDiskSizeHelper: 'Size in GiB',
+  cloudInitUserData: `#cloud-config
+hostname: demo-vm
+`,
+  cloudInitHelper: 'Optional cloud-init user data (max 64 KB).',
+} as const
+
+export const BAREMETAL_LAUNCH_INSTANCE_DEMO = {
+  nameHelper: CLUSTER_LAUNCH_INSTANCE_DEMO.nameHelper,
+  sshPublicKey: CLUSTER_LAUNCH_INSTANCE_DEMO.sshPublicKey,
+  sshHelper: CLUSTER_LAUNCH_INSTANCE_DEMO.sshHelper,
+  userDataHelper: 'Optional cloud-init user data (max 64 KB).',
+  defaultUserData: '',
 } as const
 
 export const PROVISIONING_BOOT_LOG_STEPS: ProvisioningBootLogStep[] = [
@@ -94,15 +219,32 @@ export const PROVISIONING_BOOT_LOG_STEPS: ProvisioningBootLogStep[] = [
 
 /** Demo: provisioning completes after this duration (wizard animation + background). */
 export const LAUNCH_INSTANCE_PROVISIONING_DURATION_MS = 10_000
+/** After landing on Services, keep Provisioning visible for this long before Running. */
+export const LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS = 5_000
 export const LAUNCH_INSTANCE_PROVISIONING_SETTLE_MS = 500
 export const LAUNCH_INSTANCE_BOOT_LOG_STEP_MS = Math.floor(
   (LAUNCH_INSTANCE_PROVISIONING_DURATION_MS - LAUNCH_INSTANCE_PROVISIONING_SETTLE_MS) /
     PROVISIONING_BOOT_LOG_STEPS.length,
 )
 
+export type ClusterNodeSetForm = {
+  id: string
+  hostType: string
+  nodeCount: number
+}
+
 export type LaunchInstanceWizardForm = {
   instanceName: string
   sshPublicKey: string
+  pullSecret: string
+  releaseImage: string
+  nodeSets: ClusterNodeSetForm[]
+  podCidr: string
+  serviceCidr: string
+  containerDiskImage: string
+  instanceType: string
+  bootDiskSizeGiB: number
+  cloudInitUserData: string
   virtualNetworkId: string
   subnetId: string
   securityGroupId: string
@@ -130,14 +272,19 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-/** Next demo name like BM-Server-01 or OCP-Cluster-01 based on service + existing instances. */
+/** Next demo name like bm-server-01, ocp-cluster-01, or vm-instance-01 based on service + existing instances. */
 export function getNextLaunchInstanceName(
   existingNames: readonly string[],
   serviceId: CatalogServiceId = 'baremetal',
 ): string {
   const prefix = getLaunchInstanceNamePrefix(serviceId)
+  const useDnsLabelName =
+    serviceId === 'virtual-machine' ||
+    serviceId === 'baremetal' ||
+    serviceId === 'cluster'
+  const matchPrefix = useDnsLabelName ? prefix.toLowerCase() : prefix
   let highestNumber = 0
-  const pattern = new RegExp(`^${escapeRegExp(prefix)}-(\\d+)$`, 'i')
+  const pattern = new RegExp(`^${escapeRegExp(matchPrefix)}-(\\d+)$`, 'i')
 
   for (const name of existingNames) {
     const match = name.trim().match(pattern)
@@ -151,12 +298,34 @@ export function getNextLaunchInstanceName(
     }
   }
 
-  return `${prefix}-${String(highestNumber + 1).padStart(2, '0')}`
+  const nextNumber = String(highestNumber + 1).padStart(2, '0')
+  if (useDnsLabelName) {
+    return `${matchPrefix}-${nextNumber}`
+  }
+
+  return `${prefix}-${nextNumber}`
+}
+
+export function createDefaultClusterNodeSet(index = 1): ClusterNodeSetForm {
+  return {
+    id: `node-set-${index}`,
+    hostType: CLUSTER_LAUNCH_INSTANCE_DEMO.defaultHostType,
+    nodeCount: CLUSTER_LAUNCH_INSTANCE_DEMO.defaultNodeCount,
+  }
 }
 
 export const DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM: LaunchInstanceWizardForm = {
   instanceName: LAUNCH_INSTANCE_WIZARD_DEMO.defaultInstanceName,
   sshPublicKey: LAUNCH_INSTANCE_WIZARD_DEMO.defaultSshPublicKey,
+  pullSecret: '',
+  releaseImage: '',
+  nodeSets: [createDefaultClusterNodeSet()],
+  podCidr: '',
+  serviceCidr: '',
+  containerDiskImage: '',
+  instanceType: '',
+  bootDiskSizeGiB: VM_LAUNCH_INSTANCE_DEMO.bootDiskSizeGiB,
+  cloudInitUserData: '',
   virtualNetworkId: '',
   subnetId: '',
   securityGroupId: '',
@@ -167,16 +336,96 @@ export function createLaunchInstanceWizardForm(options: {
   subnetId: string
   securityGroupId: string
   instanceName?: string
+  serviceId?: CatalogServiceId
 }): LaunchInstanceWizardForm {
+  const serviceId = options.serviceId ?? 'baremetal'
+  const isCluster = serviceId === 'cluster'
+  const isVm = serviceId === 'virtual-machine'
+  const isBaremetal = serviceId === 'baremetal'
+
   return {
     ...DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM,
-    instanceName: options.instanceName ?? DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM.instanceName,
+    instanceName:
+      options.instanceName ??
+      (isCluster || isVm || isBaremetal
+        ? getNextLaunchInstanceName([], serviceId)
+        : DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM.instanceName),
+    sshPublicKey:
+      isCluster || isVm || isBaremetal
+        ? CLUSTER_LAUNCH_INSTANCE_DEMO.sshPublicKey
+        : DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM.sshPublicKey,
+    pullSecret: isCluster ? CLUSTER_LAUNCH_INSTANCE_DEMO.pullSecret : '',
+    releaseImage: isCluster ? CLUSTER_LAUNCH_INSTANCE_DEMO.releaseImage : '',
+    nodeSets: [createDefaultClusterNodeSet()],
+    podCidr: isCluster ? CLUSTER_LAUNCH_INSTANCE_DEMO.podCidr : '',
+    serviceCidr: isCluster ? CLUSTER_LAUNCH_INSTANCE_DEMO.serviceCidr : '',
+    containerDiskImage: isVm ? VM_LAUNCH_INSTANCE_DEMO.containerDiskImage : '',
+    instanceType: isVm ? VM_LAUNCH_INSTANCE_DEMO.defaultInstanceType : '',
+    bootDiskSizeGiB: isVm
+      ? VM_LAUNCH_INSTANCE_DEMO.bootDiskSizeGiB
+      : DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM.bootDiskSizeGiB,
+    cloudInitUserData: isVm
+      ? VM_LAUNCH_INSTANCE_DEMO.cloudInitUserData
+      : isBaremetal
+        ? BAREMETAL_LAUNCH_INSTANCE_DEMO.defaultUserData
+        : '',
     virtualNetworkId: options.virtualNetworkId,
     subnetId: options.subnetId,
     securityGroupId: options.securityGroupId,
   }
 }
 
+/** DNS label (RFC 1035): lowercase letter, then lowercase letters/digits/hyphens. */
+export function isDnsLabelValid(name: string): boolean {
+  return /^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$/.test(name.trim())
+}
+
 export function isInstanceNameValid(name: string): boolean {
   return /^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/.test(name.trim())
+}
+
+export function isClusterGeneralStepValid(form: LaunchInstanceWizardForm): boolean {
+  return (
+    isDnsLabelValid(form.instanceName) &&
+    form.sshPublicKey.trim().length > 0 &&
+    form.pullSecret.trim().length > 0
+  )
+}
+
+export function isClusterConfigureStepValid(form: LaunchInstanceWizardForm): boolean {
+  return (
+    form.releaseImage.trim().length > 0 &&
+    form.nodeSets.length > 0 &&
+    form.nodeSets.every(
+      (nodeSet) => nodeSet.hostType.trim().length > 0 && nodeSet.nodeCount >= 1,
+    )
+  )
+}
+
+export function isClusterNetworkingStepValid(form: LaunchInstanceWizardForm): boolean {
+  return form.podCidr.trim().length > 0 && form.serviceCidr.trim().length > 0
+}
+
+export function isVmGeneralStepValid(form: LaunchInstanceWizardForm): boolean {
+  return isDnsLabelValid(form.instanceName) && form.sshPublicKey.trim().length > 0
+}
+
+export function isVmConfigureStepValid(form: LaunchInstanceWizardForm): boolean {
+  return (
+    form.containerDiskImage.trim().length > 0 &&
+    form.instanceType.trim().length > 0 &&
+    form.bootDiskSizeGiB >= 1
+  )
+}
+
+export function isVmNetworkingStepValid(form: LaunchInstanceWizardForm): boolean {
+  return (
+    form.virtualNetworkId.trim().length > 0 &&
+    form.subnetId.trim().length > 0 &&
+    form.securityGroupId.trim().length > 0
+  )
+}
+
+export function isBareMetalGeneralStepValid(form: LaunchInstanceWizardForm): boolean {
+  return isDnsLabelValid(form.instanceName) && form.sshPublicKey.trim().length > 0
 }

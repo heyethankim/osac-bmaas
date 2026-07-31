@@ -204,6 +204,8 @@ export type ProviderCatalogDraft = {
   serviceId?: CatalogServiceId
   /** Present when visibility is VIP enterprise. */
   enterpriseTenantId?: string
+  /** Present when VIP targets multiple enterprises; first entry mirrors enterpriseTenantId. */
+  enterpriseTenantIds?: string[]
   /** Defaults to live for items created before status existed. */
   status?: CatalogItemStatus
   /** Optional for items created before network policy existed. */
@@ -357,6 +359,9 @@ export function duplicateProviderCatalogItem(catalogItemId: string): ProviderCat
     status: 'unpublished',
     createdAt: new Date().toISOString(),
     ...(source.enterpriseTenantId ? { enterpriseTenantId: source.enterpriseTenantId } : {}),
+    ...(source.enterpriseTenantIds?.length
+      ? { enterpriseTenantIds: [...source.enterpriseTenantIds] }
+      : {}),
   }
 
   addProviderCatalogItem(duplicate)
@@ -391,6 +396,7 @@ export type CatalogItemEditableFields = {
   description: string
   scope: PublishCatalogScope
   enterpriseTenantId?: string
+  enterpriseTenantIds?: string[]
 }
 
 /** Updates mutable commercial fields; service, template, and rate stay locked. */
@@ -412,10 +418,25 @@ export function updateProviderCatalogItem(
     scope: fields.scope,
   }
 
-  if (fields.scope === 'vip-enterprise' && fields.enterpriseTenantId?.trim()) {
-    updated.enterpriseTenantId = fields.enterpriseTenantId.trim()
+  const enterpriseTenantIds = [
+    ...new Set(
+      (fields.enterpriseTenantIds?.length
+        ? fields.enterpriseTenantIds
+        : fields.enterpriseTenantId
+          ? [fields.enterpriseTenantId]
+          : []
+      )
+        .map((id) => id.trim())
+        .filter(Boolean),
+    ),
+  ]
+
+  if (fields.scope === 'vip-enterprise' && enterpriseTenantIds.length > 0) {
+    updated.enterpriseTenantId = enterpriseTenantIds[0]
+    updated.enterpriseTenantIds = enterpriseTenantIds
   } else {
     delete updated.enterpriseTenantId
+    delete updated.enterpriseTenantIds
   }
 
   const next = [...items]

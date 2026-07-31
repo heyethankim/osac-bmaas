@@ -2,8 +2,12 @@ import { DEMO_TENANT_LABEL } from '../demoTenant'
 import {
   createDemoTenantBareMetalInstance,
   createDemoTenantVirtualMachineInstance,
+  createDemoTenantVirtualMachineInstance02,
+  createDemoTenantVirtualMachineInstance03,
   DEMO_TENANT_BARE_METAL_INSTANCE_ID,
   DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID,
+  DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_02,
+  DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_03,
   type TenantInstance,
 } from './instances'
 
@@ -187,8 +191,8 @@ function getDemoOrganizationName(slug: string): string {
 }
 
 /**
- * Ensures Tenant Admin / Tenant User Services lists include one Bare metal and one
- * Virtual machine instance. Stable IDs avoid duplicates across reloads.
+ * Ensures Tenant Admin / Tenant User Services lists include demo Bare metal and
+ * Virtual machine instances. Stable IDs avoid duplicates across reloads.
  */
 export function ensureTenantDemoInstances(
   slug: string,
@@ -205,6 +209,16 @@ export function ensureTenantDemoInstances(
 
   if (!next.some((instance) => instance.id === DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID)) {
     next.push(createDemoTenantVirtualMachineInstance(organizationName))
+    changed = true
+  }
+
+  if (!next.some((instance) => instance.id === DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_02)) {
+    next.push(createDemoTenantVirtualMachineInstance02(organizationName))
+    changed = true
+  }
+
+  if (!next.some((instance) => instance.id === DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_03)) {
+    next.push(createDemoTenantVirtualMachineInstance03(organizationName))
     changed = true
   }
 

@@ -341,8 +341,12 @@ export type PublishedTemplatePayload = {
   networkPolicy?: CatalogNetworkPolicy
   /** Optional when scope is VIP enterprise. Omit or leave empty for Restricted — unassigned. */
   enterpriseTenantId?: string
+  /** When VIP targets multiple enterprises; first entry mirrors enterpriseTenantId. */
+  enterpriseTenantIds?: string[]
   /** When VIP targets a registered org, assign catalog access on create. */
   vipOrganizationId?: string
+  /** Assign catalog access to each selected VIP organization on create. */
+  vipOrganizationIds?: string[]
   /** Defaults to unpublished. Publish later from the catalog. */
   status?: 'live' | 'unpublished'
 }

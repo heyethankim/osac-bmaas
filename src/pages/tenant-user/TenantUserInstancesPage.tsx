@@ -8,12 +8,17 @@ import {
   Content,
   EmptyState,
   EmptyStateBody,
+  Form,
+  FormGroup,
+  FormSelect,
+  FormSelectOption,
   Label,
   Modal,
   ModalBody,
   ModalFooter,
   ModalHeader,
   ModalVariant,
+  Radio,
   SearchInput,
   Spinner,
   Title,
@@ -36,15 +41,21 @@ import {
 } from '../../catalog/viewMode'
 import { CATALOG_SERVICE_FILTER_LABELS, type CatalogServiceId } from '../../providerSetup/templateDemo'
 import {
+  createDemoPublicIp,
+  downloadClusterKubeconfig,
   formatTenantInstanceCreatedAt,
   formatTenantInstanceName,
+  getClusterDemoPassword,
   getTenantInstanceActions,
+  getTenantInstanceCardSpecRows,
   getTenantInstanceScopeFieldLabel,
   getTenantInstanceServiceId,
   getTenantInstanceSpecRows,
   getTenantInstanceStatusLabel,
+  resolveVmConfig,
   TENANT_INSTANCE_RESTART_DURATION_MS,
   type TenantInstance,
+  type TenantInstanceStatus,
 } from '../../tenantUser/instances'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
 import { removeTenantUserInstance, updateTenantUserInstance } from '../../tenantUser/storage'
@@ -56,17 +67,19 @@ type TenantUserInstancesPageProps = {
   defaultScopeFieldLabel?: 'Organization' | 'Project'
   /** When set, page is scoped to one service (nav-driven) and hides service filters. */
   lockedServiceId?: CatalogServiceId
-  showBackgroundProvisioningNotice?: boolean
-  onDismissBackgroundProvisioningNotice?: () => void
+  /** Closes the instance detail drawer when left-nav selection changes. */
+  activeNavId?: string
 }
 
-function getStatusColor(status: TenantInstance['status']): 'green' | 'blue' | 'orange' | 'red' {
+function getStatusColor(status: TenantInstance['status']): 'green' | 'blue' | 'orange' | 'red' | 'grey' {
   switch (status) {
     case 'running':
       return 'green'
     case 'provisioning':
     case 'restarting':
       return 'blue'
+    case 'stopped':
+      return 'grey'
     case 'failed':
       return 'red'
     default:
@@ -95,23 +108,71 @@ function InstanceStatusLabel({ status }: { status: TenantInstance['status'] }) {
   )
 }
 
+const VM_POWER_STATE_FILTER_OPTIONS: Array<{ value: 'all' | TenantInstanceStatus; label: string }> =
+  [
+    { value: 'all', label: 'All power states' },
+    { value: 'running', label: 'Running' },
+    { value: 'stopped', label: 'Stopped' },
+    { value: 'provisioning', label: 'Provisioning' },
+    { value: 'restarting', label: 'Restarting' },
+    { value: 'failed', label: 'Failed' },
+  ]
+
 export function TenantUserInstancesPage({
   tenantSlug,
   instances,
   onInstancesChange,
   defaultScopeFieldLabel = 'Project',
   lockedServiceId,
-  showBackgroundProvisioningNotice = false,
-  onDismissBackgroundProvisioningNotice,
+  activeNavId,
 }: TenantUserInstancesPageProps) {
   const [viewMode, setViewMode] = useState<ViewMode>(() => getInstancesViewMode('grid'))
   const [searchValue, setSearchValue] = useState('')
+  const [powerStateFilter, setPowerStateFilter] = useState<'all' | TenantInstanceStatus>('all')
+  const [osFilter, setOsFilter] = useState('all')
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null)
   const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false)
   const [instancePendingTerminate, setInstancePendingTerminate] = useState<TenantInstance | null>(
     null,
   )
+  const [instancePendingPassword, setInstancePendingPassword] = useState<TenantInstance | null>(
+    null,
+  )
+  const [instancePendingPublicIp, setInstancePendingPublicIp] = useState<TenantInstance | null>(
+    null,
+  )
+  const [publicIpFamily, setPublicIpFamily] = useState<'IPv4' | 'IPv6'>('IPv4')
+  const [isProvisioningNoticeDismissed, setIsProvisioningNoticeDismissed] = useState(false)
   const restartTimersRef = useRef<Map<string, number>>(new Map())
+
+  const hasProvisioningInstances = instances.some(
+    (instance) => instance.status === 'provisioning',
+  )
+
+  useEffect(() => {
+    if (!hasProvisioningInstances) {
+      setIsProvisioningNoticeDismissed(false)
+    }
+  }, [hasProvisioningInstances])
+
+  useEffect(() => {
+    setIsProvisioningNoticeDismissed(false)
+  }, [lockedServiceId])
+
+  useEffect(() => {
+    setIsDetailsDrawerOpen(false)
+    setSelectedInstanceId(null)
+  }, [activeNavId, lockedServiceId])
+
+  useEffect(() => {
+    setPowerStateFilter('all')
+    setOsFilter('all')
+  }, [lockedServiceId])
+
+  const isVirtualMachinesPage = lockedServiceId === 'virtual-machine'
+
+  const showBackgroundProvisioningNotice =
+    hasProvisioningInstances && !isProvisioningNoticeDismissed
 
   const instanceServiceIds = useMemo(
     () => instances.map((instance) => getTenantInstanceServiceId(instance)),
@@ -157,6 +218,20 @@ export function TenantUserInstancesPage({
     [instanceServiceIds],
   )
 
+  const vmOsOptions = useMemo(() => {
+    const osValues = new Set<string>()
+    for (const instance of sortedInstances) {
+      if (getTenantInstanceServiceId(instance) !== 'virtual-machine') {
+        continue
+      }
+      const osImage = instance.osImage.trim()
+      if (osImage) {
+        osValues.add(osImage)
+      }
+    }
+    return [...osValues].sort((left, right) => left.localeCompare(right))
+  }, [sortedInstances])
+
   const filteredInstances = useMemo(() => {
     const query = searchValue.trim().toLowerCase()
 
@@ -164,6 +239,15 @@ export function TenantUserInstancesPage({
       const serviceId = getTenantInstanceServiceId(instance)
       if (!selectedFilters.has(serviceId)) {
         return false
+      }
+
+      if (isVirtualMachinesPage) {
+        if (powerStateFilter !== 'all' && instance.status !== powerStateFilter) {
+          return false
+        }
+        if (osFilter !== 'all' && instance.osImage !== osFilter) {
+          return false
+        }
       }
 
       if (!query) {
@@ -179,13 +263,21 @@ export function TenantUserInstancesPage({
         instance.catalogItemDisplayName.toLowerCase().includes(query) ||
         serviceLabel.toLowerCase().includes(query) ||
         getTenantInstanceStatusLabel(instance.status).toLowerCase().includes(query) ||
+        instance.osImage.toLowerCase().includes(query) ||
         specRows.some(
           (row) =>
             row.label.toLowerCase().includes(query) || row.value.toLowerCase().includes(query),
         )
       )
     })
-  }, [sortedInstances, selectedFilters, searchValue])
+  }, [
+    sortedInstances,
+    selectedFilters,
+    searchValue,
+    isVirtualMachinesPage,
+    powerStateFilter,
+    osFilter,
+  ])
 
   const selectedInstance = useMemo(
     () => instances.find((instance) => instance.id === selectedInstanceId) ?? null,
@@ -255,7 +347,7 @@ export function TenantUserInstancesPage({
 
   const handleRestartInstance = (instanceId: string) => {
     const instance = instances.find((item) => item.id === instanceId)
-    if (!instance || instance.status !== 'running') {
+    if (!instance || (instance.status !== 'running' && instance.status !== 'stopped')) {
       return
     }
 
@@ -281,9 +373,88 @@ export function TenantUserInstancesPage({
     restartTimersRef.current.set(instanceId, timeoutId)
   }
 
+  const handleStartInstance = (instanceId: string) => {
+    const instance = instances.find((item) => item.id === instanceId)
+    if (!instance || instance.status !== 'stopped') {
+      return
+    }
+    onInstancesChange(
+      updateTenantUserInstance(tenantSlug, instanceId, {
+        status: 'running',
+      }),
+    )
+  }
+
+  const handleStopInstance = (instanceId: string) => {
+    const instance = instances.find((item) => item.id === instanceId)
+    if (!instance || instance.status !== 'running') {
+      return
+    }
+    const existingTimeout = restartTimersRef.current.get(instanceId)
+    if (existingTimeout !== undefined) {
+      window.clearTimeout(existingTimeout)
+      restartTimersRef.current.delete(instanceId)
+    }
+    onInstancesChange(
+      updateTenantUserInstance(tenantSlug, instanceId, {
+        status: 'stopped',
+      }),
+    )
+  }
+
   const handleViewDetails = (instance: TenantInstance) => {
     setSelectedInstanceId(instance.id)
     setIsDetailsDrawerOpen(true)
+  }
+
+  const clusterKebabActions = {
+    onDownloadKubeconfig: downloadClusterKubeconfig,
+    onViewPassword: (instance: TenantInstance) => {
+      setInstancePendingPassword(instance)
+    },
+  }
+
+  const getInstanceKebabActions = (instance: TenantInstance) =>
+    getTenantInstanceActions(
+      instance,
+      openTerminateConfirm,
+      handleViewDetails,
+      handleRestartInstance,
+      clusterKebabActions,
+      {
+        onStart: handleStartInstance,
+        onStop: handleStopInstance,
+      },
+      {
+        onAttachPublicIp: (target) => {
+          setPublicIpFamily('IPv4')
+          setInstancePendingPublicIp(target)
+        },
+      },
+    )
+
+  const closeAttachPublicIp = () => {
+    setInstancePendingPublicIp(null)
+    setPublicIpFamily('IPv4')
+  }
+
+  const handleConfirmAttachPublicIp = () => {
+    if (!instancePendingPublicIp) {
+      return
+    }
+
+    const currentConfig = resolveVmConfig(instancePendingPublicIp)
+    const publicIp = createDemoPublicIp(publicIpFamily, instancePendingPublicIp.id)
+    onInstancesChange(
+      updateTenantUserInstance(tenantSlug, instancePendingPublicIp.id, {
+        vmConfig: {
+          ...currentConfig,
+          publicIp,
+          publicIpFamily,
+        },
+      }),
+    )
+    closeAttachPublicIp()
   }
 
   const handleViewModeChange = (nextViewMode: ViewMode) => {
@@ -330,6 +501,11 @@ export function TenantUserInstancesPage({
       instance={isDetailsDrawerOpen ? selectedInstance : null}
       onRequestTerminate={openTerminateConfirm}
       onRestart={handleRestartInstance}
+      onStop={handleStopInstance}
+      onAttachPublicIp={(instance) => {
+        setPublicIpFamily('IPv4')
+        setInstancePendingPublicIp(instance)
+      }}
     >
       <div className="tenant-user-workspace-page tenant-user-instances">
         <Title headingLevel="h1" size="3xl" className="tenant-user-instances__title">
@@ -350,6 +526,39 @@ export function TenantUserInstancesPage({
                 ariaLabel="Instance service filters"
               />
             )}
+            {isVirtualMachinesPage ? (
+              <>
+                <FormSelect
+                  className="catalog-status-filter"
+                  id="instances-vm-power-state-filter"
+                  value={powerStateFilter}
+                  onChange={(_event, value) =>
+                    setPowerStateFilter(value as 'all' | TenantInstanceStatus)
+                  }
+                  aria-label="Filter virtual machines by power state"
+                >
+                  {VM_POWER_STATE_FILTER_OPTIONS.map((option) => (
+                    <FormSelectOption
+                      key={option.value}
+                      value={option.value}
+                      label={option.label}
+                    />
+                  ))}
+                </FormSelect>
+                <FormSelect
+                  className="catalog-status-filter"
+                  id="instances-vm-os-filter"
+                  value={osFilter}
+                  onChange={(_event, value) => setOsFilter(value)}
+                  aria-label="Filter virtual machines by operating system"
+                >
+                  <FormSelectOption value="all" label="All operating systems" />
+                  {vmOsOptions.map((osImage) => (
+                    <FormSelectOption key={osImage} value={osImage} label={osImage} />
+                  ))}
+                </FormSelect>
+              </>
+            ) : null}
             <SearchInput
               className="catalog-search"
               placeholder="Search instances"
@@ -376,12 +585,10 @@ export function TenantUserInstancesPage({
             title={LAUNCH_INSTANCE_WIZARD_DEMO.backgroundProvisioningAlertTitle}
             className="tenant-user-instances__provisioning-alert"
             actionClose={
-              onDismissBackgroundProvisioningNotice ? (
-                <AlertActionCloseButton
-                  onClose={onDismissBackgroundProvisioningNotice}
-                  aria-label="Close provisioning notice"
-                />
-              ) : undefined
+              <AlertActionCloseButton
+                onClose={() => setIsProvisioningNoticeDismissed(true)}
+                aria-label="Close provisioning notice"
+              />
             }
           >
             <Content component="p">
@@ -393,7 +600,7 @@ export function TenantUserInstancesPage({
         {filteredInstances.length === 0 ? (
           <EmptyState className="tenant-user-instances__empty">
             <span className="tenant-user-instances__empty-icon" aria-hidden>
-              {getCatalogServiceIcon('baremetal')}
+              {getCatalogServiceIcon(lockedServiceId ?? 'baremetal')}
             </span>
             <Title headingLevel="h2" size="lg">
               {emptyStateTitle}
@@ -403,8 +610,10 @@ export function TenantUserInstancesPage({
                 ? 'Launch an instance from the catalog to start provisioning capacity for your project.'
                 : selectedFilters.size === 0
                   ? 'Choose one or more services above to filter your instances.'
-                  : searchValue.trim()
-                    ? 'Try a different search term or clear the search field.'
+                  : searchValue.trim() ||
+                      (isVirtualMachinesPage &&
+                        (powerStateFilter !== 'all' || osFilter !== 'all'))
+                    ? 'Try a different search term or clear the filters above.'
                     : 'No instances match the selected services.'}
             </EmptyStateBody>
           </EmptyState>
@@ -412,10 +621,7 @@ export function TenantUserInstancesPage({
             <div className="catalog-card-grid tenant-user-instances__grid">
               {filteredInstances.map((instance) => {
                 const serviceId = getTenantInstanceServiceId(instance)
-                const allSpecRows = getTenantInstanceSpecRows(instance)
-                // Cards: three highlights for Cluster/VM; Bare Metal shows full hardware rows.
-                const cardSpecRows =
-                  serviceId === 'baremetal' ? allSpecRows : allSpecRows.slice(0, 3)
+                const cardSpecRows = getTenantInstanceCardSpecRows(instance)
 
                 return (
                 <Card key={instance.id} isCompact={false} className="tenant-user-instances__card">
@@ -426,14 +632,7 @@ export function TenantUserInstancesPage({
                       </span>
                       <div className="tenant-user-instances__card-header-actions">
                         <InstanceStatusLabel status={instance.status} />
-                        <ActionsColumn
-                          items={getTenantInstanceActions(
-                            instance,
-                            openTerminateConfirm,
-                            handleViewDetails,
-                            handleRestartInstance,
-                          )}
-                        />
+                        <ActionsColumn items={getInstanceKebabActions(instance)} />
                       </div>
                     </div>
 
@@ -467,6 +666,18 @@ export function TenantUserInstancesPage({
                         <dd>{formatTenantInstanceCreatedAt(instance.createdAt)}</dd>
                       </div>
                     </dl>
+
+                    {serviceId === 'cluster' || serviceId === 'virtual-machine' ? (
+                      <div className="tenant-user-instances__card-console">
+                        <Button
+                          variant="primary"
+                          isDisabled={instance.status !== 'running'}
+                          className="tenant-user-instances__console-button"
+                        >
+                          Console
+                        </Button>
+                      </div>
+                    ) : null}
                   </CardBody>
                 </Card>
                 )
@@ -522,14 +733,7 @@ export function TenantUserInstancesPage({
                         {formatTenantInstanceCreatedAt(instance.createdAt)}
                       </Td>
                       <Td isActionCell>
-                        <ActionsColumn
-                          items={getTenantInstanceActions(
-                            instance,
-                            openTerminateConfirm,
-                            handleViewDetails,
-                            handleRestartInstance,
-                          )}
-                        />
+                        <ActionsColumn items={getInstanceKebabActions(instance)} />
                       </Td>
                     </Tr>
                     )
@@ -549,7 +753,15 @@ export function TenantUserInstancesPage({
         aria-describedby="terminate-instance-description"
       >
         <ModalHeader
-          title="Terminate instance?"
+          title={
+            instancePendingTerminate &&
+            getTenantInstanceServiceId(instancePendingTerminate) === 'cluster'
+              ? 'Delete cluster?'
+              : instancePendingTerminate &&
+                  getTenantInstanceServiceId(instancePendingTerminate) === 'virtual-machine'
+                ? 'Delete virtual machine?'
+                : 'Terminate instance?'
+          }
           titleIconVariant="warning"
           labelId="terminate-instance-title"
         />
@@ -567,10 +779,75 @@ export function TenantUserInstancesPage({
         </ModalBody>
         <ModalFooter>
           <Button variant="danger" onClick={handleConfirmTerminate}>
-            Terminate
+            {instancePendingTerminate &&
+            (getTenantInstanceServiceId(instancePendingTerminate) === 'cluster' ||
+              getTenantInstanceServiceId(instancePendingTerminate) === 'virtual-machine')
+              ? 'Delete'
+              : 'Terminate'}
           </Button>
           <Button variant="link" onClick={closeTerminateConfirm}>
             Cancel
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      <Modal
+        variant={ModalVariant.small}
+        isOpen={instancePendingPublicIp !== null}
+        onClose={closeAttachPublicIp}
+        aria-labelledby="attach-public-ip-title"
+      >
+        <ModalHeader title="Attach public IP" labelId="attach-public-ip-title" />
+        <ModalBody>
+          <Form>
+            <FormGroup label="IP family" fieldId="attach-public-ip-family" isRequired>
+              <Radio
+                id="attach-public-ip-ipv4"
+                name="attach-public-ip-family"
+                label="IPv4"
+                isChecked={publicIpFamily === 'IPv4'}
+                onChange={() => setPublicIpFamily('IPv4')}
+              />
+              <Radio
+                id="attach-public-ip-ipv6"
+                name="attach-public-ip-family"
+                label="IPv6"
+                isChecked={publicIpFamily === 'IPv6'}
+                onChange={() => setPublicIpFamily('IPv6')}
+              />
+            </FormGroup>
+          </Form>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="link" onClick={closeAttachPublicIp}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleConfirmAttachPublicIp}>
+            Attach
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      <Modal
+        variant={ModalVariant.small}
+        isOpen={instancePendingPassword !== null}
+        onClose={() => setInstancePendingPassword(null)}
+        aria-labelledby="cluster-password-modal-title"
+      >
+        <ModalHeader title="Cluster password" labelId="cluster-password-modal-title" />
+        <ModalBody>
+          <Content component="p">
+            Use this kubeadmin password with the OpenShift web console.
+          </Content>
+          {instancePendingPassword ? (
+            <code className="tenant-user-instances__cluster-password">
+              {getClusterDemoPassword(instancePendingPassword)}
+            </code>
+          ) : null}
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="primary" onClick={() => setInstancePendingPassword(null)}>
+            Close
           </Button>
         </ModalFooter>
       </Modal>

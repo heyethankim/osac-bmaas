@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ProviderAdminShell } from '../components/provider-admin/ProviderAdminShell'
 import { ProviderSetupWizardPanel } from '../components/provider-setup/ProviderSetupWizardPanel'
@@ -41,10 +41,32 @@ import {
   setProviderSelectedServices,
   setProviderSetupComplete,
 } from '../providerSetup/storage'
-import { ensureTenantDemoInstances } from '../tenantUser/storage'
-
+import {
+  addTenantUserInstance,
+  ensureTenantDemoInstances,
+  getTenantUserInstances,
+  updateTenantUserInstance,
+} from '../tenantUser/storage'
+import {
+  getTenantInstanceServiceId,
+  type TenantInstance,
+} from '../tenantUser/instances'
+import { LAUNCH_INSTANCE_PROVISIONING_DURATION_MS, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS } from '../tenantUser/launchInstanceWizard'
 import type { WorkspaceTransition } from '../providerAdmin/workspace'
 import type { BmaasTemplateLookup } from '../providerAdmin/bmaasTemplates'
+
+function getServicesNavId(serviceId: CatalogServiceId): ProviderAdminNavId {
+  switch (serviceId) {
+    case 'cluster':
+      return 'services-clusters'
+    case 'models':
+      return 'services-models'
+    case 'virtual-machine':
+      return 'services-virtual-machines'
+    default:
+      return 'services-baremetal'
+  }
+}
 
 const PUBLISH_PHASE_MS = 900
 const ENTER_PHASE_MS = 700
@@ -106,6 +128,7 @@ export function ProviderAdminWorkspacePage() {
   const [instances, setInstances] = useState(() =>
     ensureTenantDemoInstances(PROVIDER_SERVICES_DEMO_TENANT),
   )
+  const provisioningTimersRef = useRef<Map<string, number>>(new Map())
 
   useLayoutEffect(() => {
     const requestedNav = normalizeProviderNavParam(searchParams.get('nav'))
@@ -152,14 +175,24 @@ export function ProviderAdminWorkspacePage() {
       ...(payload.enterpriseTenantId
         ? { enterpriseTenantId: payload.enterpriseTenantId }
         : {}),
+      ...(payload.enterpriseTenantIds?.length
+        ? { enterpriseTenantIds: payload.enterpriseTenantIds }
+        : {}),
       status,
       createdAt: new Date().toISOString(),
     }
 
     addProviderCatalogItem(draft)
 
-    if (payload.vipOrganizationId) {
-      assignCatalogToRegisteredOrganization(payload.vipOrganizationId, draft)
+    const vipOrganizationIds =
+      payload.vipOrganizationIds?.length
+        ? payload.vipOrganizationIds
+        : payload.vipOrganizationId
+          ? [payload.vipOrganizationId]
+          : []
+
+    for (const organizationId of vipOrganizationIds) {
+      assignCatalogToRegisteredOrganization(organizationId, draft)
     }
 
     setCatalogItems(getProviderCatalogItems())
@@ -198,6 +231,53 @@ export function ProviderAdminWorkspacePage() {
   const handleNavChange = (navId: ProviderAdminNavId) => {
     setActiveNavId(navId)
     setProviderActiveNav(navId)
+    if (
+      navId === 'services-baremetal' ||
+      navId === 'services-clusters' ||
+      navId === 'services-models' ||
+      navId === 'services-virtual-machines'
+    ) {
+      setInstances(ensureTenantDemoInstances(PROVIDER_SERVICES_DEMO_TENANT))
+    }
+  }
+
+  const clearProvisioningTimer = (instanceId: string) => {
+    const timeoutId = provisioningTimersRef.current.get(instanceId)
+    if (timeoutId !== undefined) {
+      window.clearTimeout(timeoutId)
+      provisioningTimersRef.current.delete(instanceId)
+    }
+  }
+
+  const scheduleProvisioningCompletion = (instanceId: string, delayMs: number) => {
+    clearProvisioningTimer(instanceId)
+    const timeoutId = window.setTimeout(() => {
+      setInstances(
+        updateTenantUserInstance(PROVIDER_SERVICES_DEMO_TENANT, instanceId, {
+          status: 'running',
+          provisionedAt: new Date().toISOString(),
+        }),
+      )
+      provisioningTimersRef.current.delete(instanceId)
+    }, Math.max(0, delayMs))
+    provisioningTimersRef.current.set(instanceId, timeoutId)
+  }
+
+  const handleProvisioningStarted = (instance: TenantInstance) => {
+    setInstances(addTenantUserInstance(PROVIDER_SERVICES_DEMO_TENANT, instance))
+    scheduleProvisioningCompletion(instance.id, LAUNCH_INSTANCE_PROVISIONING_DURATION_MS)
+  }
+
+  const handleNavigateToServices = (instanceId: string, serviceId: CatalogServiceId) => {
+    clearProvisioningTimer(instanceId)
+    setInstances(
+      updateTenantUserInstance(PROVIDER_SERVICES_DEMO_TENANT, instanceId, {
+        status: 'provisioning',
+        provisionedAt: null,
+      }),
+    )
+    scheduleProvisioningCompletion(instanceId, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS)
+    handleNavChange(getServicesNavId(serviceId))
   }
 
   const renderPostSetupContent = () => {
@@ -219,6 +299,7 @@ export function ProviderAdminWorkspacePage() {
             onInstancesChange={setInstances}
             defaultScopeFieldLabel="Organization"
             lockedServiceId={lockedServiceId ?? 'baremetal'}
+            activeNavId={activeNavId}
           />
         )
       case 'catalog':
@@ -234,6 +315,9 @@ export function ProviderAdminWorkspacePage() {
               setOpenTemplateLookup(template)
               handleNavChange('infrastructure-bmaas-templates')
             }}
+            onProvisioningStarted={handleProvisioningStarted}
+            onDismissDuringProvisioning={handleNavigateToServices}
+            onWizardFinished={handleNavigateToServices}
           />
         )
       case 'infrastructure-data-centers':

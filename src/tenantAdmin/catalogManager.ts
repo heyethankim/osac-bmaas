@@ -97,9 +97,15 @@ function isCatalogVisibleToTenant(
   }
 
   return (
-    item.enterpriseTenantId === organization.tenantId ||
-    item.enterpriseTenantId === organization.id ||
-    organization.catalogItemId === item.catalogItemId
+    (item.enterpriseTenantIds?.length
+      ? item.enterpriseTenantIds
+      : item.enterpriseTenantId
+        ? [item.enterpriseTenantId]
+        : []
+    ).some(
+      (tenantId) =>
+        tenantId === organization.tenantId || tenantId === organization.id,
+    ) || organization.catalogItemId === item.catalogItemId
   )
 }
 

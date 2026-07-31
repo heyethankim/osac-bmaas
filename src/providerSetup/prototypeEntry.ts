@@ -61,8 +61,8 @@ export const BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID = 'cat_BM_AI_INFERENCE'
 export const BARE_METAL_AI_INFERENCE_TEMPLATE_REF_ID = 'bm_hpe_dl380_a100'
 
 /**
- * Demo storefront order for Provider Admin (Cluster included; unpublished for tenants).
- * Tenant Admin / Tenant User use the same order with Cluster filtered out when unpublished.
+ * Demo storefront order for Provider Admin (Cluster published; Dense GPU unpublished for tenants).
+ * Tenant Admin / Tenant User use the same order with unpublished items filtered out.
  */
 export const DEMO_CATALOG_ITEM_ORDER = [
   BARE_METAL_GPU_CATALOG_ITEM_ID,
@@ -135,7 +135,7 @@ function createBareMetalAiInferenceCatalogDraft(): ProviderCatalogDraft {
     rateCard,
     serviceId: 'baremetal',
     networkPolicy: DISABLED_CATALOG_NETWORK_POLICY,
-    status: 'live',
+    status: 'unpublished',
     createdAt: new Date().toISOString(),
   }
 }
@@ -154,7 +154,7 @@ function createClusterNodeSetsCatalogDraft(): ProviderCatalogDraft {
       'all-editable',
       CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
     ),
-    status: 'unpublished',
+    status: 'live',
     createdAt: new Date().toISOString(),
   }
 }
@@ -203,7 +203,7 @@ function hasBareMetalAiInferenceCatalogItem(items: ProviderCatalogDraft[]): bool
   return Boolean(findBareMetalAiInferenceCatalogItem(items))
 }
 
-/** Keep stored demo item title, VIP scope, live status, and networking-off in sync. */
+/** Keep stored demo item title, VIP scope, unpublished status, and networking-off in sync. */
 function syncBareMetalAiInferenceCatalogItem(): void {
   const items = getProviderCatalogItems()
   const current = findBareMetalAiInferenceCatalogItem(items)
@@ -225,8 +225,8 @@ function syncBareMetalAiInferenceCatalogItem(): void {
     })
   }
 
-  if (getCatalogItemStatus(current) !== 'live') {
-    setProviderCatalogItemStatus(current.catalogItemId, 'live')
+  if (getCatalogItemStatus(current) !== 'unpublished') {
+    setProviderCatalogItemStatus(current.catalogItemId, 'unpublished')
   }
 
   const networkPolicy = getCatalogItemNetworkPolicy(current)
@@ -353,7 +353,7 @@ function hasClusterNodeSetsCatalogItem(items: ProviderCatalogDraft[]): boolean {
   )
 }
 
-/** Keep the Cluster demo offering unpublished so tenants do not see it. */
+/** Keep the Cluster demo offering published so tenants can launch it. */
 function syncClusterNodeSetsCatalogItem(): void {
   const items = getProviderCatalogItems()
   const current = items.find(
@@ -366,8 +366,8 @@ function syncClusterNodeSetsCatalogItem(): void {
     return
   }
 
-  if (getCatalogItemStatus(current) !== 'unpublished') {
-    setProviderCatalogItemStatus(current.catalogItemId, 'unpublished')
+  if (getCatalogItemStatus(current) !== 'live') {
+    setProviderCatalogItemStatus(current.catalogItemId, 'live')
   }
 }
 

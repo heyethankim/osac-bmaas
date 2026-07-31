@@ -28,6 +28,7 @@ import {
 import { CatalogPublishScopeIcon } from '../../components/provider-admin/CatalogPublishScopeIcon'
 import {
   formatVipEnterpriseVisibilityLabel,
+  normalizeEnterpriseTenantIds,
   VipEnterpriseOrganizationField,
 } from '../../components/provider-admin/VipEnterpriseOrganizationField'
 import { CatalogHardwareSpecsList } from '../../components/catalog/CatalogHardwareSpecsList'
@@ -80,26 +81,32 @@ export function ProviderSetupPublishCatalogWizard({
   const [displayName, setDisplayName] = useState('')
   const [description, setDescription] = useState('')
   const [publishScope, setPublishScope] = useState<PublishCatalogScope>('global-public')
-  const [enterpriseTenantId, setEnterpriseTenantId] = useState('')
+  const [enterpriseTenantIds, setEnterpriseTenantIds] = useState<string[]>([])
 
   const selectedTemplate =
     templates.find((template) => template.templateRefId === selectedTemplateRefId) ?? null
   const isVipEnterprise = publishScope === 'vip-enterprise'
-  const selectedVipOrganization = useMemo(
-    () => organizations.find((organization) => organization.tenantId === enterpriseTenantId) ?? null,
-    [organizations, enterpriseTenantId],
+  const selectedVipOrganizations = useMemo(
+    () =>
+      organizations.filter((organization) =>
+        enterpriseTenantIds.includes(organization.tenantId),
+      ),
+    [organizations, enterpriseTenantIds],
   )
-  const isVipUnassigned = isVipEnterprise && !enterpriseTenantId.trim()
+  const isVipUnassigned = isVipEnterprise && enterpriseTenantIds.length === 0
   const canCreateCatalogItem =
     Boolean(selectedServiceId) && Boolean(selectedTemplate) && Boolean(displayName.trim())
 
   const selectVipEnterprise = () => {
     setPublishScope('vip-enterprise')
-    setEnterpriseTenantId((current) => {
-      if (current.trim() && organizations.some((organization) => organization.tenantId === current)) {
-        return current
+    setEnterpriseTenantIds((current) => {
+      const validCurrent = current.filter((tenantId) =>
+        organizations.some((organization) => organization.tenantId === tenantId),
+      )
+      if (validCurrent.length > 0) {
+        return validCurrent
       }
-      return organizations[0]?.tenantId ?? ''
+      return organizations[0]?.tenantId ? [organizations[0].tenantId] : []
     })
   }
 
@@ -109,7 +116,7 @@ export function ProviderSetupPublishCatalogWizard({
     setDisplayName('')
     setDescription('')
     setPublishScope('global-public')
-    setEnterpriseTenantId('')
+    setEnterpriseTenantIds([])
   }
 
   const handleClose = () => {
@@ -136,29 +143,33 @@ export function ProviderSetupPublishCatalogWizard({
 
     setPublishScope(initialPublishScope)
     if (initialPublishScope === 'vip-enterprise') {
-      const preferredTenantId =
-        initialEnterpriseTenantId &&
-        organizations.some((organization) => organization.tenantId === initialEnterpriseTenantId)
-          ? initialEnterpriseTenantId
-          : (organizations[0]?.tenantId ?? '')
-      setEnterpriseTenantId(preferredTenantId)
+      const preferredTenantIds = normalizeEnterpriseTenantIds(initialEnterpriseTenantId).filter(
+        (tenantId) => organizations.some((organization) => organization.tenantId === tenantId),
+      )
+      setEnterpriseTenantIds(
+        preferredTenantIds.length > 0
+          ? preferredTenantIds
+          : organizations[0]?.tenantId
+            ? [organizations[0].tenantId]
+            : [],
+      )
     } else {
-      setEnterpriseTenantId('')
+      setEnterpriseTenantIds([])
     }
     // Initialize only when the wizard opens; resume props are read at that moment.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional open-only init
   }, [isOpen])
 
   useEffect(() => {
-    if (!isOpen || publishScope !== 'vip-enterprise' || enterpriseTenantId.trim()) {
+    if (!isOpen || publishScope !== 'vip-enterprise' || enterpriseTenantIds.length > 0) {
       return
     }
 
     const firstOrganization = organizations[0]
     if (firstOrganization) {
-      setEnterpriseTenantId(firstOrganization.tenantId)
+      setEnterpriseTenantIds([firstOrganization.tenantId])
     }
-  }, [isOpen, organizations, publishScope, enterpriseTenantId])
+  }, [isOpen, organizations, publishScope, enterpriseTenantIds])
 
   useEffect(() => {
     if (!selectedTemplate) {
@@ -174,6 +185,8 @@ export function ProviderSetupPublishCatalogWizard({
       return
     }
 
+    const vipOrganizationIds = selectedVipOrganizations.map((organization) => organization.id)
+
     onCreateCatalogItem({
       serviceId: selectedServiceId,
       templateRefId: selectedTemplate.templateRefId,
@@ -183,10 +196,18 @@ export function ProviderSetupPublishCatalogWizard({
       scope: publishScope,
       rateCard: resolveRateCard(selectedTemplate),
       status: 'unpublished',
-      ...(isVipEnterprise && enterpriseTenantId.trim()
-        ? { enterpriseTenantId: enterpriseTenantId.trim() }
+      ...(isVipEnterprise && enterpriseTenantIds.length > 0
+        ? {
+            enterpriseTenantId: enterpriseTenantIds[0],
+            enterpriseTenantIds,
+          }
         : {}),
-      ...(selectedVipOrganization ? { vipOrganizationId: selectedVipOrganization.id } : {}),
+      ...(vipOrganizationIds.length > 0
+        ? {
+            vipOrganizationId: vipOrganizationIds[0],
+            vipOrganizationIds,
+          }
+        : {}),
     })
   }
 
@@ -361,7 +382,7 @@ export function ProviderSetupPublishCatalogWizard({
                 }`}
                 onClick={() => {
                   setPublishScope('global-public')
-                  setEnterpriseTenantId('')
+                  setEnterpriseTenantIds([])
                 }}
                 role="radio"
                 aria-checked={publishScope === 'global-public'}
@@ -380,7 +401,7 @@ export function ProviderSetupPublishCatalogWizard({
                   isChecked={publishScope === 'global-public'}
                   onChange={() => {
                     setPublishScope('global-public')
-                    setEnterpriseTenantId('')
+                    setEnterpriseTenantIds([])
                   }}
                   aria-label="Global public"
                 />
@@ -401,7 +422,7 @@ export function ProviderSetupPublishCatalogWizard({
                 <span className="provider-admin-catalog__scope-copy">
                   <span className="provider-admin-catalog__scope-title">VIP enterprise</span>
                   <span className="provider-admin-catalog__scope-detail">
-                    Visible only to a specific enterprise tenant.
+                    Visible only to selected enterprise tenants.
                   </span>
                 </span>
                 <Radio
@@ -417,8 +438,8 @@ export function ProviderSetupPublishCatalogWizard({
               <div className="provider-setup-template__publish-enterprise-form">
                 <VipEnterpriseOrganizationField
                   organizations={organizations}
-                  selectedTenantId={enterpriseTenantId}
-                  onSelectedTenantIdChange={setEnterpriseTenantId}
+                  selectedTenantIds={enterpriseTenantIds}
+                  onSelectedTenantIdsChange={setEnterpriseTenantIds}
                   onRegisterOrganization={onRegisterOrganization}
                   fieldIdPrefix="publish-catalog"
                 />
@@ -507,7 +528,7 @@ export function ProviderSetupPublishCatalogWizard({
                 <DescriptionListTerm>Visibility</DescriptionListTerm>
                 <DescriptionListDescription>
                   {isVipEnterprise
-                    ? formatVipEnterpriseVisibilityLabel(organizations, enterpriseTenantId)
+                    ? formatVipEnterpriseVisibilityLabel(organizations, enterpriseTenantIds)
                     : 'Global public'}
                 </DescriptionListDescription>
               </DescriptionListGroup>

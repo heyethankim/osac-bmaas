@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { TenantShell } from '../components/tenant/TenantShell'
 import { DEMO_TENANT_DISPLAY_ADMIN, isDemoTenantId } from '../demoTenant'
@@ -29,10 +29,14 @@ import {
   addTenantUserInstance,
   ensureTenantDemoInstances,
   getOrEnsureTenantUserInstances,
+  getTenantUserInstances,
   updateTenantUserInstance,
 } from '../tenantUser/storage'
-import type { TenantInstance } from '../tenantUser/instances'
-import { LAUNCH_INSTANCE_PROVISIONING_DURATION_MS } from '../tenantUser/launchInstanceWizard'
+import {
+  getTenantInstanceServiceId,
+  type TenantInstance,
+} from '../tenantUser/instances'
+import { LAUNCH_INSTANCE_PROVISIONING_DURATION_MS, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS } from '../tenantUser/launchInstanceWizard'
 
 const TENANT_ADMIN_PLACEHOLDER_PAGES: Partial<
   Record<TenantAdminNavId, { title: string; description: string }>
@@ -78,6 +82,19 @@ function getLockedServiceIdFromNav(navId: TenantAdminNavId): CatalogServiceId | 
   }
 }
 
+function getServicesNavId(serviceId: CatalogServiceId): TenantAdminNavId {
+  switch (serviceId) {
+    case 'cluster':
+      return 'services-clusters'
+    case 'models':
+      return 'services-models'
+    case 'virtual-machine':
+      return 'services-virtual-machines'
+    default:
+      return 'services-baremetal'
+  }
+}
+
 /** Seeds Tenant Admin state so landing-page prototype links can open finished screens. */
 function ensureTenantAdminPostOnboardingPrototype(tenant: string, navId: TenantAdminNavId) {
   setTenantOnboardingComplete(tenant)
@@ -119,6 +136,7 @@ export function TenantAdminWorkspacePage() {
   const [openVirtualNetworkId, setOpenVirtualNetworkId] = useState<string | null>(null)
   const [openSubnetId, setOpenSubnetId] = useState<string | null>(null)
   const [openSecurityGroupId, setOpenSecurityGroupId] = useState<string | null>(null)
+  const provisioningTimersRef = useRef<Map<string, number>>(new Map())
 
   useLayoutEffect(() => {
     if (!isValidTenant) {
@@ -158,16 +176,43 @@ export function TenantAdminWorkspacePage() {
     }
   }
 
-  const handleProvisioningStarted = (instance: TenantInstance) => {
-    setInstances(addTenantUserInstance(tenant, instance))
-    window.setTimeout(() => {
+  const clearProvisioningTimer = (instanceId: string) => {
+    const timeoutId = provisioningTimersRef.current.get(instanceId)
+    if (timeoutId !== undefined) {
+      window.clearTimeout(timeoutId)
+      provisioningTimersRef.current.delete(instanceId)
+    }
+  }
+
+  const scheduleProvisioningCompletion = (instanceId: string, delayMs: number) => {
+    clearProvisioningTimer(instanceId)
+    const timeoutId = window.setTimeout(() => {
       setInstances(
-        updateTenantUserInstance(tenant, instance.id, {
+        updateTenantUserInstance(tenant, instanceId, {
           status: 'running',
           provisionedAt: new Date().toISOString(),
         }),
       )
-    }, LAUNCH_INSTANCE_PROVISIONING_DURATION_MS)
+      provisioningTimersRef.current.delete(instanceId)
+    }, Math.max(0, delayMs))
+    provisioningTimersRef.current.set(instanceId, timeoutId)
+  }
+
+  const handleProvisioningStarted = (instance: TenantInstance) => {
+    setInstances(addTenantUserInstance(tenant, instance))
+    scheduleProvisioningCompletion(instance.id, LAUNCH_INSTANCE_PROVISIONING_DURATION_MS)
+  }
+
+  const handleNavigateToServices = (instanceId: string, serviceId: CatalogServiceId) => {
+    clearProvisioningTimer(instanceId)
+    setInstances(
+      updateTenantUserInstance(tenant, instanceId, {
+        status: 'provisioning',
+        provisionedAt: null,
+      }),
+    )
+    scheduleProvisioningCompletion(instanceId, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS)
+    handleNavChange(getServicesNavId(serviceId))
   }
 
   const handleInstancesChange = (nextInstances: TenantInstance[]) => {
@@ -197,6 +242,7 @@ export function TenantAdminWorkspacePage() {
             onInstancesChange={handleInstancesChange}
             defaultScopeFieldLabel="Organization"
             lockedServiceId={lockedServiceId ?? 'baremetal'}
+            activeNavId={activeNavId}
           />
         )
       case 'catalog':
@@ -208,9 +254,8 @@ export function TenantAdminWorkspacePage() {
             onNavigateToProjectsTeams={() => handleNavChange('projects-teams')}
             existingInstanceNames={instances.map((instance) => instance.name)}
             onProvisioningStarted={handleProvisioningStarted}
-            onInstancesRefresh={() =>
-              setInstances(ensureTenantDemoInstances(tenant, organization.name))
-            }
+            onDismissDuringProvisioning={handleNavigateToServices}
+            onWizardFinished={handleNavigateToServices}
           />
         )
       case 'projects-teams':

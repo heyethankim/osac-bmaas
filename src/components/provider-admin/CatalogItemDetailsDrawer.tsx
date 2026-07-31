@@ -27,7 +27,7 @@ import {
 } from '@patternfly/react-core'
 import { CatalogPublishScopeIcon } from './CatalogPublishScopeIcon'
 import { NetworkFieldLockButton } from '../catalog/NetworkFieldLockButton'
-import { formatVipEnterpriseVisibilityLabel } from './VipEnterpriseOrganizationField'
+import { formatVipEnterpriseVisibilityLabel, getCatalogEnterpriseTenantIds } from './VipEnterpriseOrganizationField'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import {
   getCatalogItemNetworkPolicy,
@@ -63,8 +63,6 @@ type CatalogItemDetailsDrawerProps = {
   catalog: ProviderCatalogDraft | null
   serviceId: CatalogServiceId
   templateDescription: string
-  canAssign: boolean
-  onAssignToOrganization: () => void
   onPublish?: () => void
   onLaunch?: () => void
   onNetworkPolicyChange?: (networkPolicy: CatalogNetworkPolicy) => void
@@ -91,8 +89,6 @@ export function CatalogItemDetailsDrawer({
   catalog,
   serviceId,
   templateDescription,
-  canAssign,
-  onAssignToOrganization,
   onPublish,
   onLaunch,
   onNetworkPolicyChange,
@@ -219,18 +215,7 @@ export function CatalogItemDetailsDrawer({
               Publish
             </Button>
           </div>
-        ) : catalog.scope === 'global-public' ? null : (
-          <div className="provider-admin-catalog-items__drawer-actions">
-            <Button
-              variant="secondary"
-              className="provider-admin-catalog-items__drawer-action"
-              isDisabled={!canAssign}
-              onClick={onAssignToOrganization}
-            >
-              Assign to organization
-            </Button>
-          </div>
-        )}
+        ) : null}
 
         <Divider className="provider-admin-catalog-items__drawer-divider" />
 
@@ -271,19 +256,24 @@ export function CatalogItemDetailsDrawer({
               </span>
             </DescriptionListDescription>
           </DescriptionListGroup>
-          {catalog.scope === 'vip-enterprise' && catalog.enterpriseTenantId ? (
+          {catalog.scope === 'vip-enterprise' &&
+          getCatalogEnterpriseTenantIds(catalog).length > 0 ? (
             <DescriptionListGroup>
-              <DescriptionListTerm>Enterprise organization</DescriptionListTerm>
+              <DescriptionListTerm>
+                {getCatalogEnterpriseTenantIds(catalog).length > 1
+                  ? 'Enterprise organizations'
+                  : 'Enterprise organization'}
+              </DescriptionListTerm>
               <DescriptionListDescription>
-                {formatVipEnterpriseVisibilityLabel(organizations, catalog.enterpriseTenantId).replace(
-                  /^VIP enterprise · /,
-                  '',
-                )}
+                {formatVipEnterpriseVisibilityLabel(
+                  organizations,
+                  getCatalogEnterpriseTenantIds(catalog),
+                ).replace(/^VIP enterprise · /, '')}
               </DescriptionListDescription>
             </DescriptionListGroup>
           ) : catalog.scope === 'vip-enterprise' ? (
             <DescriptionListGroup>
-              <DescriptionListTerm>Enterprise organization</DescriptionListTerm>
+              <DescriptionListTerm>Enterprise organizations</DescriptionListTerm>
               <DescriptionListDescription>Restricted — unassigned</DescriptionListDescription>
             </DescriptionListGroup>
           ) : null}

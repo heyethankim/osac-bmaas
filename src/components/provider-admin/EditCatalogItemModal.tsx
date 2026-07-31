@@ -18,7 +18,10 @@ import {
   TextInput,
 } from '@patternfly/react-core'
 import { CatalogPublishScopeIcon } from './CatalogPublishScopeIcon'
-import { VipEnterpriseOrganizationField } from './VipEnterpriseOrganizationField'
+import {
+  getCatalogEnterpriseTenantIds,
+  VipEnterpriseOrganizationField,
+} from './VipEnterpriseOrganizationField'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import {
@@ -33,6 +36,7 @@ export type CatalogItemEditFields = {
   description: string
   scope: PublishCatalogScope
   enterpriseTenantId?: string
+  enterpriseTenantIds?: string[]
 }
 
 type EditCatalogItemModalProps = {
@@ -57,14 +61,14 @@ export function EditCatalogItemModal({
   const [displayName, setDisplayName] = useState('')
   const [description, setDescription] = useState('')
   const [publishScope, setPublishScope] = useState<PublishCatalogScope>('global-public')
-  const [enterpriseTenantId, setEnterpriseTenantId] = useState('')
+  const [enterpriseTenantIds, setEnterpriseTenantIds] = useState<string[]>([])
 
   useEffect(() => {
     if (!catalog) {
       setDisplayName('')
       setDescription('')
       setPublishScope('global-public')
-      setEnterpriseTenantId('')
+      setEnterpriseTenantIds([])
       return
     }
 
@@ -72,40 +76,49 @@ export function EditCatalogItemModal({
     setDescription(catalog.description ?? '')
     setPublishScope(catalog.scope)
 
-    const preferredTenantId = initialEnterpriseTenantId ?? catalog.enterpriseTenantId ?? ''
     if (catalog.scope === 'vip-enterprise') {
-      const resolvedTenantId =
-        preferredTenantId &&
-        organizations.some((organization) => organization.tenantId === preferredTenantId)
-          ? preferredTenantId
-          : (organizations[0]?.tenantId ?? preferredTenantId)
-      setEnterpriseTenantId(resolvedTenantId)
+      const preferredIds = getCatalogEnterpriseTenantIds({
+        enterpriseTenantId: initialEnterpriseTenantId ?? catalog.enterpriseTenantId,
+        enterpriseTenantIds: catalog.enterpriseTenantIds,
+      }).filter((tenantId) =>
+        organizations.some((organization) => organization.tenantId === tenantId),
+      )
+      setEnterpriseTenantIds(
+        preferredIds.length > 0
+          ? preferredIds
+          : organizations[0]?.tenantId
+            ? [organizations[0].tenantId]
+            : [],
+      )
     } else {
-      setEnterpriseTenantId('')
+      setEnterpriseTenantIds([])
     }
   }, [catalog, initialEnterpriseTenantId, organizations])
 
   useEffect(() => {
-    if (!catalog || publishScope !== 'vip-enterprise' || enterpriseTenantId.trim()) {
+    if (!catalog || publishScope !== 'vip-enterprise' || enterpriseTenantIds.length > 0) {
       return
     }
 
     const firstOrganization = organizations[0]
     if (firstOrganization) {
-      setEnterpriseTenantId(firstOrganization.tenantId)
+      setEnterpriseTenantIds([firstOrganization.tenantId])
     }
-  }, [catalog, organizations, publishScope, enterpriseTenantId])
+  }, [catalog, organizations, publishScope, enterpriseTenantIds])
 
   const isVipEnterprise = publishScope === 'vip-enterprise'
   const canSave = Boolean(displayName.trim())
 
   const selectVipEnterprise = () => {
     setPublishScope('vip-enterprise')
-    setEnterpriseTenantId((current) => {
-      if (current.trim() && organizations.some((organization) => organization.tenantId === current)) {
-        return current
+    setEnterpriseTenantIds((current) => {
+      const validCurrent = current.filter((tenantId) =>
+        organizations.some((organization) => organization.tenantId === tenantId),
+      )
+      if (validCurrent.length > 0) {
+        return validCurrent
       }
-      return organizations[0]?.tenantId ?? ''
+      return organizations[0]?.tenantId ? [organizations[0].tenantId] : []
     })
   }
 
@@ -118,8 +131,11 @@ export function EditCatalogItemModal({
       displayName: displayName.trim(),
       description: description.trim(),
       scope: publishScope,
-      ...(isVipEnterprise && enterpriseTenantId.trim()
-        ? { enterpriseTenantId: enterpriseTenantId.trim() }
+      ...(isVipEnterprise && enterpriseTenantIds.length > 0
+        ? {
+            enterpriseTenantId: enterpriseTenantIds[0],
+            enterpriseTenantIds,
+          }
         : {}),
     })
     onClose()
@@ -203,7 +219,7 @@ export function EditCatalogItemModal({
                     }`}
                     onClick={() => {
                       setPublishScope('global-public')
-                      setEnterpriseTenantId('')
+                      setEnterpriseTenantIds([])
                     }}
                     role="radio"
                     aria-checked={publishScope === 'global-public'}
@@ -224,7 +240,7 @@ export function EditCatalogItemModal({
                       isChecked={publishScope === 'global-public'}
                       onChange={() => {
                         setPublishScope('global-public')
-                        setEnterpriseTenantId('')
+                        setEnterpriseTenantIds([])
                       }}
                       aria-label="Global public"
                     />
@@ -247,7 +263,7 @@ export function EditCatalogItemModal({
                     <span className="provider-admin-catalog__scope-copy">
                       <span className="provider-admin-catalog__scope-title">VIP enterprise</span>
                       <span className="provider-admin-catalog__scope-detail">
-                        Visible only to a specific enterprise tenant.
+                        Visible only to selected enterprise tenants.
                       </span>
                     </span>
                     <Radio
@@ -264,8 +280,8 @@ export function EditCatalogItemModal({
               {isVipEnterprise ? (
                 <VipEnterpriseOrganizationField
                   organizations={organizations}
-                  selectedTenantId={enterpriseTenantId}
-                  onSelectedTenantIdChange={setEnterpriseTenantId}
+                  selectedTenantIds={enterpriseTenantIds}
+                  onSelectedTenantIdsChange={setEnterpriseTenantIds}
                   onRegisterOrganization={onRegisterOrganization}
                   fieldIdPrefix="edit-catalog"
                 />

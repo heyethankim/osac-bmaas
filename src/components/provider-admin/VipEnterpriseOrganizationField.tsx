@@ -1,28 +1,53 @@
 import {
   Alert,
   AlertActionLink,
+  Checkbox,
   Content,
   FormGroup,
-  FormSelect,
-  FormSelectOption,
 } from '@patternfly/react-core'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 
+export function normalizeEnterpriseTenantIds(
+  value: string | readonly string[] | undefined,
+): string[] {
+  if (Array.isArray(value)) {
+    return [...new Set(value.map((entry) => String(entry).trim()).filter(Boolean))]
+  }
+
+  if (typeof value !== 'string') {
+    return []
+  }
+
+  const trimmed = value.trim()
+  return trimmed ? [trimmed] : []
+}
+
 type VipEnterpriseOrganizationFieldProps = {
   organizations: RegisteredOrganization[]
-  selectedTenantId: string
-  onSelectedTenantIdChange: (tenantId: string) => void
+  selectedTenantIds: string[]
+  onSelectedTenantIdsChange: (tenantIds: string[]) => void
   onRegisterOrganization?: () => void
   fieldIdPrefix: string
 }
 
 export function VipEnterpriseOrganizationField({
   organizations,
-  selectedTenantId,
-  onSelectedTenantIdChange,
+  selectedTenantIds,
+  onSelectedTenantIdsChange,
   onRegisterOrganization,
   fieldIdPrefix,
 }: VipEnterpriseOrganizationFieldProps) {
+  const selectedIdSet = new Set(normalizeEnterpriseTenantIds(selectedTenantIds))
+
+  const toggleOrganization = (tenantId: string, isChecked: boolean) => {
+    if (isChecked) {
+      onSelectedTenantIdsChange([...selectedIdSet, tenantId])
+      return
+    }
+
+    onSelectedTenantIdsChange([...selectedIdSet].filter((id) => id !== tenantId))
+  }
+
   if (organizations.length === 0) {
     return (
       <Alert
@@ -33,58 +58,106 @@ export function VipEnterpriseOrganizationField({
         actionLinks={
           onRegisterOrganization ? (
             <AlertActionLink component="button" onClick={onRegisterOrganization}>
-              Register organization
+              Go to Organizations
             </AlertActionLink>
           ) : undefined
         }
       >
         <Content component="p">
-          VIP enterprise needs at least one registered organization to target. You can still save
-          this catalog item as unpublished and assign a tenant later, or switch to Global public to
-          publish now.
+          VIP enterprise needs at least one registered organization to target. Register a new
+          organization on the Organizations page, or save this catalog item as unpublished and
+          assign tenants later. You can also switch to Global public to publish now.
         </Content>
       </Alert>
     )
   }
 
   return (
-    <FormGroup
-      label="Enterprise organization"
-      fieldId={`${fieldIdPrefix}-enterprise-organization`}
-      isRequired
-    >
-      <FormSelect
-        id={`${fieldIdPrefix}-enterprise-organization`}
-        value={selectedTenantId}
-        onChange={(_event, value) => onSelectedTenantIdChange(value)}
-        aria-label="Enterprise organization"
+    <div className="provider-admin-catalog__vip-enterprise-field">
+      <FormGroup
+        label="Enterprise organizations"
+        fieldId={`${fieldIdPrefix}-enterprise-organizations`}
+        isRequired
       >
-        <FormSelectOption value="" label="Select an organization" isDisabled />
-        {organizations.map((organization) => (
-          <FormSelectOption
-            key={organization.id}
-            value={organization.tenantId}
-            label={`${organization.name} (${organization.tenantId})`}
-          />
-        ))}
-      </FormSelect>
-    </FormGroup>
+        <div
+          className="provider-admin-catalog__vip-org-list"
+          role="group"
+          aria-label="Enterprise organizations"
+        >
+          <ul className="provider-admin-catalog__vip-org-checklist">
+            {organizations.map((organization) => {
+              const checkboxId = `${fieldIdPrefix}-enterprise-${organization.tenantId}`
+              return (
+                <li key={organization.id}>
+                  <Checkbox
+                    id={checkboxId}
+                    label={`${organization.name} (${organization.tenantId})`}
+                    isChecked={selectedIdSet.has(organization.tenantId)}
+                    onChange={(_event, checked) =>
+                      toggleOrganization(organization.tenantId, checked)
+                    }
+                  />
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      </FormGroup>
+
+      <Alert
+        variant="info"
+        isInline
+        title="Need to add a new enterprise?"
+        className="provider-admin-catalog__vip-orgs-ack"
+        actionLinks={
+          onRegisterOrganization ? (
+            <AlertActionLink component="button" onClick={onRegisterOrganization}>
+              Go to Organizations
+            </AlertActionLink>
+          ) : undefined
+        }
+      >
+        <Content component="p">
+          Register the organization on the Organizations page first. After it is created, return to
+          this wizard and select it here.
+        </Content>
+      </Alert>
+    </div>
   )
 }
 
 export function formatVipEnterpriseVisibilityLabel(
   organizations: RegisteredOrganization[],
-  enterpriseTenantId: string | undefined,
+  enterpriseTenantIdOrIds: string | readonly string[] | undefined,
 ): string {
-  const trimmed = enterpriseTenantId?.trim() ?? ''
-  if (!trimmed) {
+  const tenantIds = normalizeEnterpriseTenantIds(enterpriseTenantIdOrIds)
+  if (tenantIds.length === 0) {
     return 'VIP enterprise · Restricted — unassigned'
   }
 
-  const organization = organizations.find((entry) => entry.tenantId === trimmed)
-  if (organization) {
-    return `VIP enterprise · ${organization.name}`
+  const names = tenantIds.map((tenantId) => {
+    const organization = organizations.find((entry) => entry.tenantId === tenantId)
+    return organization?.name ?? tenantId
+  })
+
+  if (names.length === 1) {
+    return `VIP enterprise · ${names[0]}`
   }
 
-  return `VIP enterprise · ${trimmed}`
+  if (names.length === 2) {
+    return `VIP enterprise · ${names[0]}, ${names[1]}`
+  }
+
+  return `VIP enterprise · ${names[0]} +${names.length - 1} more`
+}
+
+export function getCatalogEnterpriseTenantIds(item: {
+  enterpriseTenantId?: string
+  enterpriseTenantIds?: string[]
+}): string[] {
+  if (item.enterpriseTenantIds?.length) {
+    return normalizeEnterpriseTenantIds(item.enterpriseTenantIds)
+  }
+
+  return normalizeEnterpriseTenantIds(item.enterpriseTenantId)
 }

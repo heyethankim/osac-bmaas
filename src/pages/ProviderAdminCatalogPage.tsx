@@ -31,7 +31,10 @@ import { CatalogViewToggle } from '../components/catalog/CatalogViewToggle'
 import { AssignCatalogToOrganizationModal } from '../components/provider-admin/AssignCatalogToOrganizationModal'
 import { CatalogItemDetailsDrawer } from '../components/provider-admin/CatalogItemDetailsDrawer'
 import { CatalogPublishScopeIcon } from '../components/provider-admin/CatalogPublishScopeIcon'
-import { formatVipEnterpriseVisibilityLabel } from '../components/provider-admin/VipEnterpriseOrganizationField'
+import {
+  formatVipEnterpriseVisibilityLabel,
+  getCatalogEnterpriseTenantIds,
+} from '../components/provider-admin/VipEnterpriseOrganizationField'
 import {
   EditCatalogItemModal,
   type CatalogItemEditFields,
@@ -77,6 +80,7 @@ import {
 import { ProviderSetupPublishCatalogWizard } from './provider-setup/ProviderSetupPublishCatalogWizard'
 import { TenantUserLaunchInstanceWizard } from '../components/tenant-user/TenantUserLaunchInstanceWizard'
 import { getTenantUserCatalogCardFromDraft } from '../tenantUser/catalog'
+import type { TenantInstance } from '../tenantUser/instances'
 import {
   LAUNCH_INSTANCE_PROVISIONING_DURATION_MS,
   LAUNCH_INSTANCE_WIZARD_DEMO,
@@ -98,6 +102,9 @@ type ProviderAdminCatalogPageProps = {
     templateRefId: string
     templateName: string
   }) => void
+  onProvisioningStarted?: (instance: TenantInstance) => void
+  onDismissDuringProvisioning?: (instanceId: string, serviceId: CatalogServiceId) => void
+  onWizardFinished?: (instanceId: string, serviceId: CatalogServiceId) => void
 }
 
 /** Intentional create latency before revealing the new catalog card. */
@@ -116,12 +123,9 @@ function catalogItemMatchesOrganization(
     return false
   }
 
-  const tenantId = item.enterpriseTenantId?.trim()
-  if (!tenantId) {
-    return false
-  }
-
-  return tenantId === organization.tenantId || tenantId === organization.id
+  return getCatalogEnterpriseTenantIds(item).some(
+    (tenantId) => tenantId === organization.tenantId || tenantId === organization.id,
+  )
 }
 
 function formatCatalogCreatedAt(iso: string): string {
@@ -307,6 +311,9 @@ export function ProviderAdminCatalogPage({
   isPublishing = false,
   onRegisterOrganization,
   onNavigateToLinkedTemplate,
+  onProvisioningStarted,
+  onDismissDuringProvisioning,
+  onWizardFinished,
 }: ProviderAdminCatalogPageProps) {
   const initialServiceFilters = catalogItems.map(getDraftServiceId)
   const [selectedFilters, setSelectedFilters] = useState<Set<CatalogServiceId>>(
@@ -684,11 +691,6 @@ export function ProviderAdminCatalogPage({
       catalog={drawerCatalog}
       serviceId={drawerCatalog ? getDraftServiceId(drawerCatalog) : 'baremetal'}
       templateDescription={linkedTemplate.description}
-      canAssign={Boolean(drawerCatalog) && drawerCatalog!.scope !== 'global-public'}
-      onAssignToOrganization={() => {
-        setIsDetailsDrawerOpen(false)
-        setIsAssignModalOpen(true)
-      }}
       onPublish={() => {
         if (!drawerCatalog) {
           return
@@ -866,7 +868,10 @@ export function ProviderAdminCatalogPage({
             )
             const visibilityDetail =
               item.scope === 'vip-enterprise'
-                ? formatVipEnterpriseVisibilityLabel(organizations, item.enterpriseTenantId)
+                ? formatVipEnterpriseVisibilityLabel(
+                    organizations,
+                    getCatalogEnterpriseTenantIds(item),
+                  )
                 : 'Global public'
             const specRows = resolveCatalogSpecRows(item)
 
@@ -1193,21 +1198,26 @@ export function ProviderAdminCatalogPage({
           existingInstanceNames={existingInstanceNames}
           onClose={() => setIsWizardOpen(false)}
           onProvisioningStarted={(instance) => {
-            addTenantUserInstance(PROVIDER_LAUNCH_DEMO_TENANT, instance)
+            onProvisioningStarted?.(instance)
+            if (!onProvisioningStarted) {
+              addTenantUserInstance(PROVIDER_LAUNCH_DEMO_TENANT, instance)
+              window.setTimeout(() => {
+                updateTenantUserInstance(PROVIDER_LAUNCH_DEMO_TENANT, instance.id, {
+                  status: 'running',
+                  provisionedAt: new Date().toISOString(),
+                })
+              }, LAUNCH_INSTANCE_PROVISIONING_DURATION_MS)
+            }
             setExistingInstanceNames(
               getTenantUserInstances(PROVIDER_LAUNCH_DEMO_TENANT).map((item) => item.name),
             )
-            window.setTimeout(() => {
-              updateTenantUserInstance(PROVIDER_LAUNCH_DEMO_TENANT, instance.id, {
-                status: 'running',
-                provisionedAt: new Date().toISOString(),
-              })
-            }, LAUNCH_INSTANCE_PROVISIONING_DURATION_MS)
           }}
-          onDismissDuringProvisioning={() => {
+          onDismissDuringProvisioning={(instanceId, serviceId) => {
+            onDismissDuringProvisioning?.(instanceId, serviceId)
             setIsWizardOpen(false)
           }}
-          onWizardFinished={() => {
+          onWizardFinished={(instanceId, serviceId) => {
+            onWizardFinished?.(instanceId, serviceId)
             setIsWizardOpen(false)
             setExistingInstanceNames(
               getTenantUserInstances(PROVIDER_LAUNCH_DEMO_TENANT).map((item) => item.name),

@@ -68,7 +68,8 @@ type TenantAdminCatalogPageProps = {
   onNavigateToProjectsTeams: () => void
   existingInstanceNames?: readonly string[]
   onProvisioningStarted?: (instance: TenantInstance) => void
-  onInstancesRefresh?: () => void
+  onDismissDuringProvisioning?: (instanceId: string, serviceId: CatalogServiceId) => void
+  onWizardFinished?: (instanceId: string, serviceId: CatalogServiceId) => void
 }
 
 function getVisibilityTooltip(scope: TenantCatalogGovernanceItemWithNetworking['scope']): string {
@@ -275,7 +276,8 @@ export function TenantAdminCatalogPage({
   onNavigateToProjectsTeams,
   existingInstanceNames = [],
   onProvisioningStarted,
-  onInstancesRefresh,
+  onDismissDuringProvisioning,
+  onWizardFinished,
 }: TenantAdminCatalogPageProps) {
   const [catalogItems, setCatalogItems] = useState(() =>
     getTenantCatalogGovernanceItems(organization, catalogDraft),
@@ -927,13 +929,13 @@ export function TenantAdminCatalogPage({
           onProvisioningStarted={(instance) => {
             onProvisioningStarted?.(instance)
           }}
-          onDismissDuringProvisioning={() => {
+          onDismissDuringProvisioning={(instanceId, serviceId) => {
+            onDismissDuringProvisioning?.(instanceId, serviceId)
             setIsWizardOpen(false)
-            onInstancesRefresh?.()
           }}
-          onWizardFinished={() => {
+          onWizardFinished={(instanceId, serviceId) => {
+            onWizardFinished?.(instanceId, serviceId)
             setIsWizardOpen(false)
-            onInstancesRefresh?.()
           }}
         />
       ) : null}
