@@ -210,8 +210,6 @@ export function TenantUserLaunchInstanceWizard({
 
   const activeStepDescription =
     wizardSteps.find((step) => step.id === activeStepId)?.description ?? ''
-  const isProvisioningInProgress =
-    activeStepId === 'provisioning' && !isProvisioningComplete
 
   const networkSelections = {
     virtualNetworkId: form.virtualNetworkId || networkContext.policy.virtualNetwork.id,

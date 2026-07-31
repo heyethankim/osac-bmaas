@@ -12,7 +12,6 @@ import type { CatalogServiceId } from '../providerSetup/templateDemo'
 import { getRegisteredOrganizationBySlug } from '../tenantAdmin/organizations'
 import { getTenantUserProjectInvitation } from '../tenantUser/invitation'
 import {
-  getTenantInstanceServiceId,
   type TenantInstance,
 } from '../tenantUser/instances'
 import { LAUNCH_INSTANCE_PROVISIONING_DURATION_MS, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS } from '../tenantUser/launchInstanceWizard'

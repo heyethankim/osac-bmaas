@@ -29,11 +29,9 @@ import {
   addTenantUserInstance,
   ensureTenantDemoInstances,
   getOrEnsureTenantUserInstances,
-  getTenantUserInstances,
   updateTenantUserInstance,
 } from '../tenantUser/storage'
 import {
-  getTenantInstanceServiceId,
   type TenantInstance,
 } from '../tenantUser/instances'
 import { LAUNCH_INSTANCE_PROVISIONING_DURATION_MS, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS } from '../tenantUser/launchInstanceWizard'
