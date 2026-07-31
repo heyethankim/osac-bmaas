@@ -1,5 +1,6 @@
 import type { CatalogSpecRow } from '../catalog/catalogSpecs'
 import { resolveCatalogSpecRows } from '../catalog/catalogSpecs'
+import { parseVmLaunchInstanceTypeOption } from './launchInstanceWizard'
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
 
 export type TenantInstanceStatus =
@@ -440,7 +441,9 @@ export function resolveVmConfig(instance: TenantInstance): TenantVmConfig {
     'small - 1 vCPU, 2 GiB'
   const containerDiskImage =
     instance.specRows?.find((row) => row.label === 'Container disk image')?.value ??
-    instance.osImage ??
+    (/containerdisks\//i.test(instance.osImage) || /^quay\.io\//i.test(instance.osImage)
+      ? instance.osImage
+      : undefined) ??
     'quay.io/containerdisks/fedora:latest'
   const bootDiskLabel = instance.specRows?.find((row) => row.label === 'Boot disk')?.value ?? '120 GiB'
   const bootDiskSizeGiB = Number.parseInt(bootDiskLabel, 10) || 120
@@ -721,14 +724,31 @@ export function getTenantInstanceCardSpecRows(instance: TenantInstance): Catalog
 
   if (serviceId === 'virtual-machine') {
     const findRow = (label: string) => allSpecRows.find((row) => row.label === label)
-    const instanceType = findRow('Instance type')
-    const size = findRow('Size')
+    const instanceTypeRow = findRow('Instance type')
+    const parsedType = parseVmLaunchInstanceTypeOption(
+      instance.vmConfig?.instanceType?.trim() || instanceTypeRow?.value || '',
+    )
+    const instanceType = {
+      label: 'Instance type',
+      value: parsedType.instanceType || instanceTypeRow?.value || '—',
+    }
+    const size = findRow('Size') ?? {
+      label: 'Size',
+      value: parsedType.size || instance.gpuLabel || '—',
+    }
+    const osFromRow = findRow('OS image')?.value?.trim()
+    const osCandidate = instance.osImage.trim() || osFromRow || ''
     const osImage = {
       label: 'OS image',
-      value: instance.osImage.trim() || findRow('OS image')?.value || '—',
+      value:
+        /containerdisks\//i.test(osCandidate) || /^quay\.io\//i.test(osCandidate)
+          ? osFromRow && !/containerdisks\//i.test(osFromRow) && !/^quay\.io\//i.test(osFromRow)
+            ? osFromRow
+            : '—'
+          : osCandidate || '—',
     }
 
-    return [instanceType, size, osImage].filter((row): row is CatalogSpecRow => Boolean(row))
+    return [instanceType, size, osImage]
   }
 
   return allSpecRows.slice(0, 3)

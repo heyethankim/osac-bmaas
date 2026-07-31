@@ -52,7 +52,9 @@ import {
 import {
   getCatalogSpecsSectionLabel,
   getDraftServiceId,
+  parseCatalogInstanceTypeParts,
   resolveCatalogSpecRows,
+  resolveVmCatalogHighlightRows,
 } from '../../catalog/catalogSpecs'
 import {
   formatCatalogFieldPolicyMode,
@@ -105,15 +107,30 @@ export function CatalogItemDetailsDrawer({
   const isLive = catalog ? getCatalogItemStatus(catalog) === 'live' : false
   const catalogServiceId = catalog ? getDraftServiceId(catalog) : serviceId
   const isVirtualMachine = catalogServiceId === 'virtual-machine'
+  const parsedInstanceType = catalog?.instanceTypeLabel
+    ? parseCatalogInstanceTypeParts(catalog.instanceTypeLabel)
+    : null
   const specRows = catalog
     ? resolveCatalogSpecRows(catalog, { includeDetails: true })
     : []
+  const vmHighlightRows = catalog && isVirtualMachine ? resolveVmCatalogHighlightRows(catalog) : []
   const displaySpecRows =
     catalog?.instanceTypeLabel || catalog?.diskImageLabel
       ? specRows.filter(
-          (row) => row.label !== 'Instance type' && row.label !== 'Disk image',
+          (row) =>
+            row.label !== 'Instance type' &&
+            row.label !== 'Disk image' &&
+            row.label !== 'Size' &&
+            row.label !== 'OS image',
         )
-      : specRows
+      : isVirtualMachine
+        ? specRows.filter(
+            (row) =>
+              row.label !== 'Instance type' &&
+              row.label !== 'Size' &&
+              row.label !== 'OS image',
+          )
+        : specRows
   const specsSectionLabel = getCatalogSpecsSectionLabel(catalogServiceId)
   const canLinkToBareMetalTemplate =
     Boolean(onNavigateToLinkedTemplate) && catalogServiceId === 'baremetal'
@@ -291,6 +308,24 @@ export function CatalogItemDetailsDrawer({
           ) : null}
         </DescriptionList>
 
+        {isVirtualMachine && vmHighlightRows.length > 0 ? (
+          <>
+            <Divider className="provider-admin-catalog-items__drawer-divider" />
+            <DescriptionList
+              isCompact
+              className="provider-admin-catalog-items__drawer-dl"
+              aria-label="Instance configuration"
+            >
+              {vmHighlightRows.map((row) => (
+                <DescriptionListGroup key={row.label}>
+                  <DescriptionListTerm>{row.label}</DescriptionListTerm>
+                  <DescriptionListDescription>{row.value}</DescriptionListDescription>
+                </DescriptionListGroup>
+              ))}
+            </DescriptionList>
+          </>
+        ) : null}
+
         {isVirtualMachine ? (
           <>
             <Divider className="provider-admin-catalog-items__drawer-divider" />
@@ -351,13 +386,13 @@ export function CatalogItemDetailsDrawer({
               )}
             </DescriptionListDescription>
           </DescriptionListGroup>
-          {catalog.instanceTypeLabel ? (
+          {!isVirtualMachine && catalog.instanceTypeLabel && parsedInstanceType ? (
             <DescriptionListGroup>
               <DescriptionListTerm>Instance type</DescriptionListTerm>
               <DescriptionListDescription>{catalog.instanceTypeLabel}</DescriptionListDescription>
             </DescriptionListGroup>
           ) : null}
-          {catalog.diskImageLabel ? (
+          {!isVirtualMachine && catalog.diskImageLabel ? (
             <DescriptionListGroup>
               <DescriptionListTerm>Disk image</DescriptionListTerm>
               <DescriptionListDescription>{catalog.diskImageLabel}</DescriptionListDescription>

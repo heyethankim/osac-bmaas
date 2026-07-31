@@ -24,7 +24,7 @@ import {
 import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
 import { RocketIcon } from '@patternfly/react-icons/dist/esm/icons/rocket-icon'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
-import { getCatalogSpecsSectionLabel } from '../../catalog/catalogSpecs'
+import { getCatalogSpecsSectionLabel, resolveVmCatalogHighlightRows } from '../../catalog/catalogSpecs'
 import { formatCatalogFieldPolicyMode } from '../../catalog/catalogPublishConfig'
 import { CatalogVmDefaultsSections } from '../catalog/CatalogVmDefaultsSections'
 import { NetworkFieldLockButton } from '../catalog/NetworkFieldLockButton'
@@ -81,10 +81,30 @@ export function TenantCatalogItemDetailsDrawer({
   const displaySpecRows =
     item?.instanceTypeLabel || item?.diskImageLabel
       ? specRows.filter(
-          (row) => row.label !== 'Instance type' && row.label !== 'Disk image',
+          (row) =>
+            row.label !== 'Instance type' &&
+            row.label !== 'Disk image' &&
+            row.label !== 'Size' &&
+            row.label !== 'OS image',
         )
-      : specRows
+      : item?.serviceId === 'virtual-machine'
+        ? specRows.filter(
+            (row) =>
+              row.label !== 'Instance type' &&
+              row.label !== 'Size' &&
+              row.label !== 'OS image',
+          )
+        : specRows
   const isVirtualMachine = item?.serviceId === 'virtual-machine'
+  const vmHighlightRows = item
+    ? resolveVmCatalogHighlightRows({
+        serviceId: item.serviceId,
+        templateRefId: item.templateRefId,
+        templateName: item.templateName,
+        instanceTypeLabel: item.instanceTypeLabel,
+        diskImageLabel: item.diskImageLabel,
+      })
+    : []
   const specsSectionLabel = item
     ? getCatalogSpecsSectionLabel(item.serviceId)
     : 'Hardware specifications'
@@ -164,13 +184,21 @@ export function TenantCatalogItemDetailsDrawer({
               </span>
             </DescriptionListDescription>
           </DescriptionListGroup>
-          {item.instanceTypeLabel ? (
+          {isVirtualMachine
+            ? vmHighlightRows.map((row) => (
+                <DescriptionListGroup key={row.label}>
+                  <DescriptionListTerm>{row.label}</DescriptionListTerm>
+                  <DescriptionListDescription>{row.value}</DescriptionListDescription>
+                </DescriptionListGroup>
+              ))
+            : null}
+          {!isVirtualMachine && item.instanceTypeLabel ? (
             <DescriptionListGroup>
               <DescriptionListTerm>Instance type</DescriptionListTerm>
               <DescriptionListDescription>{item.instanceTypeLabel}</DescriptionListDescription>
             </DescriptionListGroup>
           ) : null}
-          {item.diskImageLabel ? (
+          {!isVirtualMachine && item.diskImageLabel ? (
             <DescriptionListGroup>
               <DescriptionListTerm>Disk image</DescriptionListTerm>
               <DescriptionListDescription>{item.diskImageLabel}</DescriptionListDescription>

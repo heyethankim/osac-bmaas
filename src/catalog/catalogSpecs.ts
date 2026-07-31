@@ -72,6 +72,57 @@ export function getDraftServiceId(
   return item.serviceId ?? 'baremetal'
 }
 
+/** Parse `Medium (4 vCPU · 16 GB)` from publish wizard storage. */
+export function parseCatalogInstanceTypeParts(instanceTypeLabel: string): {
+  label: string
+  size?: string
+} {
+  const match = instanceTypeLabel.trim().match(/^(.*?)\s*\((.+)\)\s*$/)
+  if (match) {
+    return { label: match[1].trim(), size: match[2].trim() }
+  }
+  return { label: instanceTypeLabel.trim() }
+}
+
+export function resolveCatalogOsImage(
+  item: Pick<
+    ProviderCatalogDraft,
+    | 'serviceId'
+    | 'templateRefId'
+    | 'templateName'
+    | 'instanceTypeLabel'
+    | 'diskImageLabel'
+  >,
+): string {
+  const fromRows = resolveCatalogSpecRows(item).find((row) => row.label === 'OS image')?.value
+  if (fromRows) {
+    return fromRows
+  }
+  if (item.diskImageLabel?.trim()) {
+    return item.diskImageLabel.trim()
+  }
+  return '—'
+}
+
+const VM_CATALOG_HIGHLIGHT_LABELS = ['Instance type', 'Size', 'OS image'] as const
+
+/** Instance type, Size, and OS image for Virtual Machine catalog drawers. */
+export function resolveVmCatalogHighlightRows(
+  item: Pick<
+    ProviderCatalogDraft,
+    | 'serviceId'
+    | 'templateRefId'
+    | 'templateName'
+    | 'instanceTypeLabel'
+    | 'diskImageLabel'
+  >,
+): CatalogSpecRow[] {
+  const rows = resolveCatalogSpecRows(item)
+  return VM_CATALOG_HIGHLIGHT_LABELS.map((label) => rows.find((row) => row.label === label)).filter(
+    (row): row is CatalogSpecRow => Boolean(row),
+  )
+}
+
 export function resolveCatalogSpecRows(
   item: Pick<
     ProviderCatalogDraft,
@@ -87,11 +138,25 @@ export function resolveCatalogSpecRows(
 
   if (item.instanceTypeLabel || item.diskImageLabel) {
     const rows: CatalogSpecRow[] = []
-    if (item.instanceTypeLabel) {
-      rows.push({ label: 'Instance type', value: item.instanceTypeLabel })
-    }
-    if (item.diskImageLabel) {
-      rows.push({ label: 'Disk image', value: item.diskImageLabel })
+
+    if (serviceId === 'virtual-machine') {
+      if (item.instanceTypeLabel) {
+        const { label, size } = parseCatalogInstanceTypeParts(item.instanceTypeLabel)
+        rows.push({ label: 'Instance type', value: label })
+        if (size) {
+          rows.push({ label: 'Size', value: size })
+        }
+      }
+      if (item.diskImageLabel) {
+        rows.push({ label: 'OS image', value: item.diskImageLabel })
+      }
+    } else {
+      if (item.instanceTypeLabel) {
+        rows.push({ label: 'Instance type', value: item.instanceTypeLabel })
+      }
+      if (item.diskImageLabel) {
+        rows.push({ label: 'Disk image', value: item.diskImageLabel })
+      }
     }
 
     if (serviceId === 'cluster' && options?.includeDetails) {

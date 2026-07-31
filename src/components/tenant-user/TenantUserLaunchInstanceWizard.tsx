@@ -58,6 +58,7 @@ import {
   LAUNCH_INSTANCE_WIZARD_DEMO,
   PROVISIONING_BOOT_LOG_STEPS,
   VM_LAUNCH_INSTANCE_DEMO,
+  parseVmLaunchInstanceTypeOption,
   type LaunchInstanceWizardForm,
   type LaunchInstanceWizardStepId,
   type ProvisioningBootLogStatus,
@@ -163,6 +164,8 @@ export function TenantUserLaunchInstanceWizard({
               serviceId: catalogItem.serviceId,
               templateRefId: catalogItem.templateRefId,
               templateName: catalogItem.templateName,
+              instanceTypeLabel: catalogItem.instanceTypeLabel,
+              diskImageLabel: catalogItem.diskImageLabel,
             },
             { includeDetails: true },
           )
@@ -172,9 +175,29 @@ export function TenantUserLaunchInstanceWizard({
       catalogItem.serviceId,
       catalogItem.templateRefId,
       catalogItem.templateName,
+      catalogItem.instanceTypeLabel,
+      catalogItem.diskImageLabel,
       catalogItem.specRows,
     ],
   )
+  const resolvedVmOsImage = useMemo(() => {
+    if (!isVmCatalogItem) {
+      return ''
+    }
+    if (catalogItem.osImage.trim() && catalogItem.osImage !== '—') {
+      return catalogItem.osImage.trim()
+    }
+    return (
+      catalogDetailSpecRows.find((row) => row.label === 'OS image')?.value ??
+      catalogItem.diskImageLabel?.trim() ??
+      'RHEL 9.4'
+    )
+  }, [
+    isVmCatalogItem,
+    catalogItem.osImage,
+    catalogItem.diskImageLabel,
+    catalogDetailSpecRows,
+  ])
   const includeNetworkingStep = networkContext.enabled && networkContext.hasEditableFields
   const wizardSteps = useMemo(
     () =>
@@ -296,6 +319,10 @@ export function TenantUserLaunchInstanceWizard({
     provisioningStartedRef.current = true
 
     const detailSpecRows = catalogDetailSpecRows
+    const vmInstanceTypeParts = isVmCatalogItem
+      ? parseVmLaunchInstanceTypeOption(form.instanceType.trim())
+      : null
+    const vmOsImage = isVmCatalogItem ? resolvedVmOsImage : null
 
     const instance: TenantInstance = {
       id: generateTenantInstanceId(),
@@ -309,20 +336,25 @@ export function TenantUserLaunchInstanceWizard({
       osImage: isClusterCatalogItem
         ? (detailSpecRows.find((row) => row.label === 'Platform')?.value ?? catalogItem.osImage)
         : isVmCatalogItem
-          ? form.containerDiskImage.trim() || catalogItem.osImage
+          ? (vmOsImage ?? catalogItem.osImage)
           : catalogItem.osImage,
       networkLabel,
       networking,
       gpuLabel: isClusterCatalogItem
         ? (detailSpecRows.find((row) => row.label === 'Node set')?.value ?? catalogItem.gpu)
         : isVmCatalogItem
-          ? form.instanceType.trim() || catalogItem.gpu
+          ? (vmInstanceTypeParts?.size ?? catalogItem.gpu)
           : catalogItem.gpu,
       specRows: isServiceAwareCatalogItem
         ? isVmCatalogItem
           ? [
+              {
+                label: 'Instance type',
+                value: vmInstanceTypeParts?.instanceType || form.instanceType.trim(),
+              },
+              { label: 'Size', value: vmInstanceTypeParts?.size || form.instanceType.trim() },
+              { label: 'OS image', value: vmOsImage ?? catalogItem.osImage },
               { label: 'Container disk image', value: form.containerDiskImage.trim() },
-              { label: 'Instance type', value: form.instanceType.trim() },
               { label: 'Boot disk', value: `${form.bootDiskSizeGiB} GiB` },
               { label: 'Image source type', value: form.imageSourceType.trim() },
               { label: 'Run strategy', value: form.runStrategy.trim() },
@@ -546,6 +578,15 @@ export function TenantUserLaunchInstanceWizard({
   const renderVmConfigureStep = () => (
     <div className="tenant-user-launch-wizard__step">
       <Form autoComplete="off" className="tenant-user-launch-wizard__form">
+        <FormGroup label="OS image" fieldId="launch-vm-os-image">
+          <TextInput id="launch-vm-os-image" value={resolvedVmOsImage} isDisabled readOnly />
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem>{VM_LAUNCH_INSTANCE_DEMO.osImageHelper}</HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        </FormGroup>
+
         <FormGroup label="Container Disk Image" fieldId="launch-vm-container-disk" isRequired>
           <TextInput
             id="launch-vm-container-disk"
@@ -1047,6 +1088,10 @@ export function TenantUserLaunchInstanceWizard({
             </>
           ) : isVmCatalogItem ? (
             <>
+              <DescriptionListGroup>
+                <DescriptionListTerm>OS image</DescriptionListTerm>
+                <DescriptionListDescription>{resolvedVmOsImage}</DescriptionListDescription>
+              </DescriptionListGroup>
               <DescriptionListGroup>
                 <DescriptionListTerm>Container disk image</DescriptionListTerm>
                 <DescriptionListDescription>

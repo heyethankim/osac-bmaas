@@ -37,6 +37,7 @@ import {
   getTenantInstanceStatusLabel,
   getVmInstanceConditions,
   getVmInstanceTypeShortLabel,
+  getTenantInstanceCardSpecRows,
   resolveBareMetalSshPublicKey,
   resolveClusterConfig,
   resolveTenantInstanceNetworking,
@@ -297,6 +298,14 @@ function VmInstanceDetails({
   const hasPublicIp = Boolean(vmConfig.publicIp)
   const canAttachPublicIp = !isBusy && !hasPublicIp
   const conditions = getVmInstanceConditions(instance)
+  const vmHighlightRows = getTenantInstanceCardSpecRows(instance)
+  const vmInstanceType =
+    vmHighlightRows.find((row) => row.label === 'Instance type')?.value ??
+    getVmInstanceTypeShortLabel(vmConfig.instanceType)
+  const vmSize = vmHighlightRows.find((row) => row.label === 'Size')?.value ?? '—'
+  const vmOsImage =
+    vmHighlightRows.find((row) => row.label === 'OS image')?.value ??
+    (instance.osImage.trim() || '—')
 
   return (
     <>
@@ -407,9 +416,15 @@ function VmInstanceDetails({
         </DescriptionListGroup>
         <DescriptionListGroup>
           <DescriptionListTerm>Instance type</DescriptionListTerm>
-          <DescriptionListDescription>
-            {getVmInstanceTypeShortLabel(vmConfig.instanceType)}
-          </DescriptionListDescription>
+          <DescriptionListDescription>{vmInstanceType}</DescriptionListDescription>
+        </DescriptionListGroup>
+        <DescriptionListGroup>
+          <DescriptionListTerm>Size</DescriptionListTerm>
+          <DescriptionListDescription>{vmSize}</DescriptionListDescription>
+        </DescriptionListGroup>
+        <DescriptionListGroup>
+          <DescriptionListTerm>OS image</DescriptionListTerm>
+          <DescriptionListDescription>{vmOsImage}</DescriptionListDescription>
         </DescriptionListGroup>
         <DescriptionListGroup>
           <DescriptionListTerm>Public IP</DescriptionListTerm>
@@ -451,12 +466,6 @@ function VmInstanceDetails({
             <DescriptionListDescription>{instance.catalogItemDisplayName}</DescriptionListDescription>
           </DescriptionListGroup>
           <DescriptionListGroup>
-            <DescriptionListTerm>Name</DescriptionListTerm>
-            <DescriptionListDescription>
-              {formatTenantInstanceName(instance.name)}
-            </DescriptionListDescription>
-          </DescriptionListGroup>
-          <DescriptionListGroup>
             <DescriptionListTerm>SSH public key</DescriptionListTerm>
             <DescriptionListDescription>
               {vmConfig.sshPublicKey.trim() ? (
@@ -469,10 +478,6 @@ function VmInstanceDetails({
           <DescriptionListGroup>
             <DescriptionListTerm>Container Disk Image</DescriptionListTerm>
             <DescriptionListDescription>{vmConfig.containerDiskImage}</DescriptionListDescription>
-          </DescriptionListGroup>
-          <DescriptionListGroup>
-            <DescriptionListTerm>Instance type</DescriptionListTerm>
-            <DescriptionListDescription>{vmConfig.instanceType}</DescriptionListDescription>
           </DescriptionListGroup>
           <DescriptionListGroup>
             <DescriptionListTerm>Boot Disk Size (GiB)</DescriptionListTerm>

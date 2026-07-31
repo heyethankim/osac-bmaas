@@ -1,5 +1,5 @@
 import type { CatalogSpecRow } from '../catalog/catalogSpecs'
-import { resolveCatalogSpecRows } from '../catalog/catalogSpecs'
+import { resolveCatalogOsImage, resolveCatalogSpecRows } from '../catalog/catalogSpecs'
 import type { CatalogFieldPolicy } from '../catalog/catalogPublishConfig'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../providerSetup/storage'
@@ -164,7 +164,7 @@ export function getTenantUserCatalogCardFromDraft(
     cpu: specRows[0]?.value ?? '—',
     ram: specRows[1]?.value ?? '—',
     gpu: specRows[2]?.value ?? '—',
-    osImage: specRows.find((row) => row.label === 'OS image')?.value ?? specRows[3]?.value ?? '—',
+    osImage: resolveCatalogOsImage(catalog),
     footerNote: getFooterNote(serviceId),
     catalogItemId: catalog.catalogItemId,
     templateRefId: catalog.templateRefId,

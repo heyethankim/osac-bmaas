@@ -25,6 +25,7 @@ import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import {
   getCatalogSpecsSectionLabel,
   resolveCatalogSpecRows,
+  resolveVmCatalogHighlightRows,
 } from '../../catalog/catalogSpecs'
 import { formatCatalogFieldPolicyMode } from '../../catalog/catalogPublishConfig'
 import { CatalogVmDefaultsSections } from '../catalog/CatalogVmDefaultsSections'
@@ -64,10 +65,30 @@ export function TenantUserCatalogItemDetailsDrawer({
   const displaySpecRows =
     catalogItem?.instanceTypeLabel || catalogItem?.diskImageLabel
       ? specRows.filter(
-          (row) => row.label !== 'Instance type' && row.label !== 'Disk image',
+          (row) =>
+            row.label !== 'Instance type' &&
+            row.label !== 'Disk image' &&
+            row.label !== 'Size' &&
+            row.label !== 'OS image',
         )
-      : specRows
+      : catalogItem?.serviceId === 'virtual-machine'
+        ? specRows.filter(
+            (row) =>
+              row.label !== 'Instance type' &&
+              row.label !== 'Size' &&
+              row.label !== 'OS image',
+          )
+        : specRows
   const isVirtualMachine = catalogItem?.serviceId === 'virtual-machine'
+  const vmHighlightRows = catalogItem
+    ? resolveVmCatalogHighlightRows({
+        serviceId: catalogItem.serviceId,
+        templateRefId: catalogItem.templateRefId,
+        templateName: catalogItem.templateName,
+        instanceTypeLabel: catalogItem.instanceTypeLabel,
+        diskImageLabel: catalogItem.diskImageLabel,
+      })
+    : []
   const specsSectionLabel = catalogItem
     ? getCatalogSpecsSectionLabel(catalogItem.serviceId)
     : 'Hardware specifications'
@@ -138,7 +159,15 @@ export function TenantUserCatalogItemDetailsDrawer({
               </Label>
             </DescriptionListDescription>
           </DescriptionListGroup>
-          {catalogItem.instanceTypeLabel ? (
+          {isVirtualMachine
+            ? vmHighlightRows.map((row) => (
+                <DescriptionListGroup key={row.label}>
+                  <DescriptionListTerm>{row.label}</DescriptionListTerm>
+                  <DescriptionListDescription>{row.value}</DescriptionListDescription>
+                </DescriptionListGroup>
+              ))
+            : null}
+          {!isVirtualMachine && catalogItem.instanceTypeLabel ? (
             <DescriptionListGroup>
               <DescriptionListTerm>Instance type</DescriptionListTerm>
               <DescriptionListDescription>
@@ -146,7 +175,7 @@ export function TenantUserCatalogItemDetailsDrawer({
               </DescriptionListDescription>
             </DescriptionListGroup>
           ) : null}
-          {catalogItem.diskImageLabel ? (
+          {!isVirtualMachine && catalogItem.diskImageLabel ? (
             <DescriptionListGroup>
               <DescriptionListTerm>Disk image</DescriptionListTerm>
               <DescriptionListDescription>{catalogItem.diskImageLabel}</DescriptionListDescription>

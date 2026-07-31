@@ -186,6 +186,7 @@ export const VM_LAUNCH_INSTANCE_DEMO = {
   sshHelper: CLUSTER_LAUNCH_INSTANCE_DEMO.sshHelper,
   containerDiskImage: 'quay.io/containerdisks/fedora:latest',
   containerDiskImageHelper: 'OCI reference',
+  osImageHelper: 'Set by the catalog item.',
   instanceTypeOptions: [
     'small - 1 vCPU, 2 GiB',
     'medium - 2 vCPU, 4 GiB',
@@ -204,6 +205,27 @@ hostname: demo-vm
 `,
   cloudInitHelper: 'Optional cloud-init user data (max 64 KB).',
 } as const
+
+/** Split launch option `small - 1 vCPU, 2 GiB` into card-friendly Instance type + Size. */
+export function parseVmLaunchInstanceTypeOption(value: string): {
+  instanceType: string
+  size: string
+} {
+  const separator = ' - '
+  const index = value.indexOf(separator)
+  if (index === -1) {
+    const trimmed = value.trim()
+    return { instanceType: trimmed, size: trimmed }
+  }
+
+  return {
+    instanceType: value.slice(0, index).trim(),
+    size: value
+      .slice(index + separator.length)
+      .trim()
+      .replace(/,\s*/g, ' · '),
+  }
+}
 
 export const BAREMETAL_LAUNCH_INSTANCE_DEMO = {
   nameHelper: CLUSTER_LAUNCH_INSTANCE_DEMO.nameHelper,
