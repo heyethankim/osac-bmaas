@@ -53,15 +53,15 @@ export const VM_NETWORK_ATTACHMENTS_RATE_CARD = {
 const VM_NETWORK_ATTACHMENTS_SPEC_ROWS: CatalogSpecRow[] = [
   { label: 'Instance type', value: 'Standard' },
   { label: 'Size', value: '4 vCPU · 16 GB RAM' },
-  {
-    label: 'Network attachments',
-    value: '1 NIC default · shared subnet/SG (max 2)',
-  },
+  { label: 'OS image', value: 'RHEL 9.4' },
 ]
 
 /** Extra drawer-only rows for Virtual Machine offerings. */
 const VM_NETWORK_ATTACHMENTS_DETAIL_ROWS: CatalogSpecRow[] = [
-  { label: 'OS image', value: 'RHEL 9.4' },
+  {
+    label: 'Network attachments',
+    value: '1 NIC default · shared subnet/SG (max 2)',
+  },
   { label: 'Boot disk', value: '100 GB · virtio' },
   { label: 'Validation', value: 'network_attachments array schema (max 2)' },
 ]

@@ -1,10 +1,20 @@
 import { DEMO_TENANT_LABEL } from '../demoTenant'
 import {
   createDemoTenantBareMetalInstance,
+  createDemoTenantBareMetalInstance02,
+  createDemoTenantBareMetalInstance03,
+  createDemoTenantClusterInstance,
+  createDemoTenantClusterInstance02,
+  createDemoTenantClusterInstance03,
   createDemoTenantVirtualMachineInstance,
   createDemoTenantVirtualMachineInstance02,
   createDemoTenantVirtualMachineInstance03,
   DEMO_TENANT_BARE_METAL_INSTANCE_ID,
+  DEMO_TENANT_BARE_METAL_INSTANCE_ID_02,
+  DEMO_TENANT_BARE_METAL_INSTANCE_ID_03,
+  DEMO_TENANT_CLUSTER_INSTANCE_ID,
+  DEMO_TENANT_CLUSTER_INSTANCE_ID_02,
+  DEMO_TENANT_CLUSTER_INSTANCE_ID_03,
   DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID,
   DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_02,
   DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_03,
@@ -191,8 +201,8 @@ function getDemoOrganizationName(slug: string): string {
 }
 
 /**
- * Ensures Tenant Admin / Tenant User Services lists include demo Bare metal and
- * Virtual machine instances. Stable IDs avoid duplicates across reloads.
+ * Ensures Tenant Admin / Tenant User Services lists include demo Bare metal,
+ * Virtual machine, and Cluster instances. Stable IDs avoid duplicates across reloads.
  */
 export function ensureTenantDemoInstances(
   slug: string,
@@ -202,24 +212,29 @@ export function ensureTenantDemoInstances(
   const next = [...existing]
   let changed = false
 
-  if (!next.some((instance) => instance.id === DEMO_TENANT_BARE_METAL_INSTANCE_ID)) {
-    next.push(createDemoTenantBareMetalInstance(organizationName))
-    changed = true
-  }
+  const demos: Array<{ id: string; create: (org: string) => TenantInstance }> = [
+    { id: DEMO_TENANT_BARE_METAL_INSTANCE_ID, create: createDemoTenantBareMetalInstance },
+    { id: DEMO_TENANT_BARE_METAL_INSTANCE_ID_02, create: createDemoTenantBareMetalInstance02 },
+    { id: DEMO_TENANT_BARE_METAL_INSTANCE_ID_03, create: createDemoTenantBareMetalInstance03 },
+    { id: DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID, create: createDemoTenantVirtualMachineInstance },
+    {
+      id: DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_02,
+      create: createDemoTenantVirtualMachineInstance02,
+    },
+    {
+      id: DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_03,
+      create: createDemoTenantVirtualMachineInstance03,
+    },
+    { id: DEMO_TENANT_CLUSTER_INSTANCE_ID, create: createDemoTenantClusterInstance },
+    { id: DEMO_TENANT_CLUSTER_INSTANCE_ID_02, create: createDemoTenantClusterInstance02 },
+    { id: DEMO_TENANT_CLUSTER_INSTANCE_ID_03, create: createDemoTenantClusterInstance03 },
+  ]
 
-  if (!next.some((instance) => instance.id === DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID)) {
-    next.push(createDemoTenantVirtualMachineInstance(organizationName))
-    changed = true
-  }
-
-  if (!next.some((instance) => instance.id === DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_02)) {
-    next.push(createDemoTenantVirtualMachineInstance02(organizationName))
-    changed = true
-  }
-
-  if (!next.some((instance) => instance.id === DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_03)) {
-    next.push(createDemoTenantVirtualMachineInstance03(organizationName))
-    changed = true
+  for (const demo of demos) {
+    if (!next.some((instance) => instance.id === demo.id)) {
+      next.push(demo.create(organizationName))
+      changed = true
+    }
   }
 
   if (changed) {

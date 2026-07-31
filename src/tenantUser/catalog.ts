@@ -160,7 +160,7 @@ export function getTenantUserCatalogCardFromDraft(
     cpu: specRows[0]?.value ?? '—',
     ram: specRows[1]?.value ?? '—',
     gpu: specRows[2]?.value ?? '—',
-    osImage: specRows[3]?.value ?? '—',
+    osImage: specRows.find((row) => row.label === 'OS image')?.value ?? specRows[3]?.value ?? '—',
     footerNote: getFooterNote(serviceId),
     catalogItemId: catalog.catalogItemId,
     templateRefId: catalog.templateRefId,

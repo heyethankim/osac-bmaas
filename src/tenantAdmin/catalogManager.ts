@@ -135,7 +135,7 @@ function mapProviderCatalogToGovernanceItem(
     cpu: specRows[0]?.value ?? '—',
     ram: specRows[1]?.value ?? '—',
     gpu: specRows[2]?.value ?? '—',
-    osImage: specRows[3]?.value ?? '—',
+    osImage: specRows.find((row) => row.label === 'OS image')?.value ?? specRows[3]?.value ?? '—',
     restricted: draft.scope === 'vip-enterprise',
     approved: true,
     scope: draft.scope,

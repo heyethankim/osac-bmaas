@@ -652,15 +652,42 @@ export function getTenantInstanceScopeFieldLabel(
 
 /** Stable demo instance IDs so ensure can re-seed without duplicates. */
 export const DEMO_TENANT_BARE_METAL_INSTANCE_ID = 'instance_demo_bm_01'
+export const DEMO_TENANT_BARE_METAL_INSTANCE_ID_02 = 'instance_demo_bm_02'
+export const DEMO_TENANT_BARE_METAL_INSTANCE_ID_03 = 'instance_demo_bm_03'
 export const DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID = 'instance_demo_vm_01'
 export const DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_02 = 'instance_demo_vm_02'
 export const DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_03 = 'instance_demo_vm_03'
+export const DEMO_TENANT_CLUSTER_INSTANCE_ID = 'instance_demo_cluster_01'
+export const DEMO_TENANT_CLUSTER_INSTANCE_ID_02 = 'instance_demo_cluster_02'
+export const DEMO_TENANT_CLUSTER_INSTANCE_ID_03 = 'instance_demo_cluster_03'
 
-export const DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_IDS = [
-  DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID,
-  DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_02,
-  DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_03,
-] as const
+export function getTenantInstanceGpuLabel(instance: TenantInstance): string {
+  const fromField = instance.gpuLabel.trim()
+  if (fromField) {
+    return fromField
+  }
+  return (
+    getTenantInstanceSpecRows(instance).find((row) => row.label === 'GPU')?.value.trim() || '—'
+  )
+}
+
+export function getClusterPlatformLabel(instance: TenantInstance): string {
+  return (
+    instance.specRows?.find((row) => row.label === 'Platform')?.value.trim() ||
+    instance.osImage.trim() ||
+    '—'
+  )
+}
+
+export function getClusterNodeSetTypeLabel(instance: TenantInstance): string {
+  const hostType = resolveClusterConfig(instance).nodeSets[0]?.hostType?.trim()
+  if (hostType) {
+    return hostType
+  }
+  const nodeSet =
+    instance.specRows?.find((row) => row.label === 'Node set')?.value.trim() ?? ''
+  return /\bgpu\b/i.test(nodeSet) ? 'GPU Host' : 'Standard Host'
+}
 
 /** Card highlights for Virtual machines — include OS so OS filters are scannable. */
 export function getTenantInstanceCardSpecRows(instance: TenantInstance): CatalogSpecRow[] {
@@ -686,16 +713,31 @@ export function getTenantInstanceCardSpecRows(instance: TenantInstance): Catalog
   return allSpecRows.slice(0, 3)
 }
 
-export function createDemoTenantBareMetalInstance(organizationName: string): TenantInstance {
-  const createdAt = new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString()
+function createDemoTenantBareMetalInstanceVariant(
+  organizationName: string,
+  options: {
+    id: string
+    name: string
+    status: TenantInstanceStatus
+    osImage: string
+    gpuLabel: string
+    hardwareProfile: string
+    cpu: string
+    ram: string
+    hoursAgo: number
+    catalogItemDisplayName?: string
+  },
+): TenantInstance {
+  const createdAt = new Date(Date.now() - 1000 * 60 * 60 * options.hoursAgo).toISOString()
 
   return {
-    id: DEMO_TENANT_BARE_METAL_INSTANCE_ID,
-    name: 'BM-Server-01',
-    catalogItemDisplayName: 'Bare Metal - GPU Training Server',
+    id: options.id,
+    name: options.name,
+    catalogItemDisplayName:
+      options.catalogItemDisplayName ?? 'Bare Metal - GPU Training Server',
     serviceId: 'baremetal',
-    hardwareProfile: 'Dell PowerEdge R750',
-    osImage: 'RHEL 9.4',
+    hardwareProfile: options.hardwareProfile,
+    osImage: options.osImage,
     networkLabel: 'Tenant workload VNet / bm-compute-a · allow-ssh-https',
     networking: {
       enabled: true,
@@ -703,20 +745,169 @@ export function createDemoTenantBareMetalInstance(organizationName: string): Ten
       subnet: 'bm-compute-a',
       securityGroup: 'allow-ssh-https',
     },
-    gpuLabel: 'CPU-only',
+    gpuLabel: options.gpuLabel,
     specRows: [
-      { label: 'CPU', value: 'Intel Xeon Gold 6338 × 2' },
-      { label: 'RAM', value: '512 GB DDR4' },
-      { label: 'GPU', value: 'CPU-only' },
-      { label: 'OS image', value: 'RHEL 9.4' },
+      { label: 'CPU', value: options.cpu },
+      { label: 'RAM', value: options.ram },
+      { label: 'GPU', value: options.gpuLabel },
+      { label: 'OS image', value: options.osImage },
     ],
     sshPublicKey: DEFAULT_BARE_METAL_SSH_PUBLIC_KEY,
     projectName: organizationName,
     scopeKind: 'organization',
-    status: 'running',
+    status: options.status,
     createdAt,
-    provisionedAt: createdAt,
+    provisionedAt: options.status === 'provisioning' ? null : createdAt,
   }
+}
+
+export function createDemoTenantBareMetalInstance(organizationName: string): TenantInstance {
+  return createDemoTenantBareMetalInstanceVariant(organizationName, {
+    id: DEMO_TENANT_BARE_METAL_INSTANCE_ID,
+    name: 'BM-Server-01',
+    status: 'running',
+    osImage: 'RHEL 9.4',
+    gpuLabel: 'CPU-only',
+    hardwareProfile: 'Dell PowerEdge R750',
+    cpu: 'Intel Xeon Gold 6338 × 2',
+    ram: '512 GB DDR4',
+    hoursAgo: 26,
+  })
+}
+
+export function createDemoTenantBareMetalInstance02(organizationName: string): TenantInstance {
+  return createDemoTenantBareMetalInstanceVariant(organizationName, {
+    id: DEMO_TENANT_BARE_METAL_INSTANCE_ID_02,
+    name: 'BM-Server-02',
+    status: 'stopped',
+    osImage: 'Ubuntu 22.04',
+    gpuLabel: 'NVIDIA A100 × 2',
+    hardwareProfile: 'Dell PowerEdge XE9680',
+    cpu: 'Intel Xeon Platinum 8480+ × 2',
+    ram: '1 TB DDR5',
+    hoursAgo: 40,
+    catalogItemDisplayName: 'Bare Metal - Dense GPU Node',
+  })
+}
+
+export function createDemoTenantBareMetalInstance03(organizationName: string): TenantInstance {
+  return createDemoTenantBareMetalInstanceVariant(organizationName, {
+    id: DEMO_TENANT_BARE_METAL_INSTANCE_ID_03,
+    name: 'BM-Server-03',
+    status: 'running',
+    osImage: 'Fedora',
+    gpuLabel: 'NVIDIA H100 × 4',
+    hardwareProfile: 'Supermicro SYS-821GE-TNHR',
+    cpu: 'Intel Xeon Gold 6430 × 2',
+    ram: '2 TB DDR5',
+    hoursAgo: 12,
+    catalogItemDisplayName: 'Bare Metal - Dense GPU Node',
+  })
+}
+
+function createDemoTenantClusterInstanceVariant(
+  organizationName: string,
+  options: {
+    id: string
+    name: string
+    status: TenantInstanceStatus
+    platform: string
+    hostType: 'Standard Host' | 'GPU Host'
+    nodeCount: number
+    hoursAgo: number
+  },
+): TenantInstance {
+  const createdAt = new Date(Date.now() - 1000 * 60 * 60 * options.hoursAgo).toISOString()
+  const baseSpecRows = resolveCatalogSpecRows(
+    { serviceId: 'cluster', templateRefId: '', templateName: '' },
+    { includeDetails: true },
+  )
+  const nodeSetValue =
+    options.hostType === 'GPU Host'
+      ? `gpu-workers · ${options.nodeCount} node${options.nodeCount === 1 ? '' : 's'}`
+      : `fc430 · worker × ${options.nodeCount}`
+  const specRows = baseSpecRows.map((row) => {
+    if (row.label === 'Platform') {
+      return { ...row, value: options.platform }
+    }
+    if (row.label === 'Node set') {
+      return { ...row, value: nodeSetValue }
+    }
+    return row
+  })
+
+  return {
+    id: options.id,
+    name: options.name,
+    catalogItemDisplayName: 'Cluster - Node Sets Object',
+    serviceId: 'cluster',
+    hardwareProfile: options.hostType,
+    osImage: options.platform,
+    networkLabel: 'Pod 10.128.0.0/14 · Service 172.30.0.0/16',
+    networking: {
+      enabled: true,
+      virtualNetwork: 'Tenant workload VNet',
+      subnet: 'cluster-compute-a',
+      securityGroup: 'allow-cluster-api',
+    },
+    gpuLabel: options.hostType,
+    specRows,
+    clusterConfig: {
+      releaseImage: `quay.io/openshift-release-dev/ocp-release:${options.platform.includes('4.15') ? '4.15.0' : '4.16.0'}-multi`,
+      podCidr: '10.128.0.0/14',
+      serviceCidr: '172.30.0.0/16',
+      catalogShortName: options.hostType === 'GPU Host' ? 'ocp-gpu' : 'ocp-small',
+      creator: 'Alex Johnson',
+      nodeSets: [
+        {
+          id: 'node-set-1',
+          hostType: options.hostType,
+          nodeCount: options.nodeCount,
+        },
+      ],
+    },
+    projectName: organizationName,
+    scopeKind: 'organization',
+    status: options.status,
+    createdAt,
+    provisionedAt: options.status === 'provisioning' ? null : createdAt,
+  }
+}
+
+export function createDemoTenantClusterInstance(organizationName: string): TenantInstance {
+  return createDemoTenantClusterInstanceVariant(organizationName, {
+    id: DEMO_TENANT_CLUSTER_INSTANCE_ID,
+    name: 'ocp-cluster-01',
+    status: 'running',
+    platform: 'Red Hat OpenShift 4.16',
+    hostType: 'Standard Host',
+    nodeCount: 3,
+    hoursAgo: 18,
+  })
+}
+
+export function createDemoTenantClusterInstance02(organizationName: string): TenantInstance {
+  return createDemoTenantClusterInstanceVariant(organizationName, {
+    id: DEMO_TENANT_CLUSTER_INSTANCE_ID_02,
+    name: 'ocp-cluster-02',
+    status: 'provisioning',
+    platform: 'Red Hat OpenShift 4.15',
+    hostType: 'GPU Host',
+    nodeCount: 2,
+    hoursAgo: 1,
+  })
+}
+
+export function createDemoTenantClusterInstance03(organizationName: string): TenantInstance {
+  return createDemoTenantClusterInstanceVariant(organizationName, {
+    id: DEMO_TENANT_CLUSTER_INSTANCE_ID_03,
+    name: 'ocp-cluster-03',
+    status: 'failed',
+    platform: 'Red Hat OpenShift 4.16',
+    hostType: 'GPU Host',
+    nodeCount: 4,
+    hoursAgo: 6,
+  })
 }
 
 function withVmOsImage(specRows: CatalogSpecRow[], osImage: string): CatalogSpecRow[] {

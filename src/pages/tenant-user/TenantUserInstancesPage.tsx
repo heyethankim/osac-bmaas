@@ -46,8 +46,12 @@ import {
   formatTenantInstanceCreatedAt,
   formatTenantInstanceName,
   getClusterDemoPassword,
+  getClusterNodeSetTypeLabel,
+  getClusterPlatformLabel,
+  getClusterStatusLabel,
   getTenantInstanceActions,
   getTenantInstanceCardSpecRows,
+  getTenantInstanceGpuLabel,
   getTenantInstanceScopeFieldLabel,
   getTenantInstanceServiceId,
   getTenantInstanceSpecRows,
@@ -108,15 +112,26 @@ function InstanceStatusLabel({ status }: { status: TenantInstance['status'] }) {
   )
 }
 
-const VM_POWER_STATE_FILTER_OPTIONS: Array<{ value: 'all' | TenantInstanceStatus; label: string }> =
-  [
-    { value: 'all', label: 'All power states' },
-    { value: 'running', label: 'Running' },
-    { value: 'stopped', label: 'Stopped' },
-    { value: 'provisioning', label: 'Provisioning' },
-    { value: 'restarting', label: 'Restarting' },
-    { value: 'failed', label: 'Failed' },
-  ]
+const POWER_STATE_FILTER_OPTIONS: Array<{ value: 'all' | TenantInstanceStatus; label: string }> = [
+  { value: 'all', label: 'All power states' },
+  { value: 'running', label: 'Running' },
+  { value: 'stopped', label: 'Stopped' },
+  { value: 'provisioning', label: 'Provisioning' },
+  { value: 'restarting', label: 'Restarting' },
+  { value: 'failed', label: 'Failed' },
+]
+
+const CLUSTER_STATUS_FILTER_OPTIONS: Array<{
+  value: 'all' | TenantInstanceStatus
+  label: string
+}> = [
+  { value: 'all', label: 'All statuses' },
+  { value: 'running', label: 'Ready' },
+  { value: 'provisioning', label: 'Provisioning' },
+  { value: 'restarting', label: 'Restarting' },
+  { value: 'stopped', label: 'Stopped' },
+  { value: 'failed', label: 'Failed' },
+]
 
 export function TenantUserInstancesPage({
   tenantSlug,
@@ -130,6 +145,9 @@ export function TenantUserInstancesPage({
   const [searchValue, setSearchValue] = useState('')
   const [powerStateFilter, setPowerStateFilter] = useState<'all' | TenantInstanceStatus>('all')
   const [osFilter, setOsFilter] = useState('all')
+  const [gpuFilter, setGpuFilter] = useState('all')
+  const [platformFilter, setPlatformFilter] = useState('all')
+  const [nodeSetTypeFilter, setNodeSetTypeFilter] = useState('all')
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null)
   const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false)
   const [instancePendingTerminate, setInstancePendingTerminate] = useState<TenantInstance | null>(
@@ -145,9 +163,16 @@ export function TenantUserInstancesPage({
   const [isProvisioningNoticeDismissed, setIsProvisioningNoticeDismissed] = useState(false)
   const restartTimersRef = useRef<Map<string, number>>(new Map())
 
-  const hasProvisioningInstances = instances.some(
-    (instance) => instance.status === 'provisioning',
-  )
+  const hasProvisioningInstances = instances.some((instance) => {
+    if (instance.status !== 'provisioning') {
+      return false
+    }
+    const serviceId = getTenantInstanceServiceId(instance)
+    if (lockedServiceId) {
+      return serviceId === lockedServiceId
+    }
+    return true
+  })
 
   useEffect(() => {
     if (!hasProvisioningInstances) {
@@ -167,9 +192,22 @@ export function TenantUserInstancesPage({
   useEffect(() => {
     setPowerStateFilter('all')
     setOsFilter('all')
+    setGpuFilter('all')
+    setPlatformFilter('all')
+    setNodeSetTypeFilter('all')
   }, [lockedServiceId])
 
+  const isBareMetalPage = lockedServiceId === 'baremetal'
+  const isClustersPage = lockedServiceId === 'cluster'
   const isVirtualMachinesPage = lockedServiceId === 'virtual-machine'
+  const hasActiveServiceFilters =
+    (isBareMetalPage &&
+      (powerStateFilter !== 'all' || osFilter !== 'all' || gpuFilter !== 'all')) ||
+    (isClustersPage &&
+      (powerStateFilter !== 'all' ||
+        platformFilter !== 'all' ||
+        nodeSetTypeFilter !== 'all')) ||
+    (isVirtualMachinesPage && (powerStateFilter !== 'all' || osFilter !== 'all'))
 
   const showBackgroundProvisioningNotice =
     hasProvisioningInstances && !isProvisioningNoticeDismissed
@@ -218,6 +256,62 @@ export function TenantUserInstancesPage({
     [instanceServiceIds],
   )
 
+  const bareMetalOsOptions = useMemo(() => {
+    const osValues = new Set<string>()
+    for (const instance of sortedInstances) {
+      if (getTenantInstanceServiceId(instance) !== 'baremetal') {
+        continue
+      }
+      const osImage = instance.osImage.trim()
+      if (osImage) {
+        osValues.add(osImage)
+      }
+    }
+    return [...osValues].sort((left, right) => left.localeCompare(right))
+  }, [sortedInstances])
+
+  const bareMetalGpuOptions = useMemo(() => {
+    const gpuValues = new Set<string>()
+    for (const instance of sortedInstances) {
+      if (getTenantInstanceServiceId(instance) !== 'baremetal') {
+        continue
+      }
+      const gpuLabel = getTenantInstanceGpuLabel(instance)
+      if (gpuLabel && gpuLabel !== '—') {
+        gpuValues.add(gpuLabel)
+      }
+    }
+    return [...gpuValues].sort((left, right) => left.localeCompare(right))
+  }, [sortedInstances])
+
+  const clusterPlatformOptions = useMemo(() => {
+    const platformValues = new Set<string>()
+    for (const instance of sortedInstances) {
+      if (getTenantInstanceServiceId(instance) !== 'cluster') {
+        continue
+      }
+      const platform = getClusterPlatformLabel(instance)
+      if (platform && platform !== '—') {
+        platformValues.add(platform)
+      }
+    }
+    return [...platformValues].sort((left, right) => left.localeCompare(right))
+  }, [sortedInstances])
+
+  const clusterNodeSetTypeOptions = useMemo(() => {
+    const typeValues = new Set<string>()
+    for (const instance of sortedInstances) {
+      if (getTenantInstanceServiceId(instance) !== 'cluster') {
+        continue
+      }
+      const nodeSetType = getClusterNodeSetTypeLabel(instance)
+      if (nodeSetType && nodeSetType !== '—') {
+        typeValues.add(nodeSetType)
+      }
+    }
+    return [...typeValues].sort((left, right) => left.localeCompare(right))
+  }, [sortedInstances])
+
   const vmOsOptions = useMemo(() => {
     const osValues = new Set<string>()
     for (const instance of sortedInstances) {
@@ -241,6 +335,33 @@ export function TenantUserInstancesPage({
         return false
       }
 
+      if (isBareMetalPage) {
+        if (powerStateFilter !== 'all' && instance.status !== powerStateFilter) {
+          return false
+        }
+        if (osFilter !== 'all' && instance.osImage !== osFilter) {
+          return false
+        }
+        if (gpuFilter !== 'all' && getTenantInstanceGpuLabel(instance) !== gpuFilter) {
+          return false
+        }
+      }
+
+      if (isClustersPage) {
+        if (powerStateFilter !== 'all' && instance.status !== powerStateFilter) {
+          return false
+        }
+        if (platformFilter !== 'all' && getClusterPlatformLabel(instance) !== platformFilter) {
+          return false
+        }
+        if (
+          nodeSetTypeFilter !== 'all' &&
+          getClusterNodeSetTypeLabel(instance) !== nodeSetTypeFilter
+        ) {
+          return false
+        }
+      }
+
       if (isVirtualMachinesPage) {
         if (powerStateFilter !== 'all' && instance.status !== powerStateFilter) {
           return false
@@ -256,14 +377,21 @@ export function TenantUserInstancesPage({
 
       const serviceLabel = CATALOG_SERVICE_FILTER_LABELS[serviceId]
       const specRows = getTenantInstanceSpecRows(instance)
+      const statusLabel =
+        serviceId === 'cluster'
+          ? getClusterStatusLabel(instance.status)
+          : getTenantInstanceStatusLabel(instance.status)
 
       return (
         instance.name.toLowerCase().includes(query) ||
         formatTenantInstanceName(instance.name).toLowerCase().includes(query) ||
         instance.catalogItemDisplayName.toLowerCase().includes(query) ||
         serviceLabel.toLowerCase().includes(query) ||
-        getTenantInstanceStatusLabel(instance.status).toLowerCase().includes(query) ||
+        statusLabel.toLowerCase().includes(query) ||
         instance.osImage.toLowerCase().includes(query) ||
+        getTenantInstanceGpuLabel(instance).toLowerCase().includes(query) ||
+        getClusterPlatformLabel(instance).toLowerCase().includes(query) ||
+        getClusterNodeSetTypeLabel(instance).toLowerCase().includes(query) ||
         specRows.some(
           (row) =>
             row.label.toLowerCase().includes(query) || row.value.toLowerCase().includes(query),
@@ -274,9 +402,14 @@ export function TenantUserInstancesPage({
     sortedInstances,
     selectedFilters,
     searchValue,
+    isBareMetalPage,
+    isClustersPage,
     isVirtualMachinesPage,
     powerStateFilter,
     osFilter,
+    gpuFilter,
+    platformFilter,
+    nodeSetTypeFilter,
   ])
 
   const selectedInstance = useMemo(
@@ -526,6 +659,96 @@ export function TenantUserInstancesPage({
                 ariaLabel="Instance service filters"
               />
             )}
+            {isBareMetalPage ? (
+              <>
+                <FormSelect
+                  className="catalog-status-filter"
+                  id="instances-bm-power-state-filter"
+                  value={powerStateFilter}
+                  onChange={(_event, value) =>
+                    setPowerStateFilter(value as 'all' | TenantInstanceStatus)
+                  }
+                  aria-label="Filter bare metal by power state"
+                >
+                  {POWER_STATE_FILTER_OPTIONS.map((option) => (
+                    <FormSelectOption
+                      key={option.value}
+                      value={option.value}
+                      label={option.label}
+                    />
+                  ))}
+                </FormSelect>
+                <FormSelect
+                  className="catalog-status-filter"
+                  id="instances-bm-os-filter"
+                  value={osFilter}
+                  onChange={(_event, value) => setOsFilter(value)}
+                  aria-label="Filter bare metal by operating system"
+                >
+                  <FormSelectOption value="all" label="All operating systems" />
+                  {bareMetalOsOptions.map((osImage) => (
+                    <FormSelectOption key={osImage} value={osImage} label={osImage} />
+                  ))}
+                </FormSelect>
+                <FormSelect
+                  className="catalog-status-filter"
+                  id="instances-bm-gpu-filter"
+                  value={gpuFilter}
+                  onChange={(_event, value) => setGpuFilter(value)}
+                  aria-label="Filter bare metal by GPU type"
+                >
+                  <FormSelectOption value="all" label="All GPU types" />
+                  {bareMetalGpuOptions.map((gpuLabel) => (
+                    <FormSelectOption key={gpuLabel} value={gpuLabel} label={gpuLabel} />
+                  ))}
+                </FormSelect>
+              </>
+            ) : null}
+            {isClustersPage ? (
+              <>
+                <FormSelect
+                  className="catalog-status-filter"
+                  id="instances-cluster-status-filter"
+                  value={powerStateFilter}
+                  onChange={(_event, value) =>
+                    setPowerStateFilter(value as 'all' | TenantInstanceStatus)
+                  }
+                  aria-label="Filter clusters by status"
+                >
+                  {CLUSTER_STATUS_FILTER_OPTIONS.map((option) => (
+                    <FormSelectOption
+                      key={option.value}
+                      value={option.value}
+                      label={option.label}
+                    />
+                  ))}
+                </FormSelect>
+                <FormSelect
+                  className="catalog-status-filter"
+                  id="instances-cluster-platform-filter"
+                  value={platformFilter}
+                  onChange={(_event, value) => setPlatformFilter(value)}
+                  aria-label="Filter clusters by platform"
+                >
+                  <FormSelectOption value="all" label="All platforms" />
+                  {clusterPlatformOptions.map((platform) => (
+                    <FormSelectOption key={platform} value={platform} label={platform} />
+                  ))}
+                </FormSelect>
+                <FormSelect
+                  className="catalog-status-filter"
+                  id="instances-cluster-node-set-filter"
+                  value={nodeSetTypeFilter}
+                  onChange={(_event, value) => setNodeSetTypeFilter(value)}
+                  aria-label="Filter clusters by node set type"
+                >
+                  <FormSelectOption value="all" label="All node set types" />
+                  {clusterNodeSetTypeOptions.map((nodeSetType) => (
+                    <FormSelectOption key={nodeSetType} value={nodeSetType} label={nodeSetType} />
+                  ))}
+                </FormSelect>
+              </>
+            ) : null}
             {isVirtualMachinesPage ? (
               <>
                 <FormSelect
@@ -537,7 +760,7 @@ export function TenantUserInstancesPage({
                   }
                   aria-label="Filter virtual machines by power state"
                 >
-                  {VM_POWER_STATE_FILTER_OPTIONS.map((option) => (
+                  {POWER_STATE_FILTER_OPTIONS.map((option) => (
                     <FormSelectOption
                       key={option.value}
                       value={option.value}
@@ -610,9 +833,7 @@ export function TenantUserInstancesPage({
                 ? 'Launch an instance from the catalog to start provisioning capacity for your project.'
                 : selectedFilters.size === 0
                   ? 'Choose one or more services above to filter your instances.'
-                  : searchValue.trim() ||
-                      (isVirtualMachinesPage &&
-                        (powerStateFilter !== 'all' || osFilter !== 'all'))
+                  : searchValue.trim() || hasActiveServiceFilters
                     ? 'Try a different search term or clear the filters above.'
                     : 'No instances match the selected services.'}
             </EmptyStateBody>
