@@ -1064,6 +1064,8 @@
 
 .provider-setup-template__select-card--template {
   position: relative;
+  display: flex;
+  flex-direction: column;
   text-align: start;
 }
 
@@ -1554,6 +1556,14 @@
   box-shadow: 0 0 0 1px var(--pf-t--global--color--brand--default);
 }
 
+.provider-setup-template__select-card--static {
+  cursor: default;
+}
+
+.provider-setup-template__select-card--static:hover {
+  border-color: var(--pf-t--global--color--brand--default);
+}
+
 .provider-setup-template__select-card-header {
   display: flex;
   align-items: center;
@@ -1941,6 +1951,19 @@
 
 .provider-setup-template__select-card--template .provider-setup-template__select-card-detail.pf-v6-c-content--p {
   margin-block-end: var(--pf-t--global--spacer--md);
+}
+
+.provider-setup-template__select-card-footer {
+  margin-block-start: auto;
+  padding-block-start: 0;
+}
+
+.provider-setup-template__select-card-footer-divider {
+  margin-block: var(--pf-t--global--spacer--md) var(--pf-t--global--spacer--sm);
+}
+
+.provider-setup-template__select-card--template .provider-setup-template__select-card-rate.pf-v6-c-content--p {
+  margin: 0;
 }
 
 .provider-admin-infrastructure-summary {

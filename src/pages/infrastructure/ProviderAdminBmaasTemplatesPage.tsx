@@ -483,7 +483,13 @@ export function ProviderAdminBmaasTemplatesPage({
 
         <ProviderSetupPublishCatalogWizard
           isOpen={isPublishWizardOpen}
-          templates={availableTemplates}
+          templates={
+            publishTemplateRefId
+              ? availableTemplates.filter(
+                  (template) => template.templateRefId === publishTemplateRefId,
+                )
+              : availableTemplates.slice(0, 1)
+          }
           organizations={getProviderRegisteredOrganizations()}
           defaultTemplateRefId={publishTemplateRefId ?? availableTemplates[0]?.templateRefId}
           onClose={() => {

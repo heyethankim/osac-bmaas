@@ -19,7 +19,6 @@ import {
   Title,
 } from '@patternfly/react-core'
 import {
-  DEMO_EXISTING_MASTER_TEMPLATES,
   DISCOVERED_HARDWARE_PROFILES,
   DISCOVERED_HARDWARE_TOTALS,
   type PublishedTemplatePayload,
@@ -45,7 +44,7 @@ function mergeTemplates(
   const templates: SavedMasterTemplate[] = []
   const seen = new Set<string>()
 
-  for (const template of [userSavedTemplate, savedTemplate, ...DEMO_EXISTING_MASTER_TEMPLATES]) {
+  for (const template of [userSavedTemplate, savedTemplate]) {
     if (!template || seen.has(template.templateRefId)) {
       continue
     }

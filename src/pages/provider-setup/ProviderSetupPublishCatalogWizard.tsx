@@ -123,6 +123,7 @@ export function ProviderSetupPublishCatalogWizard({
     Boolean(selectedDiskImage) &&
     Boolean(displayName.trim())
   const hasLockableParameters = fieldPolicies.length > 0
+  const hasSingleTemplate = templates.length <= 1
   const publishSteps = useMemo(
     () =>
       PUBLISH_CATALOG_STEPS.filter(
@@ -390,12 +391,14 @@ export function ProviderSetupPublishCatalogWizard({
         return (
           <div className="provider-setup-template__publish-template-step">
             <Content component="p" className="provider-setup-template__publish-step-lede">
-              Choose how this offering is provisioned.
+              {hasSingleTemplate
+                ? 'This offering uses your saved template.'
+                : 'Choose the template that defines how this offering is provisioned.'}
             </Content>
             <div
               className="provider-setup-template__card-group"
-              role="radiogroup"
-              aria-label="Provisioning template"
+              role={hasSingleTemplate ? undefined : 'radiogroup'}
+              aria-label="Template"
             >
               {templates.map((template) => {
                 const isSelected = template.templateRefId === selectedTemplateRefId
@@ -407,19 +410,27 @@ export function ProviderSetupPublishCatalogWizard({
                 return (
                   <div
                     key={template.templateRefId}
-                    role="radio"
-                    tabIndex={0}
-                    aria-checked={isSelected}
+                    role={hasSingleTemplate ? undefined : 'radio'}
+                    tabIndex={hasSingleTemplate ? undefined : 0}
+                    aria-checked={hasSingleTemplate ? undefined : isSelected}
                     className={`provider-setup-template__select-card provider-setup-template__select-card--template${
                       isSelected ? ' provider-setup-template__select-card--selected' : ''
-                    }`}
-                    onClick={() => setSelectedTemplateRefId(template.templateRefId)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault()
-                        setSelectedTemplateRefId(template.templateRefId)
-                      }
-                    }}
+                    }${hasSingleTemplate ? ' provider-setup-template__select-card--static' : ''}`}
+                    onClick={
+                      hasSingleTemplate
+                        ? undefined
+                        : () => setSelectedTemplateRefId(template.templateRefId)
+                    }
+                    onKeyDown={
+                      hasSingleTemplate
+                        ? undefined
+                        : (event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault()
+                              setSelectedTemplateRefId(template.templateRefId)
+                            }
+                          }
+                    }
                   >
                     <div className="provider-setup-template__select-card-header">
                       <Label color="green" isCompact className="provider-setup-template__select-card-badge">
@@ -431,7 +442,7 @@ export function ProviderSetupPublishCatalogWizard({
                           isCompact
                           className="provider-setup-template__select-card-selected-badge"
                         >
-                          Selected
+                          {hasSingleTemplate ? 'In use' : 'Selected'}
                         </Label>
                       ) : null}
                     </div>
@@ -455,7 +466,7 @@ export function ProviderSetupPublishCatalogWizard({
                           >
                             Parameters
                           </Content>
-                          <Tooltip content="These parameters come with this method. You’ll choose Locked or Unlocked later.">
+                          <Tooltip content="These parameters come with this template. You’ll choose Locked or Unlocked later.">
                             <Button
                               variant="plain"
                               aria-label="About parameters"
@@ -484,6 +495,15 @@ export function ProviderSetupPublishCatalogWizard({
                         </ul>
                       </>
                     ) : null}
+                    <div className="provider-setup-template__select-card-footer">
+                      <Divider className="provider-setup-template__select-card-footer-divider" />
+                      <Content
+                        component="p"
+                        className="provider-setup-template__select-card-rate"
+                      >
+                        {formatRateCardSummary(resolveRateCard(template))}
+                      </Content>
+                    </div>
                   </div>
                 )
               })}
@@ -608,7 +628,7 @@ export function ProviderSetupPublishCatalogWizard({
         return (
           <div className="provider-setup-template__publish-policies-step">
             <Content component="p" className="provider-setup-template__publish-step-lede">
-              Choose Unlocked or Locked for each provisioning parameter.
+              Choose Unlocked or Locked for each template parameter.
             </Content>
             {fieldPolicies.length > 0 ? (
               <Alert
@@ -621,8 +641,8 @@ export function ProviderSetupPublishCatalogWizard({
               </Alert>
             ) : null}
             {fieldPolicies.length === 0 ? (
-              <Alert variant="info" isInline title="Select a provisioning method first">
-                Lock fields apply to parameters from the method you chose in Provisioning.
+              <Alert variant="info" isInline title="Select a template first">
+                Lock fields apply to parameters from the template you chose.
               </Alert>
             ) : (
               <div className="provider-setup-template__field-policy-list" role="list">
@@ -830,7 +850,7 @@ export function ProviderSetupPublishCatalogWizard({
                 </DescriptionListDescription>
               </DescriptionListGroup>
               <DescriptionListGroup>
-                <DescriptionListTerm>Provisioning template</DescriptionListTerm>
+                <DescriptionListTerm>Template</DescriptionListTerm>
                 <DescriptionListDescription>
                   {provisioner?.title ?? '—'}
                 </DescriptionListDescription>

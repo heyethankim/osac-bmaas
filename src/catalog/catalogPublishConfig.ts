@@ -59,7 +59,7 @@ function getBareMetalProvisioningPresentation(
 ): CatalogProvisioningPresentation {
   if (isGpu) {
     return {
-      title: 'GPU Bare Metal Provisioner',
+      title: 'GPU Bare Metal Template',
       description:
         'Provisions GPU bare metal hosts using the Metal3 Baremetal Operator, including BMC power control and OS imaging for AI training fleets.',
       parameters: [],
@@ -67,7 +67,7 @@ function getBareMetalProvisioningPresentation(
   }
 
   return {
-    title: 'Standard Bare Metal Provisioner',
+    title: 'Standard Bare Metal Template',
     description:
       'Provisions bare metal hosts using the Metal3 Baremetal Operator, including BMC power control and OS imaging for standard compute workloads.',
     parameters: [],
@@ -79,7 +79,7 @@ function getVirtualMachineProvisioningPresentation(
 ): CatalogProvisioningPresentation {
   if (isGpu) {
     return {
-      title: 'GPU Passthrough Provisioner',
+      title: 'GPU Passthrough Template',
       description:
         'Provisions VMs with dedicated GPU passthrough via VFIO binding on GPU-capable hosts.',
       parameters: [],
@@ -87,7 +87,7 @@ function getVirtualMachineProvisioningPresentation(
   }
 
   return {
-    title: 'Standard VM Provisioner',
+    title: 'Standard VM Template',
     description:
       'Provisions virtual machines using the core Ansible role, including networking, storage, and cloud-init seeding.',
     parameters: [],
@@ -99,7 +99,7 @@ function getClusterProvisioningPresentation(
 ): CatalogProvisioningPresentation {
   if (isGpu) {
     return {
-      title: 'GPU Cluster Provisioner',
+      title: 'GPU Cluster Template',
       description:
         'Provisions OpenShift clusters with GPU worker pools and installs the GPU operator stack after bootstrap.',
       parameters: [],
@@ -107,7 +107,7 @@ function getClusterProvisioningPresentation(
   }
 
   return {
-    title: 'Standard Cluster Provisioner',
+    title: 'Standard Cluster Template',
     description:
       'Provisions OpenShift clusters using the Assisted Installer / Hive path, including control-plane bootstrap and worker join.',
     parameters: [],
@@ -119,7 +119,7 @@ function getModelProvisioningPresentation(
 ): CatalogProvisioningPresentation {
   if (isGpu) {
     return {
-      title: 'GPU Model Serving Provisioner',
+      title: 'GPU Model Serving Template',
       description:
         'Deploys model-serving runtimes on GPU-backed capacity, including accelerator scheduling and model artifact pull.',
       parameters: [],
@@ -127,7 +127,7 @@ function getModelProvisioningPresentation(
   }
 
   return {
-    title: 'Standard Model Serving Provisioner',
+    title: 'Standard Model Serving Template',
     description:
       'Deploys model-serving runtimes on CPU capacity, including runtime image pull, endpoint exposure, and health probes.',
     parameters: [],

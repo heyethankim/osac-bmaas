@@ -70,7 +70,6 @@ import {
   CATALOG_SERVICE_FILTER_LABELS,
   CATALOG_SERVICE_LABELS,
   DEFAULT_BLUEPRINT_FORM,
-  DEMO_EXISTING_MASTER_TEMPLATES,
   PUBLISH_CATALOG_SUGGESTED_DISPLAY_NAME,
   formatRateCardSummary,
   parseRateCardFromForm,
@@ -473,16 +472,8 @@ export function ProviderAdminCatalogPage({
 
   const linkedTemplate = useMemo(() => getTemplateRowData(), [])
   const availableTemplates = useMemo(() => {
-    const template = getTemplateRowData()
-    const templates = [template, ...DEMO_EXISTING_MASTER_TEMPLATES]
-    const seen = new Set<string>()
-    return templates.filter((item) => {
-      if (seen.has(item.templateRefId)) {
-        return false
-      }
-      seen.add(item.templateRefId)
-      return true
-    })
+    // Demo currently has one real template; don't invent a second picker option.
+    return [getTemplateRowData()]
   }, [isPublishWizardOpen])
 
   const refreshOrganizations = () => {

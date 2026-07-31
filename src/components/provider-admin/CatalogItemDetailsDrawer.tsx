@@ -357,7 +357,7 @@ export function CatalogItemDetailsDrawer({
           aria-label="Catalog item publishing details"
         >
           <DescriptionListGroup>
-            <DescriptionListTerm>Provisioning template</DescriptionListTerm>
+            <DescriptionListTerm>Template</DescriptionListTerm>
             <DescriptionListDescription>
               {canLinkToBareMetalTemplate && onNavigateToLinkedTemplate ? (
                 <Button
