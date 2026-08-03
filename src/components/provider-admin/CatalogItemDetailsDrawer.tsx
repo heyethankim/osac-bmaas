@@ -223,7 +223,7 @@ export function CatalogItemDetailsDrawer({
           {catalog.description?.trim() || templateDescription}
         </Content>
 
-        {onLaunch ? (
+        {onLaunch && isLive ? (
           <Button
             variant="primary"
             icon={<RocketIcon />}

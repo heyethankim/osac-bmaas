@@ -262,11 +262,14 @@ function getCatalogItemActions(
       title: 'View details',
       onClick: onViewDetails,
     },
-    {
+  ]
+
+  if (!isUnpublished) {
+    actions.push({
       title: LAUNCH_INSTANCE_WIZARD_DEMO.launchInstanceLabel,
       onClick: onLaunch,
-    },
-  ]
+    })
+  }
 
   if (item.scope !== 'vip-enterprise') {
     actions.push({
@@ -669,6 +672,9 @@ export function ProviderAdminCatalogPage({
     : null
 
   const openLaunchWizard = (catalog: ProviderCatalogDraft) => {
+    if (getCatalogItemStatus(catalog) === 'unpublished') {
+      return
+    }
     setSelectedCatalogItem(catalog)
     setIsDetailsDrawerOpen(false)
     setIsWizardOpen(true)

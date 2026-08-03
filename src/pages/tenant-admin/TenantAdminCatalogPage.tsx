@@ -237,15 +237,21 @@ function getCatalogItemActions(
 ): IAction[] {
   const isUnpublished = item.status === 'Unpublished'
 
-  return [
+  const actions: IAction[] = [
     {
       title: 'View details',
       onClick: onViewDetails,
     },
-    {
+  ]
+
+  if (!isUnpublished) {
+    actions.push({
       title: LAUNCH_INSTANCE_WIZARD_DEMO.launchInstanceLabel,
       onClick: onLaunch,
-    },
+    })
+  }
+
+  actions.push(
     {
       title: 'Edit',
       onClick: onEdit,
@@ -266,7 +272,9 @@ function getCatalogItemActions(
       isDanger: true,
       onClick: onDelete,
     },
-  ]
+  )
+
+  return actions
 }
 
 export function TenantAdminCatalogPage({
@@ -398,6 +406,9 @@ export function TenantAdminCatalogPage({
   }
 
   const openLaunchWizard = (item: TenantCatalogGovernanceItemWithNetworking) => {
+    if (item.status === 'Unpublished') {
+      return
+    }
     setSelectedCatalogItem(item)
     setIsDetailsDrawerOpen(false)
     setIsWizardOpen(true)

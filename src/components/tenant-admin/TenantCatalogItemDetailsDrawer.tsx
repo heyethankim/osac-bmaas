@@ -142,7 +142,7 @@ export function TenantCatalogItemDetailsDrawer({
           {item.description?.trim() || TENANT_CATALOG_MANAGER_DEMO.drawerAccessLede}
         </Content>
 
-        {onLaunch ? (
+        {onLaunch && item.status !== 'Unpublished' ? (
           <Button
             variant="primary"
             icon={<RocketIcon />}
