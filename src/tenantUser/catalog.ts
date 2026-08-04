@@ -38,6 +38,7 @@ export type TenantUserCatalogCard = {
   templateRefId: string
   templateName: string
   instanceTypeLabel?: string
+  diskImageId?: string
   diskImageLabel?: string
   fieldPolicies?: CatalogFieldPolicy[]
   rateCard: RateCard
@@ -71,7 +72,10 @@ function getHardwareProfileLabel(
   specRows: CatalogSpecRow[],
 ): string {
   if (serviceId === 'cluster') {
-    return specRows.find((row) => row.label === 'Platform')?.value ?? 'OpenShift cluster'
+    return (
+      specRows.find((row) => row.label === 'Cluster version' || row.label === 'Platform')?.value ??
+      'OpenShift cluster'
+    )
   }
   if (serviceId === 'virtual-machine') {
     return specRows.find((row) => row.label === 'Instance type')?.value ?? 'Standard VM'
@@ -170,6 +174,7 @@ export function getTenantUserCatalogCardFromDraft(
     templateRefId: catalog.templateRefId,
     templateName: catalog.templateName,
     instanceTypeLabel: catalog.instanceTypeLabel,
+    diskImageId: catalog.diskImageId,
     diskImageLabel: catalog.diskImageLabel,
     fieldPolicies: catalog.fieldPolicies,
     rateCard,

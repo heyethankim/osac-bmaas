@@ -18,6 +18,10 @@ import {
   VM_NETWORK_ATTACHMENTS_TEMPLATE_NAME,
   VM_NETWORK_ATTACHMENTS_TEMPLATE_REF_ID,
 } from '../catalog/catalogSpecs'
+import {
+  DEFAULT_CLUSTER_CATALOG_VERSION_ID,
+  formatClusterPlatformLabel,
+} from '../catalog/catalogPublishConfig'
 import { getDefaultMasterTemplate } from '../providerAdmin/bmaasTemplates'
 import {
   addProviderCatalogItem,
@@ -36,6 +40,7 @@ import {
   updateProviderRegisteredOrganization,
   upsertProviderSavedTemplate,
   ensureProviderDemoOrganizations,
+  patchProviderCatalogItem,
   type ProviderCatalogDraft,
 } from './storage'
 import {
@@ -150,6 +155,10 @@ function createClusterNodeSetsCatalogDraft(): ProviderCatalogDraft {
     scope: 'global-public',
     rateCard: CLUSTER_NODE_SETS_RATE_CARD,
     serviceId: 'cluster',
+    instanceTypeId: 'ocp-small',
+    instanceTypeLabel: 'OpenShift small',
+    diskImageId: DEFAULT_CLUSTER_CATALOG_VERSION_ID,
+    diskImageLabel: formatClusterPlatformLabel(DEFAULT_CLUSTER_CATALOG_VERSION_ID),
     networkPolicy: createCatalogNetworkPolicyForLockPattern(
       'all-editable',
       CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
@@ -368,6 +377,21 @@ function syncClusterNodeSetsCatalogItem(): void {
 
   if (getCatalogItemStatus(current) !== 'live') {
     setProviderCatalogItemStatus(current.catalogItemId, 'live')
+  }
+
+  const needsVersion =
+    current.diskImageId !== DEFAULT_CLUSTER_CATALOG_VERSION_ID ||
+    current.diskImageLabel !== formatClusterPlatformLabel(DEFAULT_CLUSTER_CATALOG_VERSION_ID) ||
+    current.instanceTypeId !== 'ocp-small' ||
+    current.instanceTypeLabel !== 'OpenShift small'
+
+  if (needsVersion) {
+    patchProviderCatalogItem(current.catalogItemId, {
+      instanceTypeId: 'ocp-small',
+      instanceTypeLabel: 'OpenShift small',
+      diskImageId: DEFAULT_CLUSTER_CATALOG_VERSION_ID,
+      diskImageLabel: formatClusterPlatformLabel(DEFAULT_CLUSTER_CATALOG_VERSION_ID),
+    })
   }
 }
 

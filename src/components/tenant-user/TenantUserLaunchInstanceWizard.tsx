@@ -35,6 +35,10 @@ import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import type { CatalogServiceId } from '../../providerSetup/templateDemo'
 import { resolveCatalogSpecRows } from '../../catalog/catalogSpecs'
+import {
+  formatClusterPlatformLabel,
+  getReleaseImageForClusterVersion,
+} from '../../catalog/catalogPublishConfig'
 import type { TenantUserCatalogCard } from '../../tenantUser/catalog'
 import { PlusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/plus-circle-icon'
 import {
@@ -208,6 +212,17 @@ export function TenantUserLaunchInstanceWizard({
     [includeNetworkingStep, catalogItem.serviceId],
   )
 
+  const catalogClusterVersion =
+    catalogItem.diskImageId?.trim() ||
+    catalogItem.diskImageLabel?.trim() ||
+    catalogDetailSpecRows.find(
+      (row) => row.label === 'Cluster version' || row.label === 'Platform',
+    )?.value ||
+    ''
+  const catalogClusterVersionLabel = formatClusterPlatformLabel(
+    catalogClusterVersion || catalogItem.osImage,
+  )
+
   const [form, setForm] = useState<LaunchInstanceWizardForm>(() =>
     createLaunchInstanceWizardForm({
       virtualNetworkId: networkContext.policy.virtualNetwork.id,
@@ -215,6 +230,7 @@ export function TenantUserLaunchInstanceWizard({
       securityGroupId: networkContext.policy.securityGroup.id,
       serviceId: catalogItem.serviceId,
       instanceName: getNextLaunchInstanceName(existingInstanceNames, catalogItem.serviceId),
+      clusterVersion: catalogClusterVersion || catalogItem.osImage,
     }),
   )
   const [activeStepId, setActiveStepId] = useState<LaunchInstanceWizardStepId>(
@@ -263,6 +279,7 @@ export function TenantUserLaunchInstanceWizard({
           existingInstanceNames,
           catalogItem.serviceId,
         ),
+        clusterVersion: catalogClusterVersion || catalogItem.osImage,
       }),
     )
     setActiveStepId(usesGeneralFirstStep ? 'general' : 'configure')
@@ -306,6 +323,7 @@ export function TenantUserLaunchInstanceWizard({
           existingInstanceNames,
           catalogItem.serviceId,
         ),
+        clusterVersion: catalogClusterVersion || catalogItem.osImage,
       }),
     )
     setActiveStepId(usesGeneralFirstStep ? 'general' : 'configure')
@@ -334,7 +352,9 @@ export function TenantUserLaunchInstanceWizard({
       serviceId: catalogItem.serviceId,
       hardwareProfile: catalogItem.hardwareProfile,
       osImage: isClusterCatalogItem
-        ? (detailSpecRows.find((row) => row.label === 'Platform')?.value ?? catalogItem.osImage)
+        ? (detailSpecRows.find(
+            (row) => row.label === 'Cluster version' || row.label === 'Platform',
+          )?.value ?? catalogItem.osImage)
         : isVmCatalogItem
           ? (vmOsImage ?? catalogItem.osImage)
           : catalogItem.osImage,
@@ -746,12 +766,23 @@ export function TenantUserLaunchInstanceWizard({
   const renderClusterConfigureStep = () => (
     <div className="tenant-user-launch-wizard__step">
       <Form autoComplete="off" className="tenant-user-launch-wizard__form">
-        <FormGroup label="Release image" fieldId="launch-cluster-release-image" isRequired>
+        <FormGroup label="Cluster version" fieldId="launch-cluster-version">
           <TextInput
-            id="launch-cluster-release-image"
-            value={form.releaseImage}
-            onChange={(_event, value) => setForm((current) => ({ ...current, releaseImage: value }))}
+            id="launch-cluster-version"
+            value={catalogClusterVersionLabel}
+            isDisabled
+            aria-label="Cluster version"
           />
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem>
+                Set by the catalog item. Release image:{' '}
+                {getReleaseImageForClusterVersion(
+                  catalogClusterVersion || form.releaseImage,
+                )}
+              </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
         </FormGroup>
 
         <div className="tenant-user-launch-wizard__node-sets">
@@ -1141,6 +1172,10 @@ export function TenantUserLaunchInstanceWizard({
             </>
           ) : isClusterCatalogItem ? (
             <>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Cluster version</DescriptionListTerm>
+                <DescriptionListDescription>{catalogClusterVersionLabel}</DescriptionListDescription>
+              </DescriptionListGroup>
               <DescriptionListGroup>
                 <DescriptionListTerm>Release image</DescriptionListTerm>
                 <DescriptionListDescription>{form.releaseImage.trim()}</DescriptionListDescription>

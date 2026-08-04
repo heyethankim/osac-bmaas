@@ -1515,6 +1515,10 @@
   gap: var(--pf-t--global--spacer--md);
 }
 
+.provider-setup-template__card-group.provider-setup-template__card-group--cluster-sizes {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .provider-setup-template__card-group.provider-setup-template__card-group--disk-images {
   display: grid;
   grid-template-columns: 1fr;

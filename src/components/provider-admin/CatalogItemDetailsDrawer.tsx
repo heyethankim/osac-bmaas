@@ -107,6 +107,7 @@ export function CatalogItemDetailsDrawer({
   const isLive = catalog ? getCatalogItemStatus(catalog) === 'live' : false
   const catalogServiceId = catalog ? getDraftServiceId(catalog) : serviceId
   const isVirtualMachine = catalogServiceId === 'virtual-machine'
+  const isCluster = catalogServiceId === 'cluster'
   const parsedInstanceType = catalog?.instanceTypeLabel
     ? parseCatalogInstanceTypeParts(catalog.instanceTypeLabel)
     : null
@@ -119,7 +120,10 @@ export function CatalogItemDetailsDrawer({
       ? specRows.filter(
           (row) =>
             row.label !== 'Instance type' &&
+            row.label !== 'Cluster size' &&
             row.label !== 'Disk image' &&
+            row.label !== 'Platform' &&
+            row.label !== 'Cluster version' &&
             row.label !== 'Size' &&
             row.label !== 'OS image',
         )
@@ -388,13 +392,17 @@ export function CatalogItemDetailsDrawer({
           </DescriptionListGroup>
           {!isVirtualMachine && catalog.instanceTypeLabel && parsedInstanceType ? (
             <DescriptionListGroup>
-              <DescriptionListTerm>Instance type</DescriptionListTerm>
+              <DescriptionListTerm>
+                {isCluster ? 'Cluster size' : 'Instance type'}
+              </DescriptionListTerm>
               <DescriptionListDescription>{catalog.instanceTypeLabel}</DescriptionListDescription>
             </DescriptionListGroup>
           ) : null}
           {!isVirtualMachine && catalog.diskImageLabel ? (
             <DescriptionListGroup>
-              <DescriptionListTerm>Disk image</DescriptionListTerm>
+              <DescriptionListTerm>
+                {isCluster ? 'Cluster version' : 'Disk image'}
+              </DescriptionListTerm>
               <DescriptionListDescription>{catalog.diskImageLabel}</DescriptionListDescription>
             </DescriptionListGroup>
           ) : null}

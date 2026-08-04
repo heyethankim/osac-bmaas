@@ -214,7 +214,7 @@ export type ProviderCatalogDraft = {
   /** Instance type / hardware flavor (optional; falls back to template hardware). */
   instanceTypeId?: string
   instanceTypeLabel?: string
-  /** Disk / OS image (optional). */
+  /** Disk / OS image for BM/VM, or cluster version id/label for Cluster as a Service. */
   diskImageId?: string
   diskImageLabel?: string
   /** Locked vs exposed field policies for launch. */
@@ -511,6 +511,32 @@ export function setProviderCatalogItemStatus(
   const updated: ProviderCatalogDraft = {
     ...items[index]!,
     status,
+  }
+  const next = [...items]
+  next[index] = updated
+  persistProviderCatalogItems(next)
+  return updated
+}
+
+/** Demo/sync helper for non-edit-modal catalog fields (e.g. cluster version). */
+export function patchProviderCatalogItem(
+  catalogItemId: string,
+  patch: Partial<
+    Pick<
+      ProviderCatalogDraft,
+      'instanceTypeId' | 'instanceTypeLabel' | 'diskImageId' | 'diskImageLabel'
+    >
+  >,
+): ProviderCatalogDraft | null {
+  const items = getProviderCatalogItems()
+  const index = items.findIndex((item) => item.catalogItemId === catalogItemId)
+  if (index < 0) {
+    return null
+  }
+
+  const updated: ProviderCatalogDraft = {
+    ...items[index]!,
+    ...patch,
   }
   const next = [...items]
   next[index] = updated

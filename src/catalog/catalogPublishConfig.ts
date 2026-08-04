@@ -29,6 +29,14 @@ export type CatalogDiskImageOption = {
   detail: string
 }
 
+/** OpenShift version advertised on a Cluster as a Service catalog item. */
+export type CatalogClusterVersionOption = {
+  id: string
+  label: string
+  detail: string
+  releaseImage: string
+}
+
 /** Present provisioning templates as the "how", not the hardware SKU. */
 export type CatalogProvisioningParameter = {
   name: string
@@ -212,6 +220,84 @@ export function getCatalogInstanceTypeOptions(
 
 export function getCatalogDiskImageOptions(): CatalogDiskImageOption[] {
   return [...CATALOG_DISK_IMAGE_OPTIONS]
+}
+
+export const CATALOG_CLUSTER_VERSION_OPTIONS: ReadonlyArray<CatalogClusterVersionOption> = [
+  {
+    id: 'ocp-4.15',
+    label: 'Red Hat OpenShift 4.15',
+    detail: 'OpenShift Container Platform · multi-arch',
+    releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.15.0-multi',
+  },
+  {
+    id: 'ocp-4.16',
+    label: 'Red Hat OpenShift 4.16',
+    detail: 'OpenShift Container Platform · multi-arch',
+    releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.16.0-multi',
+  },
+  {
+    id: 'ocp-4.21',
+    label: 'Red Hat OpenShift 4.21',
+    detail: 'OpenShift Container Platform · multi-arch',
+    releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.21.0-multi',
+  },
+]
+
+export function getCatalogClusterVersionOptions(): CatalogClusterVersionOption[] {
+  return [...CATALOG_CLUSTER_VERSION_OPTIONS]
+}
+
+/** Default cluster version for seeded Node Sets demo catalog item. */
+export const DEFAULT_CLUSTER_CATALOG_VERSION_ID = 'ocp-4.16'
+
+export function getCatalogClusterVersionOption(
+  idOrLabel: string | undefined | null,
+): CatalogClusterVersionOption | undefined {
+  const needle = idOrLabel?.trim()
+  if (!needle) {
+    return undefined
+  }
+  return CATALOG_CLUSTER_VERSION_OPTIONS.find(
+    (option) =>
+      option.id === needle ||
+      option.label === needle ||
+      option.label.toLowerCase() === needle.toLowerCase(),
+  )
+}
+
+export function getReleaseImageForClusterVersion(idOrLabel: string | undefined | null): string {
+  const needle = idOrLabel?.trim()
+  if (!needle) {
+    return (
+      CATALOG_CLUSTER_VERSION_OPTIONS.find(
+        (option) => option.id === DEFAULT_CLUSTER_CATALOG_VERSION_ID,
+      )?.releaseImage ?? CATALOG_CLUSTER_VERSION_OPTIONS[0].releaseImage
+    )
+  }
+
+  const matched = getCatalogClusterVersionOption(needle)
+  if (matched) {
+    return matched.releaseImage
+  }
+
+  // Already a release image reference (legacy launch form defaults).
+  if (needle.includes('/') || needle.includes(':')) {
+    return needle
+  }
+
+  return (
+    CATALOG_CLUSTER_VERSION_OPTIONS.find(
+      (option) => option.id === DEFAULT_CLUSTER_CATALOG_VERSION_ID,
+    )?.releaseImage ?? CATALOG_CLUSTER_VERSION_OPTIONS[0].releaseImage
+  )
+}
+
+export function formatClusterPlatformLabel(idOrLabel: string | undefined | null): string {
+  return (
+    getCatalogClusterVersionOption(idOrLabel)?.label ??
+    idOrLabel?.trim() ??
+    'Red Hat OpenShift'
+  )
 }
 
 function formatTemplateParamLabel(key: string): string {

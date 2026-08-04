@@ -23,7 +23,7 @@ export const CLUSTER_NODE_SETS_RATE_CARD = {
 }
 
 const CLUSTER_NODE_SETS_SPEC_ROWS: CatalogSpecRow[] = [
-  { label: 'Platform', value: 'Red Hat OpenShift 4.16' },
+  { label: 'Cluster version', value: 'Red Hat OpenShift 4.16' },
   { label: 'Control plane', value: '3× master · highly available' },
   { label: 'Node set', value: 'fc430 · worker (pinned)' },
 ]
@@ -149,6 +149,23 @@ export function resolveCatalogSpecRows(
       }
       if (item.diskImageLabel) {
         rows.push({ label: 'OS image', value: item.diskImageLabel })
+      }
+    } else if (serviceId === 'cluster') {
+      if (item.instanceTypeLabel) {
+        rows.push({ label: 'Cluster size', value: item.instanceTypeLabel })
+      }
+      if (item.diskImageLabel) {
+        rows.push({ label: 'Cluster version', value: item.diskImageLabel })
+      }
+      if (item.templateRefId === CLUSTER_NODE_SETS_TEMPLATE_REF_ID) {
+        for (const row of CLUSTER_NODE_SETS_SPEC_ROWS) {
+          if (row.label === 'Cluster version') {
+            continue
+          }
+          if (!rows.some((existing) => existing.label === row.label)) {
+            rows.push(row)
+          }
+        }
       }
     } else {
       if (item.instanceTypeLabel) {

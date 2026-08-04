@@ -1,4 +1,5 @@
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
+import { getReleaseImageForClusterVersion } from '../catalog/catalogPublishConfig'
 
 export type LaunchInstanceWizardStepId =
   | 'general'
@@ -368,6 +369,8 @@ export function createLaunchInstanceWizardForm(options: {
   securityGroupId: string
   instanceName?: string
   serviceId?: CatalogServiceId
+  /** Catalog cluster version id or Platform label; maps to release image. */
+  clusterVersion?: string
 }): LaunchInstanceWizardForm {
   const serviceId = options.serviceId ?? 'baremetal'
   const isCluster = serviceId === 'cluster'
@@ -386,7 +389,11 @@ export function createLaunchInstanceWizardForm(options: {
         ? CLUSTER_LAUNCH_INSTANCE_DEMO.sshPublicKey
         : DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM.sshPublicKey,
     pullSecret: isCluster ? CLUSTER_LAUNCH_INSTANCE_DEMO.pullSecret : '',
-    releaseImage: isCluster ? CLUSTER_LAUNCH_INSTANCE_DEMO.releaseImage : '',
+    releaseImage: isCluster
+      ? getReleaseImageForClusterVersion(
+          options.clusterVersion || CLUSTER_LAUNCH_INSTANCE_DEMO.releaseImage,
+        )
+      : '',
     nodeSets: [createDefaultClusterNodeSet()],
     podCidr: isCluster ? CLUSTER_LAUNCH_INSTANCE_DEMO.podCidr : '',
     serviceCidr: isCluster ? CLUSTER_LAUNCH_INSTANCE_DEMO.serviceCidr : '',

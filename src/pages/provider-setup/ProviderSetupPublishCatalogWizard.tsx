@@ -39,6 +39,7 @@ import {
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import {
   buildDefaultCatalogFieldPolicies,
+  getCatalogClusterVersionOptions,
   getCatalogDiskImageOptions,
   getCatalogInstanceTypeOptions,
   getProvisioningTemplatePresentation,
@@ -102,11 +103,18 @@ export function ProviderSetupPublishCatalogWizard({
     () => getCatalogInstanceTypeOptions(selectedServiceId),
     [selectedServiceId],
   )
-  const diskImageOptions = useMemo(() => getCatalogDiskImageOptions(), [])
+  const isClusterService = selectedServiceId === 'cluster'
+  const softwareImageOptions = useMemo(
+    () =>
+      isClusterService ? getCatalogClusterVersionOptions() : getCatalogDiskImageOptions(),
+    [isClusterService],
+  )
   const selectedInstanceType =
     instanceTypeOptions.find((option) => option.id === selectedInstanceTypeId) ?? null
   const selectedDiskImage =
-    diskImageOptions.find((option) => option.id === selectedDiskImageId) ?? null
+    softwareImageOptions.find((option) => option.id === selectedDiskImageId) ?? null
+  const softwareImageStepLabel = isClusterService ? 'Cluster version' : 'Disk image'
+  const hardwareOsStepLabel = isClusterService ? 'Size & version' : 'Hardware & OS'
   const isVipEnterprise = publishScope === 'vip-enterprise'
   const selectedVipOrganizations = useMemo(
     () =>
@@ -128,8 +136,10 @@ export function ProviderSetupPublishCatalogWizard({
     () =>
       PUBLISH_CATALOG_STEPS.filter(
         (step) => step.id !== 'field-policies' || hasLockableParameters,
+      ).map((step) =>
+        step.id === 'hardware-os' ? { ...step, label: hardwareOsStepLabel } : step,
       ),
-    [hasLockableParameters],
+    [hasLockableParameters, hardwareOsStepLabel],
   )
 
   const selectVipEnterprise = () => {
@@ -227,9 +237,12 @@ export function ProviderSetupPublishCatalogWizard({
     }
 
     const nextInstanceOptions = getCatalogInstanceTypeOptions(selectedServiceId)
-    const nextDiskOptions = getCatalogDiskImageOptions()
+    const nextSoftwareOptions =
+      selectedServiceId === 'cluster'
+        ? getCatalogClusterVersionOptions()
+        : getCatalogDiskImageOptions()
     setSelectedInstanceTypeId(nextInstanceOptions[0]?.id ?? '')
-    setSelectedDiskImageId(nextDiskOptions[0]?.id ?? '')
+    setSelectedDiskImageId(nextSoftwareOptions[0]?.id ?? '')
   }, [selectedServiceId])
 
   useEffect(() => {
@@ -514,15 +527,21 @@ export function ProviderSetupPublishCatalogWizard({
         return (
           <div className="provider-setup-template__publish-hardware-step">
             <Content component="p" className="provider-setup-template__publish-step-lede">
-              Choose the hardware flavor and OS image for this catalog item.
+              {isClusterService
+                ? 'Choose the cluster size and OpenShift version for this catalog item.'
+                : 'Choose the hardware flavor and OS image for this catalog item.'}
             </Content>
             <Content component="p" className="provider-setup-template__publish-subsection-title">
-              Instance type
+              {isClusterService ? 'Cluster size' : 'Instance type'}
             </Content>
             <div
-              className="provider-setup-template__card-group provider-setup-template__card-group--instance-types"
+              className={`provider-setup-template__card-group provider-setup-template__card-group--instance-types${
+                isClusterService
+                  ? ' provider-setup-template__card-group--cluster-sizes'
+                  : ''
+              }`}
               role="radiogroup"
-              aria-label="Instance type"
+              aria-label={isClusterService ? 'Cluster size' : 'Instance type'}
             >
               {instanceTypeOptions.map((option) => {
                 const isSelected = option.id === selectedInstanceTypeId
@@ -578,14 +597,14 @@ export function ProviderSetupPublishCatalogWizard({
               })}
             </div>
             <Content component="p" className="provider-setup-template__publish-subsection-title">
-              Disk image
+              {softwareImageStepLabel}
             </Content>
             <div
               className="provider-setup-template__card-group provider-setup-template__card-group--disk-images"
               role="radiogroup"
-              aria-label="Disk image"
+              aria-label={softwareImageStepLabel}
             >
-              {diskImageOptions.map((option) => {
+              {softwareImageOptions.map((option) => {
                 const isSelected = option.id === selectedDiskImageId
 
                 return (
@@ -856,7 +875,9 @@ export function ProviderSetupPublishCatalogWizard({
                 </DescriptionListDescription>
               </DescriptionListGroup>
               <DescriptionListGroup>
-                <DescriptionListTerm>Instance type</DescriptionListTerm>
+                <DescriptionListTerm>
+                  {isClusterService ? 'Cluster size' : 'Instance type'}
+                </DescriptionListTerm>
                 <DescriptionListDescription>
                   {selectedInstanceType
                     ? `${selectedInstanceType.label} (${selectedInstanceType.detail})`
@@ -864,7 +885,7 @@ export function ProviderSetupPublishCatalogWizard({
                 </DescriptionListDescription>
               </DescriptionListGroup>
               <DescriptionListGroup>
-                <DescriptionListTerm>Disk image</DescriptionListTerm>
+                <DescriptionListTerm>{softwareImageStepLabel}</DescriptionListTerm>
                 <DescriptionListDescription>
                   {selectedDiskImage?.label ?? '—'}
                 </DescriptionListDescription>

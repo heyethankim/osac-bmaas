@@ -83,7 +83,10 @@ export function TenantCatalogItemDetailsDrawer({
       ? specRows.filter(
           (row) =>
             row.label !== 'Instance type' &&
+            row.label !== 'Cluster size' &&
             row.label !== 'Disk image' &&
+            row.label !== 'Platform' &&
+            row.label !== 'Cluster version' &&
             row.label !== 'Size' &&
             row.label !== 'OS image',
         )
@@ -96,6 +99,7 @@ export function TenantCatalogItemDetailsDrawer({
           )
         : specRows
   const isVirtualMachine = item?.serviceId === 'virtual-machine'
+  const isCluster = item?.serviceId === 'cluster'
   const vmHighlightRows = item
     ? resolveVmCatalogHighlightRows({
         serviceId: item.serviceId,
@@ -194,13 +198,17 @@ export function TenantCatalogItemDetailsDrawer({
             : null}
           {!isVirtualMachine && item.instanceTypeLabel ? (
             <DescriptionListGroup>
-              <DescriptionListTerm>Instance type</DescriptionListTerm>
+              <DescriptionListTerm>
+                {isCluster ? 'Cluster size' : 'Instance type'}
+              </DescriptionListTerm>
               <DescriptionListDescription>{item.instanceTypeLabel}</DescriptionListDescription>
             </DescriptionListGroup>
           ) : null}
           {!isVirtualMachine && item.diskImageLabel ? (
             <DescriptionListGroup>
-              <DescriptionListTerm>Disk image</DescriptionListTerm>
+              <DescriptionListTerm>
+                {isCluster ? 'Cluster version' : 'Disk image'}
+              </DescriptionListTerm>
               <DescriptionListDescription>{item.diskImageLabel}</DescriptionListDescription>
             </DescriptionListGroup>
           ) : null}

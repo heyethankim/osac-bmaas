@@ -719,7 +719,9 @@ export function getTenantInstanceGpuLabel(instance: TenantInstance): string {
 
 export function getClusterPlatformLabel(instance: TenantInstance): string {
   return (
-    instance.specRows?.find((row) => row.label === 'Platform')?.value.trim() ||
+    instance.specRows?.find(
+      (row) => row.label === 'Cluster version' || row.label === 'Platform',
+    )?.value.trim() ||
     instance.osImage.trim() ||
     '—'
   )
@@ -890,8 +892,8 @@ function createDemoTenantClusterInstanceVariant(
       ? `gpu-workers · ${options.nodeCount} node${options.nodeCount === 1 ? '' : 's'}`
       : `fc430 · worker × ${options.nodeCount}`
   const specRows = baseSpecRows.map((row) => {
-    if (row.label === 'Platform') {
-      return { ...row, value: options.platform }
+    if (row.label === 'Cluster version' || row.label === 'Platform') {
+      return { label: 'Cluster version', value: options.platform }
     }
     if (row.label === 'Node set') {
       return { ...row, value: nodeSetValue }
