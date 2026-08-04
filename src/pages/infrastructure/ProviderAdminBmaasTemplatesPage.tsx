@@ -75,7 +75,7 @@ function getTemplateActions(
       isSeparator: true,
     },
     {
-      title: 'Publish to catalog',
+      title: 'Create catalog item',
       isAriaDisabled: isPublished || isPublishing,
       onClick: () => {
         if (!isPublished && !isPublishing) {

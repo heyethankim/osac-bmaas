@@ -739,8 +739,8 @@ export function ProviderAdminCatalogPage({
             Catalog
           </Title>
           <Content component="p" className="provider-admin-catalog-items__lede">
-            Publish products from master templates across Bare Metal, Clusters, Models, and
-            Virtual machines, then attach catalog items to tenant organizations.
+            Create catalog items from master templates across Bare Metal, Clusters, Models, and
+            Virtual machines, then attach them to tenant organizations.
           </Content>
         </FlexItem>
         <FlexItem alignSelf={{ default: 'alignSelfFlexStart' }}>

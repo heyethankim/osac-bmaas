@@ -212,7 +212,7 @@ export const DEFAULT_CATALOG_ITEM_DISPLAY_NAME = 'Bare Metal - GPU Training Serv
 export const SECOND_CATALOG_ITEM_DISPLAY_NAME = 'Bare Metal - Dense GPU Node'
 /** Previous title for the second Bare Metal demo item — used when migrating stored catalogs. */
 export const LEGACY_SECOND_CATALOG_ITEM_DISPLAY_NAME = 'Bare Metal - AI Inference Host'
-/** Prefill for Provider Admin “Publish to catalog” Name step (distinct from seeded items). */
+/** Prefill for Provider Admin “Create catalog item” Name step (distinct from seeded items). */
 export const PUBLISH_CATALOG_SUGGESTED_DISPLAY_NAME = 'Bare Metal - General Purpose Server'
 
 export function getCatalogDisplayName(hardwareProfileId: string): string {
@@ -265,28 +265,28 @@ export const CATALOG_SERVICE_OFFERINGS: CatalogServiceOffering[] = [
     title: 'Bare Metal as a Service',
     shortLabel: 'Bare Metal',
     description:
-      'Publish pre-configured bare metal nodes as tenant-requestable catalog items.',
+      'Create catalog items from pre-configured bare metal nodes for tenants to request.',
   },
   {
     id: 'cluster',
     title: 'Cluster as a Service',
     shortLabel: 'Cluster',
     description:
-      'Publish OpenShift cluster profiles as tenant-requestable catalog items.',
+      'Create catalog items from OpenShift cluster profiles for tenants to request.',
   },
   {
     id: 'models',
     title: 'Models as a Service',
     shortLabel: 'MaaS',
     description:
-      'Publish curated AI model endpoints as tenant-requestable catalog items.',
+      'Create catalog items from curated AI model endpoints for tenants to request.',
   },
   {
     id: 'virtual-machine',
     title: 'Virtual Machine as a Service',
     shortLabel: 'Virtual Machine',
     description:
-      'Publish virtual machine flavors as tenant-requestable catalog items.',
+      'Create catalog items from virtual machine flavors for tenants to request.',
   },
 ]
 

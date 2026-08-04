@@ -32,6 +32,7 @@ import {
   updateTenantUserInstance,
 } from '../tenantUser/storage'
 import {
+  isStickyDemoProvisioningInstance,
   type TenantInstance,
 } from '../tenantUser/instances'
 import { LAUNCH_INSTANCE_PROVISIONING_DURATION_MS, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS } from '../tenantUser/launchInstanceWizard'
@@ -183,6 +184,9 @@ export function TenantAdminWorkspacePage() {
   }
 
   const scheduleProvisioningCompletion = (instanceId: string, delayMs: number) => {
+    if (isStickyDemoProvisioningInstance(instanceId)) {
+      return
+    }
     clearProvisioningTimer(instanceId)
     const timeoutId = window.setTimeout(() => {
       setInstances((current) =>

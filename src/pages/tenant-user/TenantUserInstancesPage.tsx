@@ -870,6 +870,7 @@ export function TenantUserInstancesPage({
               {filteredInstances.map((instance) => {
                 const serviceId = getTenantInstanceServiceId(instance)
                 const cardSpecRows = getTenantInstanceCardSpecRows(instance)
+                const isClusterCard = serviceId === 'cluster'
 
                 return (
                 <Card key={instance.id} isCompact={false} className="tenant-user-instances__card">
@@ -879,22 +880,38 @@ export function TenantUserInstancesPage({
                         {getCatalogServiceIcon(serviceId)}
                       </span>
                       <div className="tenant-user-instances__card-header-actions">
-                        <InstanceStatusLabel status={instance.status} />
+                        {isClusterCard ? null : <InstanceStatusLabel status={instance.status} />}
                         <ActionsColumn items={getInstanceKebabActions(instance)} />
                       </div>
                     </div>
 
                     <div className="tenant-user-instances__card-title-block">
-                      <Content component="p" className="tenant-user-instances__primary-cell">
-                        <Button
-                          variant="link"
-                          isInline
-                          className="tenant-user-instances__name-link catalog-item-name-link"
-                          onClick={() => handleViewDetails(instance)}
-                        >
-                          {formatTenantInstanceName(instance.name)}
-                        </Button>
-                      </Content>
+                      {isClusterCard ? (
+                        <div className="tenant-user-instances__name-status-row">
+                          <Content component="p" className="tenant-user-instances__primary-cell">
+                            <Button
+                              variant="link"
+                              isInline
+                              className="tenant-user-instances__name-link catalog-item-name-link"
+                              onClick={() => handleViewDetails(instance)}
+                            >
+                              {formatTenantInstanceName(instance.name)}
+                            </Button>
+                          </Content>
+                          <InstanceStatusLabel status={instance.status} />
+                        </div>
+                      ) : (
+                        <Content component="p" className="tenant-user-instances__primary-cell">
+                          <Button
+                            variant="link"
+                            isInline
+                            className="tenant-user-instances__name-link catalog-item-name-link"
+                            onClick={() => handleViewDetails(instance)}
+                          >
+                            {formatTenantInstanceName(instance.name)}
+                          </Button>
+                        </Content>
+                      )}
                       <Content component="p" className="tenant-user-instances__secondary-cell">
                         {instance.catalogItemDisplayName}
                       </Content>

@@ -12,6 +12,7 @@ import type { CatalogServiceId } from '../providerSetup/templateDemo'
 import { getRegisteredOrganizationBySlug } from '../tenantAdmin/organizations'
 import { getTenantUserProjectInvitation } from '../tenantUser/invitation'
 import {
+  isStickyDemoProvisioningInstance,
   type TenantInstance,
 } from '../tenantUser/instances'
 import { LAUNCH_INSTANCE_PROVISIONING_DURATION_MS, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS } from '../tenantUser/launchInstanceWizard'
@@ -157,6 +158,9 @@ export function TenantUserWorkspacePage() {
 
   const scheduleProvisioningCompletion = useCallback(
     (instanceId: string, delayMs: number) => {
+      if (isStickyDemoProvisioningInstance(instanceId)) {
+        return
+      }
       clearProvisioningTimer(instanceId)
       const timeoutId = window.setTimeout(() => {
         markInstanceRunning(instanceId)
@@ -174,6 +178,9 @@ export function TenantUserWorkspacePage() {
     const now = Date.now()
     for (const instance of getTenantUserInstances(tenantSlug)) {
       if (instance.status !== 'provisioning') {
+        continue
+      }
+      if (isStickyDemoProvisioningInstance(instance.id)) {
         continue
       }
       const elapsedMs = now - new Date(instance.createdAt).getTime()

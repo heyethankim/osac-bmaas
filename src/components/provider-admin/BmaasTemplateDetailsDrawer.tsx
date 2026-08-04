@@ -116,7 +116,7 @@ export function BmaasTemplateDetailsDrawer({
                 isDisabled={!canPublish}
                 onClick={onPublish}
               >
-                Publish to catalog
+                Create catalog item
               </Button>
             ) : null}
           </div>

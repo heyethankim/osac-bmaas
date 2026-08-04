@@ -541,7 +541,7 @@ export function ProviderSetupBlueprintDesigner({
                 ) : (
                   <>
                     Template <strong>{form.templateName}</strong> saved. Close this wizard and use
-                    Publish to catalog on the Bare metal templates page.
+                    Create a catalog item on the Bare metal templates page.
                   </>
                 )}
               </Content>

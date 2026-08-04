@@ -1169,6 +1169,24 @@
   min-width: 0;
 }
 
+.tenant-user-instances__name-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pf-t--global--spacer--sm);
+  min-width: 0;
+}
+
+.tenant-user-instances__name-status-row .tenant-user-instances__primary-cell {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.tenant-user-instances__name-status-row .tenant-user-instances__primary-cell .tenant-user-instances__name-link {
+  display: inline;
+  overflow-wrap: anywhere;
+}
+
 .tenant-user-instances__card-title-block .tenant-user-instances__primary-cell.pf-v6-c-content--p,
 .tenant-user-instances__card-title-block .tenant-user-instances__secondary-cell.pf-v6-c-content--p {
   margin: 0;

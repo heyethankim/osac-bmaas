@@ -685,6 +685,28 @@ export const DEMO_TENANT_CLUSTER_INSTANCE_ID = 'instance_demo_cluster_01'
 export const DEMO_TENANT_CLUSTER_INSTANCE_ID_02 = 'instance_demo_cluster_02'
 export const DEMO_TENANT_CLUSTER_INSTANCE_ID_03 = 'instance_demo_cluster_03'
 
+/** Cluster demo row that stays Provisioning on Services for walkthroughs. */
+export const DEMO_TENANT_CLUSTER_PROVISIONING_INSTANCE_ID = DEMO_TENANT_CLUSTER_INSTANCE_ID_03
+
+export function isStickyDemoProvisioningInstance(instanceId: string): boolean {
+  return instanceId === DEMO_TENANT_CLUSTER_PROVISIONING_INSTANCE_ID
+}
+
+/** Canonical demo cluster names + conditions for Services cards. */
+export const DEMO_TENANT_CLUSTER_STATES: ReadonlyArray<{
+  id: string
+  name: string
+  status: TenantInstanceStatus
+}> = [
+  { id: DEMO_TENANT_CLUSTER_INSTANCE_ID, name: 'ocp-cluster-01', status: 'running' },
+  { id: DEMO_TENANT_CLUSTER_INSTANCE_ID_02, name: 'ocp-cluster-02', status: 'failed' },
+  {
+    id: DEMO_TENANT_CLUSTER_INSTANCE_ID_03,
+    name: 'ocp-cluster-03',
+    status: 'provisioning',
+  },
+]
+
 export function getTenantInstanceGpuLabel(instance: TenantInstance): string {
   const fromField = instance.gpuLabel.trim()
   if (fromField) {
@@ -931,23 +953,23 @@ export function createDemoTenantClusterInstance02(organizationName: string): Ten
   return createDemoTenantClusterInstanceVariant(organizationName, {
     id: DEMO_TENANT_CLUSTER_INSTANCE_ID_02,
     name: 'ocp-cluster-02',
-    status: 'provisioning',
+    status: 'failed',
     platform: 'Red Hat OpenShift 4.15',
     hostType: 'GPU Host',
     nodeCount: 2,
-    hoursAgo: 1,
+    hoursAgo: 6,
   })
 }
 
 export function createDemoTenantClusterInstance03(organizationName: string): TenantInstance {
   return createDemoTenantClusterInstanceVariant(organizationName, {
-    id: DEMO_TENANT_CLUSTER_INSTANCE_ID_03,
+    id: DEMO_TENANT_CLUSTER_PROVISIONING_INSTANCE_ID,
     name: 'ocp-cluster-03',
-    status: 'failed',
+    status: 'provisioning',
     platform: 'Red Hat OpenShift 4.16',
     hostType: 'GPU Host',
     nodeCount: 4,
-    hoursAgo: 6,
+    hoursAgo: 1,
   })
 }
 

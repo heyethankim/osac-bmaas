@@ -15,6 +15,7 @@ import {
   DEMO_TENANT_CLUSTER_INSTANCE_ID,
   DEMO_TENANT_CLUSTER_INSTANCE_ID_02,
   DEMO_TENANT_CLUSTER_INSTANCE_ID_03,
+  DEMO_TENANT_CLUSTER_STATES,
   DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID,
   DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_02,
   DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_03,
@@ -234,8 +235,29 @@ export function ensureTenantDemoInstances(
   ]
 
   for (const demo of demos) {
-    if (!next.some((instance) => instance.id === demo.id)) {
+    const existingIndex = next.findIndex((instance) => instance.id === demo.id)
+    if (existingIndex === -1) {
       next.push(demo.create(organizationName))
+      changed = true
+      continue
+    }
+
+    const clusterState = DEMO_TENANT_CLUSTER_STATES.find((entry) => entry.id === demo.id)
+    if (!clusterState) {
+      continue
+    }
+
+    const current = next[existingIndex]!
+    if (current.name !== clusterState.name || current.status !== clusterState.status) {
+      next[existingIndex] = {
+        ...current,
+        name: clusterState.name,
+        status: clusterState.status,
+        provisionedAt:
+          clusterState.status === 'provisioning'
+            ? null
+            : (current.provisionedAt ?? current.createdAt),
+      }
       changed = true
     }
   }

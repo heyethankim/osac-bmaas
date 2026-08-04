@@ -716,7 +716,7 @@ export function ProviderSetupPublishCatalogWizard({
                 className="provider-setup-template__publish-review-alert"
               >
                 <Content component="p">
-                  This catalog item will publish with{' '}
+                  This catalog item will use{' '}
                   <strong>{formatRateCardSummary(resolveRateCard(selectedTemplate))}</strong>.
                 </Content>
               </Alert>
@@ -990,11 +990,11 @@ export function ProviderSetupPublishCatalogWizard({
           onClose={isPublishing ? undefined : handleClose}
           header={
             <WizardHeader
-              title="Publish to catalog"
+              title="Create catalog item"
               titleId="publish-catalog-wizard-title"
               className="provider-setup-template__designer-header"
               onClose={isPublishing ? undefined : handleClose}
-              closeButtonAriaLabel="Close publish to catalog wizard"
+              closeButtonAriaLabel="Close create catalog item wizard"
             />
           }
         >

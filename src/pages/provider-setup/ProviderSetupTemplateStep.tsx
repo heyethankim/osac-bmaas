@@ -236,19 +236,19 @@ export function ProviderSetupTemplateStep({
                           </div>
                         </div>
                         <Content component="p" className="provider-setup-template__next-step-copy">
-                          After the master template is saved, publish it to the catalog so tenants can
-                          discover and order the offering.
+                          After the master template is saved, create a catalog item from it. Items start
+                          unpublished until you publish them for tenants to discover and order.
                         </Content>
                         <Button
                           variant="primary"
                           isDisabled={!blueprintSaved || isPublishing}
-                          aria-label="Publish to catalog"
+                          aria-label="Create catalog item"
                           className="provider-setup-template__workflow-action provider-setup-template__publish-preview-button"
                           onClick={handleOpenPublishWizard}
                         >
                           <span className="provider-setup-template__publish-preview-label">
                             <ShoppingCartIcon aria-hidden />
-                            <span>Publish to catalog</span>
+                            <span>Create catalog item</span>
                             <ArrowRightIcon aria-hidden />
                           </span>
                         </Button>
