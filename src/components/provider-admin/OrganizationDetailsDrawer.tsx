@@ -23,6 +23,7 @@ import {
 import {
   formatOrganizationRolesAssignmentSummary,
   getOrganizationActivationSteps,
+  hasPendingIdpInvite,
   isOrganizationReadyForLogin,
   type OrganizationActivationStep,
   type RegisteredOrganization,
@@ -52,6 +53,9 @@ function formatRegisteredAt(iso: string): string {
 
 function getIdentityProviderStepMeta(organization: RegisteredOrganization): string | null {
   if (!organization.identityProviderConnected) {
+    if (hasPendingIdpInvite(organization) && organization.idpManagerEmail) {
+      return `Invite sent to ${organization.idpManagerEmail}`
+    }
     return null
   }
 
@@ -74,8 +78,7 @@ function ActivationStepRow({
   onReviewIdentityProvider?: (organization: RegisteredOrganization) => void
   onReviewRoles?: (organization: RegisteredOrganization) => void
 }) {
-  const idpMeta =
-    step.id === 'idp' && step.complete ? getIdentityProviderStepMeta(organization) : null
+  const idpMeta = step.id === 'idp' ? getIdentityProviderStepMeta(organization) : null
   const rolesMeta =
     step.id === 'rbac' && step.complete
       ? formatOrganizationRolesAssignmentSummary(organization)
@@ -85,10 +88,7 @@ function ActivationStepRow({
     step.complete &&
     organization.identityProviderConnected &&
     organization.rbacConfigured
-  const canReviewIdp =
-    step.id === 'idp' &&
-    step.complete &&
-    typeof onReviewIdentityProvider === 'function'
+  const canReviewIdp = step.id === 'idp' && typeof onReviewIdentityProvider === 'function'
   const canReviewRoles =
     step.id === 'rbac' && step.complete && typeof onReviewRoles === 'function'
 
@@ -137,7 +137,7 @@ function ActivationStepRow({
         </span>
         {idpMeta ? (
           <Content component="p" className="provider-admin-organizations__status-step-meta">
-            <code>{idpMeta}</code>
+            {organization.identityProviderConnected ? <code>{idpMeta}</code> : idpMeta}
           </Content>
         ) : null}
         {rolesMeta ? (

@@ -875,3 +875,286 @@
 
 
 
+.evergreen-login {
+  position: relative;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--pf-t--global--spacer--xl) var(--pf-t--global--spacer--md);
+  box-sizing: border-box;
+  overflow: hidden;
+  background: linear-gradient(145deg, #1f6feb 0%, #0b4bab 42%, #063a7a 100%);
+}
+
+.evergreen-login__bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.evergreen-login__arc {
+  position: absolute;
+  border-radius: 50%;
+  border: 3px solid rgb(255 255 255 / 14%);
+  box-sizing: border-box;
+}
+
+.evergreen-login__arc--a {
+  width: min(120vw, 72rem);
+  height: min(120vw, 72rem);
+  right: -18%;
+  top: -35%;
+}
+
+.evergreen-login__arc--b {
+  width: min(90vw, 48rem);
+  height: min(90vw, 48rem);
+  left: -22%;
+  bottom: -28%;
+  border-color: rgb(0 0 0 / 12%);
+}
+
+.evergreen-login__arc--c {
+  width: min(70vw, 36rem);
+  height: min(70vw, 36rem);
+  left: 38%;
+  bottom: -40%;
+  border-color: rgb(255 255 255 / 10%);
+}
+
+.evergreen-login__frame {
+  position: relative;
+  z-index: 1;
+  width: min(58rem, 100%);
+}
+
+.evergreen-login__split-card.pf-v6-c-card {
+  border-radius: 1.25rem;
+  overflow: hidden;
+  box-shadow:
+    0 24px 80px rgb(0 0 0 / 28%),
+    0 2px 12px rgb(0 0 0 / 12%);
+  border: none;
+  /* Let the split columns define color; avoids a single flat card color at the top */
+  --pf-v6-c-card--BackgroundColor: transparent;
+  background-color: transparent;
+}
+
+.evergreen-login__split-body.pf-v6-c-card__body {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0;
+  padding: 0;
+  align-items: stretch;
+  /* Full-height seam: white left half, bluish right half (matches column tops) */
+  --pf-v6-c-card--BackgroundColor: transparent;
+  background-color: transparent;
+  background-image: linear-gradient(
+    90deg,
+    #ffffff 0%,
+    #ffffff 50%,
+    #f0f7ff 50%,
+    #f0f7ff 100%
+  );
+}
+
+/* Full-height center rule (column border alone can look short at the top with PF layout) */
+.evergreen-login__split-body.pf-v6-c-card__body::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  margin-left: -0.5px;
+  background-color: rgb(31 111 235 / 22%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+@media (max-width: 62rem) {
+  .evergreen-login__split-body.pf-v6-c-card__body {
+    grid-template-columns: 1fr;
+    background-image: none;
+    background-color: #ffffff;
+  }
+
+  .evergreen-login__split-body.pf-v6-c-card__body::after {
+    display: none;
+  }
+
+  .evergreen-login__right {
+    display: none;
+  }
+}
+
+.evergreen-login__left {
+  padding: clamp(1.75rem, 4vw, 2.75rem);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+  min-height: 100%;
+  box-sizing: border-box;
+  background: #ffffff;
+  color: #1a1a1a;
+}
+
+.evergreen-login__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.evergreen-login__brand-mark {
+  display: flex;
+  align-items: center;
+}
+
+.evergreen-login__brand-logo-img {
+  display: block;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.35rem;
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgb(29 78 143 / 12%);
+}
+
+.evergreen-login__brand-wordstack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.05rem;
+  line-height: 1.1;
+}
+
+.evergreen-login__brand-word {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #1f6feb;
+}
+
+.evergreen-login__brand-subword {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #3d5a80;
+}
+
+.evergreen-login__headline {
+  margin: 0;
+  font-size: clamp(1.35rem, 2.8vw, 1.75rem);
+  font-weight: 700;
+  line-height: 1.25;
+  color: #0b3d91;
+}
+
+.evergreen-login__subhead {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: #6a6e73;
+  line-height: 1.5;
+}
+
+.evergreen-login__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+  margin-top: var(--pf-t--global--spacer--sm);
+}
+
+.evergreen-login__field .pf-v6-c-form__group-label {
+  display: none;
+}
+
+.evergreen-login__field .pf-v6-c-text-input {
+  border-radius: var(--pf-t--global--border--radius--medium);
+}
+
+.evergreen-login__password-group {
+  width: 100%;
+}
+
+.evergreen-login__password-toggle.pf-v6-c-button {
+  height: 100%;
+}
+
+.evergreen-login__form-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.evergreen-login__forgot-link.pf-v6-c-button.pf-m-link {
+  padding: 0;
+  color: #1f6feb;
+}
+
+.evergreen-login__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.evergreen-login__btn-primary.pf-v6-c-button {
+  flex: 1 1 8rem;
+  background-color: #1f6feb;
+  border-color: #1f6feb;
+}
+
+.evergreen-login__back-row {
+  margin-top: var(--pf-t--global--spacer--md);
+  text-align: center;
+}
+
+.evergreen-login__right {
+  padding: clamp(1.5rem, 3vw, 2.25rem);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+  min-height: 100%;
+  box-sizing: border-box;
+  /* Top matches body split (#f0f7ff); deepens toward bottom */
+  background: linear-gradient(180deg, #f0f7ff 0%, #e8f2fc 45%, #e3efff 100%);
+}
+
+.evergreen-login__illustration {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 12rem;
+}
+
+.evergreen-login__illustration-img {
+  width: min(100%, 26rem);
+  height: auto;
+  max-height: min(48vh, 22rem);
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 10px 28px rgb(15 76 129 / 10%));
+}
+
+.evergreen-login__landing-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pf-t--global--spacer--md);
+  background: rgb(255 255 255 / 88%);
+  backdrop-filter: blur(2px);
+  z-index: 2;
+}
+
+.evergreen-login__landing-overlay-text {
+  margin: 0;
+  font-size: var(--pf-t--global--font--size--body--lg);
+  color: var(--pf-t--global--text--color--regular);
+}

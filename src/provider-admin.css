@@ -3304,6 +3304,16 @@
   gap: var(--pf-t--global--spacer--xs);
 }
 
+.provider-admin-organizations__registering-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.25rem;
+}
+
+.provider-admin-organizations__row--registering {
+  background-color: var(--pf-t--global--background--color--primary--hover);
+}
+
 .provider-admin-organizations__setup-signal.pf-v6-c-content--p {
   margin: 0;
   color: var(--pf-t--global--text--color--subtle);
@@ -3534,4 +3544,166 @@
   display: inline-flex;
   align-items: center;
   gap: var(--pf-t--global--spacer--sm);
+}
+
+.provider-admin-organizations__wizard-modal {
+  --pf-v6-c-modal-box--c-wizard--Height--base: 40rem;
+}
+
+.provider-admin-organizations__wizard.pf-v6-c-wizard {
+  --pf-v6-c-wizard--Height: 40rem;
+}
+
+.provider-admin-organizations__idp-wizard-completion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40rem;
+  padding: var(--pf-t--global--spacer--xl);
+}
+
+.provider-admin-organizations__idp-path-icon-wrap {
+  color: var(--pf-t--global--icon--color--regular);
+}
+
+.provider-admin-organizations__idp-path-icon-wrap .pf-v6-c-icon,
+.provider-admin-organizations__idp-path-icon-wrap svg {
+  color: var(--pf-t--global--icon--color--regular);
+  fill: currentcolor;
+}
+
+.provider-admin-organizations__idp-pending-alert {
+  margin-block-end: var(--pf-t--global--spacer--md);
+}
+
+.provider-admin-organizations__idp-pending-field {
+  margin-block-end: var(--pf-t--global--spacer--md);
+}
+
+.provider-admin-organizations__idp-pending-label.pf-v6-c-content--p {
+  margin: 0;
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.provider-admin-organizations__idp-pending-value.pf-v6-c-content--p {
+  margin: 0;
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+}
+
+.provider-admin-organizations__idp-invite-link-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--pf-t--global--spacer--sm);
+  align-items: center;
+}
+
+.provider-admin-organizations__idp-invite-link-row .pf-v6-c-form-control,
+.provider-admin-organizations__idp-invite-link-row .pf-v6-c-text-input-group,
+.provider-admin-organizations__idp-invite-link-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.provider-admin-organizations__idp-invite-link-row .pf-v6-c-button {
+  flex: 0 0 auto;
+}
+
+.idp-manager-setup-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--pf-t--global--spacer--2xl) var(--pf-t--global--spacer--md);
+  background:
+    radial-gradient(circle at top left, rgba(0, 102, 204, 0.08), transparent 40%),
+    var(--pf-t--global--background--color--secondary--default);
+}
+
+.idp-manager-setup-page__card {
+  width: min(42rem, 100%);
+  padding: var(--pf-t--global--spacer--xl);
+  background: var(--pf-t--global--background--color--primary--default);
+  border: var(--pf-t--global--border--width--regular) solid
+    var(--pf-t--global--border--color--default);
+  border-radius: var(--pf-t--global--border--radius--large);
+  box-shadow: var(--pf-t--global--box-shadow--sm);
+}
+
+.idp-manager-setup-page__kicker.pf-v6-c-content--p {
+  margin: 0 0 var(--pf-t--global--spacer--sm);
+  color: var(--pf-t--global--text--color--subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.idp-manager-setup-page__title.pf-v6-c-title {
+  margin-block-end: var(--pf-t--global--spacer--md);
+}
+
+.idp-manager-setup-page__lede.pf-v6-c-content--p {
+  margin-block: 0 var(--pf-t--global--spacer--lg);
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.idp-manager-setup-page__email {
+  margin-block-end: var(--pf-t--global--spacer--lg);
+  padding: var(--pf-t--global--spacer--md);
+  border: var(--pf-t--global--border--width--regular) solid
+    var(--pf-t--global--border--color--default);
+  border-radius: var(--pf-t--global--border--radius--medium);
+  background: var(--pf-t--global--background--color--secondary--default);
+}
+
+.idp-manager-setup-page__email-label.pf-v6-c-content--p {
+  margin: 0 0 var(--pf-t--global--spacer--sm);
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+}
+
+.idp-manager-setup-page__email-meta {
+  margin-block-end: var(--pf-t--global--spacer--md);
+}
+
+.idp-manager-setup-page__email-body.pf-v6-c-content--p {
+  margin: 0;
+  color: var(--pf-t--global--text--color--regular);
+}
+
+.idp-manager-setup-page__steps {
+  margin: 0 0 var(--pf-t--global--spacer--lg);
+  padding-inline-start: 1.25rem;
+  color: var(--pf-t--global--text--color--regular);
+}
+
+.idp-manager-setup-page__steps li + li {
+  margin-block-start: var(--pf-t--global--spacer--xs);
+}
+
+.idp-manager-setup-page__form .pf-v6-c-form__group:last-child {
+  margin-block-end: 0;
+}
+
+.idp-manager-setup-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm);
+  margin-block-start: var(--pf-t--global--spacer--lg);
+}
+
+.idp-manager-setup-page__completion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 16rem;
+  padding-block: var(--pf-t--global--spacer--lg);
+}
+
+.idp-manager-setup-page__loading {
+  display: flex;
+  justify-content: center;
+  padding-block: var(--pf-t--global--spacer--xl);
 }

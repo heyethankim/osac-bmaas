@@ -1,7 +1,9 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { BmaasLandingPage } from './pages/BmaasLandingPage'
+import { IdpManagerSetupPage } from './pages/IdpManagerSetupPage'
 import { ProviderAdminWorkspacePage } from './pages/ProviderAdminWorkspacePage'
 import { ProviderLoginPage } from './pages/ProviderLoginPage'
+import { TenantAdminSampleCatalogPage } from './pages/TenantAdminSampleCatalogPage'
 import { TenantAdminWorkspacePage } from './pages/TenantAdminWorkspacePage'
 import { TenantLoginPage } from './pages/TenantLoginPage'
 import { TenantUserWorkspacePage } from './pages/TenantUserWorkspacePage'
@@ -11,9 +13,11 @@ export default function App() {
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         <Route path="/" element={<BmaasLandingPage />} />
+        <Route path="/idp-setup/:token" element={<IdpManagerSetupPage />} />
         <Route path="/provider" element={<ProviderLoginPage />} />
         <Route path="/provider/setup" element={<Navigate to="/provider/workspace" replace />} />
         <Route path="/provider/workspace" element={<ProviderAdminWorkspacePage />} />
+        <Route path="/tenant-admin/catalog-sample" element={<TenantAdminSampleCatalogPage />} />
         <Route path="/tenant-admin/:tenant" element={<TenantLoginPage role="tenant-admin" />} />
         <Route
           path="/tenant-admin/:tenant/workspace"

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
   Button,
@@ -15,6 +15,7 @@ import {
   ModalFooter,
   ModalHeader,
   ModalVariant,
+  Spinner,
   Title,
 } from '@patternfly/react-core'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
@@ -22,9 +23,11 @@ import { ConnectOrganizationIdentityProviderModal } from '../components/provider
 import { DefineOrganizationRolesModal } from '../components/provider-admin/DefineOrganizationRolesModal'
 import { OrganizationDetailsDrawer } from '../components/provider-admin/OrganizationDetailsDrawer'
 import { RegisterOrganizationWizard } from '../components/provider-admin/RegisterOrganizationWizard'
+import { SetupIdentityProviderWizard } from '../components/provider-admin/SetupIdentityProviderWizard'
 import {
   getOrganizationSetupNextAction,
   getOrganizationSetupSignal,
+  hasPendingIdpInvite,
   PROVIDER_ORGANIZATIONS_DEMO,
   type OrganizationSetupNextAction,
   type RegisteredOrganization,
@@ -58,20 +61,29 @@ function getOrganizationActions(
   onRoles: (organization: RegisteredOrganization) => void,
   onRemove: (organization: RegisteredOrganization) => void,
 ): IAction[] {
+  const idpActionTitle = organization.identityProviderConnected
+    ? 'View identity provider'
+    : hasPendingIdpInvite(organization)
+      ? 'Manage IdP invitation'
+      : 'Set up identity provider'
+
   return [
     {
       title: 'View details',
       onClick: () => onViewDetails(organization),
     },
     {
-      title: organization.identityProviderConnected
-        ? 'View identity provider'
-        : 'Connect identity provider',
+      title: idpActionTitle,
       onClick: () => onIdentityProvider(organization),
     },
     {
       title: organization.rbacConfigured ? 'View roles' : 'Define roles',
-      onClick: () => onRoles(organization),
+      isAriaDisabled: !organization.identityProviderConnected,
+      onClick: () => {
+        if (organization.identityProviderConnected) {
+          onRoles(organization)
+        }
+      },
     },
     {
       title: 'Edit',
@@ -104,14 +116,31 @@ export function ProviderAdminOrganizationsPage({
   )
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [idpOrganization, setIdpOrganization] = useState<RegisteredOrganization | null>(null)
+  const [idpDelegationOrganization, setIdpDelegationOrganization] =
+    useState<RegisteredOrganization | null>(null)
   const [rolesOrganization, setRolesOrganization] = useState<RegisteredOrganization | null>(null)
   const [organizationPendingRemove, setOrganizationPendingRemove] =
     useState<RegisteredOrganization | null>(null)
+  const [registeringOrganizationId, setRegisteringOrganizationId] = useState<string | null>(null)
+  const registeringTimerRef = useRef<number | null>(null)
   const catalogDraft = getProviderCatalogDraft()
+
+  const clearRegisteringTimer = () => {
+    if (registeringTimerRef.current !== null) {
+      window.clearTimeout(registeringTimerRef.current)
+      registeringTimerRef.current = null
+    }
+  }
 
   useEffect(() => {
     if (consumeProviderOpenRegisterOrgWizard()) {
       setIsWizardOpen(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      clearRegisteringTimer()
     }
   }, [])
 
@@ -162,6 +191,9 @@ export function ProviderAdminOrganizationsPage({
       if (idpOrganization?.id === removedId) {
         setIdpOrganization(null)
       }
+      if (idpDelegationOrganization?.id === removedId) {
+        setIdpDelegationOrganization(null)
+      }
       if (rolesOrganization?.id === removedId) {
         setRolesOrganization(null)
       }
@@ -183,7 +215,15 @@ export function ProviderAdminOrganizationsPage({
 
     if (peekProviderVipCatalogResumeIntent()) {
       onNavigate?.('catalog')
+      return
     }
+
+    clearRegisteringTimer()
+    setRegisteringOrganizationId(organization.id)
+    registeringTimerRef.current = window.setTimeout(() => {
+      setRegisteringOrganizationId(null)
+      registeringTimerRef.current = null
+    }, 1500)
   }
 
   const handleSetupNextAction = (
@@ -191,7 +231,11 @@ export function ProviderAdminOrganizationsPage({
     action: OrganizationSetupNextAction,
   ) => {
     if (action === 'idp') {
-      setIdpOrganization(organization)
+      if (organization.identityProviderConnected) {
+        setIdpOrganization(organization)
+        return
+      }
+      setIdpDelegationOrganization(organization)
       return
     }
 
@@ -199,7 +243,11 @@ export function ProviderAdminOrganizationsPage({
   }
 
   const openIdentityProvider = (organization: RegisteredOrganization) => {
-    setIdpOrganization(organization)
+    if (organization.identityProviderConnected) {
+      setIdpOrganization(organization)
+      return
+    }
+    setIdpDelegationOrganization(organization)
   }
 
   const openRoles = (organization: RegisteredOrganization) => {
@@ -208,6 +256,15 @@ export function ProviderAdminOrganizationsPage({
 
   const handleIdentityProviderConnected = (organization: RegisteredOrganization) => {
     refreshOrganizations(organization.id)
+    // Keep the setup wizard mounted so working → success can play; it closes via onClose.
+    setIdpDelegationOrganization((current) =>
+      current != null && current.id === organization.id ? organization : current,
+    )
+  }
+
+  const handleIdpSetupUpdated = (organization: RegisteredOrganization) => {
+    refreshOrganizations(organization.id)
+    setIdpDelegationOrganization(organization)
   }
 
   const handleRolesConfigured = (organization: RegisteredOrganization) => {
@@ -221,7 +278,13 @@ export function ProviderAdminOrganizationsPage({
       onClose={closeDetails}
       onEdit={() => undefined}
       onRemove={selectedOrganization ? () => openRemove(selectedOrganization) : undefined}
-      onReviewIdentityProvider={(organization) => setIdpOrganization(organization)}
+      onReviewIdentityProvider={(organization) => {
+        if (organization.identityProviderConnected) {
+          setIdpOrganization(organization)
+          return
+        }
+        setIdpDelegationOrganization(organization)
+      }}
       onReviewRoles={(organization) => setRolesOrganization(organization)}
     >
       <div className="provider-admin-workspace-page provider-admin-organizations">
@@ -291,11 +354,19 @@ export function ProviderAdminOrganizationsPage({
             </Thead>
             <Tbody>
               {organizations.map((org) => {
-                const setupSignal = getOrganizationSetupSignal(org)
-                const nextAction = getOrganizationSetupNextAction(org)
+                const isRegistering = registeringOrganizationId === org.id
+                const setupSignal = isRegistering ? null : getOrganizationSetupSignal(org)
+                const nextAction = isRegistering ? null : getOrganizationSetupNextAction(org)
 
                 return (
-                  <Tr key={org.id}>
+                  <Tr
+                    key={org.id}
+                    className={
+                      isRegistering
+                        ? 'provider-admin-organizations__row--registering'
+                        : undefined
+                    }
+                  >
                     <Td modifier="wrap" dataLabel="Organization">
                       <Content component="p" className="provider-admin-organizations__primary-cell">
                         <Button
@@ -320,6 +391,15 @@ export function ProviderAdminOrganizationsPage({
                         >
                           {org.status}
                         </Label>
+                        {isRegistering ? (
+                          <span className="provider-admin-organizations__registering-status">
+                            <Spinner
+                              size="sm"
+                              aria-label={`Registering ${org.name}`}
+                            />
+                            <span className="pf-v6-screen-reader">Registering organization</span>
+                          </span>
+                        ) : null}
                         {setupSignal && nextAction ? (
                           <Button
                             variant="link"
@@ -379,6 +459,13 @@ export function ProviderAdminOrganizationsPage({
           catalogDraft={catalogDraft}
           onClose={() => setIsWizardOpen(false)}
           onRegister={handleRegister}
+        />
+        <SetupIdentityProviderWizard
+          isOpen={idpDelegationOrganization !== null}
+          organization={idpDelegationOrganization}
+          onClose={() => setIdpDelegationOrganization(null)}
+          onUpdated={handleIdpSetupUpdated}
+          onConnected={handleIdentityProviderConnected}
         />
         <ConnectOrganizationIdentityProviderModal
           isOpen={idpOrganization !== null}

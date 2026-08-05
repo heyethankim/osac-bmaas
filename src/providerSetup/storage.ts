@@ -5,6 +5,7 @@ import {
   createDemoNorthSummitBankOrganization,
   DEMO_NORTH_SUMMIT_BANK_ORG_ID,
   DEFAULT_REGISTER_ORGANIZATION_FORM,
+  hasPendingIdpInvite,
 } from '../providerAdmin/organizations'
 import type { ComputeImage } from '../providerAdmin/computeImages'
 import { DEFAULT_COMPUTE_IMAGES } from '../providerAdmin/computeImages'
@@ -991,7 +992,7 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
     ? org.tenantAdminEmail.split('@')[1]?.toLowerCase() ?? ''
     : ''
 
-  return {
+  const normalized: RegisteredOrganization = {
     ...org,
     id: org.id === 'org_northstar_bank' ? 'org-northstar-bank' : org.id,
     name:
@@ -1077,6 +1078,36 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
       typeof org.identityProviderClientId === 'string' && org.identityProviderClientId.trim()
         ? org.identityProviderClientId.trim()
         : null,
+    idpManagerEmail:
+      typeof org.idpManagerEmail === 'string' && org.idpManagerEmail.trim()
+        ? org.idpManagerEmail.trim().toLowerCase()
+        : null,
+    idpInviteToken:
+      typeof org.idpInviteToken === 'string' && org.idpInviteToken.trim()
+        ? org.idpInviteToken.trim()
+        : null,
+    idpInviteStatus:
+      org.idpInviteStatus === 'pending' ||
+      org.idpInviteStatus === 'accepted' ||
+      org.idpInviteStatus === 'expired'
+        ? org.idpInviteStatus
+        : 'none',
+    idpInviteSentAt:
+      typeof org.idpInviteSentAt === 'string' && org.idpInviteSentAt.trim()
+        ? org.idpInviteSentAt
+        : null,
+    idpInviteExpiresAt:
+      typeof org.idpInviteExpiresAt === 'string' && org.idpInviteExpiresAt.trim()
+        ? org.idpInviteExpiresAt
+        : null,
+    breakGlassName:
+      typeof org.breakGlassName === 'string' && org.breakGlassName.trim()
+        ? org.breakGlassName.trim()
+        : null,
+    breakGlassEmail:
+      typeof org.breakGlassEmail === 'string' && org.breakGlassEmail.trim()
+        ? org.breakGlassEmail.trim().toLowerCase()
+        : null,
     // Name is the source of truth — clears stub-only "connected" flags from earlier demos.
     identityProviderConnected:
       typeof org.identityProviderName === 'string' && Boolean(org.identityProviderName.trim()),
@@ -1105,6 +1136,16 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
       Boolean(org.identityProviderName.trim()) &&
       Boolean(org.rbacConfigured),
   }
+
+  if (
+    normalized.idpInviteStatus === 'pending' &&
+    normalized.idpInviteExpiresAt &&
+    new Date(normalized.idpInviteExpiresAt).getTime() <= Date.now()
+  ) {
+    normalized.idpInviteStatus = 'expired'
+  }
+
+  return normalized
 }
 
 function isRegisteredOrganization(value: unknown): value is RegisteredOrganization {
@@ -1131,7 +1172,7 @@ function isRegisteredOrganization(value: unknown): value is RegisteredOrganizati
 
 export function getProviderRegisteredOrganizations(): RegisteredOrganization[] {
   try {
-    const raw = sessionStorage.getItem(PROVIDER_REGISTERED_ORGS_KEY)
+    const raw = readRegisteredOrganizationsRaw()
     if (!raw) {
       return []
     }
@@ -1165,6 +1206,125 @@ export function getProviderRegisteredOrganizations(): RegisteredOrganization[] {
 }
 
 /**
+ * Organizations must survive new tabs so IdP manager invite links work.
+ * Prefer localStorage; migrate any legacy sessionStorage payload once.
+ * When both exist, merge by id and keep invite/IdP fields from the richer record.
+ */
+function readRegisteredOrganizationsRaw(): string | null {
+  try {
+    const fromLocal = localStorage.getItem(PROVIDER_REGISTERED_ORGS_KEY)
+    const fromSession = sessionStorage.getItem(PROVIDER_REGISTERED_ORGS_KEY)
+
+    if (!fromLocal && !fromSession) {
+      return null
+    }
+
+    if (!fromLocal && fromSession) {
+      localStorage.setItem(PROVIDER_REGISTERED_ORGS_KEY, fromSession)
+      sessionStorage.removeItem(PROVIDER_REGISTERED_ORGS_KEY)
+      return fromSession
+    }
+
+    if (fromLocal && !fromSession) {
+      return fromLocal
+    }
+
+    const localOrgs = parseOrganizationArray(fromLocal)
+    const sessionOrgs = parseOrganizationArray(fromSession)
+    const byId = new Map<string, Record<string, unknown>>()
+
+    for (const org of localOrgs) {
+      const id = typeof org.id === 'string' ? org.id : null
+      if (id) {
+        byId.set(id, org)
+      }
+    }
+
+    for (const org of sessionOrgs) {
+      const id = typeof org.id === 'string' ? org.id : null
+      if (!id) {
+        continue
+      }
+      const existing = byId.get(id)
+      if (!existing) {
+        byId.set(id, org)
+        continue
+      }
+      byId.set(id, preferRicherOrganizationRecord(existing, org))
+    }
+
+    // Include session-only orgs already handled; also keep local-only.
+    const merged = Array.from(byId.values())
+    // Preserve any session org that lacked an id? skip.
+    const serialized = JSON.stringify(merged)
+    localStorage.setItem(PROVIDER_REGISTERED_ORGS_KEY, serialized)
+    sessionStorage.removeItem(PROVIDER_REGISTERED_ORGS_KEY)
+    return serialized
+  } catch {
+    return null
+  }
+}
+
+function parseOrganizationArray(raw: string | null): Array<Record<string, unknown>> {
+  if (!raw) {
+    return []
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) {
+      return []
+    }
+    return parsed.filter(
+      (item): item is Record<string, unknown> => typeof item === 'object' && item !== null,
+    )
+  } catch {
+    return []
+  }
+}
+
+function preferRicherOrganizationRecord(
+  a: Record<string, unknown>,
+  b: Record<string, unknown>,
+): Record<string, unknown> {
+  const aToken = typeof a.idpInviteToken === 'string' && a.idpInviteToken.trim()
+  const bToken = typeof b.idpInviteToken === 'string' && b.idpInviteToken.trim()
+  if (bToken && !aToken) {
+    return b
+  }
+  if (aToken && !bToken) {
+    return a
+  }
+  const aPending = a.idpInviteStatus === 'pending'
+  const bPending = b.idpInviteStatus === 'pending'
+  if (bPending && !aPending) {
+    return b
+  }
+  return a
+}
+
+function writeRegisteredOrganizationsRaw(serialized: string): void {
+  localStorage.setItem(PROVIDER_REGISTERED_ORGS_KEY, serialized)
+  try {
+    sessionStorage.removeItem(PROVIDER_REGISTERED_ORGS_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
+function removeRegisteredOrganizationsRaw(): void {
+  try {
+    localStorage.removeItem(PROVIDER_REGISTERED_ORGS_KEY)
+  } catch {
+    /* ignore */
+  }
+  try {
+    sessionStorage.removeItem(PROVIDER_REGISTERED_ORGS_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
  * Seeds North Summit Bank as the Organizations page baseline:
  * Active, IdP connected, roles defined with multiple admins and users.
  */
@@ -1186,7 +1346,7 @@ export function ensureProviderDemoOrganizations(): RegisteredOrganization[] {
       pools[0] ??
       null
 
-    const demo = createDemoNorthSummitBankOrganization({
+    const demoBase = createDemoNorthSummitBankOrganization({
       catalogItemId: catalogDraft?.catalogItemId ?? null,
       catalogDisplayName: catalogDraft?.displayName ?? null,
       externalIpPoolId: pool?.id ?? DEFAULT_REGISTER_ORGANIZATION_FORM.externalIpPoolId,
@@ -1194,17 +1354,34 @@ export function ensureProviderDemoOrganizations(): RegisteredOrganization[] {
       externalIpPoolCidr: pool?.cidr ?? null,
     })
 
-    const replacedIds = new Set(
-      current
-        .filter(
-          (organization) =>
-            organization.id === demo.id || organization.slug === demo.slug,
-        )
-        .map((organization) => organization.id),
+    const replacedOrganizations = current.filter(
+      (organization) =>
+        organization.id === demoBase.id || organization.slug === demoBase.slug,
     )
+    const replacedIds = new Set(replacedOrganizations.map((organization) => organization.id))
     const withoutNorthSummit = current.filter(
       (organization) => !replacedIds.has(organization.id),
     )
+
+    const pendingInviteSource = replacedOrganizations.find((organization) =>
+      hasPendingIdpInvite(organization),
+    )
+    const demo = pendingInviteSource
+      ? {
+          ...demoBase,
+          idpManagerEmail: pendingInviteSource.idpManagerEmail,
+          idpInviteToken: pendingInviteSource.idpInviteToken,
+          idpInviteStatus: pendingInviteSource.idpInviteStatus,
+          idpInviteSentAt: pendingInviteSource.idpInviteSentAt,
+          idpInviteExpiresAt: pendingInviteSource.idpInviteExpiresAt,
+          identityProviderConnected: pendingInviteSource.identityProviderConnected,
+          identityProviderName: pendingInviteSource.identityProviderName,
+          identityProviderDisplayName: pendingInviteSource.identityProviderDisplayName,
+          identityProviderProtocol: pendingInviteSource.identityProviderProtocol,
+          identityProviderIssuerUrl: pendingInviteSource.identityProviderIssuerUrl,
+          identityProviderClientId: pendingInviteSource.identityProviderClientId,
+        }
+      : demoBase
 
     if (replacedIds.size > 0) {
       setProviderExternalIpPools(
@@ -1235,10 +1412,25 @@ export function ensureProviderDemoOrganizations(): RegisteredOrganization[] {
 export function addProviderRegisteredOrganization(org: RegisteredOrganization): void {
   try {
     const current = getProviderRegisteredOrganizations()
-    sessionStorage.setItem(PROVIDER_REGISTERED_ORGS_KEY, JSON.stringify([...current, org]))
+    writeRegisteredOrganizationsRaw(JSON.stringify([...current, org]))
   } catch {
     /* demo storage unavailable */
   }
+}
+
+export function getProviderRegisteredOrganizationByIdpInviteToken(
+  token: string,
+): RegisteredOrganization | null {
+  const normalizedToken = token.trim()
+  if (!normalizedToken) {
+    return null
+  }
+
+  return (
+    getProviderRegisteredOrganizations().find(
+      (organization) => organization.idpInviteToken === normalizedToken,
+    ) ?? null
+  )
 }
 
 export function updateProviderRegisteredOrganization(
@@ -1351,7 +1543,7 @@ export function activateProviderRegisteredOrganizationBySlug(slug: string): void
         : organization,
     )
 
-    sessionStorage.setItem(PROVIDER_REGISTERED_ORGS_KEY, JSON.stringify(updated))
+    writeRegisteredOrganizationsRaw(JSON.stringify(updated))
   } catch {
     /* demo storage unavailable */
   }
@@ -1359,7 +1551,7 @@ export function activateProviderRegisteredOrganizationBySlug(slug: string): void
 
 export function clearProviderRegisteredOrganizations(): void {
   try {
-    sessionStorage.removeItem(PROVIDER_REGISTERED_ORGS_KEY)
+    removeRegisteredOrganizationsRaw()
   } catch {
     /* demo storage unavailable */
   }
@@ -1478,7 +1670,7 @@ export function assignExternalIpPoolToOrganization(
 
 function setProviderRegisteredOrganizations(organizations: RegisteredOrganization[]): void {
   try {
-    sessionStorage.setItem(PROVIDER_REGISTERED_ORGS_KEY, JSON.stringify(organizations))
+    writeRegisteredOrganizationsRaw(JSON.stringify(organizations))
   } catch {
     /* demo storage unavailable */
   }

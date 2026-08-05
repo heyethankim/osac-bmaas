@@ -34,13 +34,88 @@ export type RegisteredOrganization = {
   identityProviderProtocol: 'OIDC' | 'SAML' | null
   identityProviderIssuerUrl: string | null
   identityProviderClientId: string | null
+  /**
+   * IdP Manager delegation invite (Option B). Provider Admin may still configure
+   * IdP themselves (Option A) and cancel a pending invite.
+   */
+  idpManagerEmail: string | null
+  idpInviteToken: string | null
+  idpInviteStatus: IdpInviteStatus
+  idpInviteSentAt: string | null
+  idpInviteExpiresAt: string | null
+  /** Emergency break-glass admin captured during Define roles. */
+  breakGlassName: string | null
+  breakGlassEmail: string | null
   /** Org-scoped roles + first tenant admin assigned after registration. */
   rbacConfigured: boolean
   status: 'Pending activation' | 'Active'
   createdAt: string
 }
 
+export type IdpInviteStatus = 'none' | 'pending' | 'accepted' | 'expired'
+
+export const IDP_INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000
+
 export type OrganizationSetupNextAction = 'idp' | 'rbac'
+
+export function generateIdpInviteToken(): string {
+  return `idpinv-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`
+}
+
+export function createIdpInviteTimestamps(now = Date.now()): {
+  idpInviteSentAt: string
+  idpInviteExpiresAt: string
+} {
+  return {
+    idpInviteSentAt: new Date(now).toISOString(),
+    idpInviteExpiresAt: new Date(now + IDP_INVITE_TTL_MS).toISOString(),
+  }
+}
+
+export function isIdpInviteExpired(organization: RegisteredOrganization, now = Date.now()): boolean {
+  if (!organization.idpInviteExpiresAt) {
+    return false
+  }
+
+  return new Date(organization.idpInviteExpiresAt).getTime() <= now
+}
+
+export function hasPendingIdpInvite(organization: RegisteredOrganization, now = Date.now()): boolean {
+  if (organization.identityProviderConnected) {
+    return false
+  }
+
+  if (organization.idpInviteStatus !== 'pending' || !organization.idpInviteToken) {
+    return false
+  }
+
+  return !isIdpInviteExpired(organization, now)
+}
+
+/** Pending IdP manager invites that can be opened from the demo landing page. */
+export function getPendingIdpManagerInvites(
+  organizations: RegisteredOrganization[],
+  now = Date.now(),
+): Array<{ organization: RegisteredOrganization; token: string }> {
+  return organizations
+    .filter((organization) => hasPendingIdpInvite(organization, now) && organization.idpInviteToken)
+    .map((organization) => ({
+      organization,
+      token: organization.idpInviteToken as string,
+    }))
+}
+
+/** In-app route for the IdP Manager single-use setup page. */
+export function getIdpManagerSetupRoute(token: string): string {
+  return `/idp-setup/${encodeURIComponent(token)}`
+}
+
+/** Full browser path including the app basename (e.g. GitHub Pages). */
+export function getIdpManagerSetupPath(token: string): string {
+  const base = import.meta.env.BASE_URL || '/'
+  const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base
+  return `${normalizedBase}${getIdpManagerSetupRoute(token)}`
+}
 
 /** Under-Status line: next incomplete step, or ready-for-login when setup is complete. */
 export function getOrganizationSetupSignal(organization: RegisteredOrganization): string | null {
@@ -49,6 +124,12 @@ export function getOrganizationSetupSignal(organization: RegisteredOrganization)
   }
 
   if (!organization.identityProviderConnected) {
+    if (hasPendingIdpInvite(organization)) {
+      return 'Waiting on IdP Manager'
+    }
+    if (organization.idpInviteStatus === 'expired' || isIdpInviteExpired(organization)) {
+      return 'IdP invitation expired'
+    }
     return 'Needs identity provider'
   }
 
@@ -127,7 +208,7 @@ export function getOrganizationSetupNextAction(
 }
 
 export const ORGANIZATION_SETUP_NEXT_ACTION_LABEL: Record<OrganizationSetupNextAction, string> = {
-  idp: 'Connect identity provider',
+  idp: 'Set up identity provider',
   rbac: 'Define roles',
 }
 
@@ -155,7 +236,9 @@ export function getOrganizationActivationSteps(
     },
     {
       id: 'idp',
-      label: 'Identity provider connected',
+      label: hasPendingIdpInvite(organization)
+        ? 'Waiting on IdP Manager'
+        : 'Identity provider connected',
       complete: idpComplete,
     },
     {
@@ -252,6 +335,13 @@ export function createDemoNorthSummitBankOrganization(
     identityProviderProtocol: 'OIDC',
     identityProviderIssuerUrl: `https://login.${primaryDomain}/oauth2`,
     identityProviderClientId: 'bmaas-northstar',
+    idpManagerEmail: null,
+    idpInviteToken: null,
+    idpInviteStatus: 'none',
+    idpInviteSentAt: null,
+    idpInviteExpiresAt: null,
+    breakGlassName: null,
+    breakGlassEmail: null,
     rbacConfigured: true,
     status: 'Active',
     createdAt: '2026-06-12T14:30:00.000Z',

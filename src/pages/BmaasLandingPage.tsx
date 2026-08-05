@@ -7,6 +7,11 @@ import type { ReactNode } from 'react'
 import { RouterButton } from '../components/RouterButton'
 import { ConceptualDesignSticker } from '../components/ConceptualDesignSticker'
 import { BMAAS_LANDING_LAST_UPDATED } from '../bmaasLandingLastUpdated'
+import {
+  getIdpManagerSetupRoute,
+  getPendingIdpManagerInvites,
+} from '../providerAdmin/organizations'
+import { getProviderRegisteredOrganizations } from '../providerSetup/storage'
 import redHatHatLogoUrl from '../assets/Logo-RedHat-Hat-Color-RGB.svg?url'
 
 type PrototypeLink = {
@@ -41,7 +46,7 @@ function RoleBlock({ id, title, description, icon, actions, prototypeLinks = [] 
         {prototypeLinks.length > 0 ? (
           <ul className="bmaas-role-landing__prototype-link-list">
             {prototypeLinks.map((link) => (
-              <li key={link.to} className="bmaas-role-landing__prototype-link-item">
+              <li key={`${link.label}-${link.to}`} className="bmaas-role-landing__prototype-link-item">
                 <RouterButton
                   variant="link"
                   isInline
@@ -107,6 +112,20 @@ function SingleEnterActions({
 }
 
 export function BmaasLandingPage() {
+  const pendingInvites = getPendingIdpManagerInvites(getProviderRegisteredOrganizations())
+  const providerPrototypeLinks: PrototypeLink[] = [
+    {
+      label: 'Catalog',
+      to: '/provider/workspace?nav=catalog',
+      statusLabel: 'Not approved yet',
+    },
+    ...pendingInvites.map((invite) => ({
+      label: 'IdP manager',
+      to: getIdpManagerSetupRoute(invite.token),
+      statusLabel: `Email invite · ${invite.organization.name}`,
+    })),
+  ]
+
   return (
     <div className="bmaas-role-landing bmaas-role-landing--light">
       <div className="bmaas-role-landing__wrap">
@@ -158,13 +177,7 @@ export function BmaasLandingPage() {
                 actions={
                   <SingleEnterActions to="/provider" ariaLabel="Enter Provider Admin demo" />
                 }
-                prototypeLinks={[
-                  {
-                    label: 'Catalog',
-                    to: '/provider/workspace?nav=catalog',
-                    statusLabel: 'Not approved yet',
-                  },
-                ]}
+                prototypeLinks={providerPrototypeLinks}
               />
 
               <RoleBlock
@@ -248,7 +261,7 @@ export function BmaasLandingPage() {
               variant="link"
               component="a"
               isInline
-              href="https://redhat.enterprise.slack.com/archives/D06FNMKMQCQ"
+              href="https://redhat.enterprise.slack.com/archives/D08ABCFSWGW"
               target="_blank"
               rel="noopener noreferrer"
             >

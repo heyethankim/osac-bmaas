@@ -2047,3 +2047,111 @@
   align-items: center;
   gap: var(--pf-t--global--spacer--sm);
 }
+
+/* Standalone Tenant Admin sample catalog (landing prototype link) */
+.tenant-admin-sample-catalog {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--pf-t--global--spacer--2xl) var(--pf-t--global--spacer--md);
+  background:
+    radial-gradient(circle at top left, rgba(0, 102, 204, 0.06), transparent 42%),
+    var(--pf-t--global--background--color--secondary--default);
+}
+
+.tenant-admin-sample-catalog__frame {
+  width: min(40rem, 100%);
+}
+
+.tenant-admin-sample-catalog__header {
+  margin-block-end: var(--pf-t--global--spacer--xl);
+}
+
+.tenant-admin-sample-catalog__kicker.pf-v6-c-content--p {
+  margin: 0 0 var(--pf-t--global--spacer--sm);
+  color: var(--pf-t--global--text--color--subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.tenant-admin-sample-catalog__title.pf-v6-c-title {
+  margin-block-end: var(--pf-t--global--spacer--sm);
+}
+
+.tenant-admin-sample-catalog__lede.pf-v6-c-content--p {
+  margin: 0;
+  color: var(--pf-t--global--text--color--subtle);
+  max-width: 36rem;
+}
+
+.tenant-admin-sample-catalog__stage {
+  margin-block-end: var(--pf-t--global--spacer--lg);
+}
+
+.tenant-admin-sample-catalog__card.pf-v6-c-card {
+  box-shadow: var(--pf-t--global--box-shadow--sm);
+}
+
+.tenant-admin-sample-catalog__card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--pf-t--global--spacer--md);
+  margin-block-end: var(--pf-t--global--spacer--md);
+}
+
+.tenant-admin-sample-catalog__icon {
+  display: inline-flex;
+  color: var(--pf-t--global--icon--color--regular);
+}
+
+.tenant-admin-sample-catalog__icon svg {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.tenant-admin-sample-catalog__labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pf-t--global--spacer--xs);
+}
+
+.tenant-admin-sample-catalog__item-name.pf-v6-c-title {
+  margin-block-end: var(--pf-t--global--spacer--sm);
+}
+
+.tenant-admin-sample-catalog__item-description.pf-v6-c-content--p {
+  margin: 0 0 var(--pf-t--global--spacer--lg);
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.tenant-admin-sample-catalog__specs {
+  margin: 0;
+}
+
+.tenant-admin-sample-catalog__spec-row {
+  display: grid;
+  grid-template-columns: 8rem minmax(0, 1fr);
+  gap: var(--pf-t--global--spacer--sm);
+  margin: 0;
+  padding-block: var(--pf-t--global--spacer--xs);
+}
+
+.tenant-admin-sample-catalog__spec-label {
+  margin: 0;
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.tenant-admin-sample-catalog__spec-value {
+  margin: 0;
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+}
+
+.tenant-admin-sample-catalog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pf-t--global--spacer--sm);
+}

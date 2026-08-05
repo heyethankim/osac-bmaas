@@ -151,6 +151,7 @@ export function ConnectOrganizationIdentityProviderModal({
       identityProviderProtocol: form.protocol,
       identityProviderIssuerUrl: form.issuerUrl.trim(),
       identityProviderClientId: form.clientId.trim(),
+      idpInviteStatus: organization.idpInviteToken ? 'accepted' : organization.idpInviteStatus,
     })
 
     if (!updated) {
