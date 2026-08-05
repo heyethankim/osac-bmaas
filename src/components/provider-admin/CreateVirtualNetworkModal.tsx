@@ -11,10 +11,12 @@ import {
   ModalVariant,
   TextInput,
 } from '@patternfly/react-core'
+import { KubernetesResourceNameHelper } from '../shared/KubernetesResourceNameHelper'
 import {
   generateProviderVirtualNetworkId,
   type ProviderVirtualNetwork,
 } from '../../providerAdmin/networkInventory'
+import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
 import { addProviderVirtualNetwork } from '../../providerSetup/storage'
 
 type CreateVirtualNetworkForm = {
@@ -26,7 +28,7 @@ type CreateVirtualNetworkForm = {
 
 /** Demo prefills so the create flow is ready to submit. */
 const DEFAULT_FORM: CreateVirtualNetworkForm = {
-  name: 'Demo workload VNet',
+  name: 'demo-workload',
   detail: 'Prefilled demo virtual network for tenant workloads',
   cidr: '10.60.0.0/16',
   ipv6Cidr: '2001:db8:60::/48',
@@ -51,7 +53,8 @@ export function CreateVirtualNetworkModal({
     }
   }, [isOpen])
 
-  const isCreateDisabled = !form.name.trim() || !form.cidr.trim()
+  const isNameValid = isValidKubernetesResourceName(form.name)
+  const isCreateDisabled = !isNameValid || !form.cidr.trim()
 
   const handleCreate = () => {
     if (isCreateDisabled) {
@@ -91,8 +94,11 @@ export function CreateVirtualNetworkModal({
             <TextInput
               id="create-vnet-name"
               value={form.name}
+              validated={form.name.trim() && !isNameValid ? 'error' : 'default'}
               onChange={(_event, value) => setForm((current) => ({ ...current, name: value }))}
+              placeholder="e.g. demo-workload"
             />
+            <KubernetesResourceNameHelper value={form.name} id="create-vnet-name-helper" />
           </FormGroup>
           <FormGroup label="Description" fieldId="create-vnet-detail">
             <TextInput

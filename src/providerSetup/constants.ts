@@ -167,7 +167,7 @@ export const MOCK_DISCOVERED_HOSTS: DiscoveredHost[] = [
 ]
 
 export const DEFAULT_TEMPLATE_FORM = {
-  name: 'BMaaS GPU training standard',
+  name: 'bmaas-gpu-training-standard',
   instanceType: 'gpu-l40s-dual',
   description:
     'Dual NVIDIA L40S bare metal nodes for AI training workloads. Includes NVLink-ready rack placement from discovery.',

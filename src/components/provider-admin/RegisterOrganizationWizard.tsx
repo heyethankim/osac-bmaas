@@ -19,6 +19,7 @@ import {
   WizardHeader,
   WizardStep,
 } from '@patternfly/react-core'
+import { KubernetesResourceNameHelper } from '../shared/KubernetesResourceNameHelper'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import {
   getAssignableExternalIpPools,
@@ -45,6 +46,10 @@ import {
   type RegisterOrganizationStepId,
   type RegisteredOrganization,
 } from '../../providerAdmin/organizations'
+import {
+  getKubernetesResourceNameValidation,
+  isValidKubernetesResourceName,
+} from '../../shared/kubernetesResourceName'
 
 type RegisterOrganizationWizardProps = {
   isOpen: boolean
@@ -111,9 +116,11 @@ export function RegisterOrganizationWizard({
   const nameTaken = isOrganizationNameTaken(form.organizationName, existingOrganizations)
   const domainTaken = isOrganizationDomainTaken(form.primaryDomain, existingOrganizations)
   const slugTaken = isOrganizationSlugTaken(form.organizationName, existingOrganizations)
+  const nameFormat = getKubernetesResourceNameValidation(form.organizationName)
+  const billingFormat = getKubernetesResourceNameValidation(form.billingAccountName)
   const isOrganizationStepValid =
-    Boolean(form.organizationName.trim()) &&
-    Boolean(form.billingAccountName.trim()) &&
+    isValidKubernetesResourceName(form.organizationName) &&
+    isValidKubernetesResourceName(form.billingAccountName) &&
     isValidPrimaryDomain(form.primaryDomain) &&
     !nameTaken &&
     !domainTaken &&
@@ -185,23 +192,34 @@ export function RegisterOrganizationWizard({
                 <TextInput
                   id="register-org-name"
                   value={form.organizationName}
-                  validated={nameTaken || slugTaken ? 'error' : 'default'}
+                  validated={
+                    nameTaken || slugTaken || nameFormat.validated === 'error' ? 'error' : 'default'
+                  }
                   onChange={(_event, value) =>
                     setForm((current) => ({
                       ...current,
                       organizationName: value,
-                      billingAccountName: `${value.trim() || 'Organization'} — Enterprise Billing`,
+                      billingAccountName: value.trim()
+                        ? `${value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')}-enterprise-billing`
+                        : '',
                     }))
                   }
+                  placeholder="e.g. north-summit-bank"
                 />
                 <FormHelperText>
                   <HelperText>
-                    <HelperTextItem variant={nameTaken || slugTaken ? 'error' : 'default'}>
+                    <HelperTextItem
+                      variant={
+                        nameTaken || slugTaken || nameFormat.validated === 'error'
+                          ? 'error'
+                          : 'default'
+                      }
+                    >
                       {nameTaken
                         ? 'An organization with this name is already registered.'
                         : slugTaken
                           ? 'An organization with this login path already exists. Choose a different name.'
-                          : 'Prefills the next available demo organization.'}
+                          : nameFormat.message}
                     </HelperTextItem>
                   </HelperText>
                 </FormHelperText>
@@ -238,9 +256,15 @@ export function RegisterOrganizationWizard({
                 <TextInput
                   id="register-billing-name"
                   value={form.billingAccountName}
+                  validated={billingFormat.validated}
                   onChange={(_event, value) =>
                     setForm((current) => ({ ...current, billingAccountName: value }))
                   }
+                  placeholder="e.g. north-summit-bank-enterprise-billing"
+                />
+                <KubernetesResourceNameHelper
+                  value={form.billingAccountName}
+                  id="register-billing-name-helper"
                 />
               </FormGroup>
             </Form>

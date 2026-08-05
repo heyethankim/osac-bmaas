@@ -12,9 +12,11 @@ import {
   ModalVariant,
   TextInput,
 } from '@patternfly/react-core'
+import { KubernetesResourceNameHelper } from '../shared/KubernetesResourceNameHelper'
 import { createTenantCatalogItem, type TenantCatalogItem } from '../../tenantAdmin/catalogItems'
 import type { TenantCatalogView } from '../../tenantAdmin/catalog'
 import { formatRateCardSummary } from '../../providerSetup/templateDemo'
+import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
 
 type CreateTenantCatalogItemModalProps = {
   isOpen: boolean
@@ -38,7 +40,7 @@ export function CreateTenantCatalogItemModal({
   }, [isOpen])
 
   const handleCreate = () => {
-    if (!displayName.trim()) {
+    if (!isValidKubernetesResourceName(displayName)) {
       return
     }
 
@@ -89,12 +91,21 @@ export function CreateTenantCatalogItemModal({
           </Alert>
         )}
         <Form autoComplete="off" className="tenant-admin-catalog__form">
-          <FormGroup label="Display name" fieldId="tenant-catalog-display-name" isRequired>
+          <FormGroup label="Name" fieldId="tenant-catalog-display-name" isRequired>
             <TextInput
               id="tenant-catalog-display-name"
               value={displayName}
+              validated={
+                displayName.trim() && !isValidKubernetesResourceName(displayName)
+                  ? 'error'
+                  : 'default'
+              }
               onChange={(_event, value) => setDisplayName(value)}
-              placeholder="Approved compute menu for platform engineering"
+              placeholder="e.g. approved-compute-menu"
+            />
+            <KubernetesResourceNameHelper
+              value={displayName}
+              id="tenant-catalog-display-name-helper"
             />
           </FormGroup>
         </Form>
@@ -103,7 +114,11 @@ export function CreateTenantCatalogItemModal({
         <Button variant="link" onClick={onClose}>
           Cancel
         </Button>
-        <Button variant="primary" isDisabled={!displayName.trim()} onClick={handleCreate}>
+        <Button
+          variant="primary"
+          isDisabled={!isValidKubernetesResourceName(displayName)}
+          onClick={handleCreate}
+        >
           Create catalog item
         </Button>
       </ModalFooter>

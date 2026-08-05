@@ -244,6 +244,117 @@
   color: var(--pf-t--global--icon--color--regular);
 }
 
+.catalog-networking-locks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+}
+
+.catalog-networking-locks__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--xs);
+}
+
+.catalog-networking-locks__title.pf-v6-c-content--p {
+  margin: 0;
+  font-size: var(--pf-t--global--font--size--body--lg);
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+  color: var(--pf-t--global--text--color--regular);
+}
+
+.catalog-networking-locks__lede.pf-v6-c-content--p {
+  margin: 0;
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.catalog-networking-locks__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.catalog-networking-locks__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pf-t--global--spacer--md);
+  min-height: 2.25rem;
+  font-size: var(--pf-t--global--font--size--body--md);
+  color: var(--pf-t--global--text--color--regular);
+}
+
+.catalog-external-ip-pool {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+}
+
+.catalog-external-ip-pool__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--xs);
+}
+
+.catalog-external-ip-pool__title.pf-v6-c-content--p {
+  margin: 0;
+  font-size: var(--pf-t--global--font--size--body--lg);
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+  color: var(--pf-t--global--text--color--regular);
+}
+
+.catalog-external-ip-pool__lede.pf-v6-c-content--p,
+.catalog-external-ip-pool__empty.pf-v6-c-content--p {
+  margin: 0;
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.catalog-external-ip-pool__switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pf-t--global--spacer--md);
+  min-height: 2.25rem;
+  font-size: var(--pf-t--global--font--size--body--md);
+  color: var(--pf-t--global--text--color--regular);
+}
+
+.catalog-external-ip-pool__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.catalog-external-ip-pool__row {
+  font-size: var(--pf-t--global--font--size--body--md);
+  color: var(--pf-t--global--text--color--regular);
+}
+
+.catalog-external-ip-pool__row--muted {
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.catalog-external-ip-pool__meta {
+  display: block;
+  margin-block-start: var(--pf-t--global--spacer--xs);
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.catalog-networking-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--xl);
+}
+
 .catalog-vm-defaults {
   display: grid;
   gap: var(--pf-t--global--spacer--lg);

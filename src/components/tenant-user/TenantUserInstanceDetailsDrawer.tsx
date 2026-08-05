@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import {
   Button,
   Content,
@@ -15,6 +15,10 @@ import {
   DrawerHead,
   DrawerPanelBody,
   DrawerPanelContent,
+  Form,
+  FormGroup,
+  FormSelect,
+  FormSelectOption,
   Label,
   Spinner,
   Title,
@@ -22,6 +26,12 @@ import {
 } from '@patternfly/react-core'
 import { CheckCircleIcon } from '@patternfly/react-icons/dist/esm/icons/check-circle-icon'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
+import { getCatalogNetworkOptionLabel } from '../../providerAdmin/catalogNetworkPolicy'
+import {
+  getCatalogSecurityGroupOptions,
+  getCatalogSubnetOptions,
+  getCatalogVirtualNetworkOptions,
+} from '../../providerSetup/storage'
 import {
   formatTenantInstanceCreatedAt,
   formatTenantInstanceName,
@@ -44,7 +54,12 @@ import {
   resolveVmConfig,
   type TenantInstance,
   type TenantInstanceCondition,
+  type TenantInstanceNetworking,
 } from '../../tenantUser/instances'
+import {
+  formatInstanceNetworkLabel,
+  matchNetworkOptionId,
+} from '../../tenantUser/launchNetworking'
 
 type TenantUserInstanceDetailsDrawerProps = {
   isExpanded: boolean
@@ -55,6 +70,11 @@ type TenantUserInstanceDetailsDrawerProps = {
   onStart?: (instanceId: string) => void
   onStop?: (instanceId: string) => void
   onAttachPublicIp?: (instance: TenantInstance) => void
+  onUpdateNetworking?: (
+    instanceId: string,
+    networking: TenantInstanceNetworking,
+    networkLabel: string,
+  ) => void
   children: ReactNode
 }
 
@@ -151,7 +171,195 @@ function InstanceConditionsSection({
   )
 }
 
-function ClusterInstanceDetails({ instance }: { instance: TenantInstance }) {
+function InstanceNetworkingEditor({
+  instance,
+  onUpdateNetworking,
+}: {
+  instance: TenantInstance
+  onUpdateNetworking?: (
+    instanceId: string,
+    networking: TenantInstanceNetworking,
+    networkLabel: string,
+  ) => void
+}) {
+  const networking = resolveTenantInstanceNetworking(instance)
+  const virtualNetworkOptions = getCatalogVirtualNetworkOptions()
+  const initialVirtualNetworkId = matchNetworkOptionId(
+    virtualNetworkOptions,
+    networking.virtualNetwork,
+  )
+  const [virtualNetworkId, setVirtualNetworkId] = useState(initialVirtualNetworkId)
+  const subnetOptions = getCatalogSubnetOptions(virtualNetworkId)
+  const [subnetId, setSubnetId] = useState(() =>
+    matchNetworkOptionId(subnetOptions, networking.subnet),
+  )
+  const securityGroupOptions = getCatalogSecurityGroupOptions()
+  const [securityGroupId, setSecurityGroupId] = useState(() =>
+    matchNetworkOptionId(securityGroupOptions, networking.securityGroup),
+  )
+
+  useEffect(() => {
+    const nextVirtualNetworkId = matchNetworkOptionId(
+      virtualNetworkOptions,
+      networking.virtualNetwork,
+    )
+    const nextSubnetOptions = getCatalogSubnetOptions(nextVirtualNetworkId)
+    const nextSubnetId = matchNetworkOptionId(nextSubnetOptions, networking.subnet)
+    const nextSecurityGroupId = matchNetworkOptionId(
+      securityGroupOptions,
+      networking.securityGroup,
+    )
+    setVirtualNetworkId(nextVirtualNetworkId)
+    setSubnetId(nextSubnetId)
+    setSecurityGroupId(nextSecurityGroupId)
+
+    // Seed inventory defaults onto legacy instances that had networking off.
+    if (
+      !networking.virtualNetwork.trim() ||
+      !networking.subnet.trim() ||
+      !networking.securityGroup.trim()
+    ) {
+      const virtualNetwork =
+        virtualNetworkOptions.find((option) => option.id === nextVirtualNetworkId) ??
+        virtualNetworkOptions[0]
+      const subnet =
+        nextSubnetOptions.find((option) => option.id === nextSubnetId) ?? nextSubnetOptions[0]
+      const securityGroup =
+        securityGroupOptions.find((option) => option.id === nextSecurityGroupId) ??
+        securityGroupOptions[0]
+      if (virtualNetwork && subnet && securityGroup) {
+        const nextNetworking: TenantInstanceNetworking = {
+          enabled: true,
+          virtualNetwork: getCatalogNetworkOptionLabel(virtualNetwork),
+          subnet: getCatalogNetworkOptionLabel(subnet),
+          securityGroup: getCatalogNetworkOptionLabel(securityGroup),
+        }
+        onUpdateNetworking?.(
+          instance.id,
+          nextNetworking,
+          formatInstanceNetworkLabel(nextNetworking),
+        )
+      }
+    }
+  }, [instance.id])
+
+  const persist = (nextVirtualNetworkId: string, nextSubnetId: string, nextSecurityGroupId: string) => {
+    const virtualNetwork =
+      virtualNetworkOptions.find((option) => option.id === nextVirtualNetworkId) ??
+      virtualNetworkOptions[0]
+    const nextSubnets = getCatalogSubnetOptions(nextVirtualNetworkId)
+    const subnet =
+      nextSubnets.find((option) => option.id === nextSubnetId) ?? nextSubnets[0]
+    const securityGroup =
+      securityGroupOptions.find((option) => option.id === nextSecurityGroupId) ??
+      securityGroupOptions[0]
+
+    if (!virtualNetwork || !subnet || !securityGroup) {
+      return
+    }
+
+    const nextNetworking: TenantInstanceNetworking = {
+      enabled: true,
+      virtualNetwork: getCatalogNetworkOptionLabel(virtualNetwork),
+      subnet: getCatalogNetworkOptionLabel(subnet),
+      securityGroup: getCatalogNetworkOptionLabel(securityGroup),
+    }
+
+    onUpdateNetworking?.(
+      instance.id,
+      nextNetworking,
+      formatInstanceNetworkLabel(nextNetworking),
+    )
+  }
+
+  return (
+    <div className="tenant-user-instances__drawer-section">
+      <Content component="p" className="tenant-user-instances__drawer-section-title">
+        Networking
+      </Content>
+      <Content component="p" className="tenant-user-instances__drawer-lede">
+        Customize virtual network, subnet, and security group for this instance.
+      </Content>
+      <Form autoComplete="off" className="tenant-user-instances__drawer-network-form">
+        <FormGroup label="Virtual network" fieldId={`instance-vnet-${instance.id}`}>
+          <FormSelect
+            id={`instance-vnet-${instance.id}`}
+            value={virtualNetworkId}
+            onChange={(_event, value) => {
+              const nextSubnets = getCatalogSubnetOptions(value)
+              const nextSubnetId =
+                nextSubnets.find((option) => option.id === subnetId)?.id ??
+                nextSubnets[0]?.id ??
+                ''
+              setVirtualNetworkId(value)
+              setSubnetId(nextSubnetId)
+              persist(value, nextSubnetId, securityGroupId)
+            }}
+            aria-label="Virtual network"
+          >
+            {virtualNetworkOptions.map((option) => (
+              <FormSelectOption
+                key={option.id}
+                value={option.id}
+                label={getCatalogNetworkOptionLabel(option)}
+              />
+            ))}
+          </FormSelect>
+        </FormGroup>
+        <FormGroup label="Subnet" fieldId={`instance-subnet-${instance.id}`}>
+          <FormSelect
+            id={`instance-subnet-${instance.id}`}
+            value={subnetId}
+            onChange={(_event, value) => {
+              setSubnetId(value)
+              persist(virtualNetworkId, value, securityGroupId)
+            }}
+            aria-label="Subnet"
+          >
+            {subnetOptions.map((option) => (
+              <FormSelectOption
+                key={option.id}
+                value={option.id}
+                label={getCatalogNetworkOptionLabel(option)}
+              />
+            ))}
+          </FormSelect>
+        </FormGroup>
+        <FormGroup label="Security group" fieldId={`instance-sg-${instance.id}`}>
+          <FormSelect
+            id={`instance-sg-${instance.id}`}
+            value={securityGroupId}
+            onChange={(_event, value) => {
+              setSecurityGroupId(value)
+              persist(virtualNetworkId, subnetId, value)
+            }}
+            aria-label="Security group"
+          >
+            {securityGroupOptions.map((option) => (
+              <FormSelectOption
+                key={option.id}
+                value={option.id}
+                label={getCatalogNetworkOptionLabel(option)}
+              />
+            ))}
+          </FormSelect>
+        </FormGroup>
+      </Form>
+    </div>
+  )
+}
+
+function ClusterInstanceDetails({
+  instance,
+  onUpdateNetworking,
+}: {
+  instance: TenantInstance
+  onUpdateNetworking?: (
+    instanceId: string,
+    networking: TenantInstanceNetworking,
+    networkLabel: string,
+  ) => void
+}) {
   const clusterConfig = resolveClusterConfig(instance)
   const workerCount = getClusterWorkerNodeCount(instance)
   const apiUrl = getClusterApiUrl(instance)
@@ -240,6 +448,10 @@ function ClusterInstanceDetails({ instance }: { instance: TenantInstance }) {
 
       <Divider className="tenant-user-instances__drawer-divider" />
 
+      <InstanceNetworkingEditor instance={instance} onUpdateNetworking={onUpdateNetworking} />
+
+      <Divider className="tenant-user-instances__drawer-divider" />
+
       <InstanceConditionsSection
         conditions={getClusterInstanceConditions(instance)}
         ariaLabel="Cluster conditions"
@@ -278,6 +490,7 @@ function VmInstanceDetails({
   onStart,
   onStop,
   onAttachPublicIp,
+  onUpdateNetworking,
 }: {
   instance: TenantInstance
   onRequestTerminate: (instance: TenantInstance) => void
@@ -285,6 +498,11 @@ function VmInstanceDetails({
   onStart?: (instanceId: string) => void
   onStop?: (instanceId: string) => void
   onAttachPublicIp?: (instance: TenantInstance) => void
+  onUpdateNetworking?: (
+    instanceId: string,
+    networking: TenantInstanceNetworking,
+    networkLabel: string,
+  ) => void
 }) {
   const isRunning = instance.status === 'running'
   const isStopped = instance.status === 'stopped'
@@ -494,6 +712,10 @@ function VmInstanceDetails({
 
       <Divider className="tenant-user-instances__drawer-divider" />
 
+      <InstanceNetworkingEditor instance={instance} onUpdateNetworking={onUpdateNetworking} />
+
+      <Divider className="tenant-user-instances__drawer-divider" />
+
       <InstanceConditionsSection
         conditions={conditions}
         ariaLabel="Virtual machine conditions"
@@ -508,12 +730,18 @@ function DefaultInstanceDetails({
   onRestart,
   onStart,
   onStop,
+  onUpdateNetworking,
 }: {
   instance: TenantInstance
   onRequestTerminate: (instance: TenantInstance) => void
   onRestart: (instanceId: string) => void
   onStart?: (instanceId: string) => void
   onStop?: (instanceId: string) => void
+  onUpdateNetworking?: (
+    instanceId: string,
+    networking: TenantInstanceNetworking,
+    networkLabel: string,
+  ) => void
 }) {
   const isRunning = instance.status === 'running'
   const isStopped = instance.status === 'stopped'
@@ -524,7 +752,6 @@ function DefaultInstanceDetails({
   const canStop = isBareMetal && isRunning
   const canTerminate =
     instance.status !== 'provisioning' && instance.status !== 'restarting'
-  const networking = resolveTenantInstanceNetworking(instance)
   const specRows = getTenantInstanceSpecRows(instance)
   const bareMetalConditions = isBareMetal ? getBareMetalInstanceConditions(instance) : []
 
@@ -684,44 +911,11 @@ function DefaultInstanceDetails({
 
       <Divider className="tenant-user-instances__drawer-divider" />
 
-      <div className="tenant-user-instances__drawer-section">
-        <Content component="p" className="tenant-user-instances__drawer-section-title">
-          Networking
-        </Content>
-        {!networking.enabled ? (
-          <Content component="p" className="tenant-user-instances__drawer-lede">
-            Networking is off for this catalog item.
-          </Content>
-        ) : (
-          <DescriptionList
-            isCompact
-            className="tenant-user-instances__drawer-dl"
-            aria-label="Instance networking"
-          >
-            <DescriptionListGroup>
-              <DescriptionListTerm>Virtual network</DescriptionListTerm>
-              <DescriptionListDescription>
-                {networking.virtualNetwork || '—'}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Subnet</DescriptionListTerm>
-              <DescriptionListDescription>{networking.subnet || '—'}</DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Security group</DescriptionListTerm>
-              <DescriptionListDescription>
-                {networking.securityGroup || '—'}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-          </DescriptionList>
-        )}
-      </div>
+      <InstanceNetworkingEditor instance={instance} onUpdateNetworking={onUpdateNetworking} />
 
-      {isBareMetal ? (
+      {isBareMetal && bareMetalConditions.length > 0 ? (
         <>
           <Divider className="tenant-user-instances__drawer-divider" />
-
           <InstanceConditionsSection
             conditions={bareMetalConditions}
             ariaLabel="Bare metal conditions"
@@ -771,6 +965,7 @@ export function TenantUserInstanceDetailsDrawer({
   onStart,
   onStop,
   onAttachPublicIp,
+  onUpdateNetworking,
   children,
 }: TenantUserInstanceDetailsDrawerProps) {
   const serviceId = instance ? getTenantInstanceServiceId(instance) : 'baremetal'
@@ -805,7 +1000,10 @@ export function TenantUserInstanceDetailsDrawer({
 
       <DrawerPanelBody className="tenant-user-instances__drawer-body">
         {isCluster ? (
-          <ClusterInstanceDetails instance={instance} />
+          <ClusterInstanceDetails
+            instance={instance}
+            onUpdateNetworking={onUpdateNetworking}
+          />
         ) : isVm ? (
           <VmInstanceDetails
             instance={instance}
@@ -814,6 +1012,7 @@ export function TenantUserInstanceDetailsDrawer({
             onStart={onStart}
             onStop={onStop}
             onAttachPublicIp={onAttachPublicIp}
+            onUpdateNetworking={onUpdateNetworking}
           />
         ) : (
           <DefaultInstanceDetails
@@ -822,6 +1021,7 @@ export function TenantUserInstanceDetailsDrawer({
             onRestart={onRestart}
             onStart={onStart}
             onStop={onStop}
+            onUpdateNetworking={onUpdateNetworking}
           />
         )}
       </DrawerPanelBody>

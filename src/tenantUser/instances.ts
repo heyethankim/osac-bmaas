@@ -123,7 +123,7 @@ export const TENANT_INSTANCE_RESTART_DURATION_MS = 2500
 
 export function generateTenantInstanceId(): string {
   const suffix = Math.random().toString(36).slice(2, 8)
-  return `instance_${suffix}`
+  return `instance-${suffix}`
 }
 
 export function formatTenantInstanceCreatedAt(iso: string): string {
@@ -135,22 +135,9 @@ export function formatTenantInstanceCreatedAt(iso: string): string {
   })
 }
 
-/** Title-caps hyphenated instance names for display (e.g. bm-server-02 → BM-Server-02). */
+/** Keep instance names as DNS-1123 labels (lowercase, hyphenated). */
 export function formatTenantInstanceName(name: string): string {
-  const acronyms = new Set(['ocp', 'bm', 'vm'])
-
-  return name
-    .split('-')
-    .map((part) => {
-      if (/^\d+$/.test(part)) {
-        return part
-      }
-      if (part.length <= 2 || acronyms.has(part.toLowerCase())) {
-        return part.toUpperCase()
-      }
-      return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
-    })
-    .join('-')
+  return name.trim().toLowerCase()
 }
 
 export function getTenantInstanceStatusLabel(status: TenantInstanceStatus): string {
@@ -611,7 +598,7 @@ export function resolveClusterConfig(instance: TenantInstance): TenantClusterCon
   }
 
   const nodeSetLabel =
-    instance.specRows?.find((row) => row.label === 'Node set')?.value ?? 'Standard Host · 1 node'
+    instance.specRows?.find((row) => row.label === 'Node set')?.value ?? 'standard-host · 1 node'
 
   return {
     releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.21.0-multi',
@@ -622,7 +609,7 @@ export function resolveClusterConfig(instance: TenantInstance): TenantClusterCon
     nodeSets: [
       {
         id: 'node-set-1',
-        hostType: nodeSetLabel.includes('GPU') ? 'GPU Host' : 'Standard Host',
+        hostType: nodeSetLabel.includes('gpu') ? 'gpu-host' : 'standard-host',
         nodeCount: 1,
       },
     ],
@@ -675,15 +662,15 @@ export function getTenantInstanceScopeFieldLabel(
 }
 
 /** Stable demo instance IDs so ensure can re-seed without duplicates. */
-export const DEMO_TENANT_BARE_METAL_INSTANCE_ID = 'instance_demo_bm_01'
-export const DEMO_TENANT_BARE_METAL_INSTANCE_ID_02 = 'instance_demo_bm_02'
-export const DEMO_TENANT_BARE_METAL_INSTANCE_ID_03 = 'instance_demo_bm_03'
-export const DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID = 'instance_demo_vm_01'
-export const DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_02 = 'instance_demo_vm_02'
-export const DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_03 = 'instance_demo_vm_03'
-export const DEMO_TENANT_CLUSTER_INSTANCE_ID = 'instance_demo_cluster_01'
-export const DEMO_TENANT_CLUSTER_INSTANCE_ID_02 = 'instance_demo_cluster_02'
-export const DEMO_TENANT_CLUSTER_INSTANCE_ID_03 = 'instance_demo_cluster_03'
+export const DEMO_TENANT_BARE_METAL_INSTANCE_ID = 'instance-demo-bm-01'
+export const DEMO_TENANT_BARE_METAL_INSTANCE_ID_02 = 'instance-demo-bm-02'
+export const DEMO_TENANT_BARE_METAL_INSTANCE_ID_03 = 'instance-demo-bm-03'
+export const DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID = 'instance-demo-vm-01'
+export const DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_02 = 'instance-demo-vm-02'
+export const DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_03 = 'instance-demo-vm-03'
+export const DEMO_TENANT_CLUSTER_INSTANCE_ID = 'instance-demo-cluster-01'
+export const DEMO_TENANT_CLUSTER_INSTANCE_ID_02 = 'instance-demo-cluster-02'
+export const DEMO_TENANT_CLUSTER_INSTANCE_ID_03 = 'instance-demo-cluster-03'
 
 /** Cluster demo row that stays Provisioning on Services for walkthroughs. */
 export const DEMO_TENANT_CLUSTER_PROVISIONING_INSTANCE_ID = DEMO_TENANT_CLUSTER_INSTANCE_ID_03
@@ -734,7 +721,7 @@ export function getClusterNodeSetTypeLabel(instance: TenantInstance): string {
   }
   const nodeSet =
     instance.specRows?.find((row) => row.label === 'Node set')?.value.trim() ?? ''
-  return /\bgpu\b/i.test(nodeSet) ? 'GPU Host' : 'Standard Host'
+  return /\bgpu\b/i.test(nodeSet) ? 'gpu-host' : 'standard-host'
 }
 
 /** Card highlights for Virtual machines — include OS so OS filters are scannable. */
@@ -799,14 +786,14 @@ function createDemoTenantBareMetalInstanceVariant(
     id: options.id,
     name: options.name,
     catalogItemDisplayName:
-      options.catalogItemDisplayName ?? 'Bare Metal - GPU Training Server',
+      options.catalogItemDisplayName ?? 'bare-metal-gpu-training-server',
     serviceId: 'baremetal',
     hardwareProfile: options.hardwareProfile,
     osImage: options.osImage,
-    networkLabel: 'Tenant workload VNet / bm-compute-a · allow-ssh-https',
+    networkLabel: 'tenant-workload / bm-compute-a · allow-ssh-https',
     networking: {
       enabled: true,
-      virtualNetwork: 'Tenant workload VNet',
+      virtualNetwork: 'tenant-workload',
       subnet: 'bm-compute-a',
       securityGroup: 'allow-ssh-https',
     },
@@ -829,7 +816,7 @@ function createDemoTenantBareMetalInstanceVariant(
 export function createDemoTenantBareMetalInstance(organizationName: string): TenantInstance {
   return createDemoTenantBareMetalInstanceVariant(organizationName, {
     id: DEMO_TENANT_BARE_METAL_INSTANCE_ID,
-    name: 'BM-Server-01',
+    name: 'bm-server-01',
     status: 'running',
     osImage: 'RHEL 9.4',
     gpuLabel: 'CPU-only',
@@ -843,7 +830,7 @@ export function createDemoTenantBareMetalInstance(organizationName: string): Ten
 export function createDemoTenantBareMetalInstance02(organizationName: string): TenantInstance {
   return createDemoTenantBareMetalInstanceVariant(organizationName, {
     id: DEMO_TENANT_BARE_METAL_INSTANCE_ID_02,
-    name: 'BM-Server-02',
+    name: 'bm-server-02',
     status: 'stopped',
     osImage: 'Ubuntu 22.04',
     gpuLabel: 'NVIDIA A100 × 2',
@@ -851,14 +838,14 @@ export function createDemoTenantBareMetalInstance02(organizationName: string): T
     cpu: 'Intel Xeon Platinum 8480+ × 2',
     ram: '1 TB DDR5',
     hoursAgo: 40,
-    catalogItemDisplayName: 'Bare Metal - Dense GPU Node',
+    catalogItemDisplayName: 'bare-metal-dense-gpu-node',
   })
 }
 
 export function createDemoTenantBareMetalInstance03(organizationName: string): TenantInstance {
   return createDemoTenantBareMetalInstanceVariant(organizationName, {
     id: DEMO_TENANT_BARE_METAL_INSTANCE_ID_03,
-    name: 'BM-Server-03',
+    name: 'bm-server-03',
     status: 'running',
     osImage: 'Fedora',
     gpuLabel: 'NVIDIA H100 × 4',
@@ -866,7 +853,7 @@ export function createDemoTenantBareMetalInstance03(organizationName: string): T
     cpu: 'Intel Xeon Gold 6430 × 2',
     ram: '2 TB DDR5',
     hoursAgo: 12,
-    catalogItemDisplayName: 'Bare Metal - Dense GPU Node',
+    catalogItemDisplayName: 'bare-metal-dense-gpu-node',
   })
 }
 
@@ -877,7 +864,7 @@ function createDemoTenantClusterInstanceVariant(
     name: string
     status: TenantInstanceStatus
     platform: string
-    hostType: 'Standard Host' | 'GPU Host'
+    hostType: 'standard-host' | 'gpu-host'
     nodeCount: number
     hoursAgo: number
   },
@@ -888,7 +875,7 @@ function createDemoTenantClusterInstanceVariant(
     { includeDetails: true },
   )
   const nodeSetValue =
-    options.hostType === 'GPU Host'
+    options.hostType === 'gpu-host'
       ? `gpu-workers · ${options.nodeCount} node${options.nodeCount === 1 ? '' : 's'}`
       : `fc430 · worker × ${options.nodeCount}`
   const specRows = baseSpecRows.map((row) => {
@@ -904,14 +891,14 @@ function createDemoTenantClusterInstanceVariant(
   return {
     id: options.id,
     name: options.name,
-    catalogItemDisplayName: 'Cluster - Node Sets Object',
+    catalogItemDisplayName: 'cluster-node-sets-object',
     serviceId: 'cluster',
     hardwareProfile: options.hostType,
     osImage: options.platform,
     networkLabel: 'Pod 10.128.0.0/14 · Service 172.30.0.0/16',
     networking: {
       enabled: true,
-      virtualNetwork: 'Tenant workload VNet',
+      virtualNetwork: 'tenant-workload',
       subnet: 'cluster-compute-a',
       securityGroup: 'allow-cluster-api',
     },
@@ -921,7 +908,7 @@ function createDemoTenantClusterInstanceVariant(
       releaseImage: `quay.io/openshift-release-dev/ocp-release:${options.platform.includes('4.15') ? '4.15.0' : '4.16.0'}-multi`,
       podCidr: '10.128.0.0/14',
       serviceCidr: '172.30.0.0/16',
-      catalogShortName: options.hostType === 'GPU Host' ? 'ocp-gpu' : 'ocp-small',
+      catalogShortName: options.hostType === 'gpu-host' ? 'ocp-gpu' : 'ocp-small',
       creator: 'Alex Johnson',
       nodeSets: [
         {
@@ -945,7 +932,7 @@ export function createDemoTenantClusterInstance(organizationName: string): Tenan
     name: 'ocp-cluster-01',
     status: 'running',
     platform: 'Red Hat OpenShift 4.16',
-    hostType: 'Standard Host',
+    hostType: 'standard-host',
     nodeCount: 3,
     hoursAgo: 18,
   })
@@ -957,7 +944,7 @@ export function createDemoTenantClusterInstance02(organizationName: string): Ten
     name: 'ocp-cluster-02',
     status: 'failed',
     platform: 'Red Hat OpenShift 4.15',
-    hostType: 'GPU Host',
+    hostType: 'gpu-host',
     nodeCount: 2,
     hoursAgo: 6,
   })
@@ -969,7 +956,7 @@ export function createDemoTenantClusterInstance03(organizationName: string): Ten
     name: 'ocp-cluster-03',
     status: 'provisioning',
     platform: 'Red Hat OpenShift 4.16',
-    hostType: 'GPU Host',
+    hostType: 'gpu-host',
     nodeCount: 4,
     hoursAgo: 1,
   })
@@ -1011,14 +998,14 @@ function createDemoTenantVirtualMachineInstanceVariant(
   return {
     id: options.id,
     name: options.name,
-    catalogItemDisplayName: 'VM with Configurable Network Attachments',
+    catalogItemDisplayName: 'vm-configurable-network-attachments',
     serviceId: 'virtual-machine',
     hardwareProfile: options.instanceType.split(' - ')[0] ?? 'Standard VM',
     osImage: options.osImage,
-    networkLabel: 'Tenant workload VNet / bm-compute-a · allow-ssh-https',
+    networkLabel: 'tenant-workload / bm-compute-a · allow-ssh-https',
     networking: {
       enabled: true,
-      virtualNetwork: 'Tenant workload VNet',
+      virtualNetwork: 'tenant-workload',
       subnet: 'bm-compute-a',
       securityGroup: 'allow-ssh-https',
     },
@@ -1044,7 +1031,7 @@ function createDemoTenantVirtualMachineInstanceVariant(
 export function createDemoTenantVirtualMachineInstance(organizationName: string): TenantInstance {
   return createDemoTenantVirtualMachineInstanceVariant(organizationName, {
     id: DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID,
-    name: 'VM-Instance-01',
+    name: 'vm-instance-01',
     status: 'running',
     osImage: 'RHEL 9.4',
     containerDiskImage: 'quay.io/containerdisks/rhel:9.4',
@@ -1058,7 +1045,7 @@ export function createDemoTenantVirtualMachineInstance(organizationName: string)
 export function createDemoTenantVirtualMachineInstance02(organizationName: string): TenantInstance {
   return createDemoTenantVirtualMachineInstanceVariant(organizationName, {
     id: DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_02,
-    name: 'VM-Instance-02',
+    name: 'vm-instance-02',
     status: 'stopped',
     osImage: 'Fedora',
     containerDiskImage: 'quay.io/containerdisks/fedora:latest',
@@ -1072,7 +1059,7 @@ export function createDemoTenantVirtualMachineInstance02(organizationName: strin
 export function createDemoTenantVirtualMachineInstance03(organizationName: string): TenantInstance {
   return createDemoTenantVirtualMachineInstanceVariant(organizationName, {
     id: DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_03,
-    name: 'VM-Instance-03',
+    name: 'vm-instance-03',
     status: 'running',
     osImage: 'Ubuntu 22.04',
     containerDiskImage: 'quay.io/containerdisks/ubuntu:22.04',
@@ -1087,26 +1074,28 @@ export function createDemoTenantVirtualMachineInstance03(organizationName: strin
 export function resolveTenantInstanceNetworking(
   instance: TenantInstance,
 ): TenantInstanceNetworking {
-  if (instance.networking) {
+  if (instance.networking?.enabled) {
     return instance.networking
   }
 
-  if (!instance.networkLabel || instance.networkLabel === 'Networking off') {
+  if (instance.networking && !instance.networking.enabled) {
+    // Legacy "off" catalog policy — treat as unset so the service drawer can pick defaults.
+  } else if (instance.networkLabel && instance.networkLabel !== 'Networking off') {
+    const [placement = '', securityGroup = ''] = instance.networkLabel.split(' · ')
+    const [virtualNetwork = '', subnet = ''] = placement.split(' / ')
+
     return {
-      enabled: false,
-      virtualNetwork: '',
-      subnet: '',
-      securityGroup: '',
+      enabled: true,
+      virtualNetwork: virtualNetwork.trim(),
+      subnet: subnet.trim(),
+      securityGroup: securityGroup.trim(),
     }
   }
 
-  const [placement = '', securityGroup = ''] = instance.networkLabel.split(' · ')
-  const [virtualNetwork = '', subnet = ''] = placement.split(' / ')
-
   return {
     enabled: true,
-    virtualNetwork: virtualNetwork.trim(),
-    subnet: subnet.trim(),
-    securityGroup: securityGroup.trim(),
+    virtualNetwork: '',
+    subnet: '',
+    securityGroup: '',
   }
 }

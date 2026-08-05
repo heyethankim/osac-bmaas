@@ -22,6 +22,7 @@ import {
   getCatalogEnterpriseTenantIds,
   VipEnterpriseOrganizationField,
 } from './VipEnterpriseOrganizationField'
+import { KubernetesResourceNameHelper } from '../shared/KubernetesResourceNameHelper'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import {
@@ -30,6 +31,7 @@ import {
   type CatalogServiceId,
   type PublishCatalogScope,
 } from '../../providerSetup/templateDemo'
+import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
 
 export type CatalogItemEditFields = {
   displayName: string
@@ -107,7 +109,7 @@ export function EditCatalogItemModal({
   }, [catalog, organizations, publishScope, enterpriseTenantIds])
 
   const isVipEnterprise = publishScope === 'vip-enterprise'
-  const canSave = Boolean(displayName.trim())
+  const canSave = isValidKubernetesResourceName(displayName)
 
   const selectVipEnterprise = () => {
     setPublishScope('vip-enterprise')
@@ -188,9 +190,18 @@ export function EditCatalogItemModal({
                 <TextInput
                   id="edit-catalog-item-name"
                   value={displayName}
+                  validated={
+                    displayName.trim() && !isValidKubernetesResourceName(displayName)
+                      ? 'error'
+                      : 'default'
+                  }
                   onChange={(_event, value) => setDisplayName(value)}
                   aria-label="Name"
                   isRequired
+                />
+                <KubernetesResourceNameHelper
+                  value={displayName}
+                  id="edit-catalog-item-name-helper"
                 />
               </FormGroup>
 

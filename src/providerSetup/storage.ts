@@ -129,18 +129,21 @@ export function getProviderActiveNav(): ProviderAdminNavId {
       value === 'services-virtual-machines' ||
       value === 'infrastructure-data-centers' ||
       value === 'infrastructure-hardware-inventory' ||
-      value === 'infrastructure-compute-images' ||
       value === 'infrastructure-bmaas-templates' ||
-      value === 'infrastructure-external-ip-pools' ||
       value === 'networking-virtual-networks' ||
       value === 'networking-subnets' ||
       value === 'networking-security-groups' ||
+      value === 'networking-external-ip-pools' ||
       value === 'administration-organizations' ||
       value === 'administration-quotas' ||
       value === 'billing-metering' ||
       value === 'system'
     ) {
       return value
+    }
+
+    if (value === 'infrastructure-compute-images') {
+      return 'infrastructure-bmaas-templates'
     }
 
     if (value === 'services' || value === 'my-instances' || value === 'instances') {
@@ -165,6 +168,10 @@ export function getProviderActiveNav(): ProviderAdminNavId {
 
     if (value === 'infrastructure-security-groups') {
       return 'networking-security-groups'
+    }
+
+    if (value === 'infrastructure-external-ip-pools') {
+      return 'networking-external-ip-pools'
     }
 
     if (value === 'administration-organizations-quotas') {
@@ -296,12 +303,141 @@ function readLegacyProviderCatalogDraft(): ProviderCatalogDraft | null {
 const LEGACY_CATALOG_DISPLAY_NAME =
   'Compute Node · Dell PowerEdge R750 3x · 512 GB DDR4-3200'
 
-function migrateCatalogItemDisplayName(item: ProviderCatalogDraft): ProviderCatalogDraft {
-  if (item.displayName !== LEGACY_CATALOG_DISPLAY_NAME) {
-    return item
+const CATALOG_DNS1123_IDENTITY_MIGRATIONS: ReadonlyArray<{
+  matchCatalogItemId?: string
+  matchDisplayName?: string
+  matchTemplateRefId?: string
+  catalogItemId: string
+  displayName: string
+  templateRefId: string
+}> = [
+  {
+    matchCatalogItemId: 'cat_BM_GPU_TRAINING',
+    matchDisplayName: 'Bare Metal - GPU Training Server',
+    matchTemplateRefId: 'bm_dell_r750',
+    catalogItemId: 'cat-bm-gpu-training',
+    displayName: 'bare-metal-gpu-training-server',
+    templateRefId: 'bm-dell-r750',
+  },
+  {
+    matchCatalogItemId: 'cat_BM_AI_INFERENCE',
+    matchDisplayName: 'Bare Metal - Dense GPU Node',
+    matchTemplateRefId: 'bm_hpe_dl380_a100',
+    catalogItemId: 'cat-bm-dense-gpu',
+    displayName: 'bare-metal-dense-gpu-node',
+    templateRefId: 'bm-hpe-dl380-a100',
+  },
+  {
+    matchCatalogItemId: 'cat_BM_AI_INFERENCE',
+    matchDisplayName: 'Bare Metal - AI Inference Host',
+    matchTemplateRefId: 'bm_hpe_dl380_a100',
+    catalogItemId: 'cat-bm-dense-gpu',
+    displayName: 'bare-metal-dense-gpu-node',
+    templateRefId: 'bm-hpe-dl380-a100',
+  },
+  {
+    matchCatalogItemId: 'cat_NODE_SETS_FC430',
+    matchDisplayName: 'Cluster - Node Sets Object',
+    matchTemplateRefId: 'cl_node_sets_fc430',
+    catalogItemId: 'cat-node-sets-fc430',
+    displayName: 'cluster-node-sets-object',
+    templateRefId: 'cl-node-sets-fc430',
+  },
+  {
+    matchCatalogItemId: 'cat_VM_NET_ATTACH',
+    matchDisplayName: 'VM with Configurable Network Attachments',
+    matchTemplateRefId: 'vm_network_attachments',
+    catalogItemId: 'cat-vm-net-attach',
+    displayName: 'vm-configurable-network-attachments',
+    templateRefId: 'vm-network-attachments',
+  },
+]
+
+const NETWORK_RESOURCE_DNS1123_NAME_MIGRATIONS: Record<string, string> = {
+  'Tenant workload VNet': 'tenant-workload',
+  'Shared services VNet': 'shared-services',
+  'Demo workload VNet': 'demo-workload',
+  'Northstar public edge': 'northstar-public-edge',
+  'Standby pool A': 'standby-pool-a',
+}
+
+const DATA_CENTER_DNS1123_MIGRATIONS: Record<string, string> = {
+  'EU-West-1-DC-A': 'eu-west-1-dc-a',
+  'US-East-1-DC-B': 'us-east-1-dc-b',
+}
+
+function migrateDns1123ResourceName(name: string): string {
+  return NETWORK_RESOURCE_DNS1123_NAME_MIGRATIONS[name] ?? name
+}
+
+function migrateDns1123DataCenter(dataCenter: string): string {
+  return DATA_CENTER_DNS1123_MIGRATIONS[dataCenter] ?? dataCenter
+}
+
+function migrateCatalogItemDns1123Identity(item: ProviderCatalogDraft): ProviderCatalogDraft {
+  const migration = CATALOG_DNS1123_IDENTITY_MIGRATIONS.find(
+    (entry) =>
+      item.catalogItemId === entry.matchCatalogItemId ||
+      item.displayName === entry.matchDisplayName,
+  )
+
+  let next = item
+  if (migration) {
+    next = {
+      ...next,
+      catalogItemId: migration.catalogItemId,
+      displayName: migration.displayName,
+      templateRefId: migration.templateRefId,
+    }
+  } else if (item.displayName === LEGACY_CATALOG_DISPLAY_NAME) {
+    next = { ...next, displayName: DEFAULT_CATALOG_ITEM_DISPLAY_NAME }
   }
 
-  return { ...item, displayName: DEFAULT_CATALOG_ITEM_DISPLAY_NAME }
+  if (next.templateRefId === 'bm_dell_r750') {
+    next = { ...next, templateRefId: 'bm-dell-r750' }
+  } else if (next.templateRefId === 'bm_hpe_dl380_a100') {
+    next = { ...next, templateRefId: 'bm-hpe-dl380-a100' }
+  } else if (next.templateRefId === 'cl_node_sets_fc430') {
+    next = { ...next, templateRefId: 'cl-node-sets-fc430' }
+  } else if (next.templateRefId === 'vm_network_attachments') {
+    next = { ...next, templateRefId: 'vm-network-attachments' }
+  }
+
+  if (next.networkPolicy) {
+    const policy = normalizeCatalogNetworkPolicy(next.networkPolicy)
+    const virtualNetworkName = migrateDns1123ResourceName(policy.virtualNetwork.name)
+    const subnetName = migrateDns1123ResourceName(policy.subnet.name)
+    const securityGroupName = migrateDns1123ResourceName(policy.securityGroup.name)
+    if (
+      virtualNetworkName !== policy.virtualNetwork.name ||
+      subnetName !== policy.subnet.name ||
+      securityGroupName !== policy.securityGroup.name
+    ) {
+      next = {
+        ...next,
+        networkPolicy: {
+          ...policy,
+          virtualNetwork: { ...policy.virtualNetwork, name: virtualNetworkName },
+          subnet: { ...policy.subnet, name: subnetName },
+          securityGroup: { ...policy.securityGroup, name: securityGroupName },
+        },
+      }
+    }
+  }
+
+  return next
+}
+
+function catalogItemIdentityChanged(
+  before: ProviderCatalogDraft,
+  after: ProviderCatalogDraft,
+): boolean {
+  return (
+    before.catalogItemId !== after.catalogItemId ||
+    before.displayName !== after.displayName ||
+    before.templateRefId !== after.templateRefId ||
+    JSON.stringify(before.networkPolicy) !== JSON.stringify(after.networkPolicy)
+  )
 }
 
 export function getProviderCatalogItems(): ProviderCatalogDraft[] {
@@ -311,9 +447,50 @@ export function getProviderCatalogItems(): ProviderCatalogDraft[] {
       const parsed: unknown = JSON.parse(raw)
       if (Array.isArray(parsed)) {
         const items = parsed.filter(isProviderCatalogDraft)
-        const migrated = items.map(migrateCatalogItemDisplayName)
-        if (migrated.some((item, index) => item.displayName !== items[index].displayName)) {
+        const migrated = items.map(migrateCatalogItemDns1123Identity)
+        if (migrated.some((item, index) => catalogItemIdentityChanged(items[index]!, item))) {
           persistProviderCatalogItems(migrated)
+
+          try {
+            const organizations = getProviderRegisteredOrganizations()
+            const idRemap = new Map(
+              migrated
+                .map((item, index) => [items[index]!.catalogItemId, item.catalogItemId] as const)
+                .filter(([from, to]) => from !== to),
+            )
+            if (idRemap.size > 0 || organizations.some((org) =>
+              migrated.some(
+                (item) =>
+                  org.catalogItemId === item.catalogItemId &&
+                  org.catalogDisplayName !== item.displayName,
+              ),
+            )) {
+              setProviderRegisteredOrganizations(
+                organizations.map((org) => {
+                  const remappedId = org.catalogItemId
+                    ? idRemap.get(org.catalogItemId) ?? org.catalogItemId
+                    : null
+                  const catalog = migrated.find((item) => item.catalogItemId === remappedId)
+                  if (!catalog) {
+                    return org.catalogItemId && idRemap.has(org.catalogItemId)
+                      ? {
+                          ...org,
+                          catalogItemId: remappedId,
+                          catalogDisplayName: org.catalogDisplayName,
+                        }
+                      : org
+                  }
+                  return {
+                    ...org,
+                    catalogItemId: catalog.catalogItemId,
+                    catalogDisplayName: catalog.displayName,
+                  }
+                }),
+              )
+            }
+          } catch {
+            /* demo storage unavailable */
+          }
         }
         return migrated
       }
@@ -327,7 +504,7 @@ export function getProviderCatalogItems(): ProviderCatalogDraft[] {
     return []
   }
 
-  const migrated = migrateCatalogItemDisplayName(legacyDraft)
+  const migrated = migrateCatalogItemDns1123Identity(legacyDraft)
   persistProviderCatalogItems([migrated])
   return [migrated]
 }
@@ -340,12 +517,19 @@ export function addProviderCatalogItem(item: ProviderCatalogDraft): void {
 }
 
 function formatDuplicatedCatalogDisplayName(displayName: string): string {
-  const trimmed = displayName.trim()
+  const trimmed = displayName.trim().toLowerCase()
   if (!trimmed) {
-    return 'Catalog item (copy)'
+    return 'catalog-item-copy'
   }
 
-  return trimmed.endsWith('(copy)') ? `${trimmed} 2` : `${trimmed} (copy)`
+  if (/-copy(?:-\d+)?$/.test(trimmed)) {
+    const match = trimmed.match(/^(.*?)-copy(?:-(\d+))?$/)
+    const base = match?.[1] ?? trimmed
+    const next = Number.parseInt(match?.[2] ?? '1', 10) + 1
+    return `${base}-copy-${next}`
+  }
+
+  return `${trimmed}-copy`
 }
 
 /** Clone a catalog item as an unpublished draft. Does not copy organization assignments. */
@@ -544,6 +728,74 @@ export function patchProviderCatalogItem(
   return updated
 }
 
+/**
+ * Rewrite a catalog item's stable identity (id / template ref / display name) and
+ * retarget organization assignments. Used when migrating demo seeds to DNS-1123 names.
+ */
+export function rewriteProviderCatalogItemIdentity(
+  fromCatalogItemId: string,
+  identity: {
+    catalogItemId: string
+    templateRefId?: string
+    displayName?: string
+    description?: string
+    scope?: PublishCatalogScope
+    enterpriseTenantId?: string | null
+  },
+): ProviderCatalogDraft | null {
+  const items = getProviderCatalogItems()
+  const index = items.findIndex((item) => item.catalogItemId === fromCatalogItemId)
+  if (index < 0) {
+    return null
+  }
+
+  const current = items[index]!
+  const updated: ProviderCatalogDraft = {
+    ...current,
+    catalogItemId: identity.catalogItemId,
+    ...(identity.templateRefId ? { templateRefId: identity.templateRefId } : {}),
+    ...(identity.displayName ? { displayName: identity.displayName } : {}),
+    ...(identity.description !== undefined ? { description: identity.description } : {}),
+  }
+
+  if (identity.scope) {
+    updated.scope = identity.scope
+  }
+
+  if (identity.enterpriseTenantId === null) {
+    delete updated.enterpriseTenantId
+    delete updated.enterpriseTenantIds
+  } else if (identity.enterpriseTenantId) {
+    updated.enterpriseTenantId = identity.enterpriseTenantId
+    updated.enterpriseTenantIds = [identity.enterpriseTenantId]
+  }
+
+  const next = [...items]
+  next[index] = updated
+  persistProviderCatalogItems(next)
+
+  try {
+    const organizations = getProviderRegisteredOrganizations()
+    if (organizations.some((org) => org.catalogItemId === fromCatalogItemId)) {
+      setProviderRegisteredOrganizations(
+        organizations.map((org) =>
+          org.catalogItemId === fromCatalogItemId
+            ? {
+                ...org,
+                catalogItemId: updated.catalogItemId,
+                catalogDisplayName: updated.displayName,
+              }
+            : org,
+        ),
+      )
+    }
+  } catch {
+    /* demo storage unavailable */
+  }
+
+  return updated
+}
+
 export function deleteProviderCatalogItem(catalogItemId: string): boolean {
   const items = getProviderCatalogItems()
   const next = items.filter((item) => item.catalogItemId !== catalogItemId)
@@ -598,12 +850,24 @@ function isSavedMasterTemplate(value: unknown): value is SavedMasterTemplate {
 }
 
 function normalizeSavedMasterTemplate(template: SavedMasterTemplate): SavedMasterTemplate {
+  const templateRefId =
+    template.templateRefId === 'bm_dell_r750'
+      ? 'bm-dell-r750'
+      : template.templateRefId === 'bm_hpe_dl380_a100'
+        ? 'bm-hpe-dl380-a100'
+        : template.templateRefId
+
   return {
     ...template,
+    templateRefId,
     suggestedDisplayName:
-      template.suggestedDisplayName === LEGACY_CATALOG_DISPLAY_NAME
+      template.suggestedDisplayName === LEGACY_CATALOG_DISPLAY_NAME ||
+      template.suggestedDisplayName === 'Bare Metal - GPU Training Server'
         ? DEFAULT_CATALOG_ITEM_DISPLAY_NAME
-        : template.suggestedDisplayName,
+        : template.suggestedDisplayName === 'Bare Metal - Dense GPU Node' ||
+            template.suggestedDisplayName === 'Bare Metal - AI Inference Host'
+          ? 'bare-metal-dense-gpu-node'
+          : template.suggestedDisplayName,
     rateCard: isRateCard(template.rateCard) ? template.rateCard : DEFAULT_RATE_CARD,
   }
 }
@@ -729,23 +993,78 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
 
   return {
     ...org,
+    id: org.id === 'org_northstar_bank' ? 'org-northstar-bank' : org.id,
+    name:
+      org.name === 'North Summit Bank' || org.name === 'Northstar Bank'
+        ? 'north-summit-bank'
+        : org.name === 'BlueSolace Financial Group' ||
+            org.name === 'Bluestone Financial Group'
+          ? 'bluesolace-financial-group'
+          : org.name === 'Harborline Capital'
+            ? 'harborline-capital'
+            : org.name === 'Silverpine Trust'
+              ? 'silverpine-trust'
+              : org.name === 'Redwood Mutual'
+                ? 'redwood-mutual'
+                : org.name,
     primaryDomain:
       typeof org.primaryDomain === 'string' && org.primaryDomain.trim()
         ? org.primaryDomain.trim().toLowerCase()
         : emailDomain,
-    catalogItemId: org.catalogItemId ?? null,
-    catalogDisplayName: org.catalogDisplayName ?? null,
+    catalogItemId:
+      org.catalogItemId === 'cat_BM_GPU_TRAINING'
+        ? 'cat-bm-gpu-training'
+        : org.catalogItemId === 'cat_BM_AI_INFERENCE'
+          ? 'cat-bm-dense-gpu'
+          : org.catalogItemId === 'cat_NODE_SETS_FC430'
+            ? 'cat-node-sets-fc430'
+            : org.catalogItemId === 'cat_VM_NET_ATTACH'
+              ? 'cat-vm-net-attach'
+              : (org.catalogItemId ?? null),
+    catalogDisplayName:
+      org.catalogDisplayName === 'Bare Metal - GPU Training Server'
+        ? 'bare-metal-gpu-training-server'
+        : org.catalogDisplayName === 'Bare Metal - Dense GPU Node' ||
+            org.catalogDisplayName === 'Bare Metal - AI Inference Host'
+          ? 'bare-metal-dense-gpu-node'
+          : org.catalogDisplayName === 'Cluster - Node Sets Object'
+            ? 'cluster-node-sets-object'
+            : org.catalogDisplayName === 'VM with Configurable Network Attachments'
+              ? 'vm-configurable-network-attachments'
+              : (org.catalogDisplayName ?? null),
     externalIpPoolId: org.externalIpPoolId ?? null,
-    externalIpPoolName: org.externalIpPoolName ?? null,
+    externalIpPoolName: org.externalIpPoolName
+      ? migrateDns1123ResourceName(org.externalIpPoolName)
+      : null,
     externalIpPoolCidr: org.externalIpPoolCidr ?? null,
+    billingAccountName:
+      org.billingAccountName === 'North Summit Bank — Enterprise Billing' ||
+      org.billingAccountName === 'Northstar Bank — Enterprise Billing'
+        ? 'north-summit-bank-enterprise-billing'
+        : org.billingAccountName === 'BlueSolace Financial Group — Enterprise Billing' ||
+            org.billingAccountName === 'Bluestone Financial Group — Corporate'
+          ? org.billingAccountName.includes('Corporate')
+            ? 'bluestone-financial-group-corporate'
+            : 'bluesolace-financial-group-enterprise-billing'
+          : org.billingAccountName === 'Harborline Capital — Enterprise Billing'
+            ? 'harborline-capital-enterprise-billing'
+            : org.billingAccountName === 'Silverpine Trust — Enterprise Billing'
+              ? 'silverpine-trust-enterprise-billing'
+              : org.billingAccountName === 'Redwood Mutual — Enterprise Billing'
+                ? 'redwood-mutual-enterprise-billing'
+                : org.billingAccountName,
     identityProviderName:
       typeof org.identityProviderName === 'string' && org.identityProviderName.trim()
         ? org.identityProviderName.trim()
         : null,
     identityProviderDisplayName:
-      typeof org.identityProviderDisplayName === 'string' && org.identityProviderDisplayName.trim()
-        ? org.identityProviderDisplayName.trim()
-        : null,
+      org.identityProviderDisplayName === 'North Summit Bank IdP' ||
+      org.identityProviderDisplayName === 'Northstar Bank IdP'
+        ? 'north-summit-bank-idp'
+        : typeof org.identityProviderDisplayName === 'string' &&
+            org.identityProviderDisplayName.trim()
+          ? org.identityProviderDisplayName.trim()
+          : null,
     identityProviderProtocol:
       org.identityProviderProtocol === 'OIDC' || org.identityProviderProtocol === 'SAML'
         ? org.identityProviderProtocol
@@ -822,7 +1141,24 @@ export function getProviderRegisteredOrganizations(): RegisteredOrganization[] {
       return []
     }
 
-    return parsed.filter(isRegisteredOrganization).map(normalizeRegisteredOrganization)
+    const organizations = parsed.filter(isRegisteredOrganization)
+    const normalized = organizations.map(normalizeRegisteredOrganization)
+    const needsPersist = normalized.some((organization, index) => {
+      const original = organizations[index]!
+      return (
+        original.id !== organization.id ||
+        original.name !== organization.name ||
+        original.catalogItemId !== organization.catalogItemId ||
+        original.catalogDisplayName !== organization.catalogDisplayName ||
+        original.externalIpPoolName !== organization.externalIpPoolName ||
+        original.billingAccountName !== organization.billingAccountName ||
+        original.identityProviderDisplayName !== organization.identityProviderDisplayName
+      )
+    })
+    if (needsPersist) {
+      setProviderRegisteredOrganizations(normalized)
+    }
+    return normalized
   } catch {
     return []
   }
@@ -837,7 +1173,9 @@ export function ensureProviderDemoOrganizations(): RegisteredOrganization[] {
     const current = getProviderRegisteredOrganizations()
     const catalogItems = getProviderCatalogItems()
     const denseGpu =
+      catalogItems.find((item) => item.catalogItemId === 'cat-bm-dense-gpu') ??
       catalogItems.find((item) => item.catalogItemId === 'cat_BM_AI_INFERENCE') ??
+      catalogItems.find((item) => item.displayName === 'bare-metal-dense-gpu-node') ??
       catalogItems.find((item) => item.displayName === 'Bare Metal - Dense GPU Node') ??
       null
     const catalogDraft = denseGpu ?? getProviderCatalogDraft()
@@ -1045,6 +1383,24 @@ function isExternalIpPool(value: unknown): value is ExternalIpPool {
   )
 }
 
+function normalizeExternalIpPool(pool: ExternalIpPool): ExternalIpPool {
+  const assignedOrganizationName =
+    pool.assignedOrganizationName === 'North Summit Bank' ||
+    pool.assignedOrganizationName === 'Northstar Bank'
+      ? 'north-summit-bank'
+      : pool.assignedOrganizationName === 'BlueSolace Financial Group' ||
+          pool.assignedOrganizationName === 'Bluestone Financial Group'
+        ? 'bluesolace-financial-group'
+        : pool.assignedOrganizationName
+
+  return {
+    ...pool,
+    name: migrateDns1123ResourceName(pool.name),
+    dataCenter: migrateDns1123DataCenter(pool.dataCenter),
+    assignedOrganizationName,
+  }
+}
+
 export function getProviderExternalIpPools(): ExternalIpPool[] {
   try {
     const raw = sessionStorage.getItem(PROVIDER_EXTERNAL_IP_POOLS_KEY)
@@ -1061,8 +1417,28 @@ export function getProviderExternalIpPools(): ExternalIpPool[] {
       return [...DEFAULT_EXTERNAL_IP_POOLS]
     }
 
-    const pools = parsed.filter(isExternalIpPool)
-    return pools.length > 0 ? pools : [...DEFAULT_EXTERNAL_IP_POOLS]
+    const pools = parsed.filter(isExternalIpPool).map(normalizeExternalIpPool)
+    if (pools.length === 0) {
+      return [...DEFAULT_EXTERNAL_IP_POOLS]
+    }
+
+    const needsPersist = pools.some((pool, index) => {
+      const original = parsed[index]
+      if (!original || typeof original !== 'object') {
+        return true
+      }
+      const candidate = original as ExternalIpPool
+      return (
+        candidate.name !== pool.name ||
+        candidate.dataCenter !== pool.dataCenter ||
+        candidate.assignedOrganizationName !== pool.assignedOrganizationName
+      )
+    })
+    if (needsPersist) {
+      sessionStorage.setItem(PROVIDER_EXTERNAL_IP_POOLS_KEY, JSON.stringify(pools))
+    }
+
+    return pools
   } catch {
     return [...DEFAULT_EXTERNAL_IP_POOLS]
   }
@@ -1191,6 +1567,10 @@ function isProviderVirtualNetwork(value: unknown): value is ProviderVirtualNetwo
 function normalizeProviderVirtualNetwork(network: ProviderVirtualNetwork): ProviderVirtualNetwork {
   return {
     ...network,
+    name: migrateDns1123ResourceName(network.name),
+    dataCenter: network.dataCenter
+      ? migrateDns1123DataCenter(network.dataCenter)
+      : network.dataCenter,
     ipv6Cidr: network.ipv6Cidr?.trim() ?? '',
     status: getNetworkInventoryStatus(network),
   }
@@ -1283,12 +1663,17 @@ export function getProviderVirtualNetworks(): ProviderVirtualNetwork[] {
       return [...DEFAULT_PROVIDER_VIRTUAL_NETWORKS]
     }
 
-    const needsPersist = parsed.some((item, index) => {
-      if (!item || typeof item !== 'object') {
+    const needsPersist = networks.some((network, index) => {
+      const original = parsed[index]
+      if (!original || typeof original !== 'object') {
         return true
       }
-      const original = item as { ipv6Cidr?: unknown }
-      return original.ipv6Cidr !== networks[index]?.ipv6Cidr
+      const candidate = original as ProviderVirtualNetwork
+      return (
+        candidate.name !== network.name ||
+        candidate.dataCenter !== network.dataCenter ||
+        candidate.ipv6Cidr !== network.ipv6Cidr
+      )
     })
     if (needsPersist) {
       sessionStorage.setItem(PROVIDER_VIRTUAL_NETWORKS_KEY, JSON.stringify(networks))

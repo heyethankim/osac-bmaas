@@ -26,11 +26,10 @@ import { formatCatalogConfigurationSummary } from '../../catalog/catalogSpecs'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
 import { getCatalogViewMode, setCatalogViewMode, type CatalogViewMode } from '../../catalog/viewMode'
-import { getCatalogNetworkLockSummary } from '../../providerAdmin/catalogNetworkPolicy'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import { CATALOG_SERVICE_FILTER_LABELS, type CatalogServiceId } from '../../providerSetup/templateDemo'
-import { TENANT_CATALOG_MANAGER_DEMO } from '../../tenantAdmin/catalogManager'
+import { getCatalogNetworkLockSummary } from '../../providerAdmin/catalogNetworkPolicy'
 import {
   getTenantUserCatalogCards,
   type TenantUserCatalogCard,
@@ -103,7 +102,7 @@ function NetworkingSummary({
           className="tenant-user-catalog__inline-link"
           onClick={onViewDetails}
         >
-          {TENANT_CATALOG_MANAGER_DEMO.networkingViewDetailsLabel}
+          Details
         </Button>
       ) : null}
     </span>
@@ -112,9 +111,7 @@ function NetworkingSummary({
       component="p"
       className={compact ? 'tenant-user-catalog__networking-table-summary' : undefined}
     >
-      {compact
-        ? TENANT_CATALOG_MANAGER_DEMO.networkingNotConfiguredTableLabel
-        : TENANT_CATALOG_MANAGER_DEMO.networkingNotConfiguredSummary}
+      Not configured
     </Content>
   )
 
@@ -124,9 +121,7 @@ function NetworkingSummary({
 
   return (
     <div className="tenant-user-catalog__spec-row">
-      <dt className="tenant-user-catalog__spec-label">
-        {TENANT_CATALOG_MANAGER_DEMO.networkingLabel}
-      </dt>
+      <dt className="tenant-user-catalog__spec-label">Networking</dt>
       <dd className="tenant-user-catalog__spec-value">{statusContent}</dd>
     </div>
   )
@@ -180,17 +175,6 @@ export function TenantUserCatalogPage({
     () => new Set(initialServiceFilters.length > 0 ? initialServiceFilters : ['baremetal']),
   )
   const knownServiceFiltersRef = useRef(new Set(initialServiceFilters))
-
-  const networkContext = useMemo(
-    () =>
-      resolveLaunchNetworkContext(
-        organization,
-        catalogDraft,
-        preferCatalogDraft,
-        selectedCatalogItem?.catalogItemId,
-      ),
-    [organization, catalogDraft, preferCatalogDraft, selectedCatalogItem?.catalogItemId],
-  )
 
   useEffect(() => {
     setSelectedFilters((current) => {
@@ -311,7 +295,9 @@ export function TenantUserCatalogPage({
       isExpanded={isDetailsDrawerOpen && selectedCatalogItem !== null}
       onClose={closeDetails}
       catalogItem={isDetailsDrawerOpen ? selectedCatalogItem : null}
-      networkContext={networkContext}
+      organization={organization}
+      catalogDraft={catalogDraft}
+      preferCatalogDraft={preferCatalogDraft}
       onLaunch={() => {
         if (selectedCatalogItem) {
           openLaunchWizard(selectedCatalogItem)

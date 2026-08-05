@@ -6,7 +6,6 @@ import type { ProviderAdminNavId } from '../providerAdmin/constants'
 import { ProviderAdminCatalogPage } from './ProviderAdminCatalogPage'
 import { ProviderAdminOverviewPage } from './ProviderAdminOverviewPage'
 import { ProviderAdminBmaasTemplatesPage } from './infrastructure/ProviderAdminBmaasTemplatesPage'
-import { ProviderAdminComputeImagesPage } from './infrastructure/ProviderAdminComputeImagesPage'
 import { ProviderAdminDataCentersPage } from './infrastructure/ProviderAdminDataCentersPage'
 import { ProviderAdminExternalIpPoolsPage } from './infrastructure/ProviderAdminExternalIpPoolsPage'
 import { ProviderAdminHardwareInventoryPage } from './infrastructure/ProviderAdminHardwareInventoryPage'
@@ -343,8 +342,6 @@ export function ProviderAdminWorkspacePage() {
         return <ProviderAdminDataCentersPage />
       case 'infrastructure-hardware-inventory':
         return <ProviderAdminHardwareInventoryPage />
-      case 'infrastructure-compute-images':
-        return <ProviderAdminComputeImagesPage />
       case 'infrastructure-bmaas-templates':
         return (
           <ProviderAdminBmaasTemplatesPage
@@ -354,7 +351,7 @@ export function ProviderAdminWorkspacePage() {
             onOpenTemplateConsumed={() => setOpenTemplateLookup(null)}
           />
         )
-      case 'infrastructure-external-ip-pools':
+      case 'networking-external-ip-pools':
         return <ProviderAdminExternalIpPoolsPage />
       case 'networking-virtual-networks':
         return (

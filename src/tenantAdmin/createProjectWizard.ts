@@ -60,7 +60,7 @@ export const TENANT_PROJECT_MEMBER_ROLES: ReadonlyArray<{
 ]
 
 export const CREATE_PROJECT_WIZARD_DEMO = {
-  projectNamePlaceholder: 'e.g. Machine Learning Dev Team',
+  projectNamePlaceholder: 'e.g. ml-dev-team',
   descriptionPlaceholder: "Optional — describe this project's purpose",
   memberNamePlaceholder: 'Full name',
   memberEmailPlaceholder: 'email@northsummitbank.com',
@@ -93,7 +93,7 @@ export type CreateProjectWizardForm = {
 }
 
 export const DEFAULT_CREATE_PROJECT_WIZARD_FORM: CreateProjectWizardForm = {
-  name: 'Machine Learning Dev Team',
+  name: 'ml-dev-team',
   description: 'GPU training and ML experimentation workloads for the data science group.',
   environmentType: 'development',
   vcpuAllocation: 80,
@@ -105,7 +105,7 @@ export const DEFAULT_CREATE_PROJECT_WIZARD_FORM: CreateProjectWizardForm = {
   memberRole: 'developer',
   members: [
     {
-      id: 'project_member_demo',
+      id: 'project-member-demo',
       name: 'Chris Morgan',
       email: 'chris@northsummitbank.com',
       role: 'developer',
@@ -113,8 +113,8 @@ export const DEFAULT_CREATE_PROJECT_WIZARD_FORM: CreateProjectWizardForm = {
   ],
   catalogItems: [
     {
-      id: 'compute-r750',
-      displayName: 'Bare Metal - GPU Training Server',
+      id: 'cat-bm-gpu-training',
+      displayName: 'bare-metal-gpu-training-server',
     },
   ],
 }

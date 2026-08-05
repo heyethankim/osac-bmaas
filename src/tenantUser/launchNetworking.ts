@@ -55,7 +55,10 @@ function resolvePolicyForLaunch(
   if (specificItem) {
     const base = getCatalogItemNetworkPolicy(specificItem)
     if (organization) {
-      const overrides = getTenantNetworkOverrides(organization.slug)
+      const overrides = getTenantNetworkOverrides(
+        organization.slug,
+        specificItem.catalogItemId,
+      )
       return applyTenantLocksForUsers(applyTenantNetworkOverrides(base, overrides), overrides)
     }
     return base
@@ -83,50 +86,94 @@ export function resolveLaunchNetworkContext(
   preferCatalogDraft = false,
   catalogItemId?: string,
 ): LaunchNetworkContext {
-  const policy = resolvePolicyForLaunch(
+  const basePolicy = resolvePolicyForLaunch(
     organization,
     catalogDraft,
     preferCatalogDraft,
     catalogItemId,
   )
 
-  if (!policy.enabled) {
+  if (!basePolicy.enabled) {
     return {
       enabled: false,
-      policy,
+      policy: basePolicy,
       fields: [],
       hasEditableFields: false,
       assignedNetworkSummary: '',
     }
   }
 
+  const virtualNetworkOptions = getCatalogVirtualNetworkOptions()
+  const preferredVirtualNetworkId =
+    virtualNetworkOptions.find((option) => option.id === basePolicy.virtualNetwork.id)?.id ??
+    virtualNetworkOptions[0]?.id ??
+    DEFAULT_CATALOG_NETWORK_POLICY.virtualNetwork.id
+  const subnetOptions = getCatalogSubnetOptions(preferredVirtualNetworkId)
+  const preferredSubnetId =
+    subnetOptions.find((option) => option.id === basePolicy.subnet.id)?.id ??
+    subnetOptions[0]?.id ??
+    DEFAULT_CATALOG_NETWORK_POLICY.subnet.id
+  const securityGroupOptions = getCatalogSecurityGroupOptions()
+  const preferredSecurityGroupId =
+    securityGroupOptions.find((option) => option.id === basePolicy.securityGroup.id)?.id ??
+    securityGroupOptions[0]?.id ??
+    DEFAULT_CATALOG_NETWORK_POLICY.securityGroup.id
+
+  const virtualNetworkName =
+    virtualNetworkOptions.find((option) => option.id === preferredVirtualNetworkId)?.name ??
+    basePolicy.virtualNetwork.name
+  const subnetName =
+    subnetOptions.find((option) => option.id === preferredSubnetId)?.name ?? basePolicy.subnet.name
+  const securityGroupName =
+    securityGroupOptions.find((option) => option.id === preferredSecurityGroupId)?.name ??
+    basePolicy.securityGroup.name
+
+  const policy: CatalogNetworkPolicy = {
+    enabled: true,
+    virtualNetwork: {
+      id: preferredVirtualNetworkId,
+      name: virtualNetworkName,
+      locked: basePolicy.virtualNetwork.locked,
+    },
+    subnet: {
+      id: preferredSubnetId,
+      name: subnetName,
+      locked: basePolicy.subnet.locked,
+    },
+    securityGroup: {
+      id: preferredSecurityGroupId,
+      name: securityGroupName,
+      locked: basePolicy.securityGroup.locked,
+    },
+    externalIpPool: basePolicy.externalIpPool ?? {
+      ...DEFAULT_CATALOG_NETWORK_POLICY.externalIpPool,
+    },
+  }
+
   const fields: LaunchNetworkFieldView[] = [
     {
       kind: 'virtual-network',
       label: 'Virtual network',
-      value: getNetworkOptionDetail(getCatalogVirtualNetworkOptions(), policy.virtualNetwork.id),
+      value: getNetworkOptionDetail(virtualNetworkOptions, policy.virtualNetwork.id),
       selectedId: policy.virtualNetwork.id,
       locked: policy.virtualNetwork.locked,
-      options: getCatalogVirtualNetworkOptions(),
+      options: virtualNetworkOptions,
     },
     {
       kind: 'subnet',
       label: 'Subnet',
-      value: getNetworkOptionDetail(
-        getCatalogSubnetOptions(policy.virtualNetwork.id),
-        policy.subnet.id,
-      ),
+      value: getNetworkOptionDetail(subnetOptions, policy.subnet.id),
       selectedId: policy.subnet.id,
       locked: policy.subnet.locked,
-      options: getCatalogSubnetOptions(policy.virtualNetwork.id),
+      options: subnetOptions,
     },
     {
       kind: 'security-group',
       label: 'Security group',
-      value: getNetworkOptionDetail(getCatalogSecurityGroupOptions(), policy.securityGroup.id),
+      value: getNetworkOptionDetail(securityGroupOptions, policy.securityGroup.id),
       selectedId: policy.securityGroup.id,
       locked: policy.securityGroup.locked,
-      options: getCatalogSecurityGroupOptions(),
+      options: securityGroupOptions,
     },
   ]
 
@@ -201,4 +248,33 @@ export function resolveLaunchInstanceNetworking(
       ? getLaunchNetworkFieldLabel(securityGroupField, selections.securityGroupId)
       : context.policy.securityGroup.name,
   }
+}
+
+/** Match a stored display label (or name) back to an inventory option id. */
+export function matchNetworkOptionId(
+  options: readonly CatalogNetworkResourceOption[],
+  labelOrName: string,
+): string {
+  const trimmed = labelOrName.trim()
+  if (!trimmed) {
+    return options[0]?.id ?? ''
+  }
+
+  const byFullLabel = options.find((option) => getCatalogNetworkOptionLabel(option) === trimmed)
+  if (byFullLabel) {
+    return byFullLabel.id
+  }
+
+  const byName = options.find(
+    (option) => option.name === trimmed || trimmed.startsWith(`${option.name} ·`),
+  )
+  return byName?.id ?? options[0]?.id ?? ''
+}
+
+export function formatInstanceNetworkLabel(networking: {
+  virtualNetwork: string
+  subnet: string
+  securityGroup: string
+}): string {
+  return `${networking.virtualNetwork} / ${networking.subnet} · ${networking.securityGroup}`
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { RocketIcon } from '@patternfly/react-icons/dist/esm/icons/rocket-icon'
 import {
   Button,
@@ -16,25 +16,19 @@ import {
   DrawerHead,
   DrawerPanelBody,
   DrawerPanelContent,
-  Form,
-  FormGroup,
-  FormSelect,
-  FormSelectOption,
   Icon,
   Label,
-  Switch,
   Title,
 } from '@patternfly/react-core'
+import { CatalogExternalIpPoolSection } from '../catalog/CatalogExternalIpPoolSection'
+import { CatalogNetworkingLocksSection } from '../catalog/CatalogNetworkingLocksSection'
 import { CatalogPublishScopeIcon } from './CatalogPublishScopeIcon'
-import { NetworkFieldLockButton } from '../catalog/NetworkFieldLockButton'
 import { formatVipEnterpriseVisibilityLabel, getCatalogEnterpriseTenantIds } from './VipEnterpriseOrganizationField'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import {
   getCatalogItemNetworkPolicy,
   getCatalogItemStatus,
-  getCatalogSecurityGroupOptions,
-  getCatalogSubnetOptions,
-  getCatalogVirtualNetworkOptions,
+  getProviderExternalIpPools,
   getProviderRegisteredOrganizations,
 } from '../../providerSetup/storage'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
@@ -43,12 +37,7 @@ import {
   formatRateCardSummary,
   type CatalogServiceId,
 } from '../../providerSetup/templateDemo'
-import {
-  getCatalogNetworkOptionLabel,
-  resolveCatalogNetworkPolicyField,
-  type CatalogNetworkPolicy,
-  type CatalogNetworkResourceOption,
-} from '../../providerAdmin/catalogNetworkPolicy'
+import { type CatalogNetworkPolicy } from '../../providerAdmin/catalogNetworkPolicy'
 import {
   getCatalogSpecsSectionLabel,
   getDraftServiceId,
@@ -139,59 +128,15 @@ export function CatalogItemDetailsDrawer({
   const canLinkToBareMetalTemplate =
     Boolean(onNavigateToLinkedTemplate) && catalogServiceId === 'baremetal'
   const [networkPolicy, setNetworkPolicy] = useState<CatalogNetworkPolicy | null>(null)
-  const [virtualNetworkOptions, setVirtualNetworkOptions] = useState<CatalogNetworkResourceOption[]>(
-    () => getCatalogVirtualNetworkOptions(),
-  )
-  const [subnetOptions, setSubnetOptions] = useState<CatalogNetworkResourceOption[]>(() =>
-    getCatalogSubnetOptions(),
-  )
-  const [securityGroupOptions, setSecurityGroupOptions] = useState<CatalogNetworkResourceOption[]>(
-    () => getCatalogSecurityGroupOptions(),
-  )
+  const externalIpPools = useMemo(() => getProviderExternalIpPools(), [catalog?.catalogItemId])
 
   useEffect(() => {
     setNetworkPolicy(catalog ? getCatalogItemNetworkPolicy(catalog) : null)
-    setVirtualNetworkOptions(getCatalogVirtualNetworkOptions())
-    setSecurityGroupOptions(getCatalogSecurityGroupOptions())
   }, [catalog])
-
-  useEffect(() => {
-    if (!networkPolicy?.enabled) {
-      return
-    }
-    setSubnetOptions(getCatalogSubnetOptions(networkPolicy.virtualNetwork.id))
-  }, [networkPolicy?.enabled, networkPolicy?.virtualNetwork.id])
 
   const updateNetworkPolicy = (next: CatalogNetworkPolicy) => {
     setNetworkPolicy(next)
     onNetworkPolicyChange?.(next)
-  }
-
-  const handleVirtualNetworkChange = (value: string) => {
-    if (!networkPolicy) {
-      return
-    }
-
-    const nextSubnets = getCatalogSubnetOptions(value)
-    setSubnetOptions(nextSubnets)
-    const nextSubnetId =
-      nextSubnets.find((option) => option.id === networkPolicy.subnet.id)?.id ??
-      nextSubnets[0]?.id ??
-      networkPolicy.subnet.id
-
-    updateNetworkPolicy({
-      ...networkPolicy,
-      virtualNetwork: resolveCatalogNetworkPolicyField(
-        virtualNetworkOptions,
-        value,
-        networkPolicy.virtualNetwork.locked,
-      ),
-      subnet: resolveCatalogNetworkPolicyField(
-        nextSubnets,
-        nextSubnetId,
-        networkPolicy.subnet.locked,
-      ),
-    })
   }
 
   const panelContent = catalog ? (
@@ -440,172 +385,33 @@ export function CatalogItemDetailsDrawer({
         {networkPolicy ? (
           <>
             <Divider className="provider-admin-catalog-items__drawer-divider" />
-            <div className="provider-admin-catalog-items__drawer-network-header">
-              <div>
-                <Content
-                  component="p"
-                  className="provider-admin-catalog-items__drawer-section-title"
-                >
-                  Networking
-                </Content>
-                <Content
-                  component="p"
-                  className="provider-admin-catalog-items__drawer-section-lede"
-                >
-                  Turn on to set defaults for this offering. Locked fields cannot be changed by
-                  tenant admins.
-                </Content>
-              </div>
-              <Switch
-                id={`catalog-detail-network-enabled-${catalog.catalogItemId}`}
-                label={networkPolicy.enabled ? 'On' : 'Off'}
-                aria-label="Networking"
-                hasCheckIcon
-                isChecked={networkPolicy.enabled}
-                onChange={(_event, checked) =>
+            <div className="catalog-networking-step">
+              <CatalogNetworkingLocksSection
+                idPrefix={`catalog-detail-${catalog.catalogItemId}`}
+                policy={networkPolicy}
+                lede="Switch a field on to lock it for tenants. Fields are unlocked by default."
+                onChange={(field, locked) =>
                   updateNetworkPolicy({
                     ...networkPolicy,
-                    enabled: checked,
+                    enabled: true,
+                    [field]: { ...networkPolicy[field], locked },
+                  })
+                }
+              />
+              <CatalogExternalIpPoolSection
+                idPrefix={`catalog-detail-${catalog.catalogItemId}`}
+                policy={networkPolicy.externalIpPool}
+                pools={externalIpPools}
+                showDivider
+                onChange={(externalIpPool) =>
+                  updateNetworkPolicy({
+                    ...networkPolicy,
+                    enabled: true,
+                    externalIpPool,
                   })
                 }
               />
             </div>
-            {networkPolicy.enabled ? (
-              <Form
-                autoComplete="off"
-                className="provider-admin-catalog-items__drawer-network-form"
-              >
-                <div className="provider-admin-catalog-items__drawer-network-field">
-                  <FormGroup
-                    label="Virtual network"
-                    fieldId={`catalog-detail-vnet-${catalog.catalogItemId}`}
-                    className="provider-admin-catalog-items__drawer-network-field-group"
-                  >
-                    <FormSelect
-                      id={`catalog-detail-vnet-${catalog.catalogItemId}`}
-                      value={networkPolicy.virtualNetwork.id}
-                      isDisabled={networkPolicy.virtualNetwork.locked}
-                      onChange={(_event, value) => handleVirtualNetworkChange(value)}
-                      aria-label="Virtual network"
-                    >
-                      {virtualNetworkOptions.map((option) => (
-                        <FormSelectOption
-                          key={option.id}
-                          value={option.id}
-                          label={getCatalogNetworkOptionLabel(option)}
-                        />
-                      ))}
-                    </FormSelect>
-                  </FormGroup>
-                  <NetworkFieldLockButton
-                    isLocked={networkPolicy.virtualNetwork.locked}
-                    aria-label="Lock virtual network for tenant admins"
-                    lockTooltip="Lock value — unlock to change"
-                    unlockTooltip="Unlock to change this value"
-                    onToggle={(locked) =>
-                      updateNetworkPolicy({
-                        ...networkPolicy,
-                        virtualNetwork: {
-                          ...networkPolicy.virtualNetwork,
-                          locked,
-                        },
-                      })
-                    }
-                  />
-                </div>
-                <div className="provider-admin-catalog-items__drawer-network-field">
-                  <FormGroup
-                    label="Subnet"
-                    fieldId={`catalog-detail-subnet-${catalog.catalogItemId}`}
-                    className="provider-admin-catalog-items__drawer-network-field-group"
-                  >
-                    <FormSelect
-                      id={`catalog-detail-subnet-${catalog.catalogItemId}`}
-                      value={networkPolicy.subnet.id}
-                      isDisabled={networkPolicy.subnet.locked}
-                      onChange={(_event, value) =>
-                        updateNetworkPolicy({
-                          ...networkPolicy,
-                          subnet: resolveCatalogNetworkPolicyField(
-                            subnetOptions,
-                            value,
-                            networkPolicy.subnet.locked,
-                          ),
-                        })
-                      }
-                      aria-label="Subnet"
-                    >
-                      {subnetOptions.map((option) => (
-                        <FormSelectOption
-                          key={option.id}
-                          value={option.id}
-                          label={getCatalogNetworkOptionLabel(option)}
-                        />
-                      ))}
-                    </FormSelect>
-                  </FormGroup>
-                  <NetworkFieldLockButton
-                    isLocked={networkPolicy.subnet.locked}
-                    aria-label="Lock subnet for tenant admins"
-                    lockTooltip="Lock value — unlock to change"
-                    unlockTooltip="Unlock to change this value"
-                    onToggle={(locked) =>
-                      updateNetworkPolicy({
-                        ...networkPolicy,
-                        subnet: { ...networkPolicy.subnet, locked },
-                      })
-                    }
-                  />
-                </div>
-                <div className="provider-admin-catalog-items__drawer-network-field">
-                  <FormGroup
-                    label="Security group"
-                    fieldId={`catalog-detail-sg-${catalog.catalogItemId}`}
-                    className="provider-admin-catalog-items__drawer-network-field-group"
-                  >
-                    <FormSelect
-                      id={`catalog-detail-sg-${catalog.catalogItemId}`}
-                      value={networkPolicy.securityGroup.id}
-                      isDisabled={networkPolicy.securityGroup.locked}
-                      onChange={(_event, value) =>
-                        updateNetworkPolicy({
-                          ...networkPolicy,
-                          securityGroup: resolveCatalogNetworkPolicyField(
-                            securityGroupOptions,
-                            value,
-                            networkPolicy.securityGroup.locked,
-                          ),
-                        })
-                      }
-                      aria-label="Security group"
-                    >
-                      {securityGroupOptions.map((option) => (
-                        <FormSelectOption
-                          key={option.id}
-                          value={option.id}
-                          label={getCatalogNetworkOptionLabel(option)}
-                        />
-                      ))}
-                    </FormSelect>
-                  </FormGroup>
-                  <NetworkFieldLockButton
-                    isLocked={networkPolicy.securityGroup.locked}
-                    aria-label="Lock security group for tenant admins"
-                    lockTooltip="Lock value — unlock to change"
-                    unlockTooltip="Unlock to change this value"
-                    onToggle={(locked) =>
-                      updateNetworkPolicy({
-                        ...networkPolicy,
-                        securityGroup: {
-                          ...networkPolicy.securityGroup,
-                          locked,
-                        },
-                      })
-                    }
-                  />
-                </div>
-              </Form>
-            ) : null}
           </>
         ) : null}
       </DrawerPanelBody>

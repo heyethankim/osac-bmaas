@@ -36,7 +36,7 @@ export type TenantNetworkValueOverrideKey =
   | 'subnetId'
   | 'securityGroupId'
 
-const TENANT_NETWORK_OVERRIDES_KEY_PREFIX = 'bmaas-tenant-network-overrides-'
+const TENANT_NETWORK_OVERRIDES_KEY_PREFIX = 'bmaas-tenant-network-overrides-v2-'
 
 function getOverridesKey(slug: string): string {
   return `${TENANT_NETWORK_OVERRIDES_KEY_PREFIX}${slug}`
@@ -69,25 +69,60 @@ function isTenantNetworkOverrides(value: unknown): value is TenantNetworkOverrid
   )
 }
 
-export function getTenantNetworkOverrides(slug: string): TenantNetworkOverrides {
+function isTenantNetworkOverridesByCatalogItem(
+  value: unknown,
+): value is Record<string, TenantNetworkOverrides> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false
+  }
+
+  return Object.entries(value).every(
+    ([catalogItemId, overrides]) =>
+      typeof catalogItemId === 'string' &&
+      catalogItemId.length > 0 &&
+      isTenantNetworkOverrides(overrides),
+  )
+}
+
+function readTenantNetworkOverridesByCatalogItem(
+  slug: string,
+): Record<string, TenantNetworkOverrides> {
   try {
     const raw = sessionStorage.getItem(getOverridesKey(slug))
     if (!raw) {
       return {}
     }
     const parsed: unknown = JSON.parse(raw)
-    return isTenantNetworkOverrides(parsed) ? parsed : {}
+    return isTenantNetworkOverridesByCatalogItem(parsed) ? parsed : {}
   } catch {
     return {}
   }
 }
 
+/** Overrides are scoped per catalog item so cards reflect each offering’s networking. */
+export function getTenantNetworkOverrides(
+  slug: string,
+  catalogItemId?: string | null,
+): TenantNetworkOverrides {
+  if (!catalogItemId) {
+    return {}
+  }
+
+  return readTenantNetworkOverridesByCatalogItem(slug)[catalogItemId] ?? {}
+}
+
 export function setTenantNetworkOverrides(
   slug: string,
+  catalogItemId: string,
   overrides: TenantNetworkOverrides,
 ): TenantNetworkOverrides {
+  const next = {
+    ...readTenantNetworkOverridesByCatalogItem(slug),
+    [catalogItemId]: overrides,
+  }
+
   try {
-    sessionStorage.setItem(getOverridesKey(slug), JSON.stringify(overrides))
+    sessionStorage.setItem(getOverridesKey(slug), JSON.stringify(next))
   } catch {
     /* demo storage unavailable */
   }
@@ -205,7 +240,12 @@ export function resolveCatalogNetworkPolicyForOrganization(
   catalogDraft: ProviderCatalogDraft | null,
 ): CatalogNetworkPolicy {
   const base = resolveProviderCatalogNetworkPolicy(organization, catalogDraft)
-  return applyTenantNetworkOverrides(base, getTenantNetworkOverrides(organization.slug))
+  const catalogItemId =
+    catalogDraft?.catalogItemId ?? organization.catalogItemId ?? null
+  return applyTenantNetworkOverrides(
+    base,
+    getTenantNetworkOverrides(organization.slug, catalogItemId),
+  )
 }
 
 /** Policy Tenant Users see at launch (values + effective locks). */
@@ -213,7 +253,9 @@ export function resolveEffectiveNetworkPolicyForUsers(
   organization: RegisteredOrganization,
   catalogDraft: ProviderCatalogDraft | null,
 ): CatalogNetworkPolicy {
-  const overrides = getTenantNetworkOverrides(organization.slug)
+  const catalogItemId =
+    catalogDraft?.catalogItemId ?? organization.catalogItemId ?? null
+  const overrides = getTenantNetworkOverrides(organization.slug, catalogItemId)
   return applyTenantLocksForUsers(
     applyTenantNetworkOverrides(
       resolveProviderCatalogNetworkPolicy(organization, catalogDraft),

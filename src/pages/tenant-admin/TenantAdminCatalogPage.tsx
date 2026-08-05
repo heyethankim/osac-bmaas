@@ -36,6 +36,7 @@ import { CatalogPublishScopeIcon } from '../../components/provider-admin/Catalog
 import { TenantCatalogItemDetailsDrawer } from '../../components/tenant-admin/TenantCatalogItemDetailsDrawer'
 import { TenantUserLaunchInstanceWizard } from '../../components/tenant-user/TenantUserLaunchInstanceWizard'
 import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
+import { KubernetesResourceNameHelper } from '../../components/shared/KubernetesResourceNameHelper'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import { formatCatalogConfigurationSummary } from '../../catalog/catalogSpecs'
 import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
@@ -60,6 +61,7 @@ import type { TenantProject } from '../../tenantAdmin/projects'
 import { getTenantUserCatalogCardFromDraft, TENANT_USER_CATALOG_FALLBACK } from '../../tenantUser/catalog'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
 import type { TenantInstance } from '../../tenantUser/instances'
+import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
 
 type TenantAdminCatalogPageProps = {
   organization: RegisteredOrganization
@@ -122,7 +124,7 @@ function NetworkingSummary({
   compact?: boolean
   onViewDetails?: () => void
 }) {
-  const overrides = getTenantNetworkOverrides(organizationSlug)
+  const overrides = getTenantNetworkOverrides(organizationSlug, item.catalogItemId)
   const lockSummary = getTenantNetworkLockSummary(
     applyTenantLocksForUsers(item.networkPolicy, overrides),
   )
@@ -158,9 +160,7 @@ function NetworkingSummary({
     <Content
       component="p"
       className={
-        compact
-          ? 'tenant-admin-catalog-manager__networking-table-summary'
-          : undefined
+        compact ? 'tenant-admin-catalog-manager__networking-table-summary' : undefined
       }
     >
       {compact
@@ -427,38 +427,20 @@ export function TenantAdminCatalogPage({
     setIsDetailsDrawerOpen(false)
   }
 
-  const handleChangeNetworkField = (kind: TenantNetworkResourceKind, optionId: string) => {
-    const overrideKey =
-      kind === 'virtual-network'
-        ? 'virtualNetworkId'
-        : kind === 'subnet'
-          ? 'subnetId'
-          : 'securityGroupId'
-    const currentOverrides = getTenantNetworkOverrides(organization.slug)
-    setTenantNetworkOverrides(organization.slug, {
-      ...currentOverrides,
-      [overrideKey]: optionId,
-    })
-
-    const refreshed = getTenantCatalogGovernanceItems(organization, catalogDraft)
-    setCatalogItems(refreshed)
-    setSelectedCatalogItem((selected) => {
-      if (!selected) {
-        return selected
-      }
-      return refreshed.find((item) => item.id === selected.id) ?? selected
-    })
-  }
-
   const handleChangeLockForUsers = (kind: TenantNetworkResourceKind, locked: boolean) => {
+    if (!selectedCatalogItem) {
+      return
+    }
+
+    const catalogItemId = selectedCatalogItem.catalogItemId
     const lockKey =
       kind === 'virtual-network'
         ? 'virtualNetwork'
         : kind === 'subnet'
           ? 'subnet'
           : 'securityGroup'
-    const currentOverrides = getTenantNetworkOverrides(organization.slug)
-    setTenantNetworkOverrides(organization.slug, {
+    const currentOverrides = getTenantNetworkOverrides(organization.slug, catalogItemId)
+    setTenantNetworkOverrides(organization.slug, catalogItemId, {
       ...currentOverrides,
       lockForUsers: {
         ...currentOverrides.lockForUsers,
@@ -466,7 +448,6 @@ export function TenantAdminCatalogPage({
       },
     })
 
-    // Force re-render so card status and drawer labels refresh from sessionStorage.
     const refreshed = getTenantCatalogGovernanceItems(organization, catalogDraft)
     setCatalogItems(refreshed)
     setSelectedCatalogItem((selected) => {
@@ -516,7 +497,7 @@ export function TenantAdminCatalogPage({
     const duplicate: TenantCatalogGovernanceItemWithNetworking = {
       ...item,
       id: `${item.id}-copy-${suffix}`,
-      displayName: `${item.displayName} (copy)`,
+      displayName: `${item.displayName}-copy`,
       status: 'Unpublished',
       approved: false,
     }
@@ -587,7 +568,6 @@ export function TenantAdminCatalogPage({
       organizationSlug={organization.slug}
       projectCount={projects.length}
       onNavigateToProjectsTeams={onNavigateToProjectsTeams}
-      onChangeNetworkField={handleChangeNetworkField}
       onChangeLockForUsers={handleChangeLockForUsers}
       onLaunch={() => {
         if (selectedCatalogItem) {
@@ -835,12 +815,21 @@ export function TenantAdminCatalogPage({
         <ModalHeader title="Edit catalog item" labelId="tenant-edit-catalog-item-title" />
         <ModalBody>
           <Form>
-            <FormGroup label="Display name" fieldId="tenant-edit-catalog-display-name" isRequired>
+            <FormGroup label="Name" fieldId="tenant-edit-catalog-display-name" isRequired>
               <TextInput
                 id="tenant-edit-catalog-display-name"
                 value={editDisplayName}
+                validated={
+                  editDisplayName.trim() && !isValidKubernetesResourceName(editDisplayName)
+                    ? 'error'
+                    : 'default'
+                }
                 onChange={(_event, value) => setEditDisplayName(value)}
-                aria-label="Display name"
+                aria-label="Name"
+              />
+              <KubernetesResourceNameHelper
+                value={editDisplayName}
+                id="tenant-edit-catalog-display-name-helper"
               />
             </FormGroup>
           </Form>
@@ -849,7 +838,7 @@ export function TenantAdminCatalogPage({
           <Button
             variant="primary"
             onClick={handleSaveEdit}
-            isDisabled={!editDisplayName.trim()}
+            isDisabled={!isValidKubernetesResourceName(editDisplayName)}
           >
             Save
           </Button>

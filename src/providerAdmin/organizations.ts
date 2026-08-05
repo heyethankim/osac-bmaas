@@ -180,7 +180,7 @@ export function buildDemoIdentityProviderName(
 }
 
 /** Stable id for the Organizations page baseline row. */
-export const DEMO_NORTH_SUMMIT_BANK_ORG_ID = 'org_northstar_bank'
+export const DEMO_NORTH_SUMMIT_BANK_ORG_ID = 'org-northstar-bank'
 export const DEMO_NORTH_SUMMIT_BANK_TENANT_ID = 'tenant-northstar'
 
 export const REGISTER_ORGANIZATION_STEPS = [
@@ -203,7 +203,7 @@ export const DEFAULT_REGISTER_ORGANIZATION_FORM: RegisterOrganizationForm = {
   organizationName: DEMO_TENANT_LABEL.northstar,
   primaryDomain: 'northsummitbank.com',
   billingAccountId: '',
-  billingAccountName: 'North Summit Bank — Enterprise Billing',
+  billingAccountName: 'north-summit-bank-enterprise-billing',
   externalIpPoolId: 'eipool-northstar-edge',
   maxInstances: '20',
 }
@@ -227,7 +227,7 @@ export function createDemoNorthSummitBankOrganization(
     slug: 'northstar',
     primaryDomain,
     billingAccountId: 'ACCT-NSB-2048',
-    billingAccountName: 'North Summit Bank — Enterprise Billing',
+    billingAccountName: 'north-summit-bank-enterprise-billing',
     catalogItemId: options.catalogItemId ?? null,
     catalogDisplayName: options.catalogDisplayName ?? null,
     externalIpPoolId: options.externalIpPoolId ?? DEFAULT_REGISTER_ORGANIZATION_FORM.externalIpPoolId,
@@ -248,7 +248,7 @@ export function createDemoNorthSummitBankOrganization(
     ],
     identityProviderConnected: true,
     identityProviderName: buildDemoIdentityProviderName('OIDC', primaryDomain),
-    identityProviderDisplayName: 'North Summit Bank IdP',
+    identityProviderDisplayName: 'north-summit-bank-idp',
     identityProviderProtocol: 'OIDC',
     identityProviderIssuerUrl: `https://login.${primaryDomain}/oauth2`,
     identityProviderClientId: 'bmaas-northstar',
@@ -267,27 +267,27 @@ const REGISTER_ORGANIZATION_DEMO_PRESETS: Array<{
   {
     organizationName: DEMO_TENANT_LABEL.northstar,
     primaryDomain: 'northsummitbank.com',
-    billingAccountName: 'North Summit Bank — Enterprise Billing',
+    billingAccountName: 'north-summit-bank-enterprise-billing',
   },
   {
     organizationName: DEMO_TENANT_LABEL.evergreen,
     primaryDomain: 'bluesolacefinancial.com',
-    billingAccountName: 'BlueSolace Financial Group — Enterprise Billing',
+    billingAccountName: 'bluesolace-financial-group-enterprise-billing',
   },
   {
-    organizationName: 'Harborline Capital',
+    organizationName: 'harborline-capital',
     primaryDomain: 'harborlinecapital.com',
-    billingAccountName: 'Harborline Capital — Enterprise Billing',
+    billingAccountName: 'harborline-capital-enterprise-billing',
   },
   {
-    organizationName: 'Silverpine Trust',
+    organizationName: 'silverpine-trust',
     primaryDomain: 'silverpinetrust.com',
-    billingAccountName: 'Silverpine Trust — Enterprise Billing',
+    billingAccountName: 'silverpine-trust-enterprise-billing',
   },
   {
-    organizationName: 'Redwood Mutual',
+    organizationName: 'redwood-mutual',
     primaryDomain: 'redwoodmutual.com',
-    billingAccountName: 'Redwood Mutual — Enterprise Billing',
+    billingAccountName: 'redwood-mutual-enterprise-billing',
   },
 ]
 
@@ -299,7 +299,7 @@ export const DEFAULT_REGISTER_ORGANIZATION_TENANT_ADMIN = {
 
 export function generateOrganizationId(): string {
   const suffix = Math.random().toString(36).slice(2, 8)
-  return `org_${suffix}`
+  return `org-${suffix}`
 }
 
 export function generateTenantId(): string {
@@ -334,11 +334,21 @@ export function isValidPrimaryDomain(value: string): boolean {
 export function slugifyOrganizationName(name: string): string {
   const normalized = name.trim().toLowerCase()
 
-  if (normalized === 'north summit bank') {
+  if (
+    normalized === 'north summit bank' ||
+    normalized === 'north-summit-bank' ||
+    normalized === 'northstar bank'
+  ) {
     return 'northstar'
   }
 
-  if (normalized === 'bluesolace financial group' || normalized === 'blue solace financial group') {
+  if (
+    normalized === 'bluesolace financial group' ||
+    normalized === 'blue solace financial group' ||
+    normalized === 'bluesolace-financial-group' ||
+    normalized === 'bluestone financial group' ||
+    normalized === 'bluestone-financial-group'
+  ) {
     return 'evergreen'
   }
 
@@ -426,7 +436,7 @@ export function buildNextRegisterOrganizationForm(
 
   let suffix = existingOrganizations.length + 1
   while (suffix < existingOrganizations.length + 100) {
-    const organizationName = `Vertexa Tenant ${suffix}`
+    const organizationName = `vertexa-tenant-${suffix}`
     const primaryDomain = `tenant${suffix}.example.com`
     const slug = slugifyOrganizationName(organizationName)
     if (
@@ -438,7 +448,7 @@ export function buildNextRegisterOrganizationForm(
         ...DEFAULT_REGISTER_ORGANIZATION_FORM,
         organizationName,
         primaryDomain,
-        billingAccountName: `${organizationName} — Enterprise Billing`,
+        billingAccountName: `${organizationName}-enterprise-billing`,
         billingAccountId: generateBillingAccountId(),
       }
     }
@@ -448,9 +458,9 @@ export function buildNextRegisterOrganizationForm(
   const unique = Math.random().toString(36).slice(2, 6)
   return {
     ...DEFAULT_REGISTER_ORGANIZATION_FORM,
-    organizationName: `Vertexa Tenant ${unique}`,
+    organizationName: `vertexa-tenant-${unique}`,
     primaryDomain: `tenant-${unique}.example.com`,
-    billingAccountName: `Vertexa Tenant ${unique} — Enterprise Billing`,
+    billingAccountName: `vertexa-tenant-${unique}-enterprise-billing`,
     billingAccountId: generateBillingAccountId(),
   }
 }

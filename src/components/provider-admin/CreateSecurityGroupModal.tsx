@@ -13,11 +13,13 @@ import {
   ModalVariant,
   TextInput,
 } from '@patternfly/react-core'
+import { KubernetesResourceNameHelper } from '../shared/KubernetesResourceNameHelper'
 import {
   generateProviderSecurityGroupId,
   type ProviderSecurityGroup,
   type ProviderVirtualNetwork,
 } from '../../providerAdmin/networkInventory'
+import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
 import { addProviderSecurityGroup } from '../../providerSetup/storage'
 
 type CreateSecurityGroupForm = {
@@ -60,8 +62,9 @@ export function CreateSecurityGroupModal({
     }
   }, [isOpen, virtualNetworks])
 
+  const isNameValid = isValidKubernetesResourceName(form.name)
   const isCreateDisabled =
-    !form.name.trim() || !form.virtualNetworkId.trim() || virtualNetworks.length === 0
+    !isNameValid || !form.virtualNetworkId.trim() || virtualNetworks.length === 0
 
   const handleCreate = () => {
     if (isCreateDisabled) {
@@ -102,8 +105,11 @@ export function CreateSecurityGroupModal({
             <TextInput
               id="create-sg-name"
               value={form.name}
+              validated={form.name.trim() && !isNameValid ? 'error' : 'default'}
               onChange={(_event, value) => setForm((current) => ({ ...current, name: value }))}
+              placeholder="e.g. allow-demo-workload"
             />
+            <KubernetesResourceNameHelper value={form.name} id="create-sg-name-helper" />
           </FormGroup>
           <FormGroup label="Description" fieldId="create-sg-detail">
             <TextInput

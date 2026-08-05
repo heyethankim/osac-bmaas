@@ -1,6 +1,12 @@
 export type DemoTenantId = 'northstar' | 'evergreen'
 
 export const DEMO_TENANT_LABEL: Record<DemoTenantId, string> = {
+  northstar: 'north-summit-bank',
+  evergreen: 'bluesolace-financial-group',
+}
+
+/** Pre-Kubernetes-convention organization display names — matched when migrating stored orgs. */
+export const LEGACY_DEMO_TENANT_LABEL: Record<DemoTenantId, string> = {
   northstar: 'North Summit Bank',
   evergreen: 'BlueSolace Financial Group',
 }

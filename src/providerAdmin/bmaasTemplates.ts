@@ -10,7 +10,7 @@ import {
 import { getProviderCatalogItems, getProviderSavedTemplates } from '../providerSetup/storage'
 
 /** Matches the catalog prototype seed (`createDefaultCatalogDraft`). */
-export const DEFAULT_MASTER_TEMPLATE_REF_ID = 'bm_dell_r750'
+export const DEFAULT_MASTER_TEMPLATE_REF_ID = 'bm-dell-r750'
 
 export type BmaasTemplateStatus = 'published' | 'private' | 'draft'
 

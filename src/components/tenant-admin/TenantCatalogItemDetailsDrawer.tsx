@@ -15,19 +15,17 @@ import {
   DrawerHead,
   DrawerPanelBody,
   DrawerPanelContent,
-  FormSelect,
-  FormSelectOption,
   Icon,
   Label,
   Title,
 } from '@patternfly/react-core'
-import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
 import { RocketIcon } from '@patternfly/react-icons/dist/esm/icons/rocket-icon'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import { getCatalogSpecsSectionLabel, resolveVmCatalogHighlightRows } from '../../catalog/catalogSpecs'
 import { formatCatalogFieldPolicyMode } from '../../catalog/catalogPublishConfig'
+import { CatalogExternalIpPoolSection } from '../catalog/CatalogExternalIpPoolSection'
+import { CatalogNetworkingLocksSection } from '../catalog/CatalogNetworkingLocksSection'
 import { CatalogVmDefaultsSections } from '../catalog/CatalogVmDefaultsSections'
-import { NetworkFieldLockButton } from '../catalog/NetworkFieldLockButton'
 import { CatalogPublishScopeIcon } from '../provider-admin/CatalogPublishScopeIcon'
 import {
   TENANT_CATALOG_MANAGER_DEMO,
@@ -36,11 +34,11 @@ import {
   type TenantCatalogGovernanceItemWithNetworking,
 } from '../../tenantAdmin/catalogManager'
 import {
-  getTenantCatalogNetworkFieldSummaries,
+  applyTenantLocksForUsers,
   getTenantNetworkOverrides,
-  getTenantNetworkResourceMeta,
   type TenantNetworkResourceKind,
 } from '../../tenantAdmin/networking'
+import { getProviderExternalIpPools } from '../../providerSetup/storage'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
 
 function getVisibilityLabel(scope: TenantCatalogGovernanceItemWithNetworking['scope']): string {
@@ -54,7 +52,6 @@ type TenantCatalogItemDetailsDrawerProps = {
   organizationSlug: string
   projectCount: number
   onNavigateToProjectsTeams: () => void
-  onChangeNetworkField: (kind: TenantNetworkResourceKind, optionId: string) => void
   onChangeLockForUsers: (kind: TenantNetworkResourceKind, locked: boolean) => void
   onLaunch?: () => void
   children: ReactNode
@@ -67,16 +64,21 @@ export function TenantCatalogItemDetailsDrawer({
   organizationSlug,
   projectCount,
   onNavigateToProjectsTeams,
-  onChangeNetworkField,
   onChangeLockForUsers,
   onLaunch,
   children,
 }: TenantCatalogItemDetailsDrawerProps) {
-  const overrides = getTenantNetworkOverrides(organizationSlug)
-  const networkFields = item
-    ? getTenantCatalogNetworkFieldSummaries(item.networkPolicy, overrides)
-    : []
-  const virtualNetworkId = item?.networkPolicy.virtualNetwork.id
+  const overrides = getTenantNetworkOverrides(organizationSlug, item?.catalogItemId)
+  const networkPolicy = item
+    ? applyTenantLocksForUsers(item.networkPolicy, overrides)
+    : null
+  const providerLocked = item
+    ? {
+        virtualNetwork: item.networkPolicy.virtualNetwork.locked,
+        subnet: item.networkPolicy.subnet.locked,
+        securityGroup: item.networkPolicy.securityGroup.locked,
+      }
+    : undefined
   const specRows = item ? getTenantCatalogItemDetailSpecRows(item) : []
   const displaySpecRows =
     item?.instanceTypeLabel || item?.diskImageLabel
@@ -264,85 +266,32 @@ export function TenantCatalogItemDetailsDrawer({
 
         <Divider className="tenant-admin-catalog-manager__drawer-divider" />
 
-        <div className="tenant-admin-catalog-manager__drawer-section">
-          <Content component="p" className="tenant-admin-catalog-manager__drawer-section-title">
-            {TENANT_CATALOG_MANAGER_DEMO.networkingLabel}
-          </Content>
-          {!item.networkPolicy.enabled ? (
-            <Content component="p" className="tenant-admin-catalog-manager__drawer-section-lede">
-              Networking is off for this catalog item. Provider has not enabled network defaults.
-            </Content>
-          ) : (
-            <>
-              <Content component="p" className="tenant-admin-catalog-manager__drawer-section-lede">
-                {TENANT_CATALOG_MANAGER_DEMO.networkingSectionLede}
-              </Content>
-              <DescriptionList
-                isCompact
-                className="tenant-admin-catalog-manager__drawer-dl"
-                aria-label="Networking configuration"
-              >
-                {networkFields.map((field) => {
-                  const meta = getTenantNetworkResourceMeta(field.kind, virtualNetworkId)
-
-                  return (
-                    <DescriptionListGroup key={field.kind}>
-                      <DescriptionListTerm>
-                        <span className="tenant-admin-catalog-manager__drawer-network-term">
-                          <span>{field.label}</span>
-                          {field.providerLocked ? (
-                            <Label color="grey" isCompact icon={<LockIcon />}>
-                              Locked by provider
-                            </Label>
-                          ) : field.lockedForUsers ? (
-                            <Label color="grey" isCompact icon={<LockIcon />}>
-                              Locked for users
-                            </Label>
-                          ) : (
-                            <Label color="blue" isCompact>
-                              Editable for users
-                            </Label>
-                          )}
-                        </span>
-                      </DescriptionListTerm>
-                      <DescriptionListDescription>
-                        {field.providerLocked ? (
-                          field.value
-                        ) : (
-                          <div className="tenant-admin-catalog-manager__drawer-network-controls">
-                            <FormSelect
-                              id={`tenant-catalog-network-${field.kind}`}
-                              className="tenant-admin-catalog-manager__drawer-network-select"
-                              value={field.selectedId}
-                              isDisabled={field.lockedForUsers}
-                              aria-label={field.label}
-                              onChange={(_event, value) => onChangeNetworkField(field.kind, value)}
-                            >
-                              {meta.options.map((option) => (
-                                <FormSelectOption
-                                  key={option.id}
-                                  value={option.id}
-                                  label={`${option.name} · ${option.detail}`}
-                                />
-                              ))}
-                            </FormSelect>
-                            <NetworkFieldLockButton
-                              isLocked={field.lockedForUsers}
-                              aria-label={`Lock ${field.label} for tenant users`}
-                              lockTooltip="Lock value — unlock to change"
-                              unlockTooltip="Unlock to change this value"
-                              onToggle={(locked) => onChangeLockForUsers(field.kind, locked)}
-                            />
-                          </div>
-                        )}
-                      </DescriptionListDescription>
-                    </DescriptionListGroup>
-                  )
-                })}
-              </DescriptionList>
-            </>
-          )}
-        </div>
+        {networkPolicy ? (
+          <div className="catalog-networking-step">
+            <CatalogNetworkingLocksSection
+              idPrefix={`tenant-admin-catalog-${item.catalogItemId}`}
+              policy={networkPolicy}
+              lede={TENANT_CATALOG_MANAGER_DEMO.networkingSectionLede}
+              providerLocked={providerLocked}
+              onChange={(field, locked) => {
+                const kind =
+                  field === 'virtualNetwork'
+                    ? 'virtual-network'
+                    : field === 'subnet'
+                      ? 'subnet'
+                      : 'security-group'
+                onChangeLockForUsers(kind, locked)
+              }}
+            />
+            <CatalogExternalIpPoolSection
+              idPrefix={`tenant-admin-catalog-${item.catalogItemId}`}
+              policy={networkPolicy.externalIpPool}
+              pools={getProviderExternalIpPools()}
+              readOnly
+              showDivider
+            />
+          </div>
+        ) : null}
 
         <Divider className="tenant-admin-catalog-manager__drawer-divider" />
 

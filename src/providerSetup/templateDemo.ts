@@ -155,13 +155,13 @@ export const TEMPLATE_SAVE_VALIDATION_TASKS = [
 ] as const
 
 export function generateTemplateReferenceId(): string {
-  const suffix = Math.random().toString(36).slice(2, 10).toUpperCase()
-  return `bm_${suffix}`
+  const suffix = Math.random().toString(36).slice(2, 10).toLowerCase()
+  return `bm-${suffix}`
 }
 
 export function generateCatalogItemId(): string {
-  const suffix = Math.random().toString(36).slice(2, 10).toUpperCase()
-  return `cat_${suffix}`
+  const suffix = Math.random().toString(36).slice(2, 10).toLowerCase()
+  return `cat-${suffix}`
 }
 
 export function getHardwareProfileLabel(profileId: string): string {
@@ -208,12 +208,15 @@ export function formatRateCardHourly(rateCard: RateCard): string {
   return `$${rateCard.hourlyRate.toFixed(2)}/hr`
 }
 
-export const DEFAULT_CATALOG_ITEM_DISPLAY_NAME = 'Bare Metal - GPU Training Server'
-export const SECOND_CATALOG_ITEM_DISPLAY_NAME = 'Bare Metal - Dense GPU Node'
+export const DEFAULT_CATALOG_ITEM_DISPLAY_NAME = 'bare-metal-gpu-training-server'
+export const SECOND_CATALOG_ITEM_DISPLAY_NAME = 'bare-metal-dense-gpu-node'
 /** Previous title for the second Bare Metal demo item — used when migrating stored catalogs. */
 export const LEGACY_SECOND_CATALOG_ITEM_DISPLAY_NAME = 'Bare Metal - AI Inference Host'
+/** Pre-Kubernetes-convention catalog titles — matched when migrating stored catalogs. */
+export const LEGACY_DEFAULT_CATALOG_ITEM_DISPLAY_NAME = 'Bare Metal - GPU Training Server'
+export const LEGACY_SECOND_CATALOG_ITEM_TITLE_CASE_DISPLAY_NAME = 'Bare Metal - Dense GPU Node'
 /** Prefill for Provider Admin “Create catalog item” Name step (distinct from seeded items). */
-export const PUBLISH_CATALOG_SUGGESTED_DISPLAY_NAME = 'Bare Metal - General Purpose Server'
+export const PUBLISH_CATALOG_SUGGESTED_DISPLAY_NAME = 'bare-metal-general-purpose-server'
 
 export function getCatalogDisplayName(hardwareProfileId: string): string {
   const profile = DISCOVERED_HARDWARE_PROFILES.find((item) => item.id === hardwareProfileId)
@@ -240,7 +243,7 @@ export type SavedMasterTemplate = {
 
 export const DEMO_EXISTING_MASTER_TEMPLATES: SavedMasterTemplate[] = [
   {
-    templateRefId: 'bm_hpe_dl380_a100',
+    templateRefId: 'bm-hpe-dl380-a100',
     templateName: GPU_BLUEPRINT_FORM.templateName,
     description: GPU_BLUEPRINT_FORM.description,
     hardwareProfileId: GPU_BLUEPRINT_FORM.hardwareProfileId,

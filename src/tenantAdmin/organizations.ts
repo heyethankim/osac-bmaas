@@ -77,7 +77,7 @@ export function getWorkspaceOrganization(slug: string): RegisteredOrganization {
   const defaultExternalIpPool = resolveDefaultExternalIpPoolFields()
 
   return {
-    id: 'org_demo',
+    id: 'org-demo',
     name: tenantLabel,
     tenantId: 'tenant-demo',
     slug,

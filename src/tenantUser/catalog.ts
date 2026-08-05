@@ -88,7 +88,7 @@ export const TENANT_USER_CATALOG_FALLBACK: TenantUserCatalogCard = {
   serviceId: 'baremetal',
   service: CATALOG_SERVICE_LABELS.baremetal,
   status: 'Live',
-  displayName: 'Bare Metal - GPU Training Server',
+  displayName: 'bare-metal-gpu-training-server',
   categoryLabel: TENANT_USER_CATALOG_SPECS.categoryLabel,
   hardwareProfile: TENANT_USER_CATALOG_SPECS.hardwareProfile,
   specRows: [
@@ -102,9 +102,9 @@ export const TENANT_USER_CATALOG_FALLBACK: TenantUserCatalogCard = {
   gpu: TENANT_USER_CATALOG_SPECS.gpu,
   osImage: TENANT_USER_CATALOG_SPECS.osImage,
   footerNote: TENANT_USER_CATALOG_SPECS.footerNote,
-  catalogItemId: 'cat_L3RID02N',
-  templateRefId: 'bm_2R6X47GO',
-  templateName: 'compute-standard-r750',
+  catalogItemId: 'cat-bm-gpu-training',
+  templateRefId: 'bm-dell-r750',
+  templateName: 'gpu-a100-training-standard',
   rateCard: {
     hourlyRate: 4.25,
     monthlyRate: 2850,

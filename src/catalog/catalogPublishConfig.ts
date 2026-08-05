@@ -29,12 +29,31 @@ export type CatalogDiskImageOption = {
   detail: string
 }
 
+/** Support lifecycle shown when choosing a cluster version in the publish wizard. */
+export type CatalogClusterVersionLifecycle = 'active' | 'deprecated' | 'obsolete'
+
 /** OpenShift version advertised on a Cluster as a Service catalog item. */
 export type CatalogClusterVersionOption = {
   id: string
   label: string
   detail: string
   releaseImage: string
+  lifecycle: CatalogClusterVersionLifecycle
+  /** Demo highlights shown when the version card is expanded in the publish wizard. */
+  features: readonly string[]
+}
+
+export function getCatalogClusterVersionLifecycleMeta(
+  lifecycle: CatalogClusterVersionLifecycle,
+): { color: 'green' | 'orange' | 'grey'; text: string } {
+  switch (lifecycle) {
+    case 'active':
+      return { color: 'green', text: 'Active' }
+    case 'deprecated':
+      return { color: 'orange', text: 'Deprecated' }
+    case 'obsolete':
+      return { color: 'grey', text: 'Obsolete' }
+  }
 }
 
 /** Present provisioning templates as the "how", not the hardware SKU. */
@@ -67,7 +86,7 @@ function getBareMetalProvisioningPresentation(
 ): CatalogProvisioningPresentation {
   if (isGpu) {
     return {
-      title: 'GPU Bare Metal Template',
+      title: 'gpu-bare-metal-template',
       description:
         'Provisions GPU bare metal hosts using the Metal3 Baremetal Operator, including BMC power control and OS imaging for AI training fleets.',
       parameters: [],
@@ -75,7 +94,7 @@ function getBareMetalProvisioningPresentation(
   }
 
   return {
-    title: 'Standard Bare Metal Template',
+    title: 'standard-bare-metal-template',
     description:
       'Provisions bare metal hosts using the Metal3 Baremetal Operator, including BMC power control and OS imaging for standard compute workloads.',
     parameters: [],
@@ -87,7 +106,7 @@ function getVirtualMachineProvisioningPresentation(
 ): CatalogProvisioningPresentation {
   if (isGpu) {
     return {
-      title: 'GPU Passthrough Template',
+      title: 'gpu-passthrough-template',
       description:
         'Provisions VMs with dedicated GPU passthrough via VFIO binding on GPU-capable hosts.',
       parameters: [],
@@ -95,7 +114,7 @@ function getVirtualMachineProvisioningPresentation(
   }
 
   return {
-    title: 'Standard VM Template',
+    title: 'standard-vm-template',
     description:
       'Provisions virtual machines using the core Ansible role, including networking, storage, and cloud-init seeding.',
     parameters: [],
@@ -107,7 +126,7 @@ function getClusterProvisioningPresentation(
 ): CatalogProvisioningPresentation {
   if (isGpu) {
     return {
-      title: 'GPU Cluster Template',
+      title: 'gpu-cluster-template',
       description:
         'Provisions OpenShift clusters with GPU worker pools and installs the GPU operator stack after bootstrap.',
       parameters: [],
@@ -115,7 +134,7 @@ function getClusterProvisioningPresentation(
   }
 
   return {
-    title: 'Standard Cluster Template',
+    title: 'standard-cluster-template',
     description:
       'Provisions OpenShift clusters using the Assisted Installer / Hive path, including control-plane bootstrap and worker join.',
     parameters: [],
@@ -127,7 +146,7 @@ function getModelProvisioningPresentation(
 ): CatalogProvisioningPresentation {
   if (isGpu) {
     return {
-      title: 'GPU Model Serving Template',
+      title: 'gpu-model-serving-template',
       description:
         'Deploys model-serving runtimes on GPU-backed capacity, including accelerator scheduling and model artifact pull.',
       parameters: [],
@@ -135,7 +154,7 @@ function getModelProvisioningPresentation(
   }
 
   return {
-    title: 'Standard Model Serving Template',
+    title: 'standard-model-serving-template',
     description:
       'Deploys model-serving runtimes on CPU capacity, including runtime image pull, endpoint exposure, and health probes.',
     parameters: [],
@@ -224,22 +243,108 @@ export function getCatalogDiskImageOptions(): CatalogDiskImageOption[] {
 
 export const CATALOG_CLUSTER_VERSION_OPTIONS: ReadonlyArray<CatalogClusterVersionOption> = [
   {
-    id: 'ocp-4.15',
-    label: 'Red Hat OpenShift 4.15',
+    id: 'ocp-4.21',
+    label: 'Red Hat OpenShift 4.21',
     detail: 'OpenShift Container Platform · multi-arch',
-    releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.15.0-multi',
+    releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.21.0-multi',
+    lifecycle: 'active',
+    features: [
+      'Latest Node Sets defaults for Cluster as a Service',
+      'Enhanced GPU scheduling for AI training fleets',
+      'Multi-arch control plane (x86_64 and aarch64)',
+      'Newest platform operators and certified catalog',
+    ],
+  },
+  {
+    id: 'ocp-4.20',
+    label: 'Red Hat OpenShift 4.20',
+    detail: 'OpenShift Container Platform · multi-arch',
+    releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.20.0-multi',
+    lifecycle: 'active',
+    features: [
+      'Stable Node Sets provisioning path',
+      'Improved bare-metal installer hooks',
+      'Multi-arch release image',
+      'Full operator catalog compatibility',
+    ],
+  },
+  {
+    id: 'ocp-4.19',
+    label: 'Red Hat OpenShift 4.19',
+    detail: 'OpenShift Container Platform · multi-arch',
+    releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.19.0-multi',
+    lifecycle: 'active',
+    features: [
+      'Recommended default for new Cluster as a Service catalogs',
+      'Validated Node Sets and Machine Config defaults',
+      'Multi-arch release image',
+      'Broad operator ecosystem support',
+    ],
+  },
+  {
+    id: 'ocp-4.18',
+    label: 'Red Hat OpenShift 4.18',
+    detail: 'OpenShift Container Platform · multi-arch',
+    releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.18.0-multi',
+    lifecycle: 'active',
+    features: [
+      'Long-lived active stream for production catalogs',
+      'Mature bare-metal and virtualization operators',
+      'Multi-arch release image',
+      'Compatible with existing tenant launch flows',
+    ],
+  },
+  {
+    id: 'ocp-4.17',
+    label: 'Red Hat OpenShift 4.17',
+    detail: 'OpenShift Container Platform · multi-arch',
+    releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.17.0-multi',
+    lifecycle: 'deprecated',
+    features: [
+      'Maintenance updates only',
+      'Node Sets still supported for existing catalogs',
+      'Prefer upgrade path to 4.18 or newer',
+      'Multi-arch release image',
+    ],
   },
   {
     id: 'ocp-4.16',
     label: 'Red Hat OpenShift 4.16',
     detail: 'OpenShift Container Platform · multi-arch',
     releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.16.0-multi',
+    lifecycle: 'deprecated',
+    features: [
+      'Extended life ending soon',
+      'Limited new operator certifications',
+      'Prefer 4.18 or newer for new catalogs',
+      'Multi-arch release image',
+    ],
   },
   {
-    id: 'ocp-4.21',
-    label: 'Red Hat OpenShift 4.21',
+    id: 'ocp-4.15',
+    label: 'Red Hat OpenShift 4.15',
     detail: 'OpenShift Container Platform · multi-arch',
-    releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.21.0-multi',
+    releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.15.0-multi',
+    lifecycle: 'obsolete',
+    features: [
+      'End of standard support',
+      'Security fixes only where available',
+      'Not recommended for new catalogs',
+      'Migrate workloads to an active version',
+    ],
+  },
+  {
+    id: 'ocp-4.14',
+    label: 'Red Hat OpenShift 4.14',
+    detail: 'OpenShift Container Platform · multi-arch',
+    releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.14.0-multi',
+    lifecycle: 'obsolete',
+    features: [
+      'End of life',
+      'No new platform features',
+      'Not suitable for new production catalogs',
+      'Migrate to an active OpenShift version',
+    ],
   },
 ]
 
@@ -248,7 +353,7 @@ export function getCatalogClusterVersionOptions(): CatalogClusterVersionOption[]
 }
 
 /** Default cluster version for seeded Node Sets demo catalog item. */
-export const DEFAULT_CLUSTER_CATALOG_VERSION_ID = 'ocp-4.16'
+export const DEFAULT_CLUSTER_CATALOG_VERSION_ID = 'ocp-4.19'
 
 export function getCatalogClusterVersionOption(
   idOrLabel: string | undefined | null,

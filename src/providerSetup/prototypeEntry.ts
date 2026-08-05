@@ -1,7 +1,7 @@
 import {
   catalogNetworkPolicyMatchesLockPattern,
+  createAllEditableCatalogNetworkPolicy,
   createCatalogNetworkPolicyForLockPattern,
-  DISABLED_CATALOG_NETWORK_POLICY,
   type CatalogNetworkLockPattern,
 } from '../providerAdmin/catalogNetworkPolicy'
 import {
@@ -11,6 +11,12 @@ import {
   CLUSTER_NODE_SETS_RATE_CARD,
   CLUSTER_NODE_SETS_TEMPLATE_NAME,
   CLUSTER_NODE_SETS_TEMPLATE_REF_ID,
+  LEGACY_CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
+  LEGACY_CLUSTER_NODE_SETS_DISPLAY_NAME,
+  LEGACY_CLUSTER_NODE_SETS_TEMPLATE_REF_ID,
+  LEGACY_VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID,
+  LEGACY_VM_NETWORK_ATTACHMENTS_DISPLAY_NAME,
+  LEGACY_VM_NETWORK_ATTACHMENTS_TEMPLATE_REF_ID,
   VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID,
   VM_NETWORK_ATTACHMENTS_DESCRIPTION,
   VM_NETWORK_ATTACHMENTS_DISPLAY_NAME,
@@ -41,6 +47,7 @@ import {
   upsertProviderSavedTemplate,
   ensureProviderDemoOrganizations,
   patchProviderCatalogItem,
+  rewriteProviderCatalogItemIdentity,
   type ProviderCatalogDraft,
 } from './storage'
 import {
@@ -49,7 +56,9 @@ import {
   DEFAULT_RATE_CARD,
   DEMO_EXISTING_MASTER_TEMPLATES,
   GPU_BLUEPRINT_FORM,
+  LEGACY_DEFAULT_CATALOG_ITEM_DISPLAY_NAME,
   LEGACY_SECOND_CATALOG_ITEM_DISPLAY_NAME,
+  LEGACY_SECOND_CATALOG_ITEM_TITLE_CASE_DISPLAY_NAME,
   SECOND_CATALOG_ITEM_DISPLAY_NAME,
   parseRateCardFromForm,
 } from './templateDemo'
@@ -58,12 +67,16 @@ import { DEMO_NORTH_SUMMIT_BANK_TENANT_ID } from '../providerAdmin/organizations
 import type { ProviderAdminNavId } from '../providerAdmin/constants'
 
 /** Stable demo IDs so ensure can re-seed without creating duplicates. */
-export const BARE_METAL_GPU_CATALOG_ITEM_ID = 'cat_BM_GPU_TRAINING'
-export const BARE_METAL_GPU_TEMPLATE_REF_ID = 'bm_dell_r750'
+export const BARE_METAL_GPU_CATALOG_ITEM_ID = 'cat-bm-gpu-training'
+export const BARE_METAL_GPU_TEMPLATE_REF_ID = 'bm-dell-r750'
+export const LEGACY_BARE_METAL_GPU_CATALOG_ITEM_ID = 'cat_BM_GPU_TRAINING'
+export const LEGACY_BARE_METAL_GPU_TEMPLATE_REF_ID = 'bm_dell_r750'
 
 /** Second Bare Metal offering — HPE ProLiant DL380 with A100 GPUs. */
-export const BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID = 'cat_BM_AI_INFERENCE'
-export const BARE_METAL_AI_INFERENCE_TEMPLATE_REF_ID = 'bm_hpe_dl380_a100'
+export const BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID = 'cat-bm-dense-gpu'
+export const BARE_METAL_AI_INFERENCE_TEMPLATE_REF_ID = 'bm-hpe-dl380-a100'
+export const LEGACY_BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID = 'cat_BM_AI_INFERENCE'
+export const LEGACY_BARE_METAL_AI_INFERENCE_TEMPLATE_REF_ID = 'bm_hpe_dl380_a100'
 
 /**
  * Demo storefront order for Provider Admin (Cluster published; Dense GPU unpublished for tenants).
@@ -139,7 +152,7 @@ function createBareMetalAiInferenceCatalogDraft(): ProviderCatalogDraft {
     enterpriseTenantId: DEMO_NORTH_SUMMIT_BANK_TENANT_ID,
     rateCard,
     serviceId: 'baremetal',
-    networkPolicy: DISABLED_CATALOG_NETWORK_POLICY,
+    networkPolicy: createAllEditableCatalogNetworkPolicy(),
     status: 'unpublished',
     createdAt: new Date().toISOString(),
   }
@@ -160,7 +173,7 @@ function createClusterNodeSetsCatalogDraft(): ProviderCatalogDraft {
     diskImageId: DEFAULT_CLUSTER_CATALOG_VERSION_ID,
     diskImageLabel: formatClusterPlatformLabel(DEFAULT_CLUSTER_CATALOG_VERSION_ID),
     networkPolicy: createCatalogNetworkPolicyForLockPattern(
-      'all-editable',
+      'vnet-locked',
       CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
     ),
     status: 'live',
@@ -179,7 +192,7 @@ function createVmNetworkAttachmentsCatalogDraft(): ProviderCatalogDraft {
     rateCard: VM_NETWORK_ATTACHMENTS_RATE_CARD,
     serviceId: 'virtual-machine',
     networkPolicy: createCatalogNetworkPolicyForLockPattern(
-      'two-locked-one-editable',
+      'all-editable',
       VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID,
     ),
     status: 'live',
@@ -191,8 +204,11 @@ function hasBareMetalGpuCatalogItem(items: ProviderCatalogDraft[]): boolean {
   return items.some(
     (item) =>
       item.catalogItemId === BARE_METAL_GPU_CATALOG_ITEM_ID ||
+      item.catalogItemId === LEGACY_BARE_METAL_GPU_CATALOG_ITEM_ID ||
       item.templateRefId === BARE_METAL_GPU_TEMPLATE_REF_ID ||
-      item.displayName === DEFAULT_CATALOG_ITEM_DISPLAY_NAME,
+      item.templateRefId === LEGACY_BARE_METAL_GPU_TEMPLATE_REF_ID ||
+      item.displayName === DEFAULT_CATALOG_ITEM_DISPLAY_NAME ||
+      item.displayName === LEGACY_DEFAULT_CATALOG_ITEM_DISPLAY_NAME,
   )
 }
 
@@ -202,8 +218,11 @@ function findBareMetalAiInferenceCatalogItem(
   return items.find(
     (item) =>
       item.catalogItemId === BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID ||
+      item.catalogItemId === LEGACY_BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID ||
       item.templateRefId === BARE_METAL_AI_INFERENCE_TEMPLATE_REF_ID ||
+      item.templateRefId === LEGACY_BARE_METAL_AI_INFERENCE_TEMPLATE_REF_ID ||
       item.displayName === SECOND_CATALOG_ITEM_DISPLAY_NAME ||
+      item.displayName === LEGACY_SECOND_CATALOG_ITEM_TITLE_CASE_DISPLAY_NAME ||
       item.displayName === LEGACY_SECOND_CATALOG_ITEM_DISPLAY_NAME,
   )
 }
@@ -221,12 +240,16 @@ function syncBareMetalAiInferenceCatalogItem(): void {
   }
 
   const needsIdentitySync =
+    current.catalogItemId !== BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID ||
+    current.templateRefId !== BARE_METAL_AI_INFERENCE_TEMPLATE_REF_ID ||
     current.displayName !== SECOND_CATALOG_ITEM_DISPLAY_NAME ||
     current.scope !== 'vip-enterprise' ||
     current.enterpriseTenantId !== DEMO_NORTH_SUMMIT_BANK_TENANT_ID
 
   if (needsIdentitySync) {
-    updateProviderCatalogItem(current.catalogItemId, {
+    rewriteProviderCatalogItemIdentity(current.catalogItemId, {
+      catalogItemId: BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID,
+      templateRefId: BARE_METAL_AI_INFERENCE_TEMPLATE_REF_ID,
       displayName: SECOND_CATALOG_ITEM_DISPLAY_NAME,
       description: current.description ?? '',
       scope: 'vip-enterprise',
@@ -234,21 +257,23 @@ function syncBareMetalAiInferenceCatalogItem(): void {
     })
   }
 
-  if (getCatalogItemStatus(current) !== 'unpublished') {
-    setProviderCatalogItemStatus(current.catalogItemId, 'unpublished')
+  const synced =
+    findBareMetalAiInferenceCatalogItem(getProviderCatalogItems()) ?? current
+
+  if (getCatalogItemStatus(synced) !== 'unpublished') {
+    setProviderCatalogItemStatus(synced.catalogItemId, 'unpublished')
   }
 
-  const networkPolicy = getCatalogItemNetworkPolicy(current)
+  const networkPolicy = getCatalogItemNetworkPolicy(synced)
   if (networkPolicy.enabled) {
-    updateProviderCatalogNetworkPolicy(current.catalogItemId, {
+    updateProviderCatalogNetworkPolicy(synced.catalogItemId, {
       ...networkPolicy,
       enabled: false,
     })
   }
 
   // Keep North Summit Bank pointed at this VIP offering so tenant personas resolve it.
-  const denseGpu =
-    findBareMetalAiInferenceCatalogItem(getProviderCatalogItems()) ?? current
+  const denseGpu = synced
   const northstar = getProviderRegisteredOrganizations().find(
     (organization) => organization.slug === 'northstar',
   )
@@ -268,41 +293,56 @@ function syncBareMetalGpuTrainingCatalogItem(): void {
   const current = getProviderCatalogItems().find(
     (item) =>
       item.catalogItemId === BARE_METAL_GPU_CATALOG_ITEM_ID ||
+      item.catalogItemId === LEGACY_BARE_METAL_GPU_CATALOG_ITEM_ID ||
       item.templateRefId === BARE_METAL_GPU_TEMPLATE_REF_ID ||
-      item.displayName === DEFAULT_CATALOG_ITEM_DISPLAY_NAME,
+      item.templateRefId === LEGACY_BARE_METAL_GPU_TEMPLATE_REF_ID ||
+      item.displayName === DEFAULT_CATALOG_ITEM_DISPLAY_NAME ||
+      item.displayName === LEGACY_DEFAULT_CATALOG_ITEM_DISPLAY_NAME,
   )
   if (!current) {
     return
   }
 
-  if (current.scope !== 'global-public' || current.enterpriseTenantId) {
-    updateProviderCatalogItem(current.catalogItemId, {
+  const needsIdentitySync =
+    current.catalogItemId !== BARE_METAL_GPU_CATALOG_ITEM_ID ||
+    current.templateRefId !== BARE_METAL_GPU_TEMPLATE_REF_ID ||
+    current.displayName !== DEFAULT_CATALOG_ITEM_DISPLAY_NAME ||
+    current.scope !== 'global-public' ||
+    Boolean(current.enterpriseTenantId)
+
+  if (needsIdentitySync) {
+    rewriteProviderCatalogItemIdentity(current.catalogItemId, {
+      catalogItemId: BARE_METAL_GPU_CATALOG_ITEM_ID,
+      templateRefId: BARE_METAL_GPU_TEMPLATE_REF_ID,
       displayName: DEFAULT_CATALOG_ITEM_DISPLAY_NAME,
       description: current.description ?? '',
       scope: 'global-public',
-      enterpriseTenantId: undefined,
+      enterpriseTenantId: null,
     })
   }
 
-  if (getCatalogItemStatus(current) !== 'live') {
-    setProviderCatalogItemStatus(current.catalogItemId, 'live')
+  const synced =
+    getProviderCatalogItems().find(
+      (item) => item.catalogItemId === BARE_METAL_GPU_CATALOG_ITEM_ID,
+    ) ?? current
+
+  if (getCatalogItemStatus(synced) !== 'live') {
+    setProviderCatalogItemStatus(synced.catalogItemId, 'live')
   }
 }
 
 /**
- * Demo catalog items cover the three lock patterns so Provider / Tenant Admin / Tenant User
- * all see All locked, All editable, and 2 locked · 1 editable (fields lock independently).
+ * Demo catalog items default to all networking fields unlocked.
+ * Provider admins can lock individual fields from the catalog detail drawer.
  */
 const DEMO_CATALOG_NETWORK_LOCK_PATTERNS: ReadonlyArray<{
   catalogItemId: string
   pattern: CatalogNetworkLockPattern
 }> = [
   { catalogItemId: BARE_METAL_GPU_CATALOG_ITEM_ID, pattern: 'all-locked' },
-  { catalogItemId: CLUSTER_NODE_SETS_CATALOG_ITEM_ID, pattern: 'all-editable' },
-  {
-    catalogItemId: VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID,
-    pattern: 'two-locked-one-editable',
-  },
+  { catalogItemId: BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID, pattern: 'all-editable' },
+  { catalogItemId: CLUSTER_NODE_SETS_CATALOG_ITEM_ID, pattern: 'vnet-locked' },
+  { catalogItemId: VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID, pattern: 'all-editable' },
 ]
 
 function applyLockPatternToPolicy(
@@ -325,29 +365,36 @@ function applyLockPatternToPolicy(
       ...current.securityGroup,
       locked: patterned.securityGroup.locked,
     },
+    externalIpPool: current.externalIpPool ?? patterned.externalIpPool,
   }
 }
 
 function syncDemoCatalogNetworkLockPatterns(): void {
+  const legacyIdByCurrent: Record<string, string> = {
+    [BARE_METAL_GPU_CATALOG_ITEM_ID]: LEGACY_BARE_METAL_GPU_CATALOG_ITEM_ID,
+    [BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID]: LEGACY_BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID,
+    [CLUSTER_NODE_SETS_CATALOG_ITEM_ID]: LEGACY_CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
+    [VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID]: LEGACY_VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID,
+  }
+
   for (const assignment of DEMO_CATALOG_NETWORK_LOCK_PATTERNS) {
     const current = getProviderCatalogItems().find(
-      (item) => item.catalogItemId === assignment.catalogItemId,
+      (item) =>
+        item.catalogItemId === assignment.catalogItemId ||
+        item.catalogItemId === legacyIdByCurrent[assignment.catalogItemId],
     )
     if (!current) {
       continue
     }
 
     const networkPolicy = getCatalogItemNetworkPolicy(current)
-    if (!networkPolicy.enabled) {
-      continue
-    }
 
     if (catalogNetworkPolicyMatchesLockPattern(networkPolicy, assignment.pattern)) {
       continue
     }
 
     updateProviderCatalogNetworkPolicy(
-      assignment.catalogItemId,
+      current.catalogItemId,
       applyLockPatternToPolicy(networkPolicy, assignment.pattern, assignment.catalogItemId),
     )
   }
@@ -357,8 +404,11 @@ function hasClusterNodeSetsCatalogItem(items: ProviderCatalogDraft[]): boolean {
   return items.some(
     (item) =>
       item.catalogItemId === CLUSTER_NODE_SETS_CATALOG_ITEM_ID ||
+      item.catalogItemId === LEGACY_CLUSTER_NODE_SETS_CATALOG_ITEM_ID ||
       item.templateRefId === CLUSTER_NODE_SETS_TEMPLATE_REF_ID ||
-      item.displayName === CLUSTER_NODE_SETS_DISPLAY_NAME,
+      item.templateRefId === LEGACY_CLUSTER_NODE_SETS_TEMPLATE_REF_ID ||
+      item.displayName === CLUSTER_NODE_SETS_DISPLAY_NAME ||
+      item.displayName === LEGACY_CLUSTER_NODE_SETS_DISPLAY_NAME,
   )
 }
 
@@ -368,25 +418,46 @@ function syncClusterNodeSetsCatalogItem(): void {
   const current = items.find(
     (item) =>
       item.catalogItemId === CLUSTER_NODE_SETS_CATALOG_ITEM_ID ||
+      item.catalogItemId === LEGACY_CLUSTER_NODE_SETS_CATALOG_ITEM_ID ||
       item.templateRefId === CLUSTER_NODE_SETS_TEMPLATE_REF_ID ||
-      item.displayName === CLUSTER_NODE_SETS_DISPLAY_NAME,
+      item.templateRefId === LEGACY_CLUSTER_NODE_SETS_TEMPLATE_REF_ID ||
+      item.displayName === CLUSTER_NODE_SETS_DISPLAY_NAME ||
+      item.displayName === LEGACY_CLUSTER_NODE_SETS_DISPLAY_NAME,
   )
   if (!current) {
     return
   }
 
-  if (getCatalogItemStatus(current) !== 'live') {
-    setProviderCatalogItemStatus(current.catalogItemId, 'live')
+  if (
+    current.catalogItemId !== CLUSTER_NODE_SETS_CATALOG_ITEM_ID ||
+    current.templateRefId !== CLUSTER_NODE_SETS_TEMPLATE_REF_ID ||
+    current.displayName !== CLUSTER_NODE_SETS_DISPLAY_NAME
+  ) {
+    rewriteProviderCatalogItemIdentity(current.catalogItemId, {
+      catalogItemId: CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
+      templateRefId: CLUSTER_NODE_SETS_TEMPLATE_REF_ID,
+      displayName: CLUSTER_NODE_SETS_DISPLAY_NAME,
+      description: current.description ?? CLUSTER_NODE_SETS_DESCRIPTION,
+    })
+  }
+
+  const synced =
+    getProviderCatalogItems().find(
+      (item) => item.catalogItemId === CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
+    ) ?? current
+
+  if (getCatalogItemStatus(synced) !== 'live') {
+    setProviderCatalogItemStatus(synced.catalogItemId, 'live')
   }
 
   const needsVersion =
-    current.diskImageId !== DEFAULT_CLUSTER_CATALOG_VERSION_ID ||
-    current.diskImageLabel !== formatClusterPlatformLabel(DEFAULT_CLUSTER_CATALOG_VERSION_ID) ||
-    current.instanceTypeId !== 'ocp-small' ||
-    current.instanceTypeLabel !== 'OpenShift small'
+    synced.diskImageId !== DEFAULT_CLUSTER_CATALOG_VERSION_ID ||
+    synced.diskImageLabel !== formatClusterPlatformLabel(DEFAULT_CLUSTER_CATALOG_VERSION_ID) ||
+    synced.instanceTypeId !== 'ocp-small' ||
+    synced.instanceTypeLabel !== 'OpenShift small'
 
   if (needsVersion) {
-    patchProviderCatalogItem(current.catalogItemId, {
+    patchProviderCatalogItem(synced.catalogItemId, {
       instanceTypeId: 'ocp-small',
       instanceTypeLabel: 'OpenShift small',
       diskImageId: DEFAULT_CLUSTER_CATALOG_VERSION_ID,
@@ -399,9 +470,40 @@ function hasVmNetworkAttachmentsCatalogItem(items: ProviderCatalogDraft[]): bool
   return items.some(
     (item) =>
       item.catalogItemId === VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID ||
+      item.catalogItemId === LEGACY_VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID ||
       item.templateRefId === VM_NETWORK_ATTACHMENTS_TEMPLATE_REF_ID ||
-      item.displayName === VM_NETWORK_ATTACHMENTS_DISPLAY_NAME,
+      item.templateRefId === LEGACY_VM_NETWORK_ATTACHMENTS_TEMPLATE_REF_ID ||
+      item.displayName === VM_NETWORK_ATTACHMENTS_DISPLAY_NAME ||
+      item.displayName === LEGACY_VM_NETWORK_ATTACHMENTS_DISPLAY_NAME,
   )
+}
+
+function syncVmNetworkAttachmentsCatalogItem(): void {
+  const current = getProviderCatalogItems().find(
+    (item) =>
+      item.catalogItemId === VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID ||
+      item.catalogItemId === LEGACY_VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID ||
+      item.templateRefId === VM_NETWORK_ATTACHMENTS_TEMPLATE_REF_ID ||
+      item.templateRefId === LEGACY_VM_NETWORK_ATTACHMENTS_TEMPLATE_REF_ID ||
+      item.displayName === VM_NETWORK_ATTACHMENTS_DISPLAY_NAME ||
+      item.displayName === LEGACY_VM_NETWORK_ATTACHMENTS_DISPLAY_NAME,
+  )
+  if (!current) {
+    return
+  }
+
+  if (
+    current.catalogItemId !== VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID ||
+    current.templateRefId !== VM_NETWORK_ATTACHMENTS_TEMPLATE_REF_ID ||
+    current.displayName !== VM_NETWORK_ATTACHMENTS_DISPLAY_NAME
+  ) {
+    rewriteProviderCatalogItemIdentity(current.catalogItemId, {
+      catalogItemId: VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID,
+      templateRefId: VM_NETWORK_ATTACHMENTS_TEMPLATE_REF_ID,
+      displayName: VM_NETWORK_ATTACHMENTS_DISPLAY_NAME,
+      description: current.description ?? VM_NETWORK_ATTACHMENTS_DESCRIPTION,
+    })
+  }
 }
 
 function ensureDemoBareMetalTemplates(): void {
@@ -459,6 +561,9 @@ export function ensureProviderCatalogDemoItems(): ProviderCatalogDraft[] {
   if (!hasVmNetworkAttachmentsCatalogItem(items)) {
     addProviderCatalogItem(createVmNetworkAttachmentsCatalogDraft())
     items = getProviderCatalogItems()
+  } else {
+    syncVmNetworkAttachmentsCatalogItem()
+    items = getProviderCatalogItems()
   }
 
   syncDemoCatalogNetworkLockPatterns()
@@ -506,12 +611,11 @@ export function isProviderAdminNavId(value: string | null): value is ProviderAdm
     value === 'services-virtual-machines' ||
     value === 'infrastructure-data-centers' ||
     value === 'infrastructure-hardware-inventory' ||
-    value === 'infrastructure-compute-images' ||
     value === 'infrastructure-bmaas-templates' ||
-    value === 'infrastructure-external-ip-pools' ||
     value === 'networking-virtual-networks' ||
     value === 'networking-subnets' ||
     value === 'networking-security-groups' ||
+    value === 'networking-external-ip-pools' ||
     value === 'administration-organizations' ||
     value === 'administration-quotas' ||
     value === 'billing-metering' ||

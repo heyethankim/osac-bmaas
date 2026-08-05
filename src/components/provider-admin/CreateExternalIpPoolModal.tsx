@@ -13,11 +13,13 @@ import {
   ModalVariant,
   TextInput,
 } from '@patternfly/react-core'
+import { KubernetesResourceNameHelper } from '../shared/KubernetesResourceNameHelper'
 import {
   EXTERNAL_IP_POOL_DATA_CENTERS,
   generateExternalIpPoolId,
   type ExternalIpPool,
 } from '../../providerAdmin/externalIpPools'
+import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
 import { addProviderExternalIpPool } from '../../providerSetup/storage'
 
 type CreatePoolForm = {
@@ -54,8 +56,9 @@ export function CreateExternalIpPoolModal({
   }, [isOpen])
 
   const totalAddresses = Number.parseInt(form.totalAddresses, 10)
+  const isNameValid = isValidKubernetesResourceName(form.name)
   const isCreateDisabled =
-    !form.name.trim() ||
+    !isNameValid ||
     !form.cidr.trim() ||
     !form.dataCenter.trim() ||
     !Number.isFinite(totalAddresses) ||
@@ -100,9 +103,11 @@ export function CreateExternalIpPoolModal({
             <TextInput
               id="create-pool-name"
               value={form.name}
+              validated={form.name.trim() && !isNameValid ? 'error' : 'default'}
               onChange={(_event, value) => setForm((current) => ({ ...current, name: value }))}
-              placeholder="Tenant edge pool"
+              placeholder="e.g. tenant-edge-pool"
             />
+            <KubernetesResourceNameHelper value={form.name} id="create-pool-name-helper" />
           </FormGroup>
           <FormGroup label="CIDR" fieldId="create-pool-cidr" isRequired>
             <TextInput

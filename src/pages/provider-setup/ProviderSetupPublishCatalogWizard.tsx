@@ -15,10 +15,15 @@ import {
   DescriptionListGroup,
   DescriptionListTerm,
   Divider,
+  ExpandableSection,
+  ExpandableSectionToggle,
   Form,
   FormGroup,
   Icon,
   Label,
+  List,
+  ListComponent,
+  ListItem,
   Modal,
   ModalVariant,
   Spinner,
@@ -36,16 +41,21 @@ import {
   normalizeEnterpriseTenantIds,
   VipEnterpriseOrganizationField,
 } from '../../components/provider-admin/VipEnterpriseOrganizationField'
+import { KubernetesResourceNameHelper } from '../../components/shared/KubernetesResourceNameHelper'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import {
   buildDefaultCatalogFieldPolicies,
+  getCatalogClusterVersionLifecycleMeta,
   getCatalogClusterVersionOptions,
   getCatalogDiskImageOptions,
   getCatalogInstanceTypeOptions,
   getProvisioningTemplatePresentation,
+  type CatalogClusterVersionOption,
   type CatalogFieldPolicy,
 } from '../../catalog/catalogPublishConfig'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
+import { DEFAULT_CATALOG_NETWORK_POLICY } from '../../providerAdmin/catalogNetworkPolicy'
+import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
 import {
   CATALOG_SERVICE_OFFERINGS,
   getCatalogServiceOffering,
@@ -92,6 +102,9 @@ export function ProviderSetupPublishCatalogWizard({
   const [selectedInstanceTypeId, setSelectedInstanceTypeId] = useState('')
   const [selectedDiskImageId, setSelectedDiskImageId] = useState('')
   const [fieldPolicies, setFieldPolicies] = useState<CatalogFieldPolicy[]>([])
+  const [expandedClusterVersionIds, setExpandedClusterVersionIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  )
   const [displayName, setDisplayName] = useState('')
   const [description, setDescription] = useState('')
   const [publishScope, setPublishScope] = useState<PublishCatalogScope>('global-public')
@@ -113,8 +126,14 @@ export function ProviderSetupPublishCatalogWizard({
     instanceTypeOptions.find((option) => option.id === selectedInstanceTypeId) ?? null
   const selectedDiskImage =
     softwareImageOptions.find((option) => option.id === selectedDiskImageId) ?? null
+  const selectedClusterVersionLifecycleMeta =
+    isClusterService && selectedDiskImage && 'lifecycle' in selectedDiskImage
+      ? getCatalogClusterVersionLifecycleMeta(
+          (selectedDiskImage as CatalogClusterVersionOption).lifecycle,
+        )
+      : null
   const softwareImageStepLabel = isClusterService ? 'Cluster version' : 'Disk image'
-  const hardwareOsStepLabel = isClusterService ? 'Size & version' : 'Hardware & OS'
+  const hardwareOsStepLabel = isClusterService ? 'Cluster version' : 'Hardware & OS'
   const isVipEnterprise = publishScope === 'vip-enterprise'
   const selectedVipOrganizations = useMemo(
     () =>
@@ -129,7 +148,7 @@ export function ProviderSetupPublishCatalogWizard({
     Boolean(selectedTemplate) &&
     Boolean(selectedInstanceType) &&
     Boolean(selectedDiskImage) &&
-    Boolean(displayName.trim())
+    isValidKubernetesResourceName(displayName)
   const hasLockableParameters = fieldPolicies.length > 0
   const hasSingleTemplate = templates.length <= 1
   const publishSteps = useMemo(
@@ -161,6 +180,7 @@ export function ProviderSetupPublishCatalogWizard({
     setSelectedInstanceTypeId('')
     setSelectedDiskImageId('')
     setFieldPolicies([])
+    setExpandedClusterVersionIds(new Set())
     setDisplayName('')
     setDescription('')
     setPublishScope('global-public')
@@ -301,6 +321,13 @@ export function ProviderSetupPublishCatalogWizard({
       diskImageId: selectedDiskImage.id,
       diskImageLabel: selectedDiskImage.label,
       fieldPolicies,
+      networkPolicy: {
+        ...DEFAULT_CATALOG_NETWORK_POLICY,
+        virtualNetwork: { ...DEFAULT_CATALOG_NETWORK_POLICY.virtualNetwork },
+        subnet: { ...DEFAULT_CATALOG_NETWORK_POLICY.subnet },
+        securityGroup: { ...DEFAULT_CATALOG_NETWORK_POLICY.securityGroup },
+        externalIpPool: { ...DEFAULT_CATALOG_NETWORK_POLICY.externalIpPool, poolIds: [] },
+      },
       ...(isVipEnterprise && enterpriseTenantIds.length > 0
         ? {
             enterpriseTenantId: enterpriseTenantIds[0],
@@ -528,74 +555,74 @@ export function ProviderSetupPublishCatalogWizard({
           <div className="provider-setup-template__publish-hardware-step">
             <Content component="p" className="provider-setup-template__publish-step-lede">
               {isClusterService
-                ? 'Choose the cluster size and OpenShift version for this catalog item.'
+                ? 'Choose the OpenShift version for this catalog item.'
                 : 'Choose the hardware flavor and OS image for this catalog item.'}
             </Content>
-            <Content component="p" className="provider-setup-template__publish-subsection-title">
-              {isClusterService ? 'Cluster size' : 'Instance type'}
-            </Content>
-            <div
-              className={`provider-setup-template__card-group provider-setup-template__card-group--instance-types${
-                isClusterService
-                  ? ' provider-setup-template__card-group--cluster-sizes'
-                  : ''
-              }`}
-              role="radiogroup"
-              aria-label={isClusterService ? 'Cluster size' : 'Instance type'}
-            >
-              {instanceTypeOptions.map((option) => {
-                const isSelected = option.id === selectedInstanceTypeId
+            {!isClusterService ? (
+              <>
+                <Content component="p" className="provider-setup-template__publish-subsection-title">
+                  Instance type
+                </Content>
+                <div
+                  className="provider-setup-template__card-group provider-setup-template__card-group--instance-types"
+                  role="radiogroup"
+                  aria-label="Instance type"
+                >
+                  {instanceTypeOptions.map((option) => {
+                    const isSelected = option.id === selectedInstanceTypeId
 
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={isSelected}
-                    className={`provider-setup-template__select-card provider-setup-template__select-card--instance-type${
-                      isSelected ? ' provider-setup-template__select-card--selected' : ''
-                    }`}
-                    onClick={() => setSelectedInstanceTypeId(option.id)}
-                  >
-                    {isSelected ? (
-                      <Label
-                        color="grey"
-                        isCompact
-                        className="provider-setup-template__select-card-selected-badge"
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={isSelected}
+                        className={`provider-setup-template__select-card provider-setup-template__select-card--instance-type${
+                          isSelected ? ' provider-setup-template__select-card--selected' : ''
+                        }`}
+                        onClick={() => setSelectedInstanceTypeId(option.id)}
                       >
-                        Selected
-                      </Label>
-                    ) : null}
-                    <Title
-                      headingLevel="h3"
-                      size="md"
-                      className="provider-setup-template__select-card-title"
-                    >
-                      {option.label}
-                    </Title>
-                    <Content component="p" className="provider-setup-template__select-card-detail">
-                      {option.detail}
-                    </Content>
-                    {option.accelerator ? (
-                      <Content
-                        component="p"
-                        className="provider-setup-template__select-card-accelerator"
-                      >
-                        {option.accelerator}
-                      </Content>
-                    ) : null}
-                    {option.hourlyRate ? (
-                      <Content
-                        component="p"
-                        className="provider-setup-template__select-card-rate"
-                      >
-                        {option.hourlyRate}
-                      </Content>
-                    ) : null}
-                  </button>
-                )
-              })}
-            </div>
+                        {isSelected ? (
+                          <Label
+                            color="grey"
+                            isCompact
+                            className="provider-setup-template__select-card-selected-badge"
+                          >
+                            Selected
+                          </Label>
+                        ) : null}
+                        <Title
+                          headingLevel="h3"
+                          size="md"
+                          className="provider-setup-template__select-card-title"
+                        >
+                          {option.label}
+                        </Title>
+                        <Content component="p" className="provider-setup-template__select-card-detail">
+                          {option.detail}
+                        </Content>
+                        {option.accelerator ? (
+                          <Content
+                            component="p"
+                            className="provider-setup-template__select-card-accelerator"
+                          >
+                            {option.accelerator}
+                          </Content>
+                        ) : null}
+                        {option.hourlyRate ? (
+                          <Content
+                            component="p"
+                            className="provider-setup-template__select-card-rate"
+                          >
+                            {option.hourlyRate}
+                          </Content>
+                        ) : null}
+                      </button>
+                    )
+                  })}
+                </div>
+              </>
+            ) : null}
             <Content component="p" className="provider-setup-template__publish-subsection-title">
               {softwareImageStepLabel}
             </Content>
@@ -604,42 +631,156 @@ export function ProviderSetupPublishCatalogWizard({
               role="radiogroup"
               aria-label={softwareImageStepLabel}
             >
-              {softwareImageOptions.map((option) => {
-                const isSelected = option.id === selectedDiskImageId
+              {isClusterService
+                ? getCatalogClusterVersionOptions().map((option) => {
+                    const isSelected = option.id === selectedDiskImageId
+                    const lifecycleMeta = getCatalogClusterVersionLifecycleMeta(option.lifecycle)
+                    const isFeaturesExpanded = expandedClusterVersionIds.has(option.id)
+                    const featuresToggleId = `cluster-version-features-toggle-${option.id}`
+                    const featuresContentId = `cluster-version-features-${option.id}`
 
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={isSelected}
-                    className={`provider-setup-template__select-card provider-setup-template__select-card--disk-image${
-                      isSelected ? ' provider-setup-template__select-card--selected' : ''
-                    }`}
-                    onClick={() => setSelectedDiskImageId(option.id)}
-                  >
-                    {isSelected ? (
-                      <Label
-                        color="grey"
-                        isCompact
-                        className="provider-setup-template__select-card-selected-badge"
+                    return (
+                      <div
+                        key={option.id}
+                        role="radio"
+                        tabIndex={0}
+                        aria-checked={isSelected}
+                        aria-label={option.label}
+                        className={`provider-setup-template__select-card provider-setup-template__select-card--disk-image provider-setup-template__select-card--cluster-version${
+                          isSelected ? ' provider-setup-template__select-card--selected' : ''
+                        }`}
+                        onClick={() => setSelectedDiskImageId(option.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            setSelectedDiskImageId(option.id)
+                          }
+                        }}
                       >
-                        Selected
-                      </Label>
-                    ) : null}
-                    <Title
-                      headingLevel="h3"
-                      size="md"
-                      className="provider-setup-template__select-card-title"
-                    >
-                      {option.label}
-                    </Title>
-                    <Content component="p" className="provider-setup-template__select-card-detail">
-                      {option.detail}
-                    </Content>
-                  </button>
-                )
-              })}
+                        {isSelected ? (
+                          <Label
+                            color="grey"
+                            isCompact
+                            className="provider-setup-template__select-card-selected-badge"
+                          >
+                            Selected
+                          </Label>
+                        ) : null}
+                        <div className="provider-setup-template__cluster-version-header">
+                          <div
+                            className="provider-setup-template__cluster-version-toggle-wrap"
+                            onClick={(event) => event.stopPropagation()}
+                            onKeyDown={(event) => event.stopPropagation()}
+                          >
+                            <ExpandableSectionToggle
+                              isDetached
+                              isExpanded={isFeaturesExpanded}
+                              toggleId={featuresToggleId}
+                              contentId={featuresContentId}
+                              toggleAriaLabel={
+                                isFeaturesExpanded
+                                  ? `Hide features for ${option.label}`
+                                  : `Show features for ${option.label}`
+                              }
+                              className="provider-setup-template__cluster-version-expand"
+                              onToggle={(nextExpanded) => {
+                                setExpandedClusterVersionIds((current) => {
+                                  const next = new Set(current)
+                                  if (nextExpanded) {
+                                    next.add(option.id)
+                                  } else {
+                                    next.delete(option.id)
+                                  }
+                                  return next
+                                })
+                              }}
+                            />
+                          </div>
+                          <div className="provider-setup-template__cluster-version-meta">
+                            <div className="provider-setup-template__select-card-title-row">
+                              <Title
+                                headingLevel="h3"
+                                size="md"
+                                className="provider-setup-template__select-card-title"
+                              >
+                                {option.label}
+                              </Title>
+                              <Label color={lifecycleMeta.color} isCompact>
+                                {lifecycleMeta.text}
+                              </Label>
+                            </div>
+                            <Content
+                              component="p"
+                              className="provider-setup-template__select-card-detail"
+                            >
+                              {option.detail}
+                            </Content>
+                          </div>
+                        </div>
+                        <div
+                          className="provider-setup-template__select-card-features"
+                          onClick={(event) => event.stopPropagation()}
+                          onKeyDown={(event) => event.stopPropagation()}
+                        >
+                          <ExpandableSection
+                            isDetached
+                            isExpanded={isFeaturesExpanded}
+                            isIndented
+                            toggleId={featuresToggleId}
+                            contentId={featuresContentId}
+                          >
+                            <List
+                              component={ListComponent.ul}
+                              className="provider-setup-template__cluster-version-feature-list"
+                            >
+                              {option.features.map((feature) => (
+                                <ListItem key={feature}>{feature}</ListItem>
+                              ))}
+                            </List>
+                          </ExpandableSection>
+                        </div>
+                      </div>
+                    )
+                  })
+                : softwareImageOptions.map((option) => {
+                    const isSelected = option.id === selectedDiskImageId
+
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={isSelected}
+                        className={`provider-setup-template__select-card provider-setup-template__select-card--disk-image${
+                          isSelected ? ' provider-setup-template__select-card--selected' : ''
+                        }`}
+                        onClick={() => setSelectedDiskImageId(option.id)}
+                      >
+                        {isSelected ? (
+                          <Label
+                            color="grey"
+                            isCompact
+                            className="provider-setup-template__select-card-selected-badge"
+                          >
+                            Selected
+                          </Label>
+                        ) : null}
+                        <Title
+                          headingLevel="h3"
+                          size="md"
+                          className="provider-setup-template__select-card-title"
+                        >
+                          {option.label}
+                        </Title>
+                        <Content
+                          component="p"
+                          className="provider-setup-template__select-card-detail"
+                        >
+                          {option.detail}
+                        </Content>
+                      </button>
+                    )
+                  })}
             </div>
           </div>
         )
@@ -745,8 +886,18 @@ export function ProviderSetupPublishCatalogWizard({
                 <TextInput
                   id="publish-catalog-display-name"
                   value={displayName}
+                  validated={
+                    displayName.trim() && !isValidKubernetesResourceName(displayName)
+                      ? 'error'
+                      : 'default'
+                  }
                   onChange={(_event, value) => setDisplayName(value)}
                   aria-label="Name"
+                  placeholder="e.g. bare-metal-general-purpose-server"
+                />
+                <KubernetesResourceNameHelper
+                  value={displayName}
+                  id="publish-catalog-display-name-helper"
                 />
               </FormGroup>
               <FormGroup label="Description" fieldId="publish-catalog-description">
@@ -874,20 +1025,34 @@ export function ProviderSetupPublishCatalogWizard({
                   {provisioner?.title ?? '—'}
                 </DescriptionListDescription>
               </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>
-                  {isClusterService ? 'Cluster size' : 'Instance type'}
-                </DescriptionListTerm>
-                <DescriptionListDescription>
-                  {selectedInstanceType
-                    ? `${selectedInstanceType.label} (${selectedInstanceType.detail})`
-                    : '—'}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
+              {!isClusterService ? (
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Instance type</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {selectedInstanceType
+                      ? `${selectedInstanceType.label} (${selectedInstanceType.detail})`
+                      : '—'}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              ) : null}
               <DescriptionListGroup>
                 <DescriptionListTerm>{softwareImageStepLabel}</DescriptionListTerm>
                 <DescriptionListDescription>
-                  {selectedDiskImage?.label ?? '—'}
+                  {selectedDiskImage ? (
+                    <span className="provider-setup-template__publish-review-version">
+                      {selectedDiskImage.label}
+                      {selectedClusterVersionLifecycleMeta ? (
+                        <Label
+                          color={selectedClusterVersionLifecycleMeta.color}
+                          isCompact
+                        >
+                          {selectedClusterVersionLifecycleMeta.text}
+                        </Label>
+                      ) : null}
+                    </span>
+                  ) : (
+                    '—'
+                  )}
                 </DescriptionListDescription>
               </DescriptionListGroup>
               {hasLockableParameters ? (
@@ -952,7 +1117,9 @@ export function ProviderSetupPublishCatalogWizard({
 
     if (stepId === 'hardware-os') {
       return {
-        isNextDisabled: !selectedInstanceTypeId || !selectedDiskImageId,
+        isNextDisabled: isClusterService
+          ? !selectedDiskImageId
+          : !selectedInstanceTypeId || !selectedDiskImageId,
       }
     }
 
@@ -961,7 +1128,7 @@ export function ProviderSetupPublishCatalogWizard({
     }
 
     if (stepId === 'display-name') {
-      return { isNextDisabled: !displayName.trim() }
+      return { isNextDisabled: !isValidKubernetesResourceName(displayName) }
     }
 
     if (stepId === 'publish-scope') {

@@ -1,5 +1,9 @@
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
 import { getReleaseImageForClusterVersion } from '../catalog/catalogPublishConfig'
+import {
+  KUBERNETES_RESOURCE_NAME_HELPER,
+  isValidKubernetesResourceName,
+} from '../shared/kubernetesResourceName'
 
 export type LaunchInstanceWizardStepId =
   | 'general'
@@ -43,7 +47,7 @@ export const LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   },
 ]
 
-/** Bare metal launch flow: General → Configure → Review → Provisioning. */
+/** Bare metal launch flow: General → Configure → Networking → Review → Provisioning. */
 export const BAREMETAL_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   id: LaunchInstanceWizardStepId
   label: string
@@ -51,6 +55,7 @@ export const BAREMETAL_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
 }> = [
   { id: 'general', label: 'General', description: '' },
   { id: 'configure', label: 'Configure', description: '' },
+  { id: 'networking', label: 'Networking', description: '' },
   { id: 'review', label: 'Review', description: '' },
   { id: 'provisioning', label: 'Provisioning', description: '' },
 ]
@@ -97,17 +102,16 @@ export function getLaunchInstanceWizardSteps(options: {
     return BAREMETAL_LAUNCH_INSTANCE_WIZARD_STEPS
   }
 
-  return options.includeNetworking
-    ? LAUNCH_INSTANCE_WIZARD_STEPS
-    : LAUNCH_INSTANCE_WIZARD_STEPS.filter((step) => step.id !== 'networking')
+  // Models / legacy: always include Networking at service launch.
+  return LAUNCH_INSTANCE_WIZARD_STEPS
 }
 
 export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   configureTitle: 'Name your instance',
   configureLede:
     'Hardware is pre-configured by your admin. Fill in the fields below to personalize your instance.',
-  instanceNamePlaceholder: 'e.g. BM-Server-01',
-  defaultInstanceName: 'BM-Server-01',
+  instanceNamePlaceholder: 'e.g. bm-server-01',
+  defaultInstanceName: 'bm-server-01',
   sshPlaceholder: 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC...',
   defaultSshPublicKey:
     'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC7example+demo+key+northsummitbank+tenant-user@demo',
@@ -116,7 +120,7 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   osImage: 'RHEL 9.4',
   networkingTitle: 'Networking',
   networkingLede:
-    'Your organization sets the network placement. Choose any options your project allows.',
+    'Choose the virtual network, subnet, and security group for this instance.',
   networkingAssignedHelper: 'Set by your organization',
   reviewTitle: 'Review',
   reviewHardware: 'Dell PowerEdge R750',
@@ -141,7 +145,7 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
 
 export const CLUSTER_LAUNCH_INSTANCE_DEMO = {
   defaultName: 'ocp-cluster-01',
-  nameHelper: 'Name must be a valid DNS label (RFC 1035).',
+  nameHelper: KUBERNETES_RESOURCE_NAME_HELPER,
   sshPublicKey:
     'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBJACfzqANDyWlygNn0FWP7YBZ6XLt+XPGpSw5PyknOW brotman@redhat.com',
   sshHelper:
@@ -171,8 +175,8 @@ export const CLUSTER_LAUNCH_INSTANCE_DEMO = {
     2,
   ),
   releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.21.0-multi',
-  hostTypeOptions: ['Standard Host', 'GPU Host', 'Storage Host'] as const,
-  defaultHostType: 'Standard Host',
+  hostTypeOptions: ['standard-host', 'gpu-host', 'storage-host'] as const,
+  defaultHostType: 'standard-host',
   defaultNodeCount: 1,
   podCidr: '10.128.0.0/24',
   podCidrHelper: 'Use CIDR notation (for example 10.128.0.0/14 or fd01::/48).',
@@ -281,10 +285,10 @@ export type LaunchInstanceWizardForm = {
 }
 
 export const LAUNCH_INSTANCE_NAME_PREFIX_BY_SERVICE: Record<CatalogServiceId, string> = {
-  baremetal: 'BM-Server',
-  cluster: 'OCP-Cluster',
-  models: 'Model-Endpoint',
-  'virtual-machine': 'VM-Instance',
+  baremetal: 'bm-server',
+  cluster: 'ocp-cluster',
+  models: 'model-endpoint',
+  'virtual-machine': 'vm-instance',
 }
 
 /** @deprecated Prefer getLaunchInstanceNamePrefix(serviceId). */
@@ -307,14 +311,9 @@ export function getNextLaunchInstanceName(
   existingNames: readonly string[],
   serviceId: CatalogServiceId = 'baremetal',
 ): string {
-  const prefix = getLaunchInstanceNamePrefix(serviceId)
-  const useDnsLabelName =
-    serviceId === 'virtual-machine' ||
-    serviceId === 'baremetal' ||
-    serviceId === 'cluster'
-  const matchPrefix = useDnsLabelName ? prefix.toLowerCase() : prefix
+  const prefix = getLaunchInstanceNamePrefix(serviceId).toLowerCase()
   let highestNumber = 0
-  const pattern = new RegExp(`^${escapeRegExp(matchPrefix)}-(\\d+)$`, 'i')
+  const pattern = new RegExp(`^${escapeRegExp(prefix)}-(\\d+)$`, 'i')
 
   for (const name of existingNames) {
     const match = name.trim().match(pattern)
@@ -329,10 +328,6 @@ export function getNextLaunchInstanceName(
   }
 
   const nextNumber = String(highestNumber + 1).padStart(2, '0')
-  if (useDnsLabelName) {
-    return `${matchPrefix}-${nextNumber}`
-  }
-
   return `${prefix}-${nextNumber}`
 }
 
@@ -421,11 +416,11 @@ export function createLaunchInstanceWizardForm(options: {
 
 /** DNS label (RFC 1035): lowercase letter, then lowercase letters/digits/hyphens. */
 export function isDnsLabelValid(name: string): boolean {
-  return /^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$/.test(name.trim())
+  return isValidKubernetesResourceName(name)
 }
 
 export function isInstanceNameValid(name: string): boolean {
-  return /^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/.test(name.trim())
+  return isValidKubernetesResourceName(name)
 }
 
 export function isClusterGeneralStepValid(form: LaunchInstanceWizardForm): boolean {
@@ -447,7 +442,11 @@ export function isClusterConfigureStepValid(form: LaunchInstanceWizardForm): boo
 }
 
 export function isClusterNetworkingStepValid(form: LaunchInstanceWizardForm): boolean {
-  return form.podCidr.trim().length > 0 && form.serviceCidr.trim().length > 0
+  return (
+    form.podCidr.trim().length > 0 &&
+    form.serviceCidr.trim().length > 0 &&
+    isVmNetworkingStepValid(form)
+  )
 }
 
 export function isVmGeneralStepValid(form: LaunchInstanceWizardForm): boolean {

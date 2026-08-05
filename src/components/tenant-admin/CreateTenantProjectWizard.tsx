@@ -33,6 +33,7 @@ import {
   WizardHeader,
   WizardStep,
 } from '@patternfly/react-core'
+import { KubernetesResourceNameHelper } from '../shared/KubernetesResourceNameHelper'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import type { AttachableCatalogOption } from '../../tenantAdmin/catalogItems'
 import { getTenantCatalogGovernanceSpecSummary, TENANT_CATALOG_GOVERNANCE_ITEMS } from '../../tenantAdmin/catalogManager'
@@ -58,6 +59,7 @@ import {
   resolveOrganizationExternalIpPool,
   type TenantProject,
 } from '../../tenantAdmin/projects'
+import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
 
 type CreateTenantProjectWizardProps = {
   isOpen: boolean
@@ -104,7 +106,7 @@ export function CreateTenantProjectWizard({
   }, [isOpen])
 
   const handleCreateProject = () => {
-    if (!form.name.trim()) {
+    if (!isValidKubernetesResourceName(form.name)) {
       return
     }
 
@@ -162,9 +164,13 @@ export function CreateTenantProjectWizard({
         <TextInput
           id="new-project-name"
           value={form.name}
+          validated={
+            form.name.trim() && !isValidKubernetesResourceName(form.name) ? 'error' : 'default'
+          }
           onChange={(_event, value) => setForm((current) => ({ ...current, name: value }))}
           placeholder={CREATE_PROJECT_WIZARD_DEMO.projectNamePlaceholder}
         />
+        <KubernetesResourceNameHelper value={form.name} id="new-project-name-helper" />
       </FormGroup>
       <FormGroup label="Description" fieldId="new-project-description">
         <TextArea
@@ -437,7 +443,7 @@ export function CreateTenantProjectWizard({
   const getStepFooter = (stepId: CreateProjectWizardStepId) => {
     if (stepId === 'project-info') {
       return {
-        isNextDisabled: !form.name.trim(),
+        isNextDisabled: !isValidKubernetesResourceName(form.name),
         nextButtonText: (
           <span className="tenant-admin-projects-teams__wizard-footer-label">
             <span>{CREATE_PROJECT_WIZARD_DEMO.continueLabel}</span>

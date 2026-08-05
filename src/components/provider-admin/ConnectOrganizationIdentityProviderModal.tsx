@@ -51,7 +51,7 @@ function buildDefaultForm(organization: RegisteredOrganization): ConnectIdentity
     return {
       protocol: organization.identityProviderProtocol ?? 'OIDC',
       displayName:
-        organization.identityProviderDisplayName || `${organization.name} IdP`,
+        organization.identityProviderDisplayName || `${organization.name}-idp`,
       issuerUrl:
         organization.identityProviderIssuerUrl || `https://login.${domain}/oauth2`,
       clientId: organization.identityProviderClientId || `bmaas-${organization.slug || 'tenant'}`,
@@ -60,7 +60,7 @@ function buildDefaultForm(organization: RegisteredOrganization): ConnectIdentity
 
   return {
     protocol: 'OIDC',
-    displayName: `${organization.name} IdP`,
+    displayName: `${organization.name}-idp`,
     issuerUrl: `https://login.${domain}/oauth2`,
     clientId: `bmaas-${organization.slug || 'tenant'}`,
   }

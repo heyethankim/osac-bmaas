@@ -835,34 +835,65 @@
   margin-block-end: var(--pf-t--global--spacer--sm);
 }
 
+.tenant-admin-catalog-manager__drawer-dl .pf-v6-c-description-list__term,
+.tenant-admin-catalog-manager__drawer-dl .pf-v6-c-description-list__description {
+  width: 100%;
+  max-width: 100%;
+}
+
 .tenant-admin-catalog-manager__drawer-dl .pf-v6-c-description-list__group:last-child {
   margin-block-end: 0;
 }
 
 .tenant-admin-catalog-manager__drawer-network-term {
-  display: inline-flex;
-  flex-wrap: wrap;
+  display: flex;
+  width: 100%;
   align-items: center;
+  justify-content: space-between;
   gap: var(--pf-t--global--spacer--sm);
 }
 
+.tenant-admin-catalog-manager__drawer-network-term > span:first-child {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
 .tenant-admin-catalog-manager__drawer-network-term .pf-v6-c-label {
+  flex-shrink: 0;
   font-weight: var(--pf-t--global--font--weight--body--default);
 }
 
 .tenant-admin-catalog-manager__drawer-network-controls {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2.25rem;
   align-items: center;
-  gap: var(--pf-t--global--spacer--sm);
+  column-gap: var(--pf-t--global--spacer--sm);
   width: 100%;
 }
 
 .tenant-admin-catalog-manager__drawer-network-select.pf-v6-c-form-control {
-  flex: 1 1 12rem;
-  max-width: 100%;
+  width: 100%;
   min-width: 0;
+}
+
+.tenant-admin-catalog-manager__drawer-network-value {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tenant-admin-catalog-manager__drawer-network-lock-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+}
+
+.tenant-admin-catalog-manager__drawer-network-lock-slot .catalog-network-field-lock-wrap {
+  align-self: center;
+  margin-block-end: 0;
 }
 
 .tenant-admin-catalog-manager__drawer-team-list {
@@ -1645,6 +1676,12 @@
   display: flex;
   flex-direction: column;
   gap: var(--pf-t--global--spacer--sm);
+}
+
+.tenant-user-instances__drawer-network-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
 }
 
 .tenant-user-instances__drawer-lede.pf-v6-c-content--p {

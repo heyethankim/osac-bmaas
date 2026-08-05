@@ -59,6 +59,7 @@ import {
   resolveVmConfig,
   TENANT_INSTANCE_RESTART_DURATION_MS,
   type TenantInstance,
+  type TenantInstanceNetworking,
   type TenantInstanceStatus,
 } from '../../tenantUser/instances'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
@@ -586,6 +587,24 @@ export function TenantUserInstancesPage({
       },
     )
 
+  const handleUpdateNetworking = (
+    instanceId: string,
+    networking: TenantInstanceNetworking,
+    networkLabel: string,
+  ) => {
+    onInstancesChange((current) =>
+      updateTenantUserInstance(
+        tenantSlug,
+        instanceId,
+        {
+          networking,
+          networkLabel,
+        },
+        current,
+      ),
+    )
+  }
+
   const closeAttachPublicIp = () => {
     setInstancePendingPublicIp(null)
     setPublicIpFamily('IPv4')
@@ -666,6 +685,7 @@ export function TenantUserInstancesPage({
         setPublicIpFamily('IPv4')
         setInstancePendingPublicIp(instance)
       }}
+      onUpdateNetworking={handleUpdateNetworking}
     >
       <div className="tenant-user-workspace-page tenant-user-instances">
         <Title headingLevel="h1" size="3xl" className="tenant-user-instances__title">

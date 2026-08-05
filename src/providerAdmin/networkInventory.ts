@@ -73,26 +73,26 @@ export function getNetworkInventoryStatusLabelColor(
   return 'green'
 }
 
-export const NETWORK_INVENTORY_DATA_CENTERS = ['EU-West-1-DC-A', 'US-East-1-DC-B'] as const
+export const NETWORK_INVENTORY_DATA_CENTERS = ['eu-west-1-dc-a', 'us-east-1-dc-b'] as const
 
 export const DEFAULT_PROVIDER_VIRTUAL_NETWORKS: ProviderVirtualNetwork[] = [
   {
     id: 'vnet-tenant-workload',
-    name: 'Tenant workload VNet',
+    name: 'tenant-workload',
     detail: 'Primary tenant compute network',
     cidr: '10.42.0.0/16',
     ipv6Cidr: '2001:db8:42::/48',
-    dataCenter: 'EU-West-1-DC-A',
+    dataCenter: 'eu-west-1-dc-a',
     status: 'Ready',
     createdAt: '2026-07-01T09:00:00.000Z',
   },
   {
     id: 'vnet-shared-services',
-    name: 'Shared services VNet',
+    name: 'shared-services',
     detail: 'Provider-managed shared services',
     cidr: '10.50.0.0/16',
     ipv6Cidr: '2001:db8:50::/48',
-    dataCenter: 'EU-West-1-DC-A',
+    dataCenter: 'eu-west-1-dc-a',
     status: 'Ready',
     createdAt: '2026-07-01T09:00:00.000Z',
   },
@@ -155,15 +155,15 @@ export const DEFAULT_PROVIDER_SECURITY_GROUPS: ProviderSecurityGroup[] = [
 ]
 
 export function generateProviderVirtualNetworkId(): string {
-  return `vnet_${Math.random().toString(36).slice(2, 8)}`
+  return `vnet-${Math.random().toString(36).slice(2, 8)}`
 }
 
 export function generateProviderSubnetId(): string {
-  return `subnet_${Math.random().toString(36).slice(2, 8)}`
+  return `subnet-${Math.random().toString(36).slice(2, 8)}`
 }
 
 export function generateProviderSecurityGroupId(): string {
-  return `sg_${Math.random().toString(36).slice(2, 8)}`
+  return `sg-${Math.random().toString(36).slice(2, 8)}`
 }
 
 export function toCatalogNetworkOption(resource: {

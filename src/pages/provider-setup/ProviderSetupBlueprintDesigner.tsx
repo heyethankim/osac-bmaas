@@ -21,6 +21,7 @@ import {
   WizardHeader,
   WizardStep,
 } from '@patternfly/react-core'
+import { KubernetesResourceNameHelper } from '../../components/shared/KubernetesResourceNameHelper'
 import {
   BLUEPRINT_DESIGNER_STEPS,
   DEFAULT_BLUEPRINT_FORM,
@@ -38,6 +39,7 @@ import {
 } from '../../providerSetup/templateDemo'
 import type { OsImageOption } from '../../providerAdmin/computeImages'
 import { toOsImageOption } from '../../providerAdmin/computeImages'
+import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
 import { getOsImageLabel } from '../../providerAdmin/osImageLabels'
 import { getProviderComputeImages } from '../../providerSetup/storage'
 
@@ -306,9 +308,19 @@ export function ProviderSetupBlueprintDesigner({
               <TextInput
                 id="blueprint-template-name"
                 value={form.templateName}
+                validated={
+                  form.templateName.trim() && !isValidKubernetesResourceName(form.templateName)
+                    ? 'error'
+                    : 'default'
+                }
                 onChange={(_event, value) =>
                   setForm((current) => ({ ...current, templateName: value }))
                 }
+                placeholder="e.g. gpu-a100-training-standard"
+              />
+              <KubernetesResourceNameHelper
+                value={form.templateName}
+                id="blueprint-template-name-helper"
               />
             </FormGroup>
             <FormGroup label="Description" fieldId="blueprint-description" isRequired>
@@ -617,7 +629,13 @@ export function ProviderSetupBlueprintDesigner({
                     ? getReviewFooter()
                     : step.id === 'rate-card'
                       ? { isNextDisabled: !parseRateCardFromForm(form) }
-                      : undefined
+                      : step.id === 'identity'
+                        ? {
+                            isNextDisabled:
+                              !isValidKubernetesResourceName(form.templateName) ||
+                              !form.description.trim(),
+                          }
+                        : undefined
                 }
               >
                 <div className="provider-setup-template__wizard-step-body">

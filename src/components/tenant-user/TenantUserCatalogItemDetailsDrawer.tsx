@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import { RocketIcon } from '@patternfly/react-icons/dist/esm/icons/rocket-icon'
-import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
 import {
   Button,
   Content,
@@ -28,16 +27,23 @@ import {
   resolveVmCatalogHighlightRows,
 } from '../../catalog/catalogSpecs'
 import { formatCatalogFieldPolicyMode } from '../../catalog/catalogPublishConfig'
+import { CatalogExternalIpPoolSection } from '../catalog/CatalogExternalIpPoolSection'
+import { CatalogNetworkingLocksSection } from '../catalog/CatalogNetworkingLocksSection'
 import { CatalogVmDefaultsSections } from '../catalog/CatalogVmDefaultsSections'
+import type { RegisteredOrganization } from '../../providerAdmin/organizations'
+import type { ProviderCatalogDraft } from '../../providerSetup/storage'
+import { getProviderExternalIpPools } from '../../providerSetup/storage'
 import type { TenantUserCatalogCard } from '../../tenantUser/catalog'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
-import type { LaunchNetworkContext } from '../../tenantUser/launchNetworking'
+import { resolveLaunchNetworkContext } from '../../tenantUser/launchNetworking'
 
 type TenantUserCatalogItemDetailsDrawerProps = {
   isExpanded: boolean
   onClose: () => void
   catalogItem: TenantUserCatalogCard | null
-  networkContext: LaunchNetworkContext
+  organization: RegisteredOrganization | null
+  catalogDraft: ProviderCatalogDraft | null
+  preferCatalogDraft?: boolean
   onLaunch: () => void
   children: ReactNode
 }
@@ -46,10 +52,20 @@ export function TenantUserCatalogItemDetailsDrawer({
   isExpanded,
   onClose,
   catalogItem,
-  networkContext,
+  organization,
+  catalogDraft,
+  preferCatalogDraft = false,
   onLaunch,
   children,
 }: TenantUserCatalogItemDetailsDrawerProps) {
+  const networkContext = catalogItem
+    ? resolveLaunchNetworkContext(
+        organization,
+        catalogDraft,
+        preferCatalogDraft,
+        catalogItem.catalogItemId,
+      )
+    : null
   const specRows = catalogItem
     ? resolveCatalogSpecRows(
         {
@@ -138,10 +154,10 @@ export function TenantUserCatalogItemDetailsDrawer({
         <Content component="p" className="tenant-user-catalog__drawer-lede">
           {catalogItem.description?.trim() ||
             (catalogItem.serviceId === 'cluster'
-              ? 'Review the cluster configuration and networking before you launch.'
+              ? 'Review the cluster configuration before you launch.'
               : catalogItem.serviceId === 'virtual-machine'
-                ? 'Review the instance configuration and networking before you launch.'
-                : 'Review the hardware and networking configured for this offering before you launch.')}
+                ? 'Review the instance configuration before you launch.'
+                : 'Review the hardware configured for this offering before you launch.')}
         </Content>
 
         <Divider className="tenant-user-catalog__drawer-divider" />
@@ -239,50 +255,26 @@ export function TenantUserCatalogItemDetailsDrawer({
           </>
         ) : null}
 
-        <Divider className="tenant-user-catalog__drawer-divider" />
-
-        <div className="tenant-user-catalog__drawer-section">
-          <Content component="p" className="tenant-user-catalog__drawer-section-title">
-            Networking
-          </Content>
-          {!networkContext.enabled ? (
-            <Content component="p" className="tenant-user-catalog__drawer-section-lede">
-              Networking is off for this catalog item.
-            </Content>
-          ) : (
-            <>
-              <Content component="p" className="tenant-user-catalog__drawer-section-lede">
-                Network placement set for your organization. Locked values cannot be changed at
-                launch.
-              </Content>
-              <DescriptionList
-                isCompact
-                className="tenant-user-catalog__drawer-dl"
-                aria-label="Networking configuration"
-              >
-                {networkContext.fields.map((field) => (
-                  <DescriptionListGroup key={field.kind}>
-                    <DescriptionListTerm>
-                      <span className="tenant-user-catalog__drawer-network-term">
-                        <span>{field.label}</span>
-                        {field.locked ? (
-                          <Label color="grey" isCompact icon={<LockIcon />}>
-                            Locked
-                          </Label>
-                        ) : (
-                          <Label color="blue" isCompact>
-                            Selectable at launch
-                          </Label>
-                        )}
-                      </span>
-                    </DescriptionListTerm>
-                    <DescriptionListDescription>{field.value}</DescriptionListDescription>
-                  </DescriptionListGroup>
-                ))}
-              </DescriptionList>
-            </>
-          )}
-        </div>
+        {networkContext?.enabled ? (
+          <>
+            <Divider className="tenant-user-catalog__drawer-divider" />
+            <div className="catalog-networking-step">
+              <CatalogNetworkingLocksSection
+                idPrefix={`tenant-user-catalog-${catalogItem.catalogItemId}`}
+                policy={networkContext.policy}
+                lede="Locked fields are fixed for launch. Unlocked fields can be chosen when you create an instance."
+                readOnly
+              />
+              <CatalogExternalIpPoolSection
+                idPrefix={`tenant-user-catalog-${catalogItem.catalogItemId}`}
+                policy={networkContext.policy.externalIpPool}
+                pools={getProviderExternalIpPools()}
+                readOnly
+                showDivider
+              />
+            </div>
+          </>
+        ) : null}
       </DrawerPanelBody>
     </DrawerPanelContent>
   ) : null

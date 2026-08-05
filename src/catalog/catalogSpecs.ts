@@ -8,10 +8,14 @@ export type CatalogSpecRow = {
 }
 
 /** Demo offering: object-level validation on `node_sets.fc430`. */
-export const CLUSTER_NODE_SETS_TEMPLATE_REF_ID = 'cl_node_sets_fc430'
+export const CLUSTER_NODE_SETS_TEMPLATE_REF_ID = 'cl-node-sets-fc430'
 export const CLUSTER_NODE_SETS_TEMPLATE_NAME = 'cluster-node-sets-object'
-export const CLUSTER_NODE_SETS_DISPLAY_NAME = 'Cluster - Node Sets Object'
-export const CLUSTER_NODE_SETS_CATALOG_ITEM_ID = 'cat_NODE_SETS_FC430'
+export const CLUSTER_NODE_SETS_DISPLAY_NAME = 'cluster-node-sets-object'
+export const CLUSTER_NODE_SETS_CATALOG_ITEM_ID = 'cat-node-sets-fc430'
+/** Pre-Kubernetes-convention identifiers — matched when migrating stored catalogs. */
+export const LEGACY_CLUSTER_NODE_SETS_TEMPLATE_REF_ID = 'cl_node_sets_fc430'
+export const LEGACY_CLUSTER_NODE_SETS_DISPLAY_NAME = 'Cluster - Node Sets Object'
+export const LEGACY_CLUSTER_NODE_SETS_CATALOG_ITEM_ID = 'cat_NODE_SETS_FC430'
 export const CLUSTER_NODE_SETS_DESCRIPTION =
   'Demonstrates a validation_schema for a whole object-valued field (node_sets.fc430), not just a single scalar leaf like node_sets.fc430.size. The whole ClusterNodeSet object is validated as a unit: host_type is pinned, and size is bounded between 1 and 4.'
 
@@ -36,10 +40,14 @@ const CLUSTER_NODE_SETS_DETAIL_ROWS: CatalogSpecRow[] = [
 ]
 
 /** Demo offering: whole-array validation on `network_attachments`. */
-export const VM_NETWORK_ATTACHMENTS_TEMPLATE_REF_ID = 'vm_network_attachments'
+export const VM_NETWORK_ATTACHMENTS_TEMPLATE_REF_ID = 'vm-network-attachments'
 export const VM_NETWORK_ATTACHMENTS_TEMPLATE_NAME = 'vm-configurable-network-attachments'
-export const VM_NETWORK_ATTACHMENTS_DISPLAY_NAME = 'VM with Configurable Network Attachments'
-export const VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID = 'cat_VM_NET_ATTACH'
+export const VM_NETWORK_ATTACHMENTS_DISPLAY_NAME = 'vm-configurable-network-attachments'
+export const VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID = 'cat-vm-net-attach'
+export const LEGACY_VM_NETWORK_ATTACHMENTS_TEMPLATE_REF_ID = 'vm_network_attachments'
+export const LEGACY_VM_NETWORK_ATTACHMENTS_DISPLAY_NAME =
+  'VM with Configurable Network Attachments'
+export const LEGACY_VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID = 'cat_VM_NET_ATTACH'
 export const VM_NETWORK_ATTACHMENTS_DESCRIPTION =
   'Virtual machine offering with a whole-array field definition for `network_attachments`. Defaults to a single NIC on the shared subnet/security group; users may edit the array to add a second NIC, but the array as a whole is capped at 2 entries via validation_schema.'
 
@@ -157,7 +165,10 @@ export function resolveCatalogSpecRows(
       if (item.diskImageLabel) {
         rows.push({ label: 'Cluster version', value: item.diskImageLabel })
       }
-      if (item.templateRefId === CLUSTER_NODE_SETS_TEMPLATE_REF_ID) {
+      if (
+        item.templateRefId === CLUSTER_NODE_SETS_TEMPLATE_REF_ID ||
+        item.templateRefId === LEGACY_CLUSTER_NODE_SETS_TEMPLATE_REF_ID
+      ) {
         for (const row of CLUSTER_NODE_SETS_SPEC_ROWS) {
           if (row.label === 'Cluster version') {
             continue

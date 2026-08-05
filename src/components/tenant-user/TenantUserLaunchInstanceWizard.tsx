@@ -81,6 +81,7 @@ import {
 } from '../../providerSetup/storage'
 import { formatTenantInstanceName, generateTenantInstanceId, type TenantInstance } from '../../tenantUser/instances'
 import type { TenantUserScopeKind } from '../../tenantUser/scope'
+import { KUBERNETES_RESOURCE_NAME_ERROR, KUBERNETES_RESOURCE_NAME_HELPER } from '../../shared/kubernetesResourceName'
 
 type TenantUserLaunchInstanceWizardProps = {
   isOpen: boolean
@@ -202,14 +203,15 @@ export function TenantUserLaunchInstanceWizard({
     catalogItem.diskImageLabel,
     catalogDetailSpecRows,
   ])
-  const includeNetworkingStep = networkContext.enabled && networkContext.hasEditableFields
+  // Networking is service-level — always available at launch for every catalog service.
+  const includeNetworkingStep = true
   const wizardSteps = useMemo(
     () =>
       getLaunchInstanceWizardSteps({
         includeNetworking: includeNetworkingStep,
         serviceId: catalogItem.serviceId,
       }),
-    [includeNetworkingStep, catalogItem.serviceId],
+    [catalogItem.serviceId],
   )
 
   const catalogClusterVersion =
@@ -526,13 +528,29 @@ export function TenantUserLaunchInstanceWizard({
             <TextInput
               id={nameFieldId}
               value={form.instanceName}
+              validated={
+                form.instanceName.trim() && !isInstanceNameValid(form.instanceName)
+                  ? 'error'
+                  : 'default'
+              }
               onChange={(_event, value) =>
                 setForm((current) => ({ ...current, instanceName: value }))
               }
+              placeholder={getLaunchInstanceNamePlaceholder(catalogItem.serviceId)}
             />
             <FormHelperText>
               <HelperText>
-                <HelperTextItem>{nameHelper}</HelperTextItem>
+                <HelperTextItem
+                  variant={
+                    form.instanceName.trim() && !isInstanceNameValid(form.instanceName)
+                      ? 'error'
+                      : 'default'
+                  }
+                >
+                  {form.instanceName.trim() && !isInstanceNameValid(form.instanceName)
+                    ? KUBERNETES_RESOURCE_NAME_ERROR
+                    : nameHelper}
+                </HelperTextItem>
               </HelperText>
             </FormHelperText>
           </FormGroup>
@@ -712,56 +730,106 @@ export function TenantUserLaunchInstanceWizard({
     </div>
   )
 
-  const renderVmNetworkingStep = () => {
-    const virtualNetworkOptions = getCatalogVirtualNetworkOptions()
-    const subnetOptions = getCatalogSubnetOptions(networkSelections.virtualNetworkId)
-    const securityGroupOptions = getCatalogSecurityGroupOptions()
+  const renderPlacementNetworkingFields = (idPrefix: string) => {
+    const virtualNetworkField = networkContext.fields.find(
+      (field) => field.kind === 'virtual-network',
+    )
+    const subnetField = networkContext.fields.find((field) => field.kind === 'subnet')
+    const securityGroupField = networkContext.fields.find(
+      (field) => field.kind === 'security-group',
+    )
+    const virtualNetworkOptions = virtualNetworkField?.options ?? getCatalogVirtualNetworkOptions()
+    const subnetOptions =
+      subnetField?.options ?? getCatalogSubnetOptions(networkSelections.virtualNetworkId)
+    const securityGroupOptions =
+      securityGroupField?.options ?? getCatalogSecurityGroupOptions()
 
     return (
-      <div className="tenant-user-launch-wizard__step">
-        <Form autoComplete="off" className="tenant-user-launch-wizard__form">
-          <FormGroup label="Virtual network" fieldId="launch-vm-virtual-network" isRequired>
-            <FormSelect
-              id="launch-vm-virtual-network"
-              value={networkSelections.virtualNetworkId}
-              onChange={(_event, value) => updateNetworkSelection('virtual-network', value)}
-              aria-label="Virtual network"
-            >
-              {virtualNetworkOptions.map((option) => (
-                <FormSelectOption key={option.id} value={option.id} label={option.name} />
-              ))}
-            </FormSelect>
-          </FormGroup>
+      <>
+        <FormGroup label="Virtual network" fieldId={`${idPrefix}-virtual-network`} isRequired>
+          <FormSelect
+            id={`${idPrefix}-virtual-network`}
+            value={networkSelections.virtualNetworkId}
+            isDisabled={Boolean(virtualNetworkField?.locked)}
+            onChange={(_event, value) => updateNetworkSelection('virtual-network', value)}
+            aria-label="Virtual network"
+          >
+            {virtualNetworkOptions.map((option) => (
+              <FormSelectOption key={option.id} value={option.id} label={option.name} />
+            ))}
+          </FormSelect>
+          {virtualNetworkField?.locked ? (
+            <FormHelperText>
+              <HelperText>
+                <HelperTextItem>Locked for this catalog item</HelperTextItem>
+              </HelperText>
+            </FormHelperText>
+          ) : null}
+        </FormGroup>
 
-          <FormGroup label="Subnet" fieldId="launch-vm-subnet" isRequired>
-            <FormSelect
-              id="launch-vm-subnet"
-              value={networkSelections.subnetId}
-              onChange={(_event, value) => updateNetworkSelection('subnet', value)}
-              aria-label="Subnet"
-            >
-              {subnetOptions.map((option) => (
-                <FormSelectOption key={option.id} value={option.id} label={option.name} />
-              ))}
-            </FormSelect>
-          </FormGroup>
+        <FormGroup label="Subnet" fieldId={`${idPrefix}-subnet`} isRequired>
+          <FormSelect
+            id={`${idPrefix}-subnet`}
+            value={networkSelections.subnetId}
+            isDisabled={Boolean(subnetField?.locked)}
+            onChange={(_event, value) => updateNetworkSelection('subnet', value)}
+            aria-label="Subnet"
+          >
+            {subnetOptions.map((option) => (
+              <FormSelectOption key={option.id} value={option.id} label={option.name} />
+            ))}
+          </FormSelect>
+          {subnetField?.locked ? (
+            <FormHelperText>
+              <HelperText>
+                <HelperTextItem>Locked for this catalog item</HelperTextItem>
+              </HelperText>
+            </FormHelperText>
+          ) : null}
+        </FormGroup>
 
-          <FormGroup label="Security groups" fieldId="launch-vm-security-groups" isRequired>
-            <FormSelect
-              id="launch-vm-security-groups"
-              value={networkSelections.securityGroupId}
-              onChange={(_event, value) => updateNetworkSelection('security-group', value)}
-              aria-label="Security groups"
-            >
-              {securityGroupOptions.map((option) => (
-                <FormSelectOption key={option.id} value={option.id} label={option.name} />
-              ))}
-            </FormSelect>
-          </FormGroup>
-        </Form>
-      </div>
+        <FormGroup label="Security group" fieldId={`${idPrefix}-security-group`} isRequired>
+          <FormSelect
+            id={`${idPrefix}-security-group`}
+            value={networkSelections.securityGroupId}
+            isDisabled={Boolean(securityGroupField?.locked)}
+            onChange={(_event, value) => updateNetworkSelection('security-group', value)}
+            aria-label="Security group"
+          >
+            {securityGroupOptions.map((option) => (
+              <FormSelectOption key={option.id} value={option.id} label={option.name} />
+            ))}
+          </FormSelect>
+          {securityGroupField?.locked ? (
+            <FormHelperText>
+              <HelperText>
+                <HelperTextItem>Locked for this catalog item</HelperTextItem>
+              </HelperText>
+            </FormHelperText>
+          ) : null}
+        </FormGroup>
+      </>
     )
   }
+
+  const renderVmNetworkingStep = () => (
+    <div className="tenant-user-launch-wizard__step">
+      <Form autoComplete="off" className="tenant-user-launch-wizard__form">
+        {renderPlacementNetworkingFields('launch-vm')}
+      </Form>
+    </div>
+  )
+
+  const renderBareMetalNetworkingStep = () => (
+    <div className="tenant-user-launch-wizard__step">
+      <Content component="p" className="tenant-user-launch-wizard__step-lede">
+        {LAUNCH_INSTANCE_WIZARD_DEMO.networkingLede}
+      </Content>
+      <Form autoComplete="off" className="tenant-user-launch-wizard__form">
+        {renderPlacementNetworkingFields('launch-bm')}
+      </Form>
+    </div>
+  )
 
   const renderClusterConfigureStep = () => (
     <div className="tenant-user-launch-wizard__step">
@@ -874,6 +942,7 @@ export function TenantUserLaunchInstanceWizard({
   const renderClusterNetworkingStep = () => (
     <div className="tenant-user-launch-wizard__step">
       <Form autoComplete="off" className="tenant-user-launch-wizard__form">
+        {renderPlacementNetworkingFields('launch-cluster')}
         <FormGroup label="Pod CIDR" fieldId="launch-cluster-pod-cidr">
           <TextInput
             id="launch-cluster-pod-cidr"
@@ -917,9 +986,29 @@ export function TenantUserLaunchInstanceWizard({
           <TextInput
             id="launch-instance-name"
             value={form.instanceName}
+            validated={
+              form.instanceName.trim() && !isInstanceNameValid(form.instanceName)
+                ? 'error'
+                : 'default'
+            }
             onChange={(_event, value) => setForm((current) => ({ ...current, instanceName: value }))}
             placeholder={getLaunchInstanceNamePlaceholder(catalogItem.serviceId)}
           />
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem
+                variant={
+                  form.instanceName.trim() && !isInstanceNameValid(form.instanceName)
+                    ? 'error'
+                    : 'default'
+                }
+              >
+                {form.instanceName.trim() && !isInstanceNameValid(form.instanceName)
+                  ? KUBERNETES_RESOURCE_NAME_ERROR
+                  : KUBERNETES_RESOURCE_NAME_HELPER}
+              </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
         </FormGroup>
 
         <FormGroup label="SSH public key" fieldId="launch-instance-ssh-key" isRequired>
@@ -1116,6 +1205,20 @@ export function TenantUserLaunchInstanceWizard({
                   </DescriptionListDescription>
                 </DescriptionListGroup>
               ) : null}
+              <DescriptionListGroup>
+                <DescriptionListTerm>Virtual network</DescriptionListTerm>
+                <DescriptionListDescription>{virtualNetworkLabel}</DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Subnet</DescriptionListTerm>
+                <DescriptionListDescription>{subnetLabel}</DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Security group</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {securityGroupReviewLabel}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
             </>
           ) : isVmCatalogItem ? (
             <>
@@ -1196,6 +1299,20 @@ export function TenantUserLaunchInstanceWizard({
               <DescriptionListGroup>
                 <DescriptionListTerm>Service CIDR</DescriptionListTerm>
                 <DescriptionListDescription>{form.serviceCidr.trim()}</DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Virtual network</DescriptionListTerm>
+                <DescriptionListDescription>{virtualNetworkLabel}</DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Subnet</DescriptionListTerm>
+                <DescriptionListDescription>{subnetLabel}</DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Security group</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {securityGroupReviewLabel}
+                </DescriptionListDescription>
               </DescriptionListGroup>
             </>
           ) : (
@@ -1362,6 +1479,8 @@ export function TenantUserLaunchInstanceWizard({
           return renderGeneralStep()
         case 'configure':
           return renderBareMetalConfigureStep()
+        case 'networking':
+          return renderBareMetalNetworkingStep()
         case 'review':
           return renderReviewStep()
         case 'provisioning':
@@ -1458,9 +1577,21 @@ export function TenantUserLaunchInstanceWizard({
   }
 
   const bareMetalStepFooter = (stepId: LaunchInstanceWizardStepId) => {
-    if (stepId === 'general' || stepId === 'configure' || stepId === 'review') {
+    if (
+      stepId === 'general' ||
+      stepId === 'configure' ||
+      stepId === 'networking' ||
+      stepId === 'review'
+    ) {
+      const isNextDisabled =
+        stepId === 'general'
+          ? !isBareMetalGeneralStepValid(form)
+          : stepId === 'networking'
+            ? !isVmNetworkingStepValid(form)
+            : false
+
       return {
-        isNextDisabled: stepId === 'general' ? !isBareMetalGeneralStepValid(form) : false,
+        isNextDisabled,
         nextButtonText:
           stepId === 'review' ? LAUNCH_INSTANCE_WIZARD_DEMO.confirmProvisioningLabel : 'Next',
         backButtonText: 'Back',

@@ -20,12 +20,20 @@ export type CatalogNetworkPolicyField = {
   locked: boolean
 }
 
+/** Optional external IP pools exposed by this catalog offering. */
+export type CatalogExternalIpPoolPolicy = {
+  enabled: boolean
+  /** Pool IDs tenants may use when the feature is on. */
+  poolIds: string[]
+}
+
 export type CatalogNetworkPolicy = {
   /** When false, network access is off and field controls are hidden. */
   enabled: boolean
   virtualNetwork: CatalogNetworkPolicyField
   subnet: CatalogNetworkPolicyField
   securityGroup: CatalogNetworkPolicyField
+  externalIpPool: CatalogExternalIpPoolPolicy
 }
 
 /** Fallback options from seed inventory (prefer live inventory via storage). */
@@ -38,23 +46,29 @@ export const CATALOG_SUBNET_OPTIONS: CatalogNetworkResourceOption[] =
 export const CATALOG_SECURITY_GROUP_OPTIONS: CatalogNetworkResourceOption[] =
   DEFAULT_PROVIDER_SECURITY_GROUPS.map(toCatalogNetworkOption)
 
+export const DEFAULT_CATALOG_EXTERNAL_IP_POOL_POLICY: CatalogExternalIpPoolPolicy = {
+  enabled: false,
+  poolIds: [],
+}
+
 export const DEFAULT_CATALOG_NETWORK_POLICY: CatalogNetworkPolicy = {
   enabled: true,
   virtualNetwork: {
     id: CATALOG_VIRTUAL_NETWORK_OPTIONS[0]!.id,
     name: CATALOG_VIRTUAL_NETWORK_OPTIONS[0]!.name,
-    locked: true,
+    locked: false,
   },
   subnet: {
     id: CATALOG_SUBNET_OPTIONS[0]!.id,
     name: CATALOG_SUBNET_OPTIONS[0]!.name,
-    locked: true,
+    locked: false,
   },
   securityGroup: {
     id: CATALOG_SECURITY_GROUP_OPTIONS[0]!.id,
     name: CATALOG_SECURITY_GROUP_OPTIONS[0]!.name,
     locked: false,
   },
+  externalIpPool: { ...DEFAULT_CATALOG_EXTERNAL_IP_POOL_POLICY },
 }
 
 /** Same placement defaults as the seed policy, with networking turned off. */
@@ -69,6 +83,7 @@ export type CatalogNetworkLockPattern =
   | 'all-editable'
   | 'all-locked'
   | 'two-locked-one-editable'
+  | 'vnet-locked'
 
 const CATALOG_NETWORK_EDITABLE_FIELDS: CatalogNetworkEditableField[] = [
   'virtualNetwork',
@@ -96,6 +111,7 @@ function withFieldLocks(
       name: CATALOG_SECURITY_GROUP_OPTIONS[0]!.name,
       locked: locks.securityGroup,
     },
+    externalIpPool: { ...DEFAULT_CATALOG_EXTERNAL_IP_POOL_POLICY },
   }
 }
 
@@ -112,6 +128,15 @@ export function createAllLockedCatalogNetworkPolicy(): CatalogNetworkPolicy {
     virtualNetwork: true,
     subnet: true,
     securityGroup: true,
+  })
+}
+
+/** Virtual network locked; subnet and security group remain editable. */
+export function createVirtualNetworkLockedCatalogNetworkPolicy(): CatalogNetworkPolicy {
+  return withFieldLocks({
+    virtualNetwork: true,
+    subnet: false,
+    securityGroup: false,
   })
 }
 
@@ -144,6 +169,8 @@ export function createCatalogNetworkPolicyForLockPattern(
       return createAllEditableCatalogNetworkPolicy()
     case 'all-locked':
       return createAllLockedCatalogNetworkPolicy()
+    case 'vnet-locked':
+      return createVirtualNetworkLockedCatalogNetworkPolicy()
     case 'two-locked-one-editable':
       return createTwoLockedOneEditableCatalogNetworkPolicy(pickStableCatalogEditableField(seed))
   }
@@ -177,6 +204,9 @@ export function catalogNetworkPolicyMatchesLockPattern(
   }
   if (pattern === 'all-locked') {
     return lockedCount === 3
+  }
+  if (pattern === 'vnet-locked') {
+    return locks.virtualNetwork && !locks.subnet && !locks.securityGroup
   }
   return lockedCount === 2
 }
@@ -238,6 +268,21 @@ export function isCatalogNetworkPolicy(value: unknown): value is CatalogNetworkP
   )
 }
 
+function normalizeExternalIpPoolPolicy(
+  value: CatalogExternalIpPoolPolicy | undefined,
+): CatalogExternalIpPoolPolicy {
+  if (!value || typeof value !== 'object') {
+    return { ...DEFAULT_CATALOG_EXTERNAL_IP_POOL_POLICY }
+  }
+
+  return {
+    enabled: typeof value.enabled === 'boolean' ? value.enabled : false,
+    poolIds: Array.isArray(value.poolIds)
+      ? value.poolIds.filter((id): id is string => typeof id === 'string')
+      : [],
+  }
+}
+
 /** Normalize stored policies (including drafts created before `enabled` existed). */
 export function normalizeCatalogNetworkPolicy(policy: CatalogNetworkPolicy): CatalogNetworkPolicy {
   return {
@@ -245,6 +290,7 @@ export function normalizeCatalogNetworkPolicy(policy: CatalogNetworkPolicy): Cat
     virtualNetwork: policy.virtualNetwork,
     subnet: policy.subnet,
     securityGroup: policy.securityGroup,
+    externalIpPool: normalizeExternalIpPoolPolicy(policy.externalIpPool),
   }
 }
 
@@ -294,7 +340,7 @@ export function getCatalogNetworkLockSummary(
   if (editableCount === fields.length) {
     return {
       kind: 'all-editable',
-      label: 'All editable',
+      label: 'All unlocked',
       lockedCount,
       editableCount,
     }

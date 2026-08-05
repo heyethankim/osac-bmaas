@@ -72,7 +72,7 @@ export const TENANT_CATALOG_MANAGER_DEMO = {
   networkingViewDetailsLabel: 'Details',
   networkingNotConfiguredTableLabel: 'Not configured',
   networkingSectionLede:
-    'Provider-locked fields cannot be changed. For editable fields, choose a value and optionally lock it for tenant users at launch.',
+    'Switch a field on to lock it for tenant users. Provider-locked fields cannot be changed.',
 } as const
 
 export function getTenantCatalogProjectsLinkLabel(projectCount: number): string {
@@ -122,7 +122,7 @@ function mapProviderCatalogToGovernanceItem(
   const specRows = resolveCatalogSpecRows(draft)
   const networkPolicy = applyTenantNetworkOverrides(
     getCatalogItemNetworkPolicy(draft),
-    getTenantNetworkOverrides(organization.slug),
+    getTenantNetworkOverrides(organization.slug, draft.catalogItemId),
   )
 
   return {
@@ -154,13 +154,13 @@ function mapProviderCatalogToGovernanceItem(
 /** Fallback demo row when provider catalog has not been seeded yet. */
 export const TENANT_CATALOG_GOVERNANCE_ITEMS: TenantCatalogGovernanceItem[] = [
   {
-    id: 'compute-r750',
+    id: 'cat-bm-gpu-training',
     serviceId: 'baremetal',
     service: 'Bare Metal',
     status: 'Live',
-    displayName: 'Bare Metal - GPU Training Server',
+    displayName: 'bare-metal-gpu-training-server',
     description: undefined,
-    templateRefId: 'bm_dell_r750',
+    templateRefId: 'bm-dell-r750',
     templateName: 'gpu-a100-training-standard',
     specRows: [
       { label: 'CPU', value: 'Intel Xeon Gold 6338 × 2' },
@@ -200,7 +200,7 @@ export function getTenantCatalogGovernanceItems(
     catalogItemId: item.id,
     networkPolicy: applyTenantNetworkOverrides(
       DEFAULT_CATALOG_NETWORK_POLICY,
-      getTenantNetworkOverrides(organization.slug),
+      getTenantNetworkOverrides(organization.slug, item.id),
     ),
   }))
 }

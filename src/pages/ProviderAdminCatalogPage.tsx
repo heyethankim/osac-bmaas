@@ -48,8 +48,8 @@ import {
 } from '../catalog/catalogSpecs'
 import { CatalogSpecRowsList } from '../components/catalog/CatalogSpecRowsList'
 import { getCatalogViewMode, setCatalogViewMode, type CatalogViewMode } from '../catalog/viewMode'
-import { getCatalogNetworkLockSummary } from '../providerAdmin/catalogNetworkPolicy'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
+import { getCatalogNetworkLockSummary } from '../providerAdmin/catalogNetworkPolicy'
 import { sortByDemoCatalogOrder } from '../providerSetup/prototypeEntry'
 import type { CatalogItemStatus, ProviderCatalogDraft } from '../providerSetup/storage'
 import {
@@ -177,7 +177,15 @@ function NetworkingSummary({
   compact?: boolean
   onViewDetails?: () => void
 }) {
-  const lockSummary = getCatalogNetworkLockSummary(getCatalogItemNetworkPolicy(item))
+  const policy = getCatalogItemNetworkPolicy(item)
+  const lockSummary = getCatalogNetworkLockSummary(policy)
+  const externalIpLabel = policy.externalIpPool.enabled
+    ? policy.externalIpPool.poolIds.length > 0
+      ? `External IP · ${policy.externalIpPool.poolIds.length} pool${
+          policy.externalIpPool.poolIds.length === 1 ? '' : 's'
+        }`
+      : 'External IP · on'
+    : null
 
   const statusContent = lockSummary ? (
     <span className="provider-admin-catalog-items__networking-status">
@@ -195,6 +203,15 @@ function NetworkingSummary({
       >
         {lockSummary.label}
       </Label>
+      {externalIpLabel ? (
+        <Label
+          color="green"
+          isCompact
+          className="provider-admin-catalog-items__networking-status-label"
+        >
+          {externalIpLabel}
+        </Label>
+      ) : null}
       {onViewDetails ? (
         <Button
           variant="link"
@@ -236,7 +253,7 @@ function getTemplateRowData() {
   }
 
   return {
-    templateRefId: 'bm_dell_r750',
+    templateRefId: 'bm-dell-r750',
     templateName: DEFAULT_BLUEPRINT_FORM.templateName,
     description: DEFAULT_BLUEPRINT_FORM.description,
     hardwareProfileId: DEFAULT_BLUEPRINT_FORM.hardwareProfileId,
