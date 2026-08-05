@@ -19,7 +19,6 @@ import {
   ModalHeader,
   ModalVariant,
   SearchInput,
-  TextInput,
   Title,
   Tooltip,
 } from '@patternfly/react-core'

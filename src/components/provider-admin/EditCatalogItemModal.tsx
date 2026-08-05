@@ -15,7 +15,6 @@ import {
   ModalVariant,
   Radio,
   TextArea,
-  TextInput,
 } from '@patternfly/react-core'
 import { CatalogPublishScopeIcon } from './CatalogPublishScopeIcon'
 import {

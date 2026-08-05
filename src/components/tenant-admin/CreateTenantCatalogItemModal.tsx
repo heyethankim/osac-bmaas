@@ -10,7 +10,6 @@ import {
   ModalFooter,
   ModalHeader,
   ModalVariant,
-  TextInput,
 } from '@patternfly/react-core'
 import { KubernetesResourceNameField } from '../shared/KubernetesResourceNameHelper'
 import { createTenantCatalogItem, type TenantCatalogItem } from '../../tenantAdmin/catalogItems'
