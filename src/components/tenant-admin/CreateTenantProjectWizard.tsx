@@ -33,7 +33,7 @@ import {
   WizardHeader,
   WizardStep,
 } from '@patternfly/react-core'
-import { KubernetesResourceNameHelper } from '../shared/KubernetesResourceNameHelper'
+import { KubernetesResourceNameField } from '../shared/KubernetesResourceNameHelper'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import type { AttachableCatalogOption } from '../../tenantAdmin/catalogItems'
 import { getTenantCatalogGovernanceSpecSummary, TENANT_CATALOG_GOVERNANCE_ITEMS } from '../../tenantAdmin/catalogManager'
@@ -161,16 +161,13 @@ export function CreateTenantProjectWizard({
   const renderProjectInfoStep = () => (
     <Form autoComplete="off" className="tenant-admin-projects-teams__wizard-form">
       <FormGroup label="Project name" fieldId="new-project-name" isRequired>
-        <TextInput
+        <KubernetesResourceNameField
           id="new-project-name"
           value={form.name}
-          validated={
-            form.name.trim() && !isValidKubernetesResourceName(form.name) ? 'error' : 'default'
-          }
-          onChange={(_event, value) => setForm((current) => ({ ...current, name: value }))}
+          onChange={(value) => setForm((current) => ({ ...current, name: value }))}
           placeholder={CREATE_PROJECT_WIZARD_DEMO.projectNamePlaceholder}
+          isRequired
         />
-        <KubernetesResourceNameHelper value={form.name} id="new-project-name-helper" />
       </FormGroup>
       <FormGroup label="Description" fieldId="new-project-description">
         <TextArea

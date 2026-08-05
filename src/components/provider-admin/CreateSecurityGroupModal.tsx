@@ -13,7 +13,7 @@ import {
   ModalVariant,
   TextInput,
 } from '@patternfly/react-core'
-import { KubernetesResourceNameHelper } from '../shared/KubernetesResourceNameHelper'
+import { KubernetesResourceNameField } from '../shared/KubernetesResourceNameHelper'
 import {
   generateProviderSecurityGroupId,
   type ProviderSecurityGroup,
@@ -102,14 +102,13 @@ export function CreateSecurityGroupModal({
         </Content>
         <Form autoComplete="off" className="provider-admin-network-inventory__form">
           <FormGroup label="Name" fieldId="create-sg-name" isRequired>
-            <TextInput
+            <KubernetesResourceNameField
               id="create-sg-name"
               value={form.name}
-              validated={form.name.trim() && !isNameValid ? 'error' : 'default'}
-              onChange={(_event, value) => setForm((current) => ({ ...current, name: value }))}
+              onChange={(value) => setForm((current) => ({ ...current, name: value }))}
               placeholder="e.g. allow-demo-workload"
+              isRequired
             />
-            <KubernetesResourceNameHelper value={form.name} id="create-sg-name-helper" />
           </FormGroup>
           <FormGroup label="Description" fieldId="create-sg-detail">
             <TextInput

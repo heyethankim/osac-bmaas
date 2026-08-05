@@ -21,7 +21,7 @@ import {
   WizardHeader,
   WizardStep,
 } from '@patternfly/react-core'
-import { KubernetesResourceNameHelper } from '../../components/shared/KubernetesResourceNameHelper'
+import { KubernetesResourceNameField } from '../../components/shared/KubernetesResourceNameHelper'
 import {
   BLUEPRINT_DESIGNER_STEPS,
   DEFAULT_BLUEPRINT_FORM,
@@ -305,22 +305,12 @@ export function ProviderSetupBlueprintDesigner({
         return (
           <Form autoComplete="off" className="provider-setup-template__identity-form">
             <FormGroup label="Template name" fieldId="blueprint-template-name" isRequired>
-              <TextInput
+              <KubernetesResourceNameField
                 id="blueprint-template-name"
                 value={form.templateName}
-                validated={
-                  form.templateName.trim() && !isValidKubernetesResourceName(form.templateName)
-                    ? 'error'
-                    : 'default'
-                }
-                onChange={(_event, value) =>
-                  setForm((current) => ({ ...current, templateName: value }))
-                }
+                onChange={(value) => setForm((current) => ({ ...current, templateName: value }))}
                 placeholder="e.g. gpu-a100-training-standard"
-              />
-              <KubernetesResourceNameHelper
-                value={form.templateName}
-                id="blueprint-template-name-helper"
+                isRequired
               />
             </FormGroup>
             <FormGroup label="Description" fieldId="blueprint-description" isRequired>

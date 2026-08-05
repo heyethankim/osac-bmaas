@@ -11,7 +11,7 @@ import {
   ModalVariant,
   TextInput,
 } from '@patternfly/react-core'
-import { KubernetesResourceNameHelper } from '../shared/KubernetesResourceNameHelper'
+import { KubernetesResourceNameField } from '../shared/KubernetesResourceNameHelper'
 import {
   generateProviderVirtualNetworkId,
   type ProviderVirtualNetwork,
@@ -91,14 +91,13 @@ export function CreateVirtualNetworkModal({
         </Content>
         <Form autoComplete="off" className="provider-admin-network-inventory__form">
           <FormGroup label="Name" fieldId="create-vnet-name" isRequired>
-            <TextInput
+            <KubernetesResourceNameField
               id="create-vnet-name"
               value={form.name}
-              validated={form.name.trim() && !isNameValid ? 'error' : 'default'}
-              onChange={(_event, value) => setForm((current) => ({ ...current, name: value }))}
+              onChange={(value) => setForm((current) => ({ ...current, name: value }))}
               placeholder="e.g. demo-workload"
+              isRequired
             />
-            <KubernetesResourceNameHelper value={form.name} id="create-vnet-name-helper" />
           </FormGroup>
           <FormGroup label="Description" fieldId="create-vnet-detail">
             <TextInput

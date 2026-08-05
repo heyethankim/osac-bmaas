@@ -36,7 +36,7 @@ import { CatalogPublishScopeIcon } from '../../components/provider-admin/Catalog
 import { TenantCatalogItemDetailsDrawer } from '../../components/tenant-admin/TenantCatalogItemDetailsDrawer'
 import { TenantUserLaunchInstanceWizard } from '../../components/tenant-user/TenantUserLaunchInstanceWizard'
 import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
-import { KubernetesResourceNameHelper } from '../../components/shared/KubernetesResourceNameHelper'
+import { KubernetesResourceNameField } from '../../components/shared/KubernetesResourceNameHelper'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import { formatCatalogConfigurationSummary } from '../../catalog/catalogSpecs'
 import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
@@ -819,20 +819,12 @@ export function TenantAdminCatalogPage({
         <ModalBody>
           <Form>
             <FormGroup label="Name" fieldId="tenant-edit-catalog-display-name" isRequired>
-              <TextInput
+              <KubernetesResourceNameField
                 id="tenant-edit-catalog-display-name"
                 value={editDisplayName}
-                validated={
-                  editDisplayName.trim() && !isValidKubernetesResourceName(editDisplayName)
-                    ? 'error'
-                    : 'default'
-                }
-                onChange={(_event, value) => setEditDisplayName(value)}
+                onChange={setEditDisplayName}
                 aria-label="Name"
-              />
-              <KubernetesResourceNameHelper
-                value={editDisplayName}
-                id="tenant-edit-catalog-display-name-helper"
+                isRequired
               />
             </FormGroup>
           </Form>

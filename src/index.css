@@ -395,3 +395,76 @@ html:has(.bmaas-role-landing) body {
 .bmaas-role-landing__footer .pf-v6-c-button.pf-m-link:hover:not(:disabled) {
   color: var(--pf-t--global--color--brand--hover);
 }
+
+/* DNS-1123 name validation status + checklist popover */
+.k8s-resource-name__field {
+  width: 100%;
+}
+
+.k8s-resource-name__field--invalid .pf-v6-c-form-control {
+  border-color: var(--pf-t--global--border--color--status--danger--default);
+}
+
+.k8s-resource-name__field--valid .pf-v6-c-form-control {
+  border-color: var(--pf-t--global--border--color--status--success--default);
+}
+
+.k8s-resource-name__status-button.pf-v6-c-button {
+  min-width: 2.25rem;
+  padding-inline: var(--pf-t--global--spacer--sm);
+}
+
+.k8s-resource-name__status-button--pending {
+  color: var(--pf-t--global--icon--color--subtle);
+}
+
+.k8s-resource-name__status-button--success {
+  color: var(--pf-t--global--icon--color--status--success--default);
+}
+
+.k8s-resource-name__status-button--error {
+  color: var(--pf-t--global--icon--color--status--danger--default);
+}
+
+.k8s-resource-name__rules {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.k8s-resource-name__rule {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--pf-t--global--spacer--sm);
+  font-size: var(--pf-t--global--font--size--body--sm);
+  line-height: 1.35;
+}
+
+.k8s-resource-name__rule-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  margin-block-start: 0.15rem;
+}
+
+.k8s-resource-name__rule--met {
+  color: var(--pf-t--global--text--color--status--success--default);
+}
+
+.k8s-resource-name__rule--met .k8s-resource-name__rule-icon {
+  color: var(--pf-t--global--icon--color--status--success--default);
+}
+
+.k8s-resource-name__rule--unmet {
+  color: var(--pf-t--global--text--color--regular);
+}
+
+.k8s-resource-name__rule-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin: 0.2rem;
+  border: 1px solid var(--pf-t--global--border--color--default);
+  border-radius: var(--pf-t--global--border--radius--pill);
+}

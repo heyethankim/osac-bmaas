@@ -22,7 +22,7 @@ import {
   getCatalogEnterpriseTenantIds,
   VipEnterpriseOrganizationField,
 } from './VipEnterpriseOrganizationField'
-import { KubernetesResourceNameHelper } from '../shared/KubernetesResourceNameHelper'
+import { KubernetesResourceNameField } from '../shared/KubernetesResourceNameHelper'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import {
@@ -187,21 +187,12 @@ export function EditCatalogItemModal({
 
             <Form autoComplete="off" className="provider-admin-catalog-items__edit-form">
               <FormGroup label="Name" fieldId="edit-catalog-item-name" isRequired>
-                <TextInput
+                <KubernetesResourceNameField
                   id="edit-catalog-item-name"
                   value={displayName}
-                  validated={
-                    displayName.trim() && !isValidKubernetesResourceName(displayName)
-                      ? 'error'
-                      : 'default'
-                  }
-                  onChange={(_event, value) => setDisplayName(value)}
+                  onChange={setDisplayName}
                   aria-label="Name"
                   isRequired
-                />
-                <KubernetesResourceNameHelper
-                  value={displayName}
-                  id="edit-catalog-item-name-helper"
                 />
               </FormGroup>
 

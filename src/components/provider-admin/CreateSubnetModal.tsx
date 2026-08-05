@@ -13,7 +13,7 @@ import {
   ModalVariant,
   TextInput,
 } from '@patternfly/react-core'
-import { KubernetesResourceNameHelper } from '../shared/KubernetesResourceNameHelper'
+import { KubernetesResourceNameField } from '../shared/KubernetesResourceNameHelper'
 import {
   formatSubnetDetail,
   generateProviderSubnetId,
@@ -110,14 +110,13 @@ export function CreateSubnetModal({
         </Content>
         <Form autoComplete="off" className="provider-admin-network-inventory__form">
           <FormGroup label="Name" fieldId="create-subnet-name" isRequired>
-            <TextInput
+            <KubernetesResourceNameField
               id="create-subnet-name"
               value={form.name}
-              validated={form.name.trim() && !isNameValid ? 'error' : 'default'}
-              onChange={(_event, value) => setForm((current) => ({ ...current, name: value }))}
+              onChange={(value) => setForm((current) => ({ ...current, name: value }))}
               placeholder="e.g. bm-compute-a"
+              isRequired
             />
-            <KubernetesResourceNameHelper value={form.name} id="create-subnet-name-helper" />
           </FormGroup>
           <FormGroup label="Description" fieldId="create-subnet-detail">
             <TextInput

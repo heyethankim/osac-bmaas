@@ -12,7 +12,7 @@ import {
   ModalVariant,
   TextInput,
 } from '@patternfly/react-core'
-import { KubernetesResourceNameHelper } from '../shared/KubernetesResourceNameHelper'
+import { KubernetesResourceNameField } from '../shared/KubernetesResourceNameHelper'
 import { createTenantCatalogItem, type TenantCatalogItem } from '../../tenantAdmin/catalogItems'
 import type { TenantCatalogView } from '../../tenantAdmin/catalog'
 import { formatRateCardSummary } from '../../providerSetup/templateDemo'
@@ -92,20 +92,12 @@ export function CreateTenantCatalogItemModal({
         )}
         <Form autoComplete="off" className="tenant-admin-catalog__form">
           <FormGroup label="Name" fieldId="tenant-catalog-display-name" isRequired>
-            <TextInput
+            <KubernetesResourceNameField
               id="tenant-catalog-display-name"
               value={displayName}
-              validated={
-                displayName.trim() && !isValidKubernetesResourceName(displayName)
-                  ? 'error'
-                  : 'default'
-              }
-              onChange={(_event, value) => setDisplayName(value)}
+              onChange={setDisplayName}
               placeholder="e.g. approved-compute-menu"
-            />
-            <KubernetesResourceNameHelper
-              value={displayName}
-              id="tenant-catalog-display-name-helper"
+              isRequired
             />
           </FormGroup>
         </Form>

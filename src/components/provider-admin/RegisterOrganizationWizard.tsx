@@ -19,7 +19,7 @@ import {
   WizardHeader,
   WizardStep,
 } from '@patternfly/react-core'
-import { KubernetesResourceNameHelper } from '../shared/KubernetesResourceNameHelper'
+import { KubernetesResourceNameField } from '../shared/KubernetesResourceNameHelper'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import {
   getAssignableExternalIpPools,
@@ -117,7 +117,6 @@ export function RegisterOrganizationWizard({
   const domainTaken = isOrganizationDomainTaken(form.primaryDomain, existingOrganizations)
   const slugTaken = isOrganizationSlugTaken(form.organizationName, existingOrganizations)
   const nameFormat = getKubernetesResourceNameValidation(form.organizationName)
-  const billingFormat = getKubernetesResourceNameValidation(form.billingAccountName)
   const isOrganizationStepValid =
     isValidKubernetesResourceName(form.organizationName) &&
     isValidKubernetesResourceName(form.billingAccountName) &&
@@ -189,40 +188,38 @@ export function RegisterOrganizationWizard({
             </Content>
             <Form autoComplete="off" className="provider-admin-organizations__wizard-form">
               <FormGroup label="Organization name" fieldId="register-org-name" isRequired>
-                <TextInput
+                <KubernetesResourceNameField
                   id="register-org-name"
                   value={form.organizationName}
-                  validated={
-                    nameTaken || slugTaken || nameFormat.validated === 'error' ? 'error' : 'default'
-                  }
-                  onChange={(_event, value) =>
+                  onChange={(value) =>
                     setForm((current) => ({
                       ...current,
                       organizationName: value,
                       billingAccountName: value.trim()
-                        ? `${value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')}-enterprise-billing`
+                        ? `${value
+                            .trim()
+                            .toLowerCase()
+                            .replace(/[^a-z0-9]+/g, '-')
+                            .replace(/^-+|-+$/g, '')}-enterprise-billing`
                         : '',
                     }))
                   }
                   placeholder="e.g. north-summit-bank"
+                  isRequired
                 />
-                <FormHelperText>
-                  <HelperText>
-                    <HelperTextItem
-                      variant={
-                        nameTaken || slugTaken || nameFormat.validated === 'error'
-                          ? 'error'
-                          : 'default'
-                      }
-                    >
-                      {nameTaken
-                        ? 'An organization with this name is already registered.'
-                        : slugTaken
-                          ? 'An organization with this login path already exists. Choose a different name.'
-                          : nameFormat.message}
-                    </HelperTextItem>
-                  </HelperText>
-                </FormHelperText>
+                {nameTaken || slugTaken || nameFormat.validated === 'error' ? (
+                  <FormHelperText>
+                    <HelperText>
+                      <HelperTextItem variant="error">
+                        {nameTaken
+                          ? 'An organization with this name is already registered.'
+                          : slugTaken
+                            ? 'An organization with this login path already exists. Choose a different name.'
+                            : nameFormat.message}
+                      </HelperTextItem>
+                    </HelperText>
+                  </FormHelperText>
+                ) : null}
               </FormGroup>
               <FormGroup label="Primary email domain" fieldId="register-primary-domain" isRequired>
                 <TextInput
@@ -253,18 +250,14 @@ export function RegisterOrganizationWizard({
                 />
               </FormGroup>
               <FormGroup label="Billing account name" fieldId="register-billing-name" isRequired>
-                <TextInput
+                <KubernetesResourceNameField
                   id="register-billing-name"
                   value={form.billingAccountName}
-                  validated={billingFormat.validated}
-                  onChange={(_event, value) =>
+                  onChange={(value) =>
                     setForm((current) => ({ ...current, billingAccountName: value }))
                   }
                   placeholder="e.g. north-summit-bank-enterprise-billing"
-                />
-                <KubernetesResourceNameHelper
-                  value={form.billingAccountName}
-                  id="register-billing-name-helper"
+                  isRequired
                 />
               </FormGroup>
             </Form>

@@ -13,7 +13,7 @@ import {
   ModalVariant,
   TextInput,
 } from '@patternfly/react-core'
-import { KubernetesResourceNameHelper } from '../shared/KubernetesResourceNameHelper'
+import { KubernetesResourceNameField } from '../shared/KubernetesResourceNameHelper'
 import {
   EXTERNAL_IP_POOL_DATA_CENTERS,
   generateExternalIpPoolId,
@@ -100,14 +100,13 @@ export function CreateExternalIpPoolModal({
             Pools become assignable to tenant organizations after creation.
           </Content>
           <FormGroup label="Pool name" fieldId="create-pool-name" isRequired>
-            <TextInput
+            <KubernetesResourceNameField
               id="create-pool-name"
               value={form.name}
-              validated={form.name.trim() && !isNameValid ? 'error' : 'default'}
-              onChange={(_event, value) => setForm((current) => ({ ...current, name: value }))}
+              onChange={(value) => setForm((current) => ({ ...current, name: value }))}
               placeholder="e.g. tenant-edge-pool"
+              isRequired
             />
-            <KubernetesResourceNameHelper value={form.name} id="create-pool-name-helper" />
           </FormGroup>
           <FormGroup label="CIDR" fieldId="create-pool-cidr" isRequired>
             <TextInput

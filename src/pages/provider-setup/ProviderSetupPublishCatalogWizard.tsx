@@ -47,7 +47,7 @@ import {
   normalizeEnterpriseTenantIds,
   VipEnterpriseOrganizationField,
 } from '../../components/provider-admin/VipEnterpriseOrganizationField'
-import { KubernetesResourceNameHelper } from '../../components/shared/KubernetesResourceNameHelper'
+import { KubernetesResourceNameField } from '../../components/shared/KubernetesResourceNameHelper'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import {
   buildCustomInstanceTypeOption,
@@ -1089,21 +1089,13 @@ export function ProviderSetupPublishCatalogWizard({
             ) : null}
             <Form autoComplete="off" className="provider-setup-template__publish-display-form">
               <FormGroup label="Name" fieldId="publish-catalog-display-name" isRequired>
-                <TextInput
+                <KubernetesResourceNameField
                   id="publish-catalog-display-name"
                   value={displayName}
-                  validated={
-                    displayName.trim() && !isValidKubernetesResourceName(displayName)
-                      ? 'error'
-                      : 'default'
-                  }
-                  onChange={(_event, value) => setDisplayName(value)}
+                  onChange={setDisplayName}
                   aria-label="Name"
                   placeholder="e.g. bare-metal-general-purpose-server"
-                />
-                <KubernetesResourceNameHelper
-                  value={displayName}
-                  id="publish-catalog-display-name-helper"
+                  isRequired
                 />
               </FormGroup>
               <FormGroup label="Description" fieldId="publish-catalog-description">
