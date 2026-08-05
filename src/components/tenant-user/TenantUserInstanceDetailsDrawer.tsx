@@ -25,6 +25,7 @@ import {
   Tooltip,
 } from '@patternfly/react-core'
 import { CheckCircleIcon } from '@patternfly/react-icons/dist/esm/icons/check-circle-icon'
+import { CatalogClusterVersionValue } from '../catalog/CatalogClusterVersionValue'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import { getCatalogNetworkOptionLabel } from '../../providerAdmin/catalogNetworkPolicy'
 import {
@@ -39,6 +40,7 @@ import {
   getClusterApiUrl,
   getClusterConsoleUrl,
   getClusterInstanceConditions,
+  getClusterPlatformLabel,
   getClusterStatusLabel,
   getClusterWorkerNodeCount,
   getTenantInstanceScopeFieldLabel,
@@ -414,14 +416,12 @@ function ClusterInstanceDetails({
           aria-label="Cluster configuration"
         >
           <DescriptionListGroup>
-            <DescriptionListTerm>Catalog item</DescriptionListTerm>
+            <DescriptionListTerm>Cluster version</DescriptionListTerm>
             <DescriptionListDescription>
-              {clusterConfig.catalogShortName ?? 'ocp-small'}
+              <CatalogClusterVersionValue>
+                {getClusterPlatformLabel(instance)}
+              </CatalogClusterVersionValue>
             </DescriptionListDescription>
-          </DescriptionListGroup>
-          <DescriptionListGroup>
-            <DescriptionListTerm>Release image</DescriptionListTerm>
-            <DescriptionListDescription>{clusterConfig.releaseImage}</DescriptionListDescription>
           </DescriptionListGroup>
           <DescriptionListGroup>
             <DescriptionListTerm>Pod CIDR</DescriptionListTerm>
@@ -448,17 +448,6 @@ function ClusterInstanceDetails({
 
       <Divider className="tenant-user-instances__drawer-divider" />
 
-      <InstanceNetworkingEditor instance={instance} onUpdateNetworking={onUpdateNetworking} />
-
-      <Divider className="tenant-user-instances__drawer-divider" />
-
-      <InstanceConditionsSection
-        conditions={getClusterInstanceConditions(instance)}
-        ariaLabel="Cluster conditions"
-      />
-
-      <Divider className="tenant-user-instances__drawer-divider" />
-
       <div className="tenant-user-instances__drawer-section">
         <Content component="p" className="tenant-user-instances__drawer-section-title">
           Node sets
@@ -479,6 +468,17 @@ function ClusterInstanceDetails({
           ))}
         </DescriptionList>
       </div>
+
+      <Divider className="tenant-user-instances__drawer-divider" />
+
+      <InstanceNetworkingEditor instance={instance} onUpdateNetworking={onUpdateNetworking} />
+
+      <Divider className="tenant-user-instances__drawer-divider" />
+
+      <InstanceConditionsSection
+        conditions={getClusterInstanceConditions(instance)}
+        ariaLabel="Cluster conditions"
+      />
     </>
   )
 }

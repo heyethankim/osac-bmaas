@@ -21,6 +21,7 @@ import {
   Title,
 } from '@patternfly/react-core'
 import { CatalogExternalIpPoolSection } from '../catalog/CatalogExternalIpPoolSection'
+import { CatalogClusterVersionValue } from '../catalog/CatalogClusterVersionValue'
 import { CatalogNetworkingLocksSection } from '../catalog/CatalogNetworkingLocksSection'
 import { CatalogPublishScopeIcon } from './CatalogPublishScopeIcon'
 import { formatVipEnterpriseVisibilityLabel, getCatalogEnterpriseTenantIds } from './VipEnterpriseOrganizationField'
@@ -43,6 +44,7 @@ import {
   getDraftServiceId,
   parseCatalogInstanceTypeParts,
   resolveCatalogSpecRows,
+  resolveClusterCatalogHighlightRows,
   resolveVmCatalogHighlightRows,
 } from '../../catalog/catalogSpecs'
 import {
@@ -104,6 +106,8 @@ export function CatalogItemDetailsDrawer({
     ? resolveCatalogSpecRows(catalog, { includeDetails: true })
     : []
   const vmHighlightRows = catalog && isVirtualMachine ? resolveVmCatalogHighlightRows(catalog) : []
+  const clusterHighlightRows =
+    catalog && isCluster ? resolveClusterCatalogHighlightRows(catalog) : []
   const displaySpecRows =
     catalog?.instanceTypeLabel || catalog?.diskImageLabel
       ? specRows.filter(
@@ -123,7 +127,9 @@ export function CatalogItemDetailsDrawer({
               row.label !== 'Size' &&
               row.label !== 'OS image',
           )
-        : specRows
+        : isCluster
+          ? specRows.filter((row) => row.label !== 'Cluster version' && row.label !== 'Cluster size')
+          : specRows
   const specsSectionLabel = getCatalogSpecsSectionLabel(catalogServiceId)
   const canLinkToBareMetalTemplate =
     Boolean(onNavigateToLinkedTemplate) && catalogServiceId === 'baremetal'
@@ -275,6 +281,30 @@ export function CatalogItemDetailsDrawer({
           </>
         ) : null}
 
+        {isCluster ? (
+          <>
+            <Divider className="provider-admin-catalog-items__drawer-divider" />
+            <DescriptionList
+              isCompact
+              className="provider-admin-catalog-items__drawer-dl"
+              aria-label="Cluster offering summary"
+            >
+              {clusterHighlightRows.map((row) => (
+                <DescriptionListGroup key={row.label}>
+                  <DescriptionListTerm>{row.label}</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {row.label === 'Cluster version' ? (
+                      <CatalogClusterVersionValue>{row.value}</CatalogClusterVersionValue>
+                    ) : (
+                      row.value
+                    )}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              ))}
+            </DescriptionList>
+          </>
+        ) : null}
+
         {isVirtualMachine ? (
           <>
             <Divider className="provider-admin-catalog-items__drawer-divider" />
@@ -283,7 +313,9 @@ export function CatalogItemDetailsDrawer({
           </>
         ) : displaySpecRows.length > 0 ? (
           <>
-            <Divider className="provider-admin-catalog-items__drawer-divider" />
+            {isCluster ? null : (
+              <Divider className="provider-admin-catalog-items__drawer-divider" />
+            )}
             <DescriptionList
               isCompact
               className="provider-admin-catalog-items__drawer-dl"
@@ -296,10 +328,61 @@ export function CatalogItemDetailsDrawer({
                 </DescriptionListGroup>
               ))}
             </DescriptionList>
-            <Divider className="provider-admin-catalog-items__drawer-divider" />
           </>
         ) : null}
 
+        {catalog.fieldPolicies && catalog.fieldPolicies.length > 0 ? (
+          <>
+            <Divider className="provider-admin-catalog-items__drawer-divider" />
+            <DescriptionList
+              isCompact
+              className="provider-admin-catalog-items__drawer-dl"
+              aria-label="Launch field policies"
+            >
+              <DescriptionListGroup>
+                <DescriptionListTerm>Field policies</DescriptionListTerm>
+                <DescriptionListDescription>
+                  <ul className="provider-admin-catalog-items__field-policy-list">
+                    {catalog.fieldPolicies.map((policy) => (
+                      <li key={policy.id}>
+                        <span>{policy.label}</span>
+                        <Label color={policy.mode === 'exposed' ? 'blue' : 'grey'} isCompact>
+                          {formatCatalogFieldPolicyMode(policy.mode)}
+                        </Label>
+                      </li>
+                    ))}
+                  </ul>
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+            </DescriptionList>
+          </>
+        ) : null}
+
+        {!isVirtualMachine && !isCluster && (catalog.instanceTypeLabel || catalog.diskImageLabel) ? (
+          <>
+            <Divider className="provider-admin-catalog-items__drawer-divider" />
+            <DescriptionList
+              isCompact
+              className="provider-admin-catalog-items__drawer-dl"
+              aria-label="Published hardware"
+            >
+              {catalog.instanceTypeLabel && parsedInstanceType ? (
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Instance type</DescriptionListTerm>
+                  <DescriptionListDescription>{catalog.instanceTypeLabel}</DescriptionListDescription>
+                </DescriptionListGroup>
+              ) : null}
+              {catalog.diskImageLabel ? (
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Disk image</DescriptionListTerm>
+                  <DescriptionListDescription>{catalog.diskImageLabel}</DescriptionListDescription>
+                </DescriptionListGroup>
+              ) : null}
+            </DescriptionList>
+          </>
+        ) : null}
+
+        <Divider className="provider-admin-catalog-items__drawer-divider" />
         <DescriptionList
           isCompact
           className="provider-admin-catalog-items__drawer-dl"
@@ -335,39 +418,6 @@ export function CatalogItemDetailsDrawer({
               )}
             </DescriptionListDescription>
           </DescriptionListGroup>
-          {!isVirtualMachine && catalog.instanceTypeLabel && parsedInstanceType ? (
-            <DescriptionListGroup>
-              <DescriptionListTerm>
-                {isCluster ? 'Cluster size' : 'Instance type'}
-              </DescriptionListTerm>
-              <DescriptionListDescription>{catalog.instanceTypeLabel}</DescriptionListDescription>
-            </DescriptionListGroup>
-          ) : null}
-          {!isVirtualMachine && catalog.diskImageLabel ? (
-            <DescriptionListGroup>
-              <DescriptionListTerm>
-                {isCluster ? 'Cluster version' : 'Disk image'}
-              </DescriptionListTerm>
-              <DescriptionListDescription>{catalog.diskImageLabel}</DescriptionListDescription>
-            </DescriptionListGroup>
-          ) : null}
-          {catalog.fieldPolicies && catalog.fieldPolicies.length > 0 ? (
-            <DescriptionListGroup>
-              <DescriptionListTerm>Field policies</DescriptionListTerm>
-              <DescriptionListDescription>
-                <ul className="provider-admin-catalog-items__field-policy-list">
-                  {catalog.fieldPolicies.map((policy) => (
-                    <li key={policy.id}>
-                      <span>{policy.label}</span>
-                      <Label color={policy.mode === 'exposed' ? 'blue' : 'grey'} isCompact>
-                        {formatCatalogFieldPolicyMode(policy.mode)}
-                      </Label>
-                    </li>
-                  ))}
-                </ul>
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-          ) : null}
           <DescriptionListGroup>
             <DescriptionListTerm>Rate</DescriptionListTerm>
             <DescriptionListDescription>

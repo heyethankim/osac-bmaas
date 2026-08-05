@@ -131,6 +131,27 @@ export function resolveVmCatalogHighlightRows(
   )
 }
 
+/** Cluster version for Cluster catalog drawers (shown above Control plane). */
+export function resolveClusterCatalogHighlightRows(
+  item: Pick<
+    ProviderCatalogDraft,
+    | 'serviceId'
+    | 'templateRefId'
+    | 'templateName'
+    | 'instanceTypeLabel'
+    | 'diskImageLabel'
+  >,
+): CatalogSpecRow[] {
+  const rows = resolveCatalogSpecRows(item)
+  const clusterVersion =
+    rows.find((row) => row.label === 'Cluster version') ??
+    (item.diskImageLabel?.trim()
+      ? { label: 'Cluster version', value: item.diskImageLabel.trim() }
+      : undefined)
+
+  return clusterVersion ? [clusterVersion] : []
+}
+
 export function resolveCatalogSpecRows(
   item: Pick<
     ProviderCatalogDraft,
@@ -159,9 +180,6 @@ export function resolveCatalogSpecRows(
         rows.push({ label: 'OS image', value: item.diskImageLabel })
       }
     } else if (serviceId === 'cluster') {
-      if (item.instanceTypeLabel) {
-        rows.push({ label: 'Cluster size', value: item.instanceTypeLabel })
-      }
       if (item.diskImageLabel) {
         rows.push({ label: 'Cluster version', value: item.diskImageLabel })
       }

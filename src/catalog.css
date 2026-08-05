@@ -1,5 +1,17 @@
 /* Shared view-mode toggle + layout helpers (catalog + instances) */
 
+.catalog-cluster-version-value {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.catalog-cluster-version-value__icon {
+  flex: 0 0 auto;
+  /* Brand red keeps the Red Hat mark recognizable at small size without competing with body text. */
+  color: var(--pf-t--global--color--brand--default, #ee0000);
+}
+
 .catalog-view-toggle {
   flex-shrink: 0;
 }

@@ -1,7 +1,11 @@
 import type { CatalogSpecRow } from '../catalog/catalogSpecs'
 import { resolveCatalogSpecRows } from '../catalog/catalogSpecs'
-import { parseVmLaunchInstanceTypeOption } from './launchInstanceWizard'
+import {
+  formatClusterPlatformLabel,
+  getReleaseImageForClusterVersion,
+} from '../catalog/catalogPublishConfig'
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
+import { parseVmLaunchInstanceTypeOption } from './launchInstanceWizard'
 
 export type TenantInstanceStatus =
   | 'provisioning'
@@ -705,13 +709,25 @@ export function getTenantInstanceGpuLabel(instance: TenantInstance): string {
 }
 
 export function getClusterPlatformLabel(instance: TenantInstance): string {
-  return (
+  const fromSpec =
     instance.specRows?.find(
       (row) => row.label === 'Cluster version' || row.label === 'Platform',
-    )?.value.trim() ||
-    instance.osImage.trim() ||
-    '—'
-  )
+    )?.value.trim() || ''
+  if (fromSpec) {
+    return fromSpec
+  }
+
+  const fromOsImage = instance.osImage.trim()
+  if (fromOsImage && !fromOsImage.includes('/')) {
+    return fromOsImage
+  }
+
+  const fromRelease = formatClusterPlatformLabel(resolveClusterConfig(instance).releaseImage)
+  if (fromRelease) {
+    return fromRelease
+  }
+
+  return '—'
 }
 
 export function getClusterNodeSetTypeLabel(instance: TenantInstance): string {
@@ -905,7 +921,7 @@ function createDemoTenantClusterInstanceVariant(
     gpuLabel: options.hostType,
     specRows,
     clusterConfig: {
-      releaseImage: `quay.io/openshift-release-dev/ocp-release:${options.platform.includes('4.15') ? '4.15.0' : '4.16.0'}-multi`,
+      releaseImage: getReleaseImageForClusterVersion(options.platform),
       podCidr: '10.128.0.0/14',
       serviceCidr: '172.30.0.0/16',
       catalogShortName: options.hostType === 'gpu-host' ? 'ocp-gpu' : 'ocp-small',

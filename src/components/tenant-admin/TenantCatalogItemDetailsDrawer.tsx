@@ -21,9 +21,10 @@ import {
 } from '@patternfly/react-core'
 import { RocketIcon } from '@patternfly/react-icons/dist/esm/icons/rocket-icon'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
-import { getCatalogSpecsSectionLabel, resolveVmCatalogHighlightRows } from '../../catalog/catalogSpecs'
+import { getCatalogSpecsSectionLabel, resolveClusterCatalogHighlightRows, resolveVmCatalogHighlightRows } from '../../catalog/catalogSpecs'
 import { formatCatalogFieldPolicyMode } from '../../catalog/catalogPublishConfig'
 import { CatalogExternalIpPoolSection } from '../catalog/CatalogExternalIpPoolSection'
+import { CatalogClusterVersionValue } from '../catalog/CatalogClusterVersionValue'
 import { CatalogNetworkingLocksSection } from '../catalog/CatalogNetworkingLocksSection'
 import { CatalogVmDefaultsSections } from '../catalog/CatalogVmDefaultsSections'
 import { CatalogPublishScopeIcon } from '../provider-admin/CatalogPublishScopeIcon'
@@ -80,6 +81,26 @@ export function TenantCatalogItemDetailsDrawer({
       }
     : undefined
   const specRows = item ? getTenantCatalogItemDetailSpecRows(item) : []
+  const isVirtualMachine = item?.serviceId === 'virtual-machine'
+  const isCluster = item?.serviceId === 'cluster'
+  const vmHighlightRows = item
+    ? resolveVmCatalogHighlightRows({
+        serviceId: item.serviceId,
+        templateRefId: item.templateRefId,
+        templateName: item.templateName,
+        instanceTypeLabel: item.instanceTypeLabel,
+        diskImageLabel: item.diskImageLabel,
+      })
+    : []
+  const clusterHighlightRows = item
+    ? resolveClusterCatalogHighlightRows({
+        serviceId: item.serviceId,
+        templateRefId: item.templateRefId,
+        templateName: item.templateName,
+        instanceTypeLabel: item.instanceTypeLabel,
+        diskImageLabel: item.diskImageLabel,
+      })
+    : []
   const displaySpecRows =
     item?.instanceTypeLabel || item?.diskImageLabel
       ? specRows.filter(
@@ -99,18 +120,9 @@ export function TenantCatalogItemDetailsDrawer({
               row.label !== 'Size' &&
               row.label !== 'OS image',
           )
-        : specRows
-  const isVirtualMachine = item?.serviceId === 'virtual-machine'
-  const isCluster = item?.serviceId === 'cluster'
-  const vmHighlightRows = item
-    ? resolveVmCatalogHighlightRows({
-        serviceId: item.serviceId,
-        templateRefId: item.templateRefId,
-        templateName: item.templateName,
-        instanceTypeLabel: item.instanceTypeLabel,
-        diskImageLabel: item.diskImageLabel,
-      })
-    : []
+        : isCluster
+          ? specRows.filter((row) => row.label !== 'Cluster version' && row.label !== 'Cluster size')
+          : specRows
   const specsSectionLabel = item
     ? getCatalogSpecsSectionLabel(item.serviceId)
     : 'Hardware specifications'
@@ -198,23 +210,43 @@ export function TenantCatalogItemDetailsDrawer({
                 </DescriptionListGroup>
               ))
             : null}
-          {!isVirtualMachine && item.instanceTypeLabel ? (
+          {!isVirtualMachine && !isCluster && item.instanceTypeLabel ? (
             <DescriptionListGroup>
-              <DescriptionListTerm>
-                {isCluster ? 'Cluster size' : 'Instance type'}
-              </DescriptionListTerm>
+              <DescriptionListTerm>Instance type</DescriptionListTerm>
               <DescriptionListDescription>{item.instanceTypeLabel}</DescriptionListDescription>
             </DescriptionListGroup>
           ) : null}
-          {!isVirtualMachine && item.diskImageLabel ? (
+          {!isVirtualMachine && !isCluster && item.diskImageLabel ? (
             <DescriptionListGroup>
-              <DescriptionListTerm>
-                {isCluster ? 'Cluster version' : 'Disk image'}
-              </DescriptionListTerm>
+              <DescriptionListTerm>Disk image</DescriptionListTerm>
               <DescriptionListDescription>{item.diskImageLabel}</DescriptionListDescription>
             </DescriptionListGroup>
           ) : null}
         </DescriptionList>
+
+        {isCluster && clusterHighlightRows.length > 0 ? (
+          <>
+            <Divider className="tenant-admin-catalog-manager__drawer-divider" />
+            <DescriptionList
+              isCompact
+              className="tenant-admin-catalog-manager__drawer-dl"
+              aria-label="Cluster offering summary"
+            >
+              {clusterHighlightRows.map((row) => (
+                <DescriptionListGroup key={row.label}>
+                  <DescriptionListTerm>{row.label}</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {row.label === 'Cluster version' ? (
+                      <CatalogClusterVersionValue>{row.value}</CatalogClusterVersionValue>
+                    ) : (
+                      row.value
+                    )}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              ))}
+            </DescriptionList>
+          </>
+        ) : null}
 
         {item.fieldPolicies && item.fieldPolicies.length > 0 ? (
           <>
@@ -248,7 +280,9 @@ export function TenantCatalogItemDetailsDrawer({
           </>
         ) : displaySpecRows.length > 0 ? (
           <>
-            <Divider className="tenant-admin-catalog-manager__drawer-divider" />
+            {isCluster ? null : (
+              <Divider className="tenant-admin-catalog-manager__drawer-divider" />
+            )}
             <DescriptionList
               isCompact
               className="tenant-admin-catalog-manager__drawer-dl"
