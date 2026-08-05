@@ -27,6 +27,7 @@ import {
   type TenantUserNavId,
 } from '../tenantUser/storage'
 import { TENANT_USER_NAV_ITEMS } from '../tenantShell/constants'
+import { ProviderAdminExternalIpPoolsPage } from './infrastructure/ProviderAdminExternalIpPoolsPage'
 import { ProviderAdminSecurityGroupsPage } from './infrastructure/ProviderAdminSecurityGroupsPage'
 import { ProviderAdminSubnetsPage } from './infrastructure/ProviderAdminSubnetsPage'
 import { ProviderAdminVirtualNetworksPage } from './infrastructure/ProviderAdminVirtualNetworksPage'
@@ -44,6 +45,7 @@ function isTenantUserNavId(value: string | null): value is TenantUserNavId {
     value === 'networking-virtual-networks' ||
     value === 'networking-subnets' ||
     value === 'networking-security-groups' ||
+    value === 'networking-external-ip-pools' ||
     value === 'activity-log'
   )
 }
@@ -373,6 +375,8 @@ export function TenantUserWorkspacePage() {
             }}
           />
         )
+      case 'networking-external-ip-pools':
+        return <ProviderAdminExternalIpPoolsPage />
       case 'activity-log':
         return <TenantUserActivityLogPage />
       case 'catalog':

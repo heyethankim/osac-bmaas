@@ -2219,6 +2219,15 @@
   --pf-v6-c-table--cell--PaddingBlock: var(--pf-t--global--spacer--md);
 }
 
+/* Parent workspace gap already spaces sections; avoid stacking toolbar/panel margins. */
+.provider-admin-external-ip-pools > .catalog-view-toolbar {
+  margin-block-end: 0;
+}
+
+.provider-admin-external-ip-pools > .catalog-table-panel {
+  margin-block-start: 0;
+}
+
 .provider-admin-external-ip-pools__table .pf-v6-c-table__tbody .pf-v6-c-table__td {
   vertical-align: middle;
 }

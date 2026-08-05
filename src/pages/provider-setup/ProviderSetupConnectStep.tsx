@@ -27,6 +27,7 @@ import {
   TextInput,
   Title,
 } from '@patternfly/react-core'
+import { KubernetesResourceNameField } from '../../components/shared/KubernetesResourceNameHelper'
 import {
   DEFAULT_CONNECT_FORM,
   type ConnectVerificationState,
@@ -239,10 +240,10 @@ export function ProviderSetupConnectStep({
 
       <FormSection title="Scope and namespace">
         <FormGroup label="Kubernetes namespace" fieldId="kubernetes-namespace">
-          <TextInput
+          <KubernetesResourceNameField
             id="kubernetes-namespace"
             value={form.kubernetesNamespace}
-            onChange={(_e, value) =>
+            onChange={(value) =>
               setForm((current) => ({ ...current, kubernetesNamespace: value }))
             }
             isDisabled={isVerifying}

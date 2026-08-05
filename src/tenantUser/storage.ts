@@ -35,6 +35,7 @@ export type TenantUserNavId =
   | 'networking-virtual-networks'
   | 'networking-subnets'
   | 'networking-security-groups'
+  | 'networking-external-ip-pools'
   | 'activity-log'
 
 const TENANT_USER_NAV_IDS: TenantUserNavId[] = [
@@ -46,6 +47,7 @@ const TENANT_USER_NAV_IDS: TenantUserNavId[] = [
   'networking-virtual-networks',
   'networking-subnets',
   'networking-security-groups',
+  'networking-external-ip-pools',
   'activity-log',
 ]
 

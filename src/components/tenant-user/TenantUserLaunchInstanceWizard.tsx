@@ -81,7 +81,7 @@ import {
 } from '../../providerSetup/storage'
 import { formatTenantInstanceName, generateTenantInstanceId, type TenantInstance } from '../../tenantUser/instances'
 import type { TenantUserScopeKind } from '../../tenantUser/scope'
-import { KUBERNETES_RESOURCE_NAME_ERROR, KUBERNETES_RESOURCE_NAME_HELPER } from '../../shared/kubernetesResourceName'
+import { KubernetesResourceNameField } from '../shared/KubernetesResourceNameHelper'
 
 type TenantUserLaunchInstanceWizardProps = {
   isOpen: boolean
@@ -510,11 +510,6 @@ export function TenantUserLaunchInstanceWizard({
       : isVmCatalogItem
         ? 'launch-vm-ssh-key'
         : 'launch-cluster-ssh-key'
-    const nameHelper = isBareMetalCatalogItem
-      ? BAREMETAL_LAUNCH_INSTANCE_DEMO.nameHelper
-      : isVmCatalogItem
-        ? VM_LAUNCH_INSTANCE_DEMO.nameHelper
-        : CLUSTER_LAUNCH_INSTANCE_DEMO.nameHelper
     const sshHelper = isBareMetalCatalogItem
       ? BAREMETAL_LAUNCH_INSTANCE_DEMO.sshHelper
       : isVmCatalogItem
@@ -525,34 +520,13 @@ export function TenantUserLaunchInstanceWizard({
       <div className="tenant-user-launch-wizard__step">
         <Form autoComplete="off" className="tenant-user-launch-wizard__form">
           <FormGroup label="Name" fieldId={nameFieldId} isRequired>
-            <TextInput
+            <KubernetesResourceNameField
               id={nameFieldId}
               value={form.instanceName}
-              validated={
-                form.instanceName.trim() && !isInstanceNameValid(form.instanceName)
-                  ? 'error'
-                  : 'default'
-              }
-              onChange={(_event, value) =>
-                setForm((current) => ({ ...current, instanceName: value }))
-              }
+              onChange={(value) => setForm((current) => ({ ...current, instanceName: value }))}
               placeholder={getLaunchInstanceNamePlaceholder(catalogItem.serviceId)}
+              isRequired
             />
-            <FormHelperText>
-              <HelperText>
-                <HelperTextItem
-                  variant={
-                    form.instanceName.trim() && !isInstanceNameValid(form.instanceName)
-                      ? 'error'
-                      : 'default'
-                  }
-                >
-                  {form.instanceName.trim() && !isInstanceNameValid(form.instanceName)
-                    ? KUBERNETES_RESOURCE_NAME_ERROR
-                    : nameHelper}
-                </HelperTextItem>
-              </HelperText>
-            </FormHelperText>
           </FormGroup>
 
           <FormGroup label="SSH public key" fieldId={sshFieldId} isRequired>
@@ -983,32 +957,13 @@ export function TenantUserLaunchInstanceWizard({
 
       <Form autoComplete="off" className="tenant-user-launch-wizard__form">
         <FormGroup label="Instance name" fieldId="launch-instance-name" isRequired>
-          <TextInput
+          <KubernetesResourceNameField
             id="launch-instance-name"
             value={form.instanceName}
-            validated={
-              form.instanceName.trim() && !isInstanceNameValid(form.instanceName)
-                ? 'error'
-                : 'default'
-            }
-            onChange={(_event, value) => setForm((current) => ({ ...current, instanceName: value }))}
+            onChange={(value) => setForm((current) => ({ ...current, instanceName: value }))}
             placeholder={getLaunchInstanceNamePlaceholder(catalogItem.serviceId)}
+            isRequired
           />
-          <FormHelperText>
-            <HelperText>
-              <HelperTextItem
-                variant={
-                  form.instanceName.trim() && !isInstanceNameValid(form.instanceName)
-                    ? 'error'
-                    : 'default'
-                }
-              >
-                {form.instanceName.trim() && !isInstanceNameValid(form.instanceName)
-                  ? KUBERNETES_RESOURCE_NAME_ERROR
-                  : KUBERNETES_RESOURCE_NAME_HELPER}
-              </HelperTextItem>
-            </HelperText>
-          </FormHelperText>
         </FormGroup>
 
         <FormGroup label="SSH public key" fieldId="launch-instance-ssh-key" isRequired>

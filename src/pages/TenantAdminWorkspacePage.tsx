@@ -3,6 +3,7 @@ import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { TenantShell } from '../components/tenant/TenantShell'
 import { DEMO_TENANT_DISPLAY_ADMIN, isDemoTenantId } from '../demoTenant'
 import { PlaceholderTenantAdminPage } from './PlaceholderTenantAdminPage'
+import { ProviderAdminExternalIpPoolsPage } from './infrastructure/ProviderAdminExternalIpPoolsPage'
 import { ProviderAdminSecurityGroupsPage } from './infrastructure/ProviderAdminSecurityGroupsPage'
 import { ProviderAdminSubnetsPage } from './infrastructure/ProviderAdminSubnetsPage'
 import { ProviderAdminVirtualNetworksPage } from './infrastructure/ProviderAdminVirtualNetworksPage'
@@ -52,7 +53,8 @@ function isTenantAdminNavId(value: string | null): value is TenantAdminNavId {
     value === 'projects-teams' ||
     value === 'networking-virtual-networks' ||
     value === 'networking-subnets' ||
-    value === 'networking-security-groups'
+    value === 'networking-security-groups' ||
+    value === 'networking-external-ip-pools'
   )
 }
 
@@ -312,6 +314,8 @@ export function TenantAdminWorkspacePage() {
             }}
           />
         )
+      case 'networking-external-ip-pools':
+        return <ProviderAdminExternalIpPoolsPage />
       case 'overview':
       default:
         return <TenantAdminOverviewPage />

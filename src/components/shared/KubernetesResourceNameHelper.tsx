@@ -9,6 +9,7 @@ import {
 import { CheckCircleIcon } from '@patternfly/react-icons/dist/esm/icons/check-circle-icon'
 import { CheckIcon } from '@patternfly/react-icons/dist/esm/icons/check-icon'
 import { ExclamationCircleIcon } from '@patternfly/react-icons/dist/esm/icons/exclamation-circle-icon'
+import { TimesIcon } from '@patternfly/react-icons/dist/esm/icons/times-icon'
 import {
   getKubernetesResourceNameValidation,
   type KubernetesResourceNameRule,
@@ -31,7 +32,7 @@ function NameValidationRuleList({ rules }: { rules: KubernetesResourceNameRule[]
           }`}
         >
           <span className="k8s-resource-name__rule-icon" aria-hidden>
-            {rule.isMet ? <CheckIcon /> : <span className="k8s-resource-name__rule-dot" />}
+            {rule.isMet ? <CheckIcon /> : <TimesIcon />}
           </span>
           <span className="k8s-resource-name__rule-label">
             <span className="pf-v6-screen-reader">{rule.isMet ? 'Met: ' : 'Not met: '}</span>
@@ -90,7 +91,7 @@ export function KubernetesResourceNameHelper({ value, id }: KubernetesResourceNa
         hideFunction?.()
       }}
       alertSeverityVariant={isValid ? 'success' : isError ? 'danger' : 'info'}
-      headerContent={isValid ? 'Valid name' : isError ? 'Invalid name' : 'Name requirements'}
+      headerContent={isValid ? 'Valid name' : isError ? undefined : 'Name requirements'}
       bodyContent={<NameValidationRuleList rules={rules} />}
       closeBtnAriaLabel="Close name requirements"
     >

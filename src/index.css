@@ -457,14 +457,9 @@ html:has(.bmaas-role-landing) body {
 }
 
 .k8s-resource-name__rule--unmet {
-  color: var(--pf-t--global--text--color--regular);
+  color: var(--pf-t--global--text--color--status--danger--default);
 }
 
-.k8s-resource-name__rule-dot {
-  display: inline-block;
-  width: 0.5rem;
-  height: 0.5rem;
-  margin: 0.2rem;
-  border: 1px solid var(--pf-t--global--border--color--default);
-  border-radius: var(--pf-t--global--border--radius--pill);
+.k8s-resource-name__rule--unmet .k8s-resource-name__rule-icon {
+  color: var(--pf-t--global--icon--color--status--danger--default);
 }
