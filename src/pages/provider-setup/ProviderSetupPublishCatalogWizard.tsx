@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { ArrowRightIcon } from '@patternfly/react-icons/dist/esm/icons/arrow-right-icon'
 import { CatalogIcon } from '@patternfly/react-icons/dist/esm/icons/catalog-icon'
 import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
+import { MinusIcon } from '@patternfly/react-icons/dist/esm/icons/minus-icon'
 import { OutlinedQuestionCircleIcon } from '@patternfly/react-icons/dist/esm/icons/outlined-question-circle-icon'
+import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import { UnlockIcon } from '@patternfly/react-icons/dist/esm/icons/unlock-icon'
 import {
   Alert,
@@ -19,7 +21,11 @@ import {
   ExpandableSectionToggle,
   Form,
   FormGroup,
+  FormSelect,
+  FormSelectOption,
   Icon,
+  InputGroup,
+  InputGroupItem,
   Label,
   List,
   ListComponent,
@@ -44,14 +50,21 @@ import {
 import { KubernetesResourceNameHelper } from '../../components/shared/KubernetesResourceNameHelper'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import {
+  buildCustomInstanceTypeOption,
   buildDefaultCatalogFieldPolicies,
+  CATALOG_GPU_ACCELERATOR_OPTIONS,
+  DEFAULT_CUSTOM_INSTANCE_TYPE_CONFIG,
+  formatCustomInstanceTypeLabel,
   getCatalogClusterVersionLifecycleMeta,
   getCatalogClusterVersionOptions,
   getCatalogDiskImageOptions,
   getCatalogInstanceTypeOptions,
   getProvisioningTemplatePresentation,
+  isCustomInstanceTypeId,
+  isValidCustomInstanceTypeConfig,
   type CatalogClusterVersionOption,
   type CatalogFieldPolicy,
+  type CustomInstanceTypeConfig,
 } from '../../catalog/catalogPublishConfig'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import { DEFAULT_CATALOG_NETWORK_POLICY } from '../../providerAdmin/catalogNetworkPolicy'
@@ -84,6 +97,77 @@ type ProviderSetupPublishCatalogWizardProps = {
   isPublishing?: boolean
 }
 
+function CustomHardwareUnitNumberInput({
+  id,
+  value,
+  min,
+  max,
+  unit,
+  onValueChange,
+  inputAriaLabel,
+  minusBtnAriaLabel,
+  plusBtnAriaLabel,
+}: {
+  id: string
+  value: number
+  min: number
+  max: number
+  unit: string
+  onValueChange: (value: number) => void
+  inputAriaLabel: string
+  minusBtnAriaLabel: string
+  plusBtnAriaLabel: string
+}) {
+  const clamp = (next: number) => Math.min(max, Math.max(min, Math.round(next)))
+  const unitId = `${id}-unit`
+
+  return (
+    <InputGroup className="provider-setup-template__custom-unit-input">
+      <InputGroupItem>
+        <Button
+          variant="control"
+          aria-label={minusBtnAriaLabel}
+          onClick={() => onValueChange(clamp(value - 1))}
+          isDisabled={value <= min}
+          icon={<MinusIcon />}
+        />
+      </InputGroupItem>
+      <InputGroupItem isFill>
+        <div className="provider-setup-template__custom-unit-field">
+          <TextInput
+            id={id}
+            type="number"
+            value={value}
+            min={min}
+            max={max}
+            onChange={(_event, nextValue) => {
+              const next = Number(nextValue)
+              if (Number.isNaN(next)) {
+                return
+              }
+              onValueChange(clamp(next))
+            }}
+            aria-label={inputAriaLabel}
+            aria-describedby={unitId}
+          />
+          <span id={unitId} className="provider-setup-template__custom-unit-field__suffix">
+            {unit}
+          </span>
+        </div>
+      </InputGroupItem>
+      <InputGroupItem>
+        <Button
+          variant="control"
+          aria-label={plusBtnAriaLabel}
+          onClick={() => onValueChange(clamp(value + 1))}
+          isDisabled={value >= max}
+          icon={<PlusIcon />}
+        />
+      </InputGroupItem>
+    </InputGroup>
+  )
+}
+
 export function ProviderSetupPublishCatalogWizard({
   isOpen,
   templates,
@@ -97,9 +181,12 @@ export function ProviderSetupPublishCatalogWizard({
   onRegisterOrganization,
   isPublishing = false,
 }: ProviderSetupPublishCatalogWizardProps) {
-  const [selectedServiceId, setSelectedServiceId] = useState<CatalogServiceId | null>(null)
+  const [selectedServiceId, setSelectedServiceId] = useState<CatalogServiceId | null>('baremetal')
   const [selectedTemplateRefId, setSelectedTemplateRefId] = useState('')
   const [selectedInstanceTypeId, setSelectedInstanceTypeId] = useState('')
+  const [customInstanceType, setCustomInstanceType] = useState<CustomInstanceTypeConfig>(
+    DEFAULT_CUSTOM_INSTANCE_TYPE_CONFIG,
+  )
   const [selectedDiskImageId, setSelectedDiskImageId] = useState('')
   const [fieldPolicies, setFieldPolicies] = useState<CatalogFieldPolicy[]>([])
   const [expandedClusterVersionIds, setExpandedClusterVersionIds] = useState<ReadonlySet<string>>(
@@ -122,8 +209,36 @@ export function ProviderSetupPublishCatalogWizard({
       isClusterService ? getCatalogClusterVersionOptions() : getCatalogDiskImageOptions(),
     [isClusterService],
   )
-  const selectedInstanceType =
-    instanceTypeOptions.find((option) => option.id === selectedInstanceTypeId) ?? null
+  const selectedInstanceType = useMemo(() => {
+    if (isCustomInstanceTypeId(selectedInstanceTypeId)) {
+      return isValidCustomInstanceTypeConfig(customInstanceType)
+        ? buildCustomInstanceTypeOption(customInstanceType)
+        : null
+    }
+
+    return instanceTypeOptions.find((option) => option.id === selectedInstanceTypeId) ?? null
+  }, [customInstanceType, instanceTypeOptions, selectedInstanceTypeId])
+  const selectedInstanceTypeLabel = useMemo(() => {
+    if (!selectedInstanceType) {
+      return ''
+    }
+    if (isCustomInstanceTypeId(selectedInstanceType.id)) {
+      return formatCustomInstanceTypeLabel(customInstanceType)
+    }
+    return selectedInstanceType.accelerator
+      ? `${selectedInstanceType.label} (${selectedInstanceType.detail} · ${selectedInstanceType.accelerator})`
+      : `${selectedInstanceType.label} (${selectedInstanceType.detail})`
+  }, [customInstanceType, selectedInstanceType])
+  const isCustomInstanceTypeSelected = isCustomInstanceTypeId(selectedInstanceTypeId)
+  const instanceTypeCards = useMemo(
+    () =>
+      instanceTypeOptions.map((option) =>
+        isCustomInstanceTypeId(option.id)
+          ? buildCustomInstanceTypeOption(customInstanceType)
+          : option,
+      ),
+    [customInstanceType, instanceTypeOptions],
+  )
   const selectedDiskImage =
     softwareImageOptions.find((option) => option.id === selectedDiskImageId) ?? null
   const selectedClusterVersionLifecycleMeta =
@@ -178,6 +293,7 @@ export function ProviderSetupPublishCatalogWizard({
     setSelectedServiceId(null)
     setSelectedTemplateRefId('')
     setSelectedInstanceTypeId('')
+    setCustomInstanceType(DEFAULT_CUSTOM_INSTANCE_TYPE_CONFIG)
     setSelectedDiskImageId('')
     setFieldPolicies([])
     setExpandedClusterVersionIds(new Set())
@@ -209,6 +325,7 @@ export function ProviderSetupPublishCatalogWizard({
       setDescription(preferredTemplate.description)
     }
 
+    setSelectedServiceId('baremetal')
     setPublishScope(initialPublishScope)
     if (initialPublishScope === 'vip-enterprise') {
       const preferredTenantIds = normalizeEnterpriseTenantIds(initialEnterpriseTenantId).filter(
@@ -262,6 +379,7 @@ export function ProviderSetupPublishCatalogWizard({
         ? getCatalogClusterVersionOptions()
         : getCatalogDiskImageOptions()
     setSelectedInstanceTypeId(nextInstanceOptions[0]?.id ?? '')
+    setCustomInstanceType(DEFAULT_CUSTOM_INSTANCE_TYPE_CONFIG)
     setSelectedDiskImageId(nextSoftwareOptions[0]?.id ?? '')
   }, [selectedServiceId])
 
@@ -317,7 +435,7 @@ export function ProviderSetupPublishCatalogWizard({
       rateCard: resolveRateCard(selectedTemplate),
       status: 'unpublished',
       instanceTypeId: selectedInstanceType.id,
-      instanceTypeLabel: `${selectedInstanceType.label} (${selectedInstanceType.detail})`,
+      instanceTypeLabel: selectedInstanceTypeLabel,
       diskImageId: selectedDiskImage.id,
       diskImageLabel: selectedDiskImage.label,
       fieldPolicies,
@@ -568,8 +686,9 @@ export function ProviderSetupPublishCatalogWizard({
                   role="radiogroup"
                   aria-label="Instance type"
                 >
-                  {instanceTypeOptions.map((option) => {
+                  {instanceTypeCards.map((option) => {
                     const isSelected = option.id === selectedInstanceTypeId
+                    const isCustomCard = isCustomInstanceTypeId(option.id)
 
                     return (
                       <button
@@ -599,7 +718,9 @@ export function ProviderSetupPublishCatalogWizard({
                           {option.label}
                         </Title>
                         <Content component="p" className="provider-setup-template__select-card-detail">
-                          {option.detail}
+                          {isCustomCard && !isSelected
+                            ? 'Set CPUs, memory, NICs, and GPUs'
+                            : option.detail}
                         </Content>
                         {option.accelerator ? (
                           <Content
@@ -621,6 +742,92 @@ export function ProviderSetupPublishCatalogWizard({
                     )
                   })}
                 </div>
+                {isCustomInstanceTypeSelected ? (
+                  <Form className="provider-setup-template__custom-instance-type">
+                    <div className="provider-setup-template__custom-instance-type-fields">
+                      <FormGroup label="CPUs" fieldId="custom-instance-type-vcpus" isRequired>
+                        <CustomHardwareUnitNumberInput
+                          id="custom-instance-type-vcpus"
+                          value={customInstanceType.vcpus}
+                          min={1}
+                          max={128}
+                          unit="vCPU"
+                          onValueChange={(vcpus) =>
+                            setCustomInstanceType((current) => ({ ...current, vcpus }))
+                          }
+                          inputAriaLabel="CPUs"
+                          minusBtnAriaLabel="Decrease CPUs"
+                          plusBtnAriaLabel="Increase CPUs"
+                        />
+                      </FormGroup>
+                      <FormGroup
+                        label="Memory"
+                        fieldId="custom-instance-type-memory"
+                        isRequired
+                      >
+                        <CustomHardwareUnitNumberInput
+                          id="custom-instance-type-memory"
+                          value={customInstanceType.memoryGb}
+                          min={1}
+                          max={2048}
+                          unit="GB"
+                          onValueChange={(memoryGb) =>
+                            setCustomInstanceType((current) => ({ ...current, memoryGb }))
+                          }
+                          inputAriaLabel="Memory"
+                          minusBtnAriaLabel="Decrease memory"
+                          plusBtnAriaLabel="Increase memory"
+                        />
+                      </FormGroup>
+                      <FormGroup
+                        label="Network interfaces"
+                        fieldId="custom-instance-type-nics"
+                        isRequired
+                      >
+                        <CustomHardwareUnitNumberInput
+                          id="custom-instance-type-nics"
+                          value={customInstanceType.networkInterfaces}
+                          min={1}
+                          max={16}
+                          unit="NIC"
+                          onValueChange={(networkInterfaces) =>
+                            setCustomInstanceType((current) => ({
+                              ...current,
+                              networkInterfaces,
+                            }))
+                          }
+                          inputAriaLabel="Network interfaces"
+                          minusBtnAriaLabel="Decrease network interfaces"
+                          plusBtnAriaLabel="Increase network interfaces"
+                        />
+                      </FormGroup>
+                      <FormGroup
+                        label="GPU accelerator"
+                        fieldId="custom-instance-type-gpu"
+                      >
+                        <FormSelect
+                          id="custom-instance-type-gpu"
+                          value={customInstanceType.acceleratorId}
+                          onChange={(_event, value) =>
+                            setCustomInstanceType((current) => ({
+                              ...current,
+                              acceleratorId: value,
+                            }))
+                          }
+                          aria-label="GPU accelerator"
+                        >
+                          {CATALOG_GPU_ACCELERATOR_OPTIONS.map((option) => (
+                            <FormSelectOption
+                              key={option.id}
+                              value={option.id}
+                              label={option.label}
+                            />
+                          ))}
+                        </FormSelect>
+                      </FormGroup>
+                    </div>
+                  </Form>
+                ) : null}
               </>
             ) : null}
             <Content component="p" className="provider-setup-template__publish-subsection-title">
@@ -1029,9 +1236,7 @@ export function ProviderSetupPublishCatalogWizard({
                 <DescriptionListGroup>
                   <DescriptionListTerm>Instance type</DescriptionListTerm>
                   <DescriptionListDescription>
-                    {selectedInstanceType
-                      ? `${selectedInstanceType.label} (${selectedInstanceType.detail})`
-                      : '—'}
+                    {selectedInstanceTypeLabel || '—'}
                   </DescriptionListDescription>
                 </DescriptionListGroup>
               ) : null}
@@ -1119,7 +1324,7 @@ export function ProviderSetupPublishCatalogWizard({
       return {
         isNextDisabled: isClusterService
           ? !selectedDiskImageId
-          : !selectedInstanceTypeId || !selectedDiskImageId,
+          : !selectedInstanceType || !selectedDiskImageId,
       }
     }
 

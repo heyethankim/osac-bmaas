@@ -23,6 +23,104 @@ export type CatalogInstanceTypeOption = {
   accelerator?: string
 }
 
+/** Preset card id for a manually defined instance type (Bare metal / VM). */
+export const CUSTOM_INSTANCE_TYPE_ID = 'custom'
+
+export type CustomInstanceTypeConfig = {
+  vcpus: number
+  memoryGb: number
+  networkInterfaces: number
+  /** Matches `CATALOG_GPU_ACCELERATOR_OPTIONS` id; `none` means no GPU. */
+  acceleratorId: string
+}
+
+export const DEFAULT_CUSTOM_INSTANCE_TYPE_CONFIG: CustomInstanceTypeConfig = {
+  vcpus: 4,
+  memoryGb: 16,
+  networkInterfaces: 1,
+  acceleratorId: 'none',
+}
+
+export const CATALOG_GPU_ACCELERATOR_OPTIONS: ReadonlyArray<{ id: string; label: string }> = [
+  { id: 'none', label: 'None' },
+  { id: 'nvidia-a100-40', label: 'NVIDIA A100 40 GB' },
+  { id: 'nvidia-h100-80', label: 'NVIDIA H100 80 GB' },
+  { id: 'nvidia-l40s', label: 'NVIDIA L40S 48 GB' },
+]
+
+export function isCustomInstanceTypeId(instanceTypeId: string): boolean {
+  return instanceTypeId === CUSTOM_INSTANCE_TYPE_ID
+}
+
+export function getCustomInstanceTypeAcceleratorLabel(acceleratorId: string): string | undefined {
+  if (!acceleratorId || acceleratorId === 'none') {
+    return undefined
+  }
+
+  return CATALOG_GPU_ACCELERATOR_OPTIONS.find((option) => option.id === acceleratorId)?.label
+}
+
+export function formatCustomInstanceTypeDetail(config: CustomInstanceTypeConfig): string {
+  const nicLabel =
+    config.networkInterfaces === 1 ? '1 NIC' : `${config.networkInterfaces} NICs`
+  return [`${config.vcpus} vCPU`, `${config.memoryGb} GB`, nicLabel].join(' · ')
+}
+
+export function formatCustomInstanceTypeLabel(config: CustomInstanceTypeConfig): string {
+  const detail = formatCustomInstanceTypeDetail(config)
+  const accelerator = getCustomInstanceTypeAcceleratorLabel(config.acceleratorId)
+  return accelerator ? `Custom (${detail} · ${accelerator})` : `Custom (${detail})`
+}
+
+/** Demo rates aligned to Small/Medium/Large presets ($0.06/vCPU + $0.015/GB). */
+const CUSTOM_INSTANCE_RATE_PER_VCPU = 0.06
+const CUSTOM_INSTANCE_RATE_PER_GB = 0.015
+const CUSTOM_INSTANCE_RATE_PER_NIC = 0.02
+const CUSTOM_INSTANCE_GPU_RATE: Readonly<Record<string, number>> = {
+  none: 0,
+  'nvidia-a100-40': 2.8,
+  'nvidia-h100-80': 4.5,
+  'nvidia-l40s': 1.75,
+}
+
+export function calculateCustomInstanceHourlyRate(config: CustomInstanceTypeConfig): number {
+  const gpuRate = CUSTOM_INSTANCE_GPU_RATE[config.acceleratorId] ?? 0
+  return (
+    config.vcpus * CUSTOM_INSTANCE_RATE_PER_VCPU +
+    config.memoryGb * CUSTOM_INSTANCE_RATE_PER_GB +
+    config.networkInterfaces * CUSTOM_INSTANCE_RATE_PER_NIC +
+    gpuRate
+  )
+}
+
+export function formatCustomInstanceHourlyRate(config: CustomInstanceTypeConfig): string {
+  return `$${calculateCustomInstanceHourlyRate(config).toFixed(2)}/hr`
+}
+
+export function buildCustomInstanceTypeOption(
+  config: CustomInstanceTypeConfig,
+): CatalogInstanceTypeOption {
+  const accelerator = getCustomInstanceTypeAcceleratorLabel(config.acceleratorId)
+  return {
+    id: CUSTOM_INSTANCE_TYPE_ID,
+    label: 'Custom',
+    detail: formatCustomInstanceTypeDetail(config),
+    hourlyRate: formatCustomInstanceHourlyRate(config),
+    ...(accelerator ? { accelerator } : {}),
+  }
+}
+
+export function isValidCustomInstanceTypeConfig(config: CustomInstanceTypeConfig): boolean {
+  return (
+    Number.isFinite(config.vcpus) &&
+    config.vcpus >= 1 &&
+    Number.isFinite(config.memoryGb) &&
+    config.memoryGb >= 1 &&
+    Number.isFinite(config.networkInterfaces) &&
+    config.networkInterfaces >= 1
+  )
+}
+
 export type CatalogDiskImageOption = {
   id: string
   label: string
@@ -184,13 +282,6 @@ export const CATALOG_INSTANCE_TYPE_OPTIONS: ReadonlyArray<CatalogInstanceTypeOpt
   { id: 'small', label: 'Small', detail: '4 vCPU · 16 GB', hourlyRate: '$0.48/hr' },
   { id: 'medium', label: 'Medium', detail: '8 vCPU · 32 GB', hourlyRate: '$0.96/hr' },
   { id: 'large', label: 'Large', detail: '16 vCPU · 64 GB', hourlyRate: '$1.92/hr' },
-  {
-    id: 'gpu-large',
-    label: 'GPU Large',
-    detail: '8 vCPU · 64 GB',
-    accelerator: 'NVIDIA A100 40 GB',
-    hourlyRate: '$4.25/hr',
-  },
 ]
 
 export const CATALOG_DISK_IMAGE_OPTIONS: ReadonlyArray<CatalogDiskImageOption> = [
@@ -234,7 +325,14 @@ export function getCatalogInstanceTypeOptions(
     ]
   }
 
-  return [...CATALOG_INSTANCE_TYPE_OPTIONS]
+  return [
+    ...CATALOG_INSTANCE_TYPE_OPTIONS,
+    {
+      id: CUSTOM_INSTANCE_TYPE_ID,
+      label: 'Custom',
+      detail: 'Set CPUs, memory, NICs, and GPUs',
+    },
+  ]
 }
 
 export function getCatalogDiskImageOptions(): CatalogDiskImageOption[] {

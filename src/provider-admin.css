@@ -1589,8 +1589,63 @@
 
 .provider-setup-template__card-group.provider-setup-template__card-group--instance-types {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
   gap: var(--pf-t--global--spacer--md);
+}
+
+.provider-setup-template__custom-instance-type {
+  margin-block-start: var(--pf-t--global--spacer--md);
+  padding: var(--pf-t--global--spacer--md);
+  border: 1px solid var(--pf-t--global--border--color--default);
+  border-radius: var(--pf-t--global--border--radius--medium);
+  background: var(--pf-t--global--background--color--secondary--default);
+}
+
+.provider-setup-template__custom-instance-type-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--pf-t--global--spacer--md);
+  align-items: end;
+}
+
+.provider-setup-template__custom-unit-input {
+  width: 100%;
+}
+
+.provider-setup-template__custom-unit-field {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.provider-setup-template__custom-unit-field .pf-v6-c-form-control {
+  min-width: 0;
+  width: 100%;
+  padding-inline-end: 3.25rem;
+}
+
+.provider-setup-template__custom-unit-field input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.provider-setup-template__custom-unit-field input[type='number']::-webkit-outer-spin-button,
+.provider-setup-template__custom-unit-field input[type='number']::-webkit-inner-spin-button {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.provider-setup-template__custom-unit-field__suffix {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-end: var(--pf-t--global--spacer--sm);
+  transform: translateY(-50%);
+  color: var(--pf-t--global--text--color--disabled);
+  font-size: var(--pf-t--global--font--size--body--sm);
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
 }
 
 .provider-setup-template__card-group.provider-setup-template__card-group--cluster-sizes {
@@ -2029,6 +2084,10 @@
 
 .provider-setup-template__select-card-rate.pf-v6-c-content--p {
   margin-block-start: var(--pf-t--global--spacer--md);
+}
+
+.provider-setup-template__select-card--instance-type .provider-setup-template__select-card-rate.pf-v6-c-content--p {
+  margin-block-start: 0;
 }
 
 .provider-setup-template__select-card--template .provider-setup-template__select-card-detail.pf-v6-c-content--p {
