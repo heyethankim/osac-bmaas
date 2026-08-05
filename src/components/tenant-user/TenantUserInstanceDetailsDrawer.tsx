@@ -50,13 +50,18 @@ import {
   getVmInstanceConditions,
   getVmInstanceTypeShortLabel,
   getTenantInstanceCardSpecRows,
+  resolveBareMetalInventory,
   resolveBareMetalSshPublicKey,
   resolveClusterConfig,
+  resolveClusterNodeInventories,
   resolveTenantInstanceNetworking,
   resolveVmConfig,
+  type TenantClusterNodeInventory,
   type TenantInstance,
   type TenantInstanceCondition,
   type TenantInstanceNetworking,
+  type TenantMachineInventory,
+  type TenantNetworkInterfaceInventory,
 } from '../../tenantUser/instances'
 import {
   formatInstanceNetworkLabel,
@@ -169,6 +174,104 @@ function InstanceConditionsSection({
           )
         })}
       </ul>
+    </div>
+  )
+}
+
+function NetworkInterfaceInventoryList({
+  interfaces,
+  ariaLabel,
+}: {
+  interfaces: TenantNetworkInterfaceInventory[]
+  ariaLabel: string
+}) {
+  return (
+    <DescriptionList
+      isCompact
+      className="tenant-user-instances__drawer-dl tenant-user-instances__inventory-dl"
+      aria-label={ariaLabel}
+    >
+      {interfaces.map((networkInterface) => (
+        <DescriptionListGroup key={networkInterface.id}>
+          <DescriptionListTerm>{networkInterface.name}</DescriptionListTerm>
+          <DescriptionListDescription>
+            <code>{networkInterface.macAddress}</code>
+            <span className="tenant-user-instances__inventory-nic-meta">
+              {' '}
+              · {networkInterface.speed}
+            </span>
+          </DescriptionListDescription>
+        </DescriptionListGroup>
+      ))}
+    </DescriptionList>
+  )
+}
+
+function BareMetalInventorySection({ inventory }: { inventory: TenantMachineInventory | null }) {
+  return (
+    <div className="tenant-user-instances__drawer-section">
+      <Content component="p" className="tenant-user-instances__drawer-section-title">
+        Inventory
+      </Content>
+      {inventory ? (
+        <>
+          <Content component="p" className="tenant-user-instances__drawer-lede">
+            Machine-specific network interfaces assigned after this host was provisioned.
+          </Content>
+          <NetworkInterfaceInventoryList
+            interfaces={inventory.networkInterfaces}
+            ariaLabel="Bare metal network interface inventory"
+          />
+        </>
+      ) : (
+        <Content component="p" className="tenant-user-instances__drawer-lede">
+          MAC addresses are assigned when this machine finishes provisioning.
+        </Content>
+      )}
+    </div>
+  )
+}
+
+function ClusterInventorySection({
+  nodes,
+  isProvisioning,
+}: {
+  nodes: TenantClusterNodeInventory[]
+  isProvisioning: boolean
+}) {
+  return (
+    <div className="tenant-user-instances__drawer-section">
+      <Content component="p" className="tenant-user-instances__drawer-section-title">
+        Inventory
+      </Content>
+      {isProvisioning || nodes.length === 0 ? (
+        <Content component="p" className="tenant-user-instances__drawer-lede">
+          MAC addresses for each node NIC are assigned when hosts finish provisioning.
+        </Content>
+      ) : (
+        <>
+          <Content component="p" className="tenant-user-instances__drawer-lede">
+            Machine-specific network interfaces for allocated cluster nodes.
+          </Content>
+          <div className="tenant-user-instances__inventory-nodes">
+            {nodes.map((node) => (
+              <div key={node.id} className="tenant-user-instances__inventory-node">
+                <Content component="p" className="tenant-user-instances__inventory-node-title">
+                  {node.name}
+                  <span className="tenant-user-instances__inventory-node-meta">
+                    {' '}
+                    · {node.hostType}
+                  </span>
+                </Content>
+                <NetworkInterfaceInventoryList
+                  interfaces={node.networkInterfaces}
+                  ariaLabel={`Network interfaces for ${node.name}`}
+                />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -366,6 +469,8 @@ function ClusterInstanceDetails({
   const workerCount = getClusterWorkerNodeCount(instance)
   const apiUrl = getClusterApiUrl(instance)
   const consoleUrl = getClusterConsoleUrl(instance)
+  const inventoryNodes = resolveClusterNodeInventories(instance)
+  const isProvisioning = instance.status === 'provisioning'
 
   return (
     <>
@@ -468,6 +573,10 @@ function ClusterInstanceDetails({
           ))}
         </DescriptionList>
       </div>
+
+      <Divider className="tenant-user-instances__drawer-divider" />
+
+      <ClusterInventorySection nodes={inventoryNodes} isProvisioning={isProvisioning} />
 
       <Divider className="tenant-user-instances__drawer-divider" />
 
@@ -754,6 +863,7 @@ function DefaultInstanceDetails({
     instance.status !== 'provisioning' && instance.status !== 'restarting'
   const specRows = getTenantInstanceSpecRows(instance)
   const bareMetalConditions = isBareMetal ? getBareMetalInstanceConditions(instance) : []
+  const bareMetalInventory = isBareMetal ? resolveBareMetalInventory(instance) : null
 
   return (
     <>
@@ -910,6 +1020,13 @@ function DefaultInstanceDetails({
       </DescriptionList>
 
       <Divider className="tenant-user-instances__drawer-divider" />
+
+      {isBareMetal ? (
+        <>
+          <BareMetalInventorySection inventory={bareMetalInventory} />
+          <Divider className="tenant-user-instances__drawer-divider" />
+        </>
+      ) : null}
 
       <InstanceNetworkingEditor instance={instance} onUpdateNetworking={onUpdateNetworking} />
 

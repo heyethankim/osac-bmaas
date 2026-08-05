@@ -1694,6 +1694,26 @@
   font-weight: var(--pf-t--global--font--weight--body--bold);
 }
 
+.tenant-user-instances__inventory-nodes {
+  display: grid;
+  gap: var(--pf-t--global--spacer--md);
+}
+
+.tenant-user-instances__inventory-node-title.pf-v6-c-content--p {
+  margin: 0 0 var(--pf-t--global--spacer--xs);
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+}
+
+.tenant-user-instances__inventory-node-meta,
+.tenant-user-instances__inventory-nic-meta {
+  color: var(--pf-t--global--text--color--subtle);
+  font-weight: var(--pf-t--global--font--weight--body--default);
+}
+
+.tenant-user-instances__inventory-dl .pf-v6-c-description-list__description code {
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
 .tenant-user-instances__conditions-list {
   display: grid;
   gap: 0;

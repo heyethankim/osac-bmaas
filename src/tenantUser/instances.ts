@@ -37,11 +37,36 @@ export type TenantClusterNodeSet = {
   nodeCount: number
 }
 
+/** NIC identity discovered on a specific allocated machine (not the instance type). */
+export type TenantNetworkInterfaceInventory = {
+  id: string
+  name: string
+  macAddress: string
+  /** Link speed advertised for this interface (e.g. 25 Gbps). */
+  speed: string
+}
+
+/** Bare metal host inventory available after provision. */
+export type TenantMachineInventory = {
+  networkInterfaces: TenantNetworkInterfaceInventory[]
+}
+
+/** Cluster node host inventory available after provision. */
+export type TenantClusterNodeInventory = {
+  id: string
+  name: string
+  nodeSetId: string
+  hostType: string
+  networkInterfaces: TenantNetworkInterfaceInventory[]
+}
+
 export type TenantClusterConfig = {
   releaseImage: string
   podCidr: string
   serviceCidr: string
   nodeSets: TenantClusterNodeSet[]
+  /** Per-node inventory once machines are allocated. */
+  nodes?: TenantClusterNodeInventory[]
   catalogShortName?: string
   creator?: string
 }
@@ -74,6 +99,8 @@ export type TenantInstance = {
   clusterConfig?: TenantClusterConfig
   /** Virtual machine launch and networking details. */
   vmConfig?: TenantVmConfig
+  /** Bare metal machine inventory (MAC addresses, etc.) after provision. */
+  inventory?: TenantMachineInventory
   /** SSH public key captured at bare metal launch. */
   sshPublicKey?: string
   /** Scope label: project name when project-scoped, organization name otherwise. */
@@ -620,6 +647,105 @@ export function resolveClusterConfig(instance: TenantInstance): TenantClusterCon
   }
 }
 
+function hashDemoSeed(seed: string): number {
+  let hash = 0
+  for (let index = 0; index < seed.length; index += 1) {
+    hash = (hash * 31 + seed.charCodeAt(index)) >>> 0
+  }
+  return hash
+}
+
+/** Deterministic demo MAC from instance/node/NIC identity. */
+export function createDemoMacAddress(seed: string, nicIndex: number): string {
+  const hash = hashDemoSeed(`${seed}:nic:${nicIndex}`)
+  const bytes = [
+    0x52,
+    0x54,
+    0x00,
+    (hash >>> 16) & 0xff,
+    (hash >>> 8) & 0xff,
+    (hash ^ (nicIndex * 17)) & 0xff,
+  ]
+  return bytes.map((byte) => byte.toString(16).padStart(2, '0')).join(':')
+}
+
+export function createDemoNetworkInterfaces(
+  seed: string,
+  nicCount = 2,
+  speed = '25 Gbps',
+): TenantNetworkInterfaceInventory[] {
+  return Array.from({ length: Math.max(1, nicCount) }, (_, index) => ({
+    id: `${seed}-nic-${index + 1}`,
+    name: `nic-${index + 1}`,
+    macAddress: createDemoMacAddress(seed, index + 1),
+    speed,
+  }))
+}
+
+export function hasProvisionedInventory(instance: TenantInstance): boolean {
+  return (
+    instance.status === 'running' ||
+    instance.status === 'stopped' ||
+    instance.status === 'restarting' ||
+    instance.status === 'failed' ||
+    Boolean(instance.provisionedAt)
+  )
+}
+
+export function resolveBareMetalInventory(
+  instance: TenantInstance,
+): TenantMachineInventory | null {
+  if (!hasProvisionedInventory(instance)) {
+    return null
+  }
+
+  if (instance.inventory?.networkInterfaces?.length) {
+    return instance.inventory
+  }
+
+  return {
+    networkInterfaces: createDemoNetworkInterfaces(instance.id, 2),
+  }
+}
+
+export function buildClusterNodeInventories(
+  instanceId: string,
+  nodeSets: TenantClusterNodeSet[],
+): TenantClusterNodeInventory[] {
+  const nodes: TenantClusterNodeInventory[] = []
+
+  nodeSets.forEach((nodeSet, nodeSetIndex) => {
+    for (let nodeIndex = 0; nodeIndex < nodeSet.nodeCount; nodeIndex += 1) {
+      const nodeNumber = nodes.length + 1
+      const nodeId = `${instanceId}-node-${nodeNumber}`
+      nodes.push({
+        id: nodeId,
+        name: `${nodeSet.hostType}-${nodeIndex + 1}`,
+        nodeSetId: nodeSet.id || `node-set-${nodeSetIndex + 1}`,
+        hostType: nodeSet.hostType,
+        networkInterfaces: createDemoNetworkInterfaces(nodeId, 2),
+      })
+    }
+  })
+
+  return nodes
+}
+
+export function resolveClusterNodeInventories(
+  instance: TenantInstance,
+): TenantClusterNodeInventory[] {
+  if (!hasProvisionedInventory(instance)) {
+    return []
+  }
+
+  const clusterConfig = resolveClusterConfig(instance)
+  if (clusterConfig.nodes?.length) {
+    return clusterConfig.nodes
+  }
+
+  return buildClusterNodeInventories(instance.id, clusterConfig.nodeSets)
+}
+
 export function getClusterStatusLabel(status: TenantInstanceStatus): string {
   if (status === 'running') {
     return 'Ready'
@@ -820,6 +946,10 @@ function createDemoTenantBareMetalInstanceVariant(
       { label: 'GPU', value: options.gpuLabel },
       { label: 'OS image', value: options.osImage },
     ],
+    inventory:
+      options.status === 'provisioning'
+        ? undefined
+        : { networkInterfaces: createDemoNetworkInterfaces(options.id, 2) },
     sshPublicKey: DEFAULT_BARE_METAL_SSH_PUBLIC_KEY,
     projectName: organizationName,
     scopeKind: 'organization',
@@ -933,6 +1063,16 @@ function createDemoTenantClusterInstanceVariant(
           nodeCount: options.nodeCount,
         },
       ],
+      nodes:
+        options.status === 'provisioning'
+          ? undefined
+          : buildClusterNodeInventories(options.id, [
+              {
+                id: 'node-set-1',
+                hostType: options.hostType,
+                nodeCount: options.nodeCount,
+              },
+            ]),
     },
     projectName: organizationName,
     scopeKind: 'organization',
