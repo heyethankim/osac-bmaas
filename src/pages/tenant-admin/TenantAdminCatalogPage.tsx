@@ -433,6 +433,9 @@ export function TenantAdminCatalogPage({
     }
 
     const catalogItemId = selectedCatalogItem.catalogItemId
+    if (!catalogItemId) {
+      return
+    }
     const lockKey =
       kind === 'virtual-network'
         ? 'virtualNetwork'

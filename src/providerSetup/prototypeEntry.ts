@@ -41,7 +41,6 @@ import {
   setProviderCatalogItemStatus,
   setProviderSelectedServices,
   setProviderSetupComplete,
-  updateProviderCatalogItem,
   updateProviderCatalogNetworkPolicy,
   updateProviderRegisteredOrganization,
   upsertProviderSavedTemplate,
