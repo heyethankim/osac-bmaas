@@ -782,7 +782,6 @@ export function ProviderSetupPublishCatalogWizard({
                       <FormGroup
                         label="Network interfaces"
                         fieldId="custom-instance-type-nics"
-                        isRequired
                       >
                         <CustomHardwareUnitNumberInput
                           id="custom-instance-type-nics"
