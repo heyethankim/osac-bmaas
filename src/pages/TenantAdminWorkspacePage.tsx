@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { Navigate, useParams, useSearchParams } from 'react-router-dom'
+import { syncWorkspaceNavParam } from '../shared/workspaceNavUrl'
 import { TenantShell } from '../components/tenant/TenantShell'
 import { DEMO_TENANT_DISPLAY_ADMIN, isDemoTenantId } from '../demoTenant'
 import { PlaceholderTenantAdminPage } from './PlaceholderTenantAdminPage'
@@ -118,7 +119,7 @@ function readInitialTenantAdminNav(
 
 export function TenantAdminWorkspacePage() {
   const { tenant: tenantParam } = useParams<{ tenant: string }>()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const isValidTenant = Boolean(
     tenantParam && isDemoTenantId(tenantParam) && tenantParam === 'northstar',
   )
@@ -152,13 +153,15 @@ export function TenantAdminWorkspacePage() {
     setInstances(ensureTenantDemoInstances(tenant, workspaceOrganization.name))
 
     const requestedNav = normalizeTenantAdminNavParam(searchParams.get('nav'))
-    if (!requestedNav) {
+    if (requestedNav) {
+      ensureTenantAdminPostOnboardingPrototype(tenant, requestedNav)
+      setActiveNavId(requestedNav)
+      setTenantActiveNav(tenant, requestedNav)
       return
     }
 
-    ensureTenantAdminPostOnboardingPrototype(tenant, requestedNav)
-    setActiveNavId(requestedNav)
-  }, [isValidTenant, searchParams, tenant])
+    syncWorkspaceNavParam(setSearchParams, getTenantActiveNav(tenant), { replace: true })
+  }, [isValidTenant, searchParams, setSearchParams, tenant])
 
   if (!isValidTenant) {
     return <Navigate to="/" replace />
@@ -172,6 +175,7 @@ export function TenantAdminWorkspacePage() {
     const nextNavId = navId as TenantAdminNavId
     setActiveNavId(nextNavId)
     setTenantActiveNav(tenant, nextNavId)
+    syncWorkspaceNavParam(setSearchParams, nextNavId)
     if (isServicesNavId(nextNavId)) {
       setInstances(ensureTenantDemoInstances(tenant, organization.name))
     }

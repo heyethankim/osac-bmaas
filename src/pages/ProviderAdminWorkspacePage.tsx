@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { syncWorkspaceNavParam } from '../shared/workspaceNavUrl'
 import { ProviderAdminShell } from '../components/provider-admin/ProviderAdminShell'
 import { ProviderSetupWizardPanel } from '../components/provider-setup/ProviderSetupWizardPanel'
 import type { ProviderAdminNavId } from '../providerAdmin/constants'
@@ -106,7 +107,7 @@ function readInitialProviderNav(searchParams: URLSearchParams): ProviderAdminNav
 }
 
 export function ProviderAdminWorkspacePage() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [setupComplete, setSetupComplete] = useState(() => isProviderSetupComplete())
   const [servicesSelected, setServicesSelected] = useState(() => isProviderServicesSelected())
   const [selectedServices, setSelectedServices] = useState<ProviderServiceId[]>(() =>
@@ -137,14 +138,18 @@ export function ProviderAdminWorkspacePage() {
       setServicesSelected(true)
       setSetupComplete(true)
       setActiveNavId(requestedNav)
+      setProviderActiveNav(requestedNav)
       setInstances(ensureTenantDemoInstances(PROVIDER_SERVICES_DEMO_TENANT))
       return
     }
 
+    const fallbackNav = getProviderActiveNav()
+    syncWorkspaceNavParam(setSearchParams, fallbackNav, { replace: true })
+
     if (isProviderSetupComplete()) {
       setCatalogItems(ensureProviderCatalogDemoItems())
     }
-  }, [searchParams])
+  }, [searchParams, setSearchParams])
 
   const lockedServiceId = getLockedServiceIdFromNav(activeNavId)
 
@@ -204,6 +209,7 @@ export function ProviderAdminWorkspacePage() {
       setProviderActiveNav('catalog')
       setProviderSetupComplete()
       setActiveNavId('catalog')
+      syncWorkspaceNavParam(setSearchParams, 'catalog', { replace: true })
       setSetupComplete(true)
       setWorkspaceTransition('idle')
       return draft
@@ -215,6 +221,7 @@ export function ProviderAdminWorkspacePage() {
       setProviderActiveNav('catalog')
       setProviderSetupComplete()
       setActiveNavId('catalog')
+      syncWorkspaceNavParam(setSearchParams, 'catalog', { replace: true })
       setSetupComplete(true)
       setWorkspaceTransition('entering')
     }, PUBLISH_PHASE_MS)
@@ -234,6 +241,7 @@ export function ProviderAdminWorkspacePage() {
   const handleNavChange = (navId: ProviderAdminNavId) => {
     setActiveNavId(navId)
     setProviderActiveNav(navId)
+    syncWorkspaceNavParam(setSearchParams, navId)
     if (
       navId === 'services-baremetal' ||
       navId === 'services-clusters' ||

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Navigate, useParams, useSearchParams } from 'react-router-dom'
+import { syncWorkspaceNavParam } from '../shared/workspaceNavUrl'
 import { TenantShell } from '../components/tenant/TenantShell'
 import { DEMO_TENANT_DISPLAY_USER, isDemoTenantId } from '../demoTenant'
 import {
@@ -114,7 +115,7 @@ function readInitialTenantUserNav(
 }
 
 export function TenantUserWorkspacePage() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { tenant } = useParams<{ tenant: string }>()
   const tenantSlug =
     tenant && isDemoTenantId(tenant) && tenant === 'northstar' ? tenant : 'northstar'
@@ -210,25 +211,28 @@ export function TenantUserWorkspacePage() {
     setInstances(ensureTenantDemoInstances(tenantSlug))
 
     const requestedNav = normalizeTenantUserNavParam(searchParams.get('nav'))
-    if (!requestedNav) {
+    if (requestedNav) {
+      ensureTenantUserPostOnboardingPrototype(tenantSlug, requestedNav)
+      setActiveNavId(requestedNav)
+      setTenantUserActiveNav(tenantSlug, requestedNav)
       return
     }
 
-    ensureTenantUserPostOnboardingPrototype(tenantSlug, requestedNav)
-    setActiveNavId(requestedNav)
-  }, [isValidTenant, searchParams, tenantSlug])
+    syncWorkspaceNavParam(setSearchParams, getTenantUserActiveNav(tenantSlug), { replace: true })
+  }, [isValidTenant, searchParams, setSearchParams, tenantSlug])
 
   const handleNavChange = useCallback(
     (navId: string) => {
       const nextNavId = navId as TenantUserNavId
       setActiveNavId(nextNavId)
       setTenantUserActiveNav(tenantSlug, nextNavId)
+      syncWorkspaceNavParam(setSearchParams, nextNavId)
 
       if (isServicesNavId(nextNavId)) {
         setInstances(ensureTenantDemoInstances(tenantSlug))
       }
     },
-    [tenantSlug],
+    [setSearchParams, tenantSlug],
   )
 
   const handleNavigateToInstances = useCallback(
