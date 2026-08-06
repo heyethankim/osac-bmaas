@@ -2,7 +2,10 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { VertexaCloudLoginPage } from './VertexaCloudLoginPage'
 import { DEMO_VERTEXA_PROVIDER_LOGIN_EMAIL } from '../demoTenant'
-import { clearProviderServicesSelected } from '../providerSetup/storage'
+import {
+  clearProviderServicesSelected,
+  clearProviderSetupComplete,
+} from '../providerSetup/storage'
 
 export function ProviderLoginPage() {
   const navigate = useNavigate()
@@ -14,8 +17,10 @@ export function ProviderLoginPage() {
       isLandingPageLoading={isLoading}
       onLoginSuccess={() => {
         setIsLoading(true)
+        // Enter → auth always starts first-time setup (welcome / service selection).
+        clearProviderSetupComplete()
         clearProviderServicesSelected()
-        window.setTimeout(() => navigate('/provider/workspace'), 600)
+        window.setTimeout(() => navigate('/provider/setup'), 600)
       }}
       onChooseAnotherInstitution={() => navigate('/')}
     />

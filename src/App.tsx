@@ -15,7 +15,10 @@ export default function App() {
         <Route path="/" element={<BmaasLandingPage />} />
         <Route path="/idp-setup/:token" element={<IdpManagerSetupPage />} />
         <Route path="/provider" element={<ProviderLoginPage />} />
-        <Route path="/provider/setup" element={<Navigate to="/provider/workspace" replace />} />
+        <Route
+          path="/provider/setup"
+          element={<ProviderAdminWorkspacePage forceOnboarding />}
+        />
         <Route path="/provider/workspace" element={<ProviderAdminWorkspacePage />} />
         <Route path="/tenant-admin/catalog-sample" element={<TenantAdminSampleCatalogPage />} />
         <Route path="/tenant-admin/:tenant" element={<TenantLoginPage role="tenant-admin" />} />
