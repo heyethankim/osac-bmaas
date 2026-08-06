@@ -53,12 +53,12 @@ import {
   buildCustomInstanceTypeOption,
   buildDefaultCatalogFieldPolicies,
   CATALOG_GPU_ACCELERATOR_OPTIONS,
-  DEFAULT_CUSTOM_INSTANCE_TYPE_CONFIG,
   formatCustomInstanceTypeLabel,
   getCatalogClusterVersionLifecycleMeta,
   getCatalogClusterVersionOptions,
   getCatalogDiskImageOptions,
   getCatalogInstanceTypeOptions,
+  getDefaultCustomInstanceTypeConfig,
   getProvisioningTemplatePresentation,
   isCustomInstanceTypeId,
   isValidCustomInstanceTypeConfig,
@@ -185,7 +185,7 @@ export function ProviderSetupPublishCatalogWizard({
   const [selectedTemplateRefId, setSelectedTemplateRefId] = useState('')
   const [selectedInstanceTypeId, setSelectedInstanceTypeId] = useState('')
   const [customInstanceType, setCustomInstanceType] = useState<CustomInstanceTypeConfig>(
-    DEFAULT_CUSTOM_INSTANCE_TYPE_CONFIG,
+    () => getDefaultCustomInstanceTypeConfig('baremetal'),
   )
   const [selectedDiskImageId, setSelectedDiskImageId] = useState('')
   const [fieldPolicies, setFieldPolicies] = useState<CatalogFieldPolicy[]>([])
@@ -293,7 +293,7 @@ export function ProviderSetupPublishCatalogWizard({
     setSelectedServiceId(null)
     setSelectedTemplateRefId('')
     setSelectedInstanceTypeId('')
-    setCustomInstanceType(DEFAULT_CUSTOM_INSTANCE_TYPE_CONFIG)
+    setCustomInstanceType(getDefaultCustomInstanceTypeConfig(null))
     setSelectedDiskImageId('')
     setFieldPolicies([])
     setExpandedClusterVersionIds(new Set())
@@ -379,7 +379,7 @@ export function ProviderSetupPublishCatalogWizard({
         ? getCatalogClusterVersionOptions()
         : getCatalogDiskImageOptions()
     setSelectedInstanceTypeId(nextInstanceOptions[0]?.id ?? '')
-    setCustomInstanceType(DEFAULT_CUSTOM_INSTANCE_TYPE_CONFIG)
+    setCustomInstanceType(getDefaultCustomInstanceTypeConfig(selectedServiceId))
     setSelectedDiskImageId(nextSoftwareOptions[0]?.id ?? '')
   }, [selectedServiceId])
 
@@ -678,70 +678,78 @@ export function ProviderSetupPublishCatalogWizard({
             </Content>
             {!isClusterService ? (
               <>
-                <Content component="p" className="provider-setup-template__publish-subsection-title">
-                  Instance type
-                </Content>
-                <div
-                  className="provider-setup-template__card-group provider-setup-template__card-group--instance-types"
+                <FormGroup
+                  label="Instance type"
+                  fieldId="publish-catalog-instance-type"
+                  isRequired
                   role="radiogroup"
-                  aria-label="Instance type"
+                  className="provider-setup-template__publish-subsection"
                 >
-                  {instanceTypeCards.map((option) => {
-                    const isSelected = option.id === selectedInstanceTypeId
-                    const isCustomCard = isCustomInstanceTypeId(option.id)
+                  <div
+                    id="publish-catalog-instance-type"
+                    className="provider-setup-template__card-group provider-setup-template__card-group--instance-types"
+                    role="presentation"
+                  >
+                    {instanceTypeCards.map((option) => {
+                      const isSelected = option.id === selectedInstanceTypeId
+                      const isCustomCard = isCustomInstanceTypeId(option.id)
 
-                    return (
-                      <button
-                        key={option.id}
-                        type="button"
-                        role="radio"
-                        aria-checked={isSelected}
-                        className={`provider-setup-template__select-card provider-setup-template__select-card--instance-type${
-                          isSelected ? ' provider-setup-template__select-card--selected' : ''
-                        }`}
-                        onClick={() => setSelectedInstanceTypeId(option.id)}
-                      >
-                        {isSelected ? (
-                          <Label
-                            color="grey"
-                            isCompact
-                            className="provider-setup-template__select-card-selected-badge"
-                          >
-                            Selected
-                          </Label>
-                        ) : null}
-                        <Title
-                          headingLevel="h3"
-                          size="md"
-                          className="provider-setup-template__select-card-title"
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={isSelected}
+                          className={`provider-setup-template__select-card provider-setup-template__select-card--instance-type${
+                            isSelected ? ' provider-setup-template__select-card--selected' : ''
+                          }`}
+                          onClick={() => setSelectedInstanceTypeId(option.id)}
                         >
-                          {option.label}
-                        </Title>
-                        <Content component="p" className="provider-setup-template__select-card-detail">
-                          {isCustomCard && !isSelected
-                            ? 'Set CPUs, memory, NICs, and GPUs'
-                            : option.detail}
-                        </Content>
-                        {option.accelerator ? (
+                          {isSelected ? (
+                            <Label
+                              color="grey"
+                              isCompact
+                              className="provider-setup-template__select-card-selected-badge"
+                            >
+                              Selected
+                            </Label>
+                          ) : null}
+                          <Title
+                            headingLevel="h3"
+                            size="md"
+                            className="provider-setup-template__select-card-title"
+                          >
+                            {option.label}
+                          </Title>
                           <Content
                             component="p"
-                            className="provider-setup-template__select-card-accelerator"
+                            className="provider-setup-template__select-card-detail"
                           >
-                            {option.accelerator}
+                            {isCustomCard && !isSelected
+                              ? 'Set CPUs, memory, NICs, and GPUs'
+                              : option.detail}
                           </Content>
-                        ) : null}
-                        {option.hourlyRate ? (
-                          <Content
-                            component="p"
-                            className="provider-setup-template__select-card-rate"
-                          >
-                            {option.hourlyRate}
-                          </Content>
-                        ) : null}
-                      </button>
-                    )
-                  })}
-                </div>
+                          {option.accelerator ? (
+                            <Content
+                              component="p"
+                              className="provider-setup-template__select-card-accelerator"
+                            >
+                              {option.accelerator}
+                            </Content>
+                          ) : null}
+                          {option.hourlyRate ? (
+                            <Content
+                              component="p"
+                              className="provider-setup-template__select-card-rate"
+                            >
+                              {option.hourlyRate}
+                            </Content>
+                          ) : null}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </FormGroup>
                 {isCustomInstanceTypeSelected ? (
                   <Form className="provider-setup-template__custom-instance-type">
                     <div className="provider-setup-template__custom-instance-type-fields">
@@ -829,13 +837,17 @@ export function ProviderSetupPublishCatalogWizard({
                 ) : null}
               </>
             ) : null}
-            <Content component="p" className="provider-setup-template__publish-subsection-title">
-              {softwareImageStepLabel}
-            </Content>
-            <div
-              className="provider-setup-template__card-group provider-setup-template__card-group--disk-images"
+            <FormGroup
+              label={softwareImageStepLabel}
+              fieldId="publish-catalog-disk-image"
+              isRequired
               role="radiogroup"
-              aria-label={softwareImageStepLabel}
+              className="provider-setup-template__publish-subsection"
+            >
+            <div
+              id="publish-catalog-disk-image"
+              className="provider-setup-template__card-group provider-setup-template__card-group--disk-images"
+              role="presentation"
             >
               {isClusterService
                 ? getCatalogClusterVersionOptions().map((option) => {
@@ -988,6 +1000,7 @@ export function ProviderSetupPublishCatalogWizard({
                     )
                   })}
             </div>
+            </FormGroup>
           </div>
         )
       case 'field-policies':

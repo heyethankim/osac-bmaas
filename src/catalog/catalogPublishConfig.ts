@@ -35,15 +35,32 @@ export type CustomInstanceTypeConfig = {
 }
 
 export const DEFAULT_CUSTOM_INSTANCE_TYPE_CONFIG: CustomInstanceTypeConfig = {
+  vcpus: 32,
+  memoryGb: 256,
+  networkInterfaces: 2,
+  acceleratorId: 'nvidia-a100-40',
+}
+
+/** Lighter Custom defaults when creating a virtual machine catalog item. */
+export const DEFAULT_VM_CUSTOM_INSTANCE_TYPE_CONFIG: CustomInstanceTypeConfig = {
   vcpus: 4,
   memoryGb: 16,
   networkInterfaces: 1,
   acceleratorId: 'none',
 }
 
+export function getDefaultCustomInstanceTypeConfig(
+  serviceId: CatalogServiceId | null,
+): CustomInstanceTypeConfig {
+  return serviceId === 'virtual-machine'
+    ? { ...DEFAULT_VM_CUSTOM_INSTANCE_TYPE_CONFIG }
+    : { ...DEFAULT_CUSTOM_INSTANCE_TYPE_CONFIG }
+}
+
 export const CATALOG_GPU_ACCELERATOR_OPTIONS: ReadonlyArray<{ id: string; label: string }> = [
   { id: 'none', label: 'None' },
   { id: 'nvidia-a100-40', label: 'NVIDIA A100 40 GB' },
+  { id: 'nvidia-a100-80', label: 'NVIDIA A100 80 GB' },
   { id: 'nvidia-h100-80', label: 'NVIDIA H100 80 GB' },
   { id: 'nvidia-l40s', label: 'NVIDIA L40S 48 GB' },
 ]
@@ -79,6 +96,7 @@ const CUSTOM_INSTANCE_RATE_PER_NIC = 0.02
 const CUSTOM_INSTANCE_GPU_RATE: Readonly<Record<string, number>> = {
   none: 0,
   'nvidia-a100-40': 2.8,
+  'nvidia-a100-80': 3.6,
   'nvidia-h100-80': 4.5,
   'nvidia-l40s': 1.75,
 }
@@ -279,6 +297,31 @@ export function getProvisioningTemplatePresentation(
 }
 
 export const CATALOG_INSTANCE_TYPE_OPTIONS: ReadonlyArray<CatalogInstanceTypeOption> = [
+  {
+    id: 'small',
+    label: 'Small',
+    detail: '16 vCPU · 128 GB',
+    accelerator: 'NVIDIA A100 40 GB',
+    hourlyRate: '$5.68/hr',
+  },
+  {
+    id: 'medium',
+    label: 'Medium',
+    detail: '32 vCPU · 256 GB',
+    accelerator: 'NVIDIA A100 40 GB',
+    hourlyRate: '$8.56/hr',
+  },
+  {
+    id: 'large',
+    label: 'Large',
+    detail: '64 vCPU · 512 GB',
+    accelerator: 'NVIDIA A100 80 GB',
+    hourlyRate: '$15.12/hr',
+  },
+]
+
+/** CPU/memory-only presets for virtual machine catalog items. */
+export const CATALOG_VM_INSTANCE_TYPE_OPTIONS: ReadonlyArray<CatalogInstanceTypeOption> = [
   { id: 'small', label: 'Small', detail: '4 vCPU · 16 GB', hourlyRate: '$0.48/hr' },
   { id: 'medium', label: 'Medium', detail: '8 vCPU · 32 GB', hourlyRate: '$0.96/hr' },
   { id: 'large', label: 'Large', detail: '16 vCPU · 64 GB', hourlyRate: '$1.92/hr' },
@@ -325,8 +368,13 @@ export function getCatalogInstanceTypeOptions(
     ]
   }
 
+  const presets =
+    serviceId === 'virtual-machine'
+      ? CATALOG_VM_INSTANCE_TYPE_OPTIONS
+      : CATALOG_INSTANCE_TYPE_OPTIONS
+
   return [
-    ...CATALOG_INSTANCE_TYPE_OPTIONS,
+    ...presets,
     {
       id: CUSTOM_INSTANCE_TYPE_ID,
       label: 'Custom',

@@ -1121,6 +1121,23 @@
   font-weight: var(--pf-t--global--font--weight--body--bold);
 }
 
+.provider-setup-template__publish-subsection.pf-v6-c-form__group {
+  margin-block-start: var(--pf-t--global--spacer--lg);
+  /* FormGroups outside <Form> still need the required-asterisk tokens. */
+  --pf-v6-c-form__label-required--MarginInlineStart: var(--pf-t--global--spacer--xs);
+  --pf-v6-c-form__label-required--FontSize: var(--pf-t--global--font--size--body--default);
+  --pf-v6-c-form__label-required--Color: var(--pf-t--global--color--status--danger--default);
+}
+
+.provider-setup-template__publish-subsection .pf-v6-c-form__group-label {
+  margin-block-end: var(--pf-t--global--spacer--sm);
+  padding: 0;
+}
+
+.provider-setup-template__publish-subsection .pf-v6-c-form__label-required {
+  color: var(--pf-t--global--color--status--danger--default);
+}
+
 .provider-setup-template__select-card--instance-type,
 .provider-setup-template__select-card--disk-image {
   position: relative;
