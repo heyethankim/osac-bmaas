@@ -23,7 +23,6 @@ import { RocketIcon } from '@patternfly/react-icons/dist/esm/icons/rocket-icon'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import { getCatalogSpecsSectionLabel, resolveClusterCatalogHighlightRows, resolveVmCatalogHighlightRows } from '../../catalog/catalogSpecs'
 import { formatCatalogFieldPolicyMode } from '../../catalog/catalogPublishConfig'
-import { CatalogExternalIpPoolSection } from '../catalog/CatalogExternalIpPoolSection'
 import { CatalogClusterVersionValue } from '../catalog/CatalogClusterVersionValue'
 import { CatalogNetworkingLocksSection } from '../catalog/CatalogNetworkingLocksSection'
 import { CatalogVmDefaultsSections } from '../catalog/CatalogVmDefaultsSections'
@@ -39,7 +38,12 @@ import {
   getTenantNetworkOverrides,
   type TenantNetworkResourceKind,
 } from '../../tenantAdmin/networking'
-import { getProviderExternalIpPools } from '../../providerSetup/storage'
+import {
+  getCatalogExternalIpPoolOptions,
+  getCatalogSecurityGroupOptions,
+  getCatalogSubnetOptions,
+  getCatalogVirtualNetworkOptions,
+} from '../../providerSetup/storage'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
 
 function getVisibilityLabel(scope: TenantCatalogGovernanceItemWithNetworking['scope']): string {
@@ -78,6 +82,7 @@ export function TenantCatalogItemDetailsDrawer({
         virtualNetwork: item.networkPolicy.virtualNetwork.locked,
         subnet: item.networkPolicy.subnet.locked,
         securityGroup: item.networkPolicy.securityGroup.locked,
+        externalIpPool: item.networkPolicy.externalIpPool.locked,
       }
     : undefined
   const specRows = item ? getTenantCatalogItemDetailSpecRows(item) : []
@@ -307,22 +312,26 @@ export function TenantCatalogItemDetailsDrawer({
               policy={networkPolicy}
               lede={TENANT_CATALOG_MANAGER_DEMO.networkingSectionLede}
               providerLocked={providerLocked}
-              onChange={(field, locked) => {
-                const kind =
-                  field === 'virtualNetwork'
-                    ? 'virtual-network'
-                    : field === 'subnet'
-                      ? 'subnet'
-                      : 'security-group'
-                onChangeLockForUsers(kind, locked)
+              virtualNetworkOptions={getCatalogVirtualNetworkOptions()}
+              subnetOptions={getCatalogSubnetOptions(networkPolicy.virtualNetwork.id)}
+              securityGroupOptions={getCatalogSecurityGroupOptions()}
+              externalIpPoolOptions={getCatalogExternalIpPoolOptions()}
+              onChange={(next) => {
+                const fields: Array<{
+                  key: 'virtualNetwork' | 'subnet' | 'securityGroup' | 'externalIpPool'
+                  kind: TenantNetworkResourceKind
+                }> = [
+                  { key: 'virtualNetwork', kind: 'virtual-network' },
+                  { key: 'subnet', kind: 'subnet' },
+                  { key: 'securityGroup', kind: 'security-group' },
+                  { key: 'externalIpPool', kind: 'external-ip-pool' },
+                ]
+                for (const { key, kind } of fields) {
+                  if (next[key].locked !== networkPolicy[key].locked) {
+                    onChangeLockForUsers(kind, next[key].locked)
+                  }
+                }
               }}
-            />
-            <CatalogExternalIpPoolSection
-              idPrefix={`tenant-admin-catalog-${item.catalogItemId}`}
-              policy={networkPolicy.externalIpPool}
-              pools={getProviderExternalIpPools()}
-              readOnly
-              showDivider
             />
           </div>
         ) : null}

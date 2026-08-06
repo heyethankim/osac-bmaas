@@ -28,13 +28,17 @@ import {
   resolveVmCatalogHighlightRows,
 } from '../../catalog/catalogSpecs'
 import { formatCatalogFieldPolicyMode } from '../../catalog/catalogPublishConfig'
-import { CatalogExternalIpPoolSection } from '../catalog/CatalogExternalIpPoolSection'
 import { CatalogClusterVersionValue } from '../catalog/CatalogClusterVersionValue'
 import { CatalogNetworkingLocksSection } from '../catalog/CatalogNetworkingLocksSection'
 import { CatalogVmDefaultsSections } from '../catalog/CatalogVmDefaultsSections'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
-import { getProviderExternalIpPools } from '../../providerSetup/storage'
+import {
+  getCatalogExternalIpPoolOptions,
+  getCatalogSecurityGroupOptions,
+  getCatalogSubnetOptions,
+  getCatalogVirtualNetworkOptions,
+} from '../../providerSetup/storage'
 import { formatRateCardSummary } from '../../providerSetup/templateDemo'
 import type { TenantUserCatalogCard } from '../../tenantUser/catalog'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
@@ -306,13 +310,10 @@ export function TenantUserCatalogItemDetailsDrawer({
                 policy={networkContext.policy}
                 lede="Locked fields are fixed for launch. Unlocked fields can be chosen when you create an instance."
                 readOnly
-              />
-              <CatalogExternalIpPoolSection
-                idPrefix={`tenant-user-catalog-${catalogItem.catalogItemId}`}
-                policy={networkContext.policy.externalIpPool}
-                pools={getProviderExternalIpPools()}
-                readOnly
-                showDivider
+                virtualNetworkOptions={getCatalogVirtualNetworkOptions()}
+                subnetOptions={getCatalogSubnetOptions(networkContext.policy.virtualNetwork.id)}
+                securityGroupOptions={getCatalogSecurityGroupOptions()}
+                externalIpPoolOptions={getCatalogExternalIpPoolOptions()}
               />
             </div>
           </>

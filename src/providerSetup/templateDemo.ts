@@ -323,6 +323,7 @@ export const PUBLISH_CATALOG_STEPS = [
   { id: 'service', label: 'Service' },
   { id: 'template', label: 'Template' },
   { id: 'hardware-os', label: 'Hardware & OS' },
+  { id: 'networking', label: 'Networking' },
   { id: 'field-policies', label: 'Lock fields' },
   { id: 'display-name', label: 'Name' },
   { id: 'publish-scope', label: 'Visibility' },

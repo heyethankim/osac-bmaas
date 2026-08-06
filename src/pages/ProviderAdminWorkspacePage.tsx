@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { syncWorkspaceNavParam } from '../shared/workspaceNavUrl'
 import { ProviderAdminShell } from '../components/provider-admin/ProviderAdminShell'
 import { ProviderSetupWizardPanel } from '../components/provider-setup/ProviderSetupWizardPanel'
@@ -29,8 +29,6 @@ import {
   isProviderAdminNavId,
 } from '../providerSetup/prototypeEntry'
 import {
-  clearProviderServicesSelected,
-  clearProviderSetupComplete,
   getProviderActiveNav,
   getProviderCatalogItems,
   getProviderSelectedServices,
@@ -101,38 +99,25 @@ function getLockedServiceIdFromNav(navId: ProviderAdminNavId): CatalogServiceId 
 function readInitialProviderNav(searchParams: URLSearchParams): ProviderAdminNavId {
   const requestedNav = normalizeProviderNavParam(searchParams.get('nav'))
   if (requestedNav) {
+    ensureProviderPostSetupPrototype(requestedNav)
     return requestedNav
   }
 
   return getProviderActiveNav()
 }
 
-type ProviderAdminWorkspacePageProps = {
-  /** Enter → login lands here so first-time welcome always shows, ignoring leftover session/?nav=. */
-  forceOnboarding?: boolean
-}
-
-export function ProviderAdminWorkspacePage({
-  forceOnboarding = false,
-}: ProviderAdminWorkspacePageProps) {
-  const navigate = useNavigate()
+export function ProviderAdminWorkspacePage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const [setupComplete, setSetupComplete] = useState(() =>
-    forceOnboarding ? false : isProviderSetupComplete(),
-  )
-  const [servicesSelected, setServicesSelected] = useState(() =>
-    forceOnboarding ? false : isProviderServicesSelected(),
-  )
+  const [setupComplete, setSetupComplete] = useState(() => isProviderSetupComplete())
+  const [servicesSelected, setServicesSelected] = useState(() => isProviderServicesSelected())
   const [selectedServices, setSelectedServices] = useState<ProviderServiceId[]>(() =>
-    forceOnboarding ? [] : getProviderSelectedServices(),
+    getProviderSelectedServices(),
   )
   const [activeNavId, setActiveNavId] = useState<ProviderAdminNavId>(() =>
-    forceOnboarding ? 'overview' : readInitialProviderNav(searchParams),
+    readInitialProviderNav(searchParams),
   )
   const [catalogItems, setCatalogItems] = useState(() =>
-    !forceOnboarding && isProviderSetupComplete()
-      ? ensureProviderCatalogDemoItems()
-      : getProviderCatalogItems(),
+    isProviderSetupComplete() ? ensureProviderCatalogDemoItems() : getProviderCatalogItems(),
   )
   const [workspaceTransition, setWorkspaceTransition] = useState<WorkspaceTransition>('idle')
   const [openTemplateLookup, setOpenTemplateLookup] = useState<BmaasTemplateLookup | null>(null)
@@ -145,18 +130,8 @@ export function ProviderAdminWorkspacePage({
   const provisioningTimersRef = useRef<Map<string, number>>(new Map())
 
   useLayoutEffect(() => {
-    if (forceOnboarding) {
-      clearProviderSetupComplete()
-      clearProviderServicesSelected()
-      setSetupComplete(false)
-      setServicesSelected(false)
-      setSelectedServices([])
-      return
-    }
-
     const requestedNav = normalizeProviderNavParam(searchParams.get('nav'))
     if (requestedNav) {
-      // Landing-page Catalog shortcuts deep-link with ?nav= to skip first-time setup.
       ensureProviderPostSetupPrototype(requestedNav)
       setCatalogItems(getProviderCatalogItems())
       setSelectedServices(getProviderSelectedServices())
@@ -168,30 +143,15 @@ export function ProviderAdminWorkspacePage({
       return
     }
 
-    // Do not write ?nav= during first-time setup — that would re-enter the deep-link
-    // branch above and skip the welcome / service-selection screen.
-    if (!isProviderSetupComplete()) {
-      return
-    }
-
     const fallbackNav = getProviderActiveNav()
     syncWorkspaceNavParam(setSearchParams, fallbackNav, { replace: true })
-    setCatalogItems(ensureProviderCatalogDemoItems())
-  }, [forceOnboarding, searchParams, setSearchParams])
+
+    if (isProviderSetupComplete()) {
+      setCatalogItems(ensureProviderCatalogDemoItems())
+    }
+  }, [searchParams, setSearchParams])
 
   const lockedServiceId = getLockedServiceIdFromNav(activeNavId)
-
-  const finishSetupToWorkspace = (navId: ProviderAdminNavId) => {
-    setProviderActiveNav(navId)
-    setProviderSetupComplete()
-    setActiveNavId(navId)
-    setSetupComplete(true)
-    if (forceOnboarding) {
-      navigate(`/provider/workspace?nav=${navId}`, { replace: true })
-      return
-    }
-    syncWorkspaceNavParam(setSearchParams, navId, { replace: true })
-  }
 
   const handleServicesContinue = (nextSelectedServices: ProviderServiceId[]) => {
     setProviderSelectedServices(nextSelectedServices)
@@ -246,7 +206,11 @@ export function ProviderAdminWorkspacePage({
     setCatalogItems(getProviderCatalogItems())
 
     if (status === 'unpublished') {
-      finishSetupToWorkspace('catalog')
+      setProviderActiveNav('catalog')
+      setProviderSetupComplete()
+      setActiveNavId('catalog')
+      syncWorkspaceNavParam(setSearchParams, 'catalog', { replace: true })
+      setSetupComplete(true)
       setWorkspaceTransition('idle')
       return draft
     }
@@ -254,7 +218,11 @@ export function ProviderAdminWorkspacePage({
     setWorkspaceTransition('publishing')
 
     window.setTimeout(() => {
-      finishSetupToWorkspace('catalog')
+      setProviderActiveNav('catalog')
+      setProviderSetupComplete()
+      setActiveNavId('catalog')
+      syncWorkspaceNavParam(setSearchParams, 'catalog', { replace: true })
+      setSetupComplete(true)
       setWorkspaceTransition('entering')
     }, PUBLISH_PHASE_MS)
 

@@ -27,6 +27,7 @@ import type { CatalogNetworkPolicy, CatalogNetworkResourceOption } from '../prov
 import {
   normalizeCatalogNetworkPolicy,
   resolveCatalogNetworkPolicy,
+  toExternalIpPoolCatalogOption,
 } from '../providerAdmin/catalogNetworkPolicy'
 import type { CatalogFieldPolicy } from '../catalog/catalogPublishConfig'
 import type {
@@ -1995,6 +1996,10 @@ export function getCatalogSubnetOptions(virtualNetworkId?: string): CatalogNetwo
 
 export function getCatalogSecurityGroupOptions(): CatalogNetworkResourceOption[] {
   return getProviderSecurityGroups().map(toCatalogNetworkOption)
+}
+
+export function getCatalogExternalIpPoolOptions(): CatalogNetworkResourceOption[] {
+  return getProviderExternalIpPools().map(toExternalIpPoolCatalogOption)
 }
 
 function isComputeImage(value: unknown): value is ComputeImage {

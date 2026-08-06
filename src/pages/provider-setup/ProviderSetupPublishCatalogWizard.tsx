@@ -41,6 +41,7 @@ import {
   WizardHeader,
   WizardStep,
 } from '@patternfly/react-core'
+import { CatalogNetworkingLocksSection } from '../../components/catalog/CatalogNetworkingLocksSection'
 import { CatalogPublishScopeIcon } from '../../components/provider-admin/CatalogPublishScopeIcon'
 import {
   formatVipEnterpriseVisibilityLabel,
@@ -67,8 +68,20 @@ import {
   type CustomInstanceTypeConfig,
 } from '../../catalog/catalogPublishConfig'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
-import { DEFAULT_CATALOG_NETWORK_POLICY } from '../../providerAdmin/catalogNetworkPolicy'
+import {
+  DEFAULT_CATALOG_NETWORK_POLICY,
+  getCatalogNetworkLockSummary,
+  resolveCatalogNetworkPolicyField,
+  type CatalogNetworkPolicy,
+  type CatalogNetworkResourceOption,
+} from '../../providerAdmin/catalogNetworkPolicy'
 import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
+import {
+  getCatalogExternalIpPoolOptions,
+  getCatalogSecurityGroupOptions,
+  getCatalogSubnetOptions,
+  getCatalogVirtualNetworkOptions,
+} from '../../providerSetup/storage'
 import {
   CATALOG_SERVICE_OFFERINGS,
   getCatalogServiceOffering,
@@ -189,6 +202,25 @@ export function ProviderSetupPublishCatalogWizard({
   )
   const [selectedDiskImageId, setSelectedDiskImageId] = useState('')
   const [fieldPolicies, setFieldPolicies] = useState<CatalogFieldPolicy[]>([])
+  const [networkPolicy, setNetworkPolicy] = useState<CatalogNetworkPolicy>(() => ({
+    ...DEFAULT_CATALOG_NETWORK_POLICY,
+    virtualNetwork: { ...DEFAULT_CATALOG_NETWORK_POLICY.virtualNetwork },
+    subnet: { ...DEFAULT_CATALOG_NETWORK_POLICY.subnet },
+    securityGroup: { ...DEFAULT_CATALOG_NETWORK_POLICY.securityGroup },
+    externalIpPool: { ...DEFAULT_CATALOG_NETWORK_POLICY.externalIpPool },
+  }))
+  const [virtualNetworkOptions, setVirtualNetworkOptions] = useState<CatalogNetworkResourceOption[]>(
+    () => getCatalogVirtualNetworkOptions(),
+  )
+  const [subnetOptions, setSubnetOptions] = useState<CatalogNetworkResourceOption[]>(() =>
+    getCatalogSubnetOptions(DEFAULT_CATALOG_NETWORK_POLICY.virtualNetwork.id),
+  )
+  const [securityGroupOptions, setSecurityGroupOptions] = useState<CatalogNetworkResourceOption[]>(
+    () => getCatalogSecurityGroupOptions(),
+  )
+  const [externalIpPoolOptions, setExternalIpPoolOptions] = useState<CatalogNetworkResourceOption[]>(
+    () => getCatalogExternalIpPoolOptions(),
+  )
   const [expandedClusterVersionIds, setExpandedClusterVersionIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   )
@@ -265,6 +297,7 @@ export function ProviderSetupPublishCatalogWizard({
     Boolean(selectedDiskImage) &&
     isValidKubernetesResourceName(displayName)
   const hasLockableParameters = fieldPolicies.length > 0
+  const networkLockSummary = getCatalogNetworkLockSummary(networkPolicy)
   const hasSingleTemplate = templates.length <= 1
   const publishSteps = useMemo(
     () =>
@@ -296,6 +329,17 @@ export function ProviderSetupPublishCatalogWizard({
     setCustomInstanceType(getDefaultCustomInstanceTypeConfig(null))
     setSelectedDiskImageId('')
     setFieldPolicies([])
+    setNetworkPolicy({
+      ...DEFAULT_CATALOG_NETWORK_POLICY,
+      virtualNetwork: { ...DEFAULT_CATALOG_NETWORK_POLICY.virtualNetwork },
+      subnet: { ...DEFAULT_CATALOG_NETWORK_POLICY.subnet },
+      securityGroup: { ...DEFAULT_CATALOG_NETWORK_POLICY.securityGroup },
+      externalIpPool: { ...DEFAULT_CATALOG_NETWORK_POLICY.externalIpPool },
+    })
+    setVirtualNetworkOptions(getCatalogVirtualNetworkOptions())
+    setSubnetOptions(getCatalogSubnetOptions(DEFAULT_CATALOG_NETWORK_POLICY.virtualNetwork.id))
+    setSecurityGroupOptions(getCatalogSecurityGroupOptions())
+    setExternalIpPoolOptions(getCatalogExternalIpPoolOptions())
     setExpandedClusterVersionIds(new Set())
     setDisplayName('')
     setDescription('')
@@ -439,13 +483,7 @@ export function ProviderSetupPublishCatalogWizard({
       diskImageId: selectedDiskImage.id,
       diskImageLabel: selectedDiskImage.label,
       fieldPolicies,
-      networkPolicy: {
-        ...DEFAULT_CATALOG_NETWORK_POLICY,
-        virtualNetwork: { ...DEFAULT_CATALOG_NETWORK_POLICY.virtualNetwork },
-        subnet: { ...DEFAULT_CATALOG_NETWORK_POLICY.subnet },
-        securityGroup: { ...DEFAULT_CATALOG_NETWORK_POLICY.securityGroup },
-        externalIpPool: { ...DEFAULT_CATALOG_NETWORK_POLICY.externalIpPool, poolIds: [] },
-      },
+      networkPolicy,
       ...(isVipEnterprise && enterpriseTenantIds.length > 0
         ? {
             enterpriseTenantId: enterpriseTenantIds[0],
@@ -458,6 +496,33 @@ export function ProviderSetupPublishCatalogWizard({
             vipOrganizationIds,
           }
         : {}),
+    })
+  }
+
+  const updateNetworkPolicy = (next: CatalogNetworkPolicy) => {
+    setNetworkPolicy(next)
+  }
+
+  const handleVirtualNetworkChange = (value: string, nextBase: CatalogNetworkPolicy) => {
+    const nextSubnets = getCatalogSubnetOptions(value)
+    setSubnetOptions(nextSubnets)
+    const nextSubnetId =
+      nextSubnets.find((option) => option.id === nextBase.subnet.id)?.id ??
+      nextSubnets[0]?.id ??
+      nextBase.subnet.id
+
+    setNetworkPolicy({
+      ...nextBase,
+      virtualNetwork: resolveCatalogNetworkPolicyField(
+        virtualNetworkOptions,
+        value,
+        nextBase.virtualNetwork.locked,
+      ),
+      subnet: resolveCatalogNetworkPolicyField(
+        nextSubnets,
+        nextSubnetId,
+        nextBase.subnet.locked,
+      ),
     })
   }
 
@@ -1003,6 +1068,27 @@ export function ProviderSetupPublishCatalogWizard({
             </FormGroup>
           </div>
         )
+      case 'networking':
+        return (
+          <div className="provider-setup-template__publish-networking-step">
+            <Content component="p" className="provider-setup-template__publish-step-lede">
+              Locked fields cannot be changed by tenants.
+            </Content>
+            <CatalogNetworkingLocksSection
+              idPrefix="publish-catalog-networking"
+              title=""
+              showSavedFeedback={false}
+              policy={networkPolicy}
+              lede=""
+              virtualNetworkOptions={virtualNetworkOptions}
+              subnetOptions={subnetOptions}
+              securityGroupOptions={securityGroupOptions}
+              externalIpPoolOptions={externalIpPoolOptions}
+              onVirtualNetworkChange={handleVirtualNetworkChange}
+              onChange={updateNetworkPolicy}
+            />
+          </div>
+        )
       case 'field-policies':
         return (
           <div className="provider-setup-template__publish-policies-step">
@@ -1264,6 +1350,14 @@ export function ProviderSetupPublishCatalogWizard({
                   )}
                 </DescriptionListDescription>
               </DescriptionListGroup>
+              {networkLockSummary ? (
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Networking</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {networkLockSummary.label}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              ) : null}
               {hasLockableParameters ? (
                 <DescriptionListGroup>
                   <DescriptionListTerm>Field policies</DescriptionListTerm>
@@ -1330,6 +1424,10 @@ export function ProviderSetupPublishCatalogWizard({
           ? !selectedDiskImageId
           : !selectedInstanceType || !selectedDiskImageId,
       }
+    }
+
+    if (stepId === 'networking') {
+      return { isNextDisabled: false }
     }
 
     if (stepId === 'field-policies') {

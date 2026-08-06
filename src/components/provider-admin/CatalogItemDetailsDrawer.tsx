@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { RocketIcon } from '@patternfly/react-icons/dist/esm/icons/rocket-icon'
 import {
   Button,
@@ -20,7 +20,6 @@ import {
   Label,
   Title,
 } from '@patternfly/react-core'
-import { CatalogExternalIpPoolSection } from '../catalog/CatalogExternalIpPoolSection'
 import { CatalogClusterVersionValue } from '../catalog/CatalogClusterVersionValue'
 import { CatalogNetworkingLocksSection } from '../catalog/CatalogNetworkingLocksSection'
 import { CatalogPublishScopeIcon } from './CatalogPublishScopeIcon'
@@ -29,7 +28,10 @@ import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import {
   getCatalogItemNetworkPolicy,
   getCatalogItemStatus,
-  getProviderExternalIpPools,
+  getCatalogExternalIpPoolOptions,
+  getCatalogSecurityGroupOptions,
+  getCatalogSubnetOptions,
+  getCatalogVirtualNetworkOptions,
   getProviderRegisteredOrganizations,
 } from '../../providerSetup/storage'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
@@ -38,7 +40,11 @@ import {
   formatRateCardSummary,
   type CatalogServiceId,
 } from '../../providerSetup/templateDemo'
-import { type CatalogNetworkPolicy } from '../../providerAdmin/catalogNetworkPolicy'
+import {
+  resolveCatalogNetworkPolicyField,
+  type CatalogNetworkPolicy,
+  type CatalogNetworkResourceOption,
+} from '../../providerAdmin/catalogNetworkPolicy'
 import {
   getCatalogSpecsSectionLabel,
   getDraftServiceId,
@@ -134,15 +140,59 @@ export function CatalogItemDetailsDrawer({
   const canLinkToBareMetalTemplate =
     Boolean(onNavigateToLinkedTemplate) && catalogServiceId === 'baremetal'
   const [networkPolicy, setNetworkPolicy] = useState<CatalogNetworkPolicy | null>(null)
-  const externalIpPools = useMemo(() => getProviderExternalIpPools(), [catalog?.catalogItemId])
+  const [virtualNetworkOptions, setVirtualNetworkOptions] = useState<CatalogNetworkResourceOption[]>(
+    () => getCatalogVirtualNetworkOptions(),
+  )
+  const [subnetOptions, setSubnetOptions] = useState<CatalogNetworkResourceOption[]>(() =>
+    getCatalogSubnetOptions(),
+  )
+  const [securityGroupOptions, setSecurityGroupOptions] = useState<CatalogNetworkResourceOption[]>(
+    () => getCatalogSecurityGroupOptions(),
+  )
+  const [externalIpPoolOptions, setExternalIpPoolOptions] = useState<CatalogNetworkResourceOption[]>(
+    () => getCatalogExternalIpPoolOptions(),
+  )
 
   useEffect(() => {
     setNetworkPolicy(catalog ? getCatalogItemNetworkPolicy(catalog) : null)
+    setVirtualNetworkOptions(getCatalogVirtualNetworkOptions())
+    setSecurityGroupOptions(getCatalogSecurityGroupOptions())
+    setExternalIpPoolOptions(getCatalogExternalIpPoolOptions())
   }, [catalog])
+
+  useEffect(() => {
+    if (!networkPolicy?.enabled) {
+      return
+    }
+    setSubnetOptions(getCatalogSubnetOptions(networkPolicy.virtualNetwork.id))
+  }, [networkPolicy?.enabled, networkPolicy?.virtualNetwork.id])
 
   const updateNetworkPolicy = (next: CatalogNetworkPolicy) => {
     setNetworkPolicy(next)
     onNetworkPolicyChange?.(next)
+  }
+
+  const handleVirtualNetworkChange = (value: string, nextBase: CatalogNetworkPolicy) => {
+    const nextSubnets = getCatalogSubnetOptions(value)
+    setSubnetOptions(nextSubnets)
+    const nextSubnetId =
+      nextSubnets.find((option) => option.id === nextBase.subnet.id)?.id ??
+      nextSubnets[0]?.id ??
+      nextBase.subnet.id
+
+    updateNetworkPolicy({
+      ...nextBase,
+      virtualNetwork: resolveCatalogNetworkPolicyField(
+        virtualNetworkOptions,
+        value,
+        nextBase.virtualNetwork.locked,
+      ),
+      subnet: resolveCatalogNetworkPolicyField(
+        nextSubnets,
+        nextSubnetId,
+        nextBase.subnet.locked,
+      ),
+    })
   }
 
   const panelContent = catalog ? (
@@ -439,27 +489,13 @@ export function CatalogItemDetailsDrawer({
               <CatalogNetworkingLocksSection
                 idPrefix={`catalog-detail-${catalog.catalogItemId}`}
                 policy={networkPolicy}
-                lede="Switch a field on to lock it for tenants. Fields are unlocked by default."
-                onChange={(field, locked) =>
-                  updateNetworkPolicy({
-                    ...networkPolicy,
-                    enabled: true,
-                    [field]: { ...networkPolicy[field], locked },
-                  })
-                }
-              />
-              <CatalogExternalIpPoolSection
-                idPrefix={`catalog-detail-${catalog.catalogItemId}`}
-                policy={networkPolicy.externalIpPool}
-                pools={externalIpPools}
-                showDivider
-                onChange={(externalIpPool) =>
-                  updateNetworkPolicy({
-                    ...networkPolicy,
-                    enabled: true,
-                    externalIpPool,
-                  })
-                }
+                lede="Locked fields cannot be changed by tenants."
+                virtualNetworkOptions={virtualNetworkOptions}
+                subnetOptions={subnetOptions}
+                securityGroupOptions={securityGroupOptions}
+                externalIpPoolOptions={externalIpPoolOptions}
+                onVirtualNetworkChange={handleVirtualNetworkChange}
+                onChange={updateNetworkPolicy}
               />
             </div>
           </>

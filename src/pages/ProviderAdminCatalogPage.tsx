@@ -179,13 +179,6 @@ function NetworkingSummary({
 }) {
   const policy = getCatalogItemNetworkPolicy(item)
   const lockSummary = getCatalogNetworkLockSummary(policy)
-  const externalIpLabel = policy.externalIpPool.enabled
-    ? policy.externalIpPool.poolIds.length > 0
-      ? `External IP · ${policy.externalIpPool.poolIds.length} pool${
-          policy.externalIpPool.poolIds.length === 1 ? '' : 's'
-        }`
-      : 'External IP · on'
-    : null
 
   const statusContent = lockSummary ? (
     <span className="provider-admin-catalog-items__networking-status">
@@ -203,15 +196,6 @@ function NetworkingSummary({
       >
         {lockSummary.label}
       </Label>
-      {externalIpLabel ? (
-        <Label
-          color="green"
-          isCompact
-          className="provider-admin-catalog-items__networking-status-label"
-        >
-          {externalIpLabel}
-        </Label>
-      ) : null}
       {onViewDetails ? (
         <Button
           variant="link"

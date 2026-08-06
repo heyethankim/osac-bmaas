@@ -12,21 +12,28 @@ import {
   getCatalogSecurityGroupOptions,
   getCatalogSubnetOptions,
   getCatalogVirtualNetworkOptions,
+  getCatalogExternalIpPoolOptions,
   getProviderCatalogItems,
 } from '../providerSetup/storage'
 
-export type TenantNetworkResourceKind = 'virtual-network' | 'subnet' | 'security-group'
+export type TenantNetworkResourceKind =
+  | 'virtual-network'
+  | 'subnet'
+  | 'security-group'
+  | 'external-ip-pool'
 
 export type TenantNetworkLockForUsers = {
   virtualNetwork?: boolean
   subnet?: boolean
   securityGroup?: boolean
+  externalIpPool?: boolean
 }
 
 export type TenantNetworkOverrides = {
   virtualNetworkId?: string
   subnetId?: string
   securityGroupId?: string
+  externalIpPoolId?: string
   /** Narrow Provider-editable fields so tenant users cannot change them at launch. */
   lockForUsers?: TenantNetworkLockForUsers
 }
@@ -35,6 +42,7 @@ export type TenantNetworkValueOverrideKey =
   | 'virtualNetworkId'
   | 'subnetId'
   | 'securityGroupId'
+  | 'externalIpPoolId'
 
 const TENANT_NETWORK_OVERRIDES_KEY_PREFIX = 'bmaas-tenant-network-overrides-v2-'
 
@@ -51,7 +59,8 @@ function isTenantNetworkLockForUsers(value: unknown): value is TenantNetworkLock
   return (
     (locks.virtualNetwork === undefined || typeof locks.virtualNetwork === 'boolean') &&
     (locks.subnet === undefined || typeof locks.subnet === 'boolean') &&
-    (locks.securityGroup === undefined || typeof locks.securityGroup === 'boolean')
+    (locks.securityGroup === undefined || typeof locks.securityGroup === 'boolean') &&
+    (locks.externalIpPool === undefined || typeof locks.externalIpPool === 'boolean')
   )
 }
 
@@ -65,6 +74,7 @@ function isTenantNetworkOverrides(value: unknown): value is TenantNetworkOverrid
     (overrides.virtualNetworkId === undefined || typeof overrides.virtualNetworkId === 'string') &&
     (overrides.subnetId === undefined || typeof overrides.subnetId === 'string') &&
     (overrides.securityGroupId === undefined || typeof overrides.securityGroupId === 'string') &&
+    (overrides.externalIpPoolId === undefined || typeof overrides.externalIpPoolId === 'string') &&
     (overrides.lockForUsers === undefined || isTenantNetworkLockForUsers(overrides.lockForUsers))
   )
 }
@@ -139,6 +149,8 @@ function lockForUsersKey(
       return 'subnet'
     case 'security-group':
       return 'securityGroup'
+    case 'external-ip-pool':
+      return 'externalIpPool'
   }
 }
 
@@ -173,12 +185,18 @@ export function applyTenantNetworkOverrides(
     getCatalogSecurityGroupOptions(),
     overrides.securityGroupId,
   )
+  const externalIpPool = resolveEffectiveNetworkField(
+    policy.externalIpPool,
+    getCatalogExternalIpPoolOptions(),
+    overrides.externalIpPoolId,
+  )
 
   return {
     ...policy,
     virtualNetwork,
     subnet,
     securityGroup,
+    externalIpPool,
   }
 }
 
@@ -209,6 +227,10 @@ export function applyTenantLocksForUsers(
     securityGroup: {
       ...policy.securityGroup,
       locked: policy.securityGroup.locked || Boolean(locks.securityGroup),
+    },
+    externalIpPool: {
+      ...policy.externalIpPool,
+      locked: policy.externalIpPool.locked || Boolean(locks.externalIpPool),
     },
   }
 }
@@ -272,7 +294,7 @@ export function getTenantNetworkResourceMeta(
   title: string
   fieldLabel: string
   lede: string
-  fieldKey: 'virtualNetwork' | 'subnet' | 'securityGroup'
+  fieldKey: 'virtualNetwork' | 'subnet' | 'securityGroup' | 'externalIpPool'
   overrideKey: TenantNetworkValueOverrideKey
   options: readonly CatalogNetworkResourceOption[]
 } {
@@ -303,6 +325,15 @@ export function getTenantNetworkResourceMeta(
         fieldKey: 'securityGroup',
         overrideKey: 'securityGroupId',
         options: getCatalogSecurityGroupOptions(),
+      }
+    case 'external-ip-pool':
+      return {
+        title: 'External IP pools',
+        fieldLabel: 'External IP pools',
+        lede: 'External IP pools available for workloads that need public addressing.',
+        fieldKey: 'externalIpPool',
+        overrideKey: 'externalIpPoolId',
+        options: getCatalogExternalIpPoolOptions(),
       }
   }
 }

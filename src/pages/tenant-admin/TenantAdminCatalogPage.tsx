@@ -435,12 +435,14 @@ export function TenantAdminCatalogPage({
     if (!catalogItemId) {
       return
     }
-    const lockKey =
+  const lockKey =
       kind === 'virtual-network'
         ? 'virtualNetwork'
         : kind === 'subnet'
           ? 'subnet'
-          : 'securityGroup'
+          : kind === 'security-group'
+            ? 'securityGroup'
+            : 'externalIpPool'
     const currentOverrides = getTenantNetworkOverrides(organization.slug, catalogItemId)
     setTenantNetworkOverrides(organization.slug, catalogItemId, {
       ...currentOverrides,
