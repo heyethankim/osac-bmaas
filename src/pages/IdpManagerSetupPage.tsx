@@ -207,6 +207,7 @@ export function IdpManagerSetupPage() {
         identityProviderIssuerUrl: form.issuerUrl.trim(),
         identityProviderClientId: form.clientId.trim(),
         idpInviteStatus: 'accepted',
+        status: 'Active',
       })
 
       if (!updated) {
@@ -509,7 +510,7 @@ export function IdpManagerSetupPage() {
         {!isCompleting && setupView === 'complete' ? (
           <>
             <Alert variant="success" isInline title="Setup complete">
-              {organization.name} is ready for the provider admin to define roles.
+              {organization.name} is active and ready for tenant login.
             </Alert>
             <Content component="p" className="idp-manager-setup-page__lede">
               You can close this window or return home.

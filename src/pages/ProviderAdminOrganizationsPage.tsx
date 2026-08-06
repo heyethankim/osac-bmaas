@@ -42,6 +42,7 @@ import {
   getProviderRegisteredOrganizations,
   peekProviderVipCatalogResumeIntent,
   removeProviderRegisteredOrganization,
+  updateProviderRegisteredOrganization,
 } from '../providerSetup/storage'
 import type { ProviderAdminNavId } from '../providerAdmin/constants'
 
@@ -123,12 +124,22 @@ export function ProviderAdminOrganizationsPage({
     useState<RegisteredOrganization | null>(null)
   const [registeringOrganizationId, setRegisteringOrganizationId] = useState<string | null>(null)
   const registeringTimerRef = useRef<number | null>(null)
+  const [activatingOrganizationId, setActivatingOrganizationId] = useState<string | null>(null)
+  const activatingTimerRef = useRef<number | null>(null)
+  const pendingActivationAfterIdpCloseRef = useRef<string | null>(null)
   const catalogDraft = getProviderCatalogDraft()
 
   const clearRegisteringTimer = () => {
     if (registeringTimerRef.current !== null) {
       window.clearTimeout(registeringTimerRef.current)
       registeringTimerRef.current = null
+    }
+  }
+
+  const clearActivatingTimer = () => {
+    if (activatingTimerRef.current !== null) {
+      window.clearTimeout(activatingTimerRef.current)
+      activatingTimerRef.current = null
     }
   }
 
@@ -141,6 +152,7 @@ export function ProviderAdminOrganizationsPage({
   useEffect(() => {
     return () => {
       clearRegisteringTimer()
+      clearActivatingTimer()
     }
   }, [])
 
@@ -161,6 +173,28 @@ export function ProviderAdminOrganizationsPage({
         setIsDetailsOpen(false)
       }
     }
+  }
+
+  const startOrganizationActivation = (organizationId: string) => {
+    clearActivatingTimer()
+    setActivatingOrganizationId(organizationId)
+    activatingTimerRef.current = window.setTimeout(() => {
+      updateProviderRegisteredOrganization(organizationId, { status: 'Active' })
+      refreshOrganizations(organizationId)
+      setActivatingOrganizationId(null)
+      activatingTimerRef.current = null
+    }, 1500)
+  }
+
+  const handleIdpModalClose = () => {
+    setIdpDelegationOrganization(null)
+    setIdpOrganization(null)
+    const organizationId = pendingActivationAfterIdpCloseRef.current
+    if (!organizationId) {
+      return
+    }
+    pendingActivationAfterIdpCloseRef.current = null
+    startOrganizationActivation(organizationId)
   }
 
   const openDetails = (organization: RegisteredOrganization) => {
@@ -257,7 +291,17 @@ export function ProviderAdminOrganizationsPage({
   const handleIdentityProviderConnected = (organization: RegisteredOrganization) => {
     refreshOrganizations(organization.id)
     // Keep the setup wizard mounted so working → success can play; it closes via onClose.
+    // Activate (Active + Needs roles) only after the modal closes, with a short spinner.
+    if (
+      organization.identityProviderConnected &&
+      organization.status === 'Pending activation'
+    ) {
+      pendingActivationAfterIdpCloseRef.current = organization.id
+    }
     setIdpDelegationOrganization((current) =>
+      current != null && current.id === organization.id ? organization : current,
+    )
+    setIdpOrganization((current) =>
       current != null && current.id === organization.id ? organization : current,
     )
   }
@@ -355,14 +399,16 @@ export function ProviderAdminOrganizationsPage({
             <Tbody>
               {organizations.map((org) => {
                 const isRegistering = registeringOrganizationId === org.id
-                const setupSignal = isRegistering ? null : getOrganizationSetupSignal(org)
-                const nextAction = isRegistering ? null : getOrganizationSetupNextAction(org)
+                const isActivating = activatingOrganizationId === org.id
+                const isStatusPending = isRegistering || isActivating
+                const setupSignal = isStatusPending ? null : getOrganizationSetupSignal(org)
+                const nextAction = isStatusPending ? null : getOrganizationSetupNextAction(org)
 
                 return (
                   <Tr
                     key={org.id}
                     className={
-                      isRegistering
+                      isStatusPending
                         ? 'provider-admin-organizations__row--registering'
                         : undefined
                     }
@@ -384,13 +430,20 @@ export function ProviderAdminOrganizationsPage({
                     </Td>
                     <Td modifier="wrap" dataLabel="Status">
                       <div className="provider-admin-organizations__status-cell">
-                        <Label
-                          color={org.status === 'Active' ? 'green' : 'orange'}
-                          isCompact
-                          className="provider-admin-organizations__status"
-                        >
-                          {org.status}
-                        </Label>
+                        {isActivating ? (
+                          <span className="provider-admin-organizations__registering-status">
+                            <Spinner size="sm" aria-label={`Activating ${org.name}`} />
+                            <span className="pf-v6-screen-reader">Activating organization</span>
+                          </span>
+                        ) : (
+                          <Label
+                            color={org.status === 'Active' ? 'green' : 'orange'}
+                            isCompact
+                            className="provider-admin-organizations__status"
+                          >
+                            {org.status}
+                          </Label>
+                        )}
                         {isRegistering ? (
                           <span className="provider-admin-organizations__registering-status">
                             <Spinner
@@ -463,14 +516,14 @@ export function ProviderAdminOrganizationsPage({
         <SetupIdentityProviderWizard
           isOpen={idpDelegationOrganization !== null}
           organization={idpDelegationOrganization}
-          onClose={() => setIdpDelegationOrganization(null)}
+          onClose={handleIdpModalClose}
           onUpdated={handleIdpSetupUpdated}
           onConnected={handleIdentityProviderConnected}
         />
         <ConnectOrganizationIdentityProviderModal
           isOpen={idpOrganization !== null}
           organization={idpOrganization}
-          onClose={() => setIdpOrganization(null)}
+          onClose={handleIdpModalClose}
           onConnected={handleIdentityProviderConnected}
         />
         <DefineOrganizationRolesModal

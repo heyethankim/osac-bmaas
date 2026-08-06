@@ -319,7 +319,7 @@ export function SetupIdentityProviderWizard({
             ) : (
               <OrganizationActionSuccessState
                 title="Identity provider connected"
-                body="Next, define roles for this organization."
+                body="This organization is now active. You can define roles anytime."
               />
             )}
           </div>

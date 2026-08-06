@@ -117,12 +117,8 @@ export function getIdpManagerSetupPath(token: string): string {
   return `${normalizedBase}${getIdpManagerSetupRoute(token)}`
 }
 
-/** Under-Status line: next incomplete step, or ready-for-login when setup is complete. */
+/** Under-Status line: next incomplete step while setup is incomplete. */
 export function getOrganizationSetupSignal(organization: RegisteredOrganization): string | null {
-  if (organization.status === 'Active') {
-    return null
-  }
-
   if (!organization.identityProviderConnected) {
     if (hasPendingIdpInvite(organization)) {
       return 'Waiting on IdP Manager'
@@ -137,15 +133,11 @@ export function getOrganizationSetupSignal(organization: RegisteredOrganization)
     return 'Needs roles'
   }
 
-  return 'Ready for login'
+  return null
 }
 
 export function isOrganizationReadyForLogin(organization: RegisteredOrganization): boolean {
-  return (
-    organization.status === 'Pending activation' &&
-    organization.identityProviderConnected &&
-    organization.rbacConfigured
-  )
+  return organization.identityProviderConnected
 }
 
 /** Count primary + additional tenant admins with an email. */
@@ -165,6 +157,10 @@ export function formatOrganizationRolesAssignmentSummary(
 ): string {
   const adminCount = getOrganizationTenantAdminCount(organization)
   const adminLabel = adminCount === 1 ? '1 tenant admin' : `${adminCount} tenant admins`
+  const breakGlass = organization.breakGlassEmail?.trim()
+  if (breakGlass) {
+    return `${adminLabel} · Break-glass: ${breakGlass}`
+  }
   return `${adminLabel} · Tenant users by email domain`
 }
 
@@ -192,10 +188,6 @@ export function getOrganizationTenantLoginPath(
 export function getOrganizationSetupNextAction(
   organization: RegisteredOrganization,
 ): OrganizationSetupNextAction | null {
-  if (organization.status === 'Active') {
-    return null
-  }
-
   if (!organization.identityProviderConnected) {
     return 'idp'
   }
@@ -226,7 +218,8 @@ export function getOrganizationActivationSteps(
 ): OrganizationActivationStep[] {
   const idpComplete = organization.identityProviderConnected
   const rbacComplete = organization.rbacConfigured
-  const readyComplete = organization.status === 'Active' || (idpComplete && rbacComplete)
+  // Org is ready for tenant login once IdP is connected; roles are optional.
+  const readyComplete = organization.status === 'Active' || idpComplete
 
   return [
     {
@@ -243,7 +236,7 @@ export function getOrganizationActivationSteps(
     },
     {
       id: 'rbac',
-      label: 'Roles defined',
+      label: 'Roles defined (optional)',
       complete: rbacComplete,
     },
     {
@@ -340,8 +333,8 @@ export function createDemoNorthSummitBankOrganization(
     idpInviteStatus: 'none',
     idpInviteSentAt: null,
     idpInviteExpiresAt: null,
-    breakGlassName: null,
-    breakGlassEmail: null,
+    breakGlassName: 'Break-glass admin',
+    breakGlassEmail: `breakglass@${primaryDomain}`,
     rbacConfigured: true,
     status: 'Active',
     createdAt: '2026-06-12T14:30:00.000Z',

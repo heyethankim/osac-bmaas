@@ -84,13 +84,10 @@ function ActivationStepRow({
       ? formatOrganizationRolesAssignmentSummary(organization)
       : null
   const showLoginPaths =
-    step.id === 'ready' &&
-    step.complete &&
-    organization.identityProviderConnected &&
-    organization.rbacConfigured
+    step.id === 'ready' && step.complete && organization.identityProviderConnected
   const canReviewIdp = step.id === 'idp' && typeof onReviewIdentityProvider === 'function'
   const canReviewRoles =
-    step.id === 'rbac' && step.complete && typeof onReviewRoles === 'function'
+    step.id === 'rbac' && typeof onReviewRoles === 'function'
 
   return (
     <li
@@ -219,7 +216,8 @@ export function OrganizationDetailsDrawer({
               <Label color={organization.status === 'Active' ? 'green' : 'orange'} isCompact>
                 {organization.status}
               </Label>
-              {isOrganizationReadyForLogin(organization) ? (
+              {organization.status === 'Pending activation' &&
+              isOrganizationReadyForLogin(organization) ? (
                 <Content
                   component="p"
                   className="provider-admin-organizations__setup-signal provider-admin-organizations__drawer-ready-signal"
@@ -265,6 +263,19 @@ export function OrganizationDetailsDrawer({
                 </Content>
                 <Content component="p" className="provider-admin-organizations__secondary-cell">
                   <code>{organization.tenantAdminEmail}</code>
+                </Content>
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+          ) : null}
+          {organization.rbacConfigured && organization.breakGlassEmail ? (
+            <DescriptionListGroup>
+              <DescriptionListTerm>Break-glass account</DescriptionListTerm>
+              <DescriptionListDescription>
+                <Content component="p" className="provider-admin-organizations__primary-cell">
+                  {organization.breakGlassName || '—'}
+                </Content>
+                <Content component="p" className="provider-admin-organizations__secondary-cell">
+                  <code>{organization.breakGlassEmail}</code>
                 </Content>
               </DescriptionListDescription>
             </DescriptionListGroup>
