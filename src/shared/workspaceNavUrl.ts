@@ -62,7 +62,7 @@ export function syncWorkspaceCatalogItemParam(
 }
 
 export function findCatalogItemByWorkspaceParam<
-  T extends { catalogItemId: string; displayName: string },
+  T extends { catalogItemId?: string; displayName: string },
 >(items: readonly T[], itemParam: string | null | undefined): T | null {
   if (!itemParam) {
     return null
@@ -74,7 +74,7 @@ export function findCatalogItemByWorkspaceParam<
   }
 
   return (
-    items.find((item) => item.catalogItemId.toLowerCase() === key) ??
+    items.find((item) => item.catalogItemId?.toLowerCase() === key) ??
     items.find((item) => item.displayName.toLowerCase() === key) ??
     items.find((item) => item.displayName.toLowerCase().includes(key)) ??
     null
