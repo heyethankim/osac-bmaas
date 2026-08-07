@@ -1320,6 +1320,18 @@ export function ProviderSetupPublishCatalogWizard({
                   {provisioner?.title ?? '—'}
                 </DescriptionListDescription>
               </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Name</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {displayName.trim() || '—'}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Description</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {description.trim() || '—'}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
               {!isClusterService ? (
                 <DescriptionListGroup>
                   <DescriptionListTerm>Instance type</DescriptionListTerm>
@@ -1366,18 +1378,6 @@ export function ProviderSetupPublishCatalogWizard({
                   </DescriptionListDescription>
                 </DescriptionListGroup>
               ) : null}
-              <DescriptionListGroup>
-                <DescriptionListTerm>Name</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {displayName.trim() || '—'}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Description</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {description.trim() || '—'}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
               <DescriptionListGroup>
                 <DescriptionListTerm>Visibility</DescriptionListTerm>
                 <DescriptionListDescription>
