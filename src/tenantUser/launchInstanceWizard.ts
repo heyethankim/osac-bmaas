@@ -178,6 +178,11 @@ export const CLUSTER_LAUNCH_INSTANCE_DEMO = {
   hostTypeOptions: ['standard-host', 'gpu-host', 'storage-host'] as const,
   defaultHostType: 'standard-host',
   defaultNodeCount: 1,
+  infrastructureNetworkingTitle: 'Infrastructure networking',
+  infrastructureNetworkingLede:
+    'Attach this cluster to your organization network objects.',
+  clusterNetworkTitle: 'Cluster network',
+  clusterNetworkLede: 'Address ranges used inside the cluster for pods and services.',
   podCidr: '10.128.0.0/24',
   podCidrHelper: 'Use CIDR notation (for example 10.128.0.0/14 or fd01::/48).',
   serviceCidr: '10.1.0.0/24',
@@ -282,6 +287,7 @@ export type LaunchInstanceWizardForm = {
   virtualNetworkId: string
   subnetId: string
   securityGroupId: string
+  externalIpPoolId: string
 }
 
 export const LAUNCH_INSTANCE_NAME_PREFIX_BY_SERVICE: Record<CatalogServiceId, string> = {
@@ -356,12 +362,14 @@ export const DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM: LaunchInstanceWizardForm = {
   virtualNetworkId: '',
   subnetId: '',
   securityGroupId: '',
+  externalIpPoolId: '',
 }
 
 export function createLaunchInstanceWizardForm(options: {
   virtualNetworkId: string
   subnetId: string
   securityGroupId: string
+  externalIpPoolId: string
   instanceName?: string
   serviceId?: CatalogServiceId
   /** Catalog cluster version id or Platform label; maps to release image. */
@@ -411,6 +419,7 @@ export function createLaunchInstanceWizardForm(options: {
     virtualNetworkId: options.virtualNetworkId,
     subnetId: options.subnetId,
     securityGroupId: options.securityGroupId,
+    externalIpPoolId: options.externalIpPoolId,
   }
 }
 
@@ -467,7 +476,8 @@ export function isVmNetworkingStepValid(form: LaunchInstanceWizardForm): boolean
   return (
     form.virtualNetworkId.trim().length > 0 &&
     form.subnetId.trim().length > 0 &&
-    form.securityGroupId.trim().length > 0
+    form.securityGroupId.trim().length > 0 &&
+    form.externalIpPoolId.trim().length > 0
   )
 }
 

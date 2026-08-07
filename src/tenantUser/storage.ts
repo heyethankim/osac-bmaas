@@ -6,6 +6,7 @@ import {
   createDemoTenantClusterInstance,
   createDemoTenantClusterInstance02,
   createDemoTenantClusterInstance03,
+  createDemoTenantClusterInstance04,
   createDemoTenantVirtualMachineInstance,
   createDemoTenantVirtualMachineInstance02,
   createDemoTenantVirtualMachineInstance03,
@@ -15,6 +16,7 @@ import {
   DEMO_TENANT_CLUSTER_INSTANCE_ID,
   DEMO_TENANT_CLUSTER_INSTANCE_ID_02,
   DEMO_TENANT_CLUSTER_INSTANCE_ID_03,
+  DEMO_TENANT_CLUSTER_INSTANCE_ID_04,
   DEMO_TENANT_CLUSTER_STATES,
   DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID,
   DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_02,
@@ -234,6 +236,7 @@ export function ensureTenantDemoInstances(
     { id: DEMO_TENANT_CLUSTER_INSTANCE_ID, create: createDemoTenantClusterInstance },
     { id: DEMO_TENANT_CLUSTER_INSTANCE_ID_02, create: createDemoTenantClusterInstance02 },
     { id: DEMO_TENANT_CLUSTER_INSTANCE_ID_03, create: createDemoTenantClusterInstance03 },
+    { id: DEMO_TENANT_CLUSTER_INSTANCE_ID_04, create: createDemoTenantClusterInstance04 },
   ]
 
   for (const demo of demos) {

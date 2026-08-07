@@ -128,6 +128,7 @@ export function ProviderAdminWorkspacePage() {
   const [instances, setInstances] = useState(() =>
     ensureTenantDemoInstances(PROVIDER_SERVICES_DEMO_TENANT),
   )
+  const [navContentKey, setNavContentKey] = useState(0)
   const provisioningTimersRef = useRef<Map<string, number>>(new Map())
 
   useLayoutEffect(() => {
@@ -242,7 +243,8 @@ export function ProviderAdminWorkspacePage() {
   const handleNavChange = (navId: ProviderAdminNavId) => {
     setActiveNavId(navId)
     setProviderActiveNav(navId)
-    syncWorkspaceNavParam(setSearchParams, navId)
+    setNavContentKey((current) => current + 1)
+    syncWorkspaceNavParam(setSearchParams, navId, { showLanding: true })
     if (
       navId === 'services-baremetal' ||
       navId === 'services-clusters' ||
@@ -448,7 +450,9 @@ export function ProviderAdminWorkspacePage() {
       )
     }
 
-    return renderPostSetupContent()
+    return (
+      <div key={navContentKey}>{renderPostSetupContent()}</div>
+    )
   }
 
   return (

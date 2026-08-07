@@ -75,6 +75,7 @@ import {
   type LaunchNetworkFieldView,
 } from '../../tenantUser/launchNetworking'
 import {
+  getCatalogExternalIpPoolOptions,
   getCatalogSecurityGroupOptions,
   getCatalogSubnetOptions,
   getCatalogVirtualNetworkOptions,
@@ -230,6 +231,7 @@ export function TenantUserLaunchInstanceWizard({
       virtualNetworkId: networkContext.policy.virtualNetwork.id,
       subnetId: networkContext.policy.subnet.id,
       securityGroupId: networkContext.policy.securityGroup.id,
+      externalIpPoolId: networkContext.policy.externalIpPool.id,
       serviceId: catalogItem.serviceId,
       instanceName: getNextLaunchInstanceName(existingInstanceNames, catalogItem.serviceId),
       clusterVersion: catalogClusterVersion || catalogItem.osImage,
@@ -256,6 +258,7 @@ export function TenantUserLaunchInstanceWizard({
     virtualNetworkId: form.virtualNetworkId || networkContext.policy.virtualNetwork.id,
     subnetId: form.subnetId || networkContext.policy.subnet.id,
     securityGroupId: form.securityGroupId || networkContext.policy.securityGroup.id,
+    externalIpPoolId: form.externalIpPoolId || networkContext.policy.externalIpPool.id,
   }
 
   const networkLabel = isClusterCatalogItem
@@ -276,6 +279,7 @@ export function TenantUserLaunchInstanceWizard({
         virtualNetworkId: networkContext.policy.virtualNetwork.id,
         subnetId: networkContext.policy.subnet.id,
         securityGroupId: networkContext.policy.securityGroup.id,
+        externalIpPoolId: networkContext.policy.externalIpPool.id,
         serviceId: catalogItem.serviceId,
         instanceName: getNextLaunchInstanceName(
           existingInstanceNames,
@@ -320,6 +324,7 @@ export function TenantUserLaunchInstanceWizard({
         virtualNetworkId: networkContext.policy.virtualNetwork.id,
         subnetId: networkContext.policy.subnet.id,
         securityGroupId: networkContext.policy.securityGroup.id,
+        externalIpPoolId: networkContext.policy.externalIpPool.id,
         serviceId: catalogItem.serviceId,
         instanceName: getNextLaunchInstanceName(
           existingInstanceNames,
@@ -492,7 +497,10 @@ export function TenantUserLaunchInstanceWizard({
       if (kind === 'subnet') {
         return { ...current, subnetId: value }
       }
-      return { ...current, securityGroupId: value }
+      if (kind === 'security-group') {
+        return { ...current, securityGroupId: value }
+      }
+      return { ...current, externalIpPoolId: value }
     })
   }
 
@@ -503,7 +511,10 @@ export function TenantUserLaunchInstanceWizard({
     if (field.kind === 'subnet') {
       return networkSelections.subnetId
     }
-    return networkSelections.securityGroupId
+    if (field.kind === 'security-group') {
+      return networkSelections.securityGroupId
+    }
+    return networkSelections.externalIpPoolId
   }
 
   const renderGeneralStep = () => {
@@ -719,11 +730,16 @@ export function TenantUserLaunchInstanceWizard({
     const securityGroupField = networkContext.fields.find(
       (field) => field.kind === 'security-group',
     )
+    const externalIpPoolField = networkContext.fields.find(
+      (field) => field.kind === 'external-ip-pool',
+    )
     const virtualNetworkOptions = virtualNetworkField?.options ?? getCatalogVirtualNetworkOptions()
     const subnetOptions =
       subnetField?.options ?? getCatalogSubnetOptions(networkSelections.virtualNetworkId)
     const securityGroupOptions =
       securityGroupField?.options ?? getCatalogSecurityGroupOptions()
+    const externalIpPoolOptions =
+      externalIpPoolField?.options ?? getCatalogExternalIpPoolOptions()
 
     return (
       <>
@@ -742,7 +758,7 @@ export function TenantUserLaunchInstanceWizard({
           {virtualNetworkField?.locked ? (
             <FormHelperText>
               <HelperText>
-                <HelperTextItem>Locked for this catalog item</HelperTextItem>
+                <HelperTextItem>Fixed for this offering.</HelperTextItem>
               </HelperText>
             </FormHelperText>
           ) : null}
@@ -763,7 +779,7 @@ export function TenantUserLaunchInstanceWizard({
           {subnetField?.locked ? (
             <FormHelperText>
               <HelperText>
-                <HelperTextItem>Locked for this catalog item</HelperTextItem>
+                <HelperTextItem>Fixed for this offering.</HelperTextItem>
               </HelperText>
             </FormHelperText>
           ) : null}
@@ -784,7 +800,28 @@ export function TenantUserLaunchInstanceWizard({
           {securityGroupField?.locked ? (
             <FormHelperText>
               <HelperText>
-                <HelperTextItem>Locked for this catalog item</HelperTextItem>
+                <HelperTextItem>Fixed for this offering.</HelperTextItem>
+              </HelperText>
+            </FormHelperText>
+          ) : null}
+        </FormGroup>
+
+        <FormGroup label="External IP pool" fieldId={`${idPrefix}-external-ip-pool`} isRequired>
+          <FormSelect
+            id={`${idPrefix}-external-ip-pool`}
+            value={networkSelections.externalIpPoolId}
+            isDisabled={Boolean(externalIpPoolField?.locked)}
+            onChange={(_event, value) => updateNetworkSelection('external-ip-pool', value)}
+            aria-label="External IP pool"
+          >
+            {externalIpPoolOptions.map((option) => (
+              <FormSelectOption key={option.id} value={option.id} label={option.name} />
+            ))}
+          </FormSelect>
+          {externalIpPoolField?.locked ? (
+            <FormHelperText>
+              <HelperText>
+                <HelperTextItem>Fixed for this offering.</HelperTextItem>
               </HelperText>
             </FormHelperText>
           ) : null}
@@ -923,32 +960,51 @@ export function TenantUserLaunchInstanceWizard({
   const renderClusterNetworkingStep = () => (
     <div className="tenant-user-launch-wizard__step">
       <Form autoComplete="off" className="tenant-user-launch-wizard__form">
-        {renderPlacementNetworkingFields('launch-cluster')}
-        <FormGroup label="Pod CIDR" fieldId="launch-cluster-pod-cidr">
-          <TextInput
-            id="launch-cluster-pod-cidr"
-            value={form.podCidr}
-            onChange={(_event, value) => setForm((current) => ({ ...current, podCidr: value }))}
-          />
-          <FormHelperText>
-            <HelperText>
-              <HelperTextItem>{CLUSTER_LAUNCH_INSTANCE_DEMO.podCidrHelper}</HelperTextItem>
-            </HelperText>
-          </FormHelperText>
-        </FormGroup>
+        <div className="tenant-user-launch-wizard__network-section">
+          <Content component="h3" className="tenant-user-launch-wizard__network-section-title">
+            {CLUSTER_LAUNCH_INSTANCE_DEMO.infrastructureNetworkingTitle}
+          </Content>
+          <Content component="p" className="tenant-user-launch-wizard__network-section-lede">
+            {CLUSTER_LAUNCH_INSTANCE_DEMO.infrastructureNetworkingLede}
+          </Content>
+          {renderPlacementNetworkingFields('launch-cluster')}
+        </div>
 
-        <FormGroup label="Service CIDR" fieldId="launch-cluster-service-cidr">
-          <TextInput
-            id="launch-cluster-service-cidr"
-            value={form.serviceCidr}
-            onChange={(_event, value) => setForm((current) => ({ ...current, serviceCidr: value }))}
-          />
-          <FormHelperText>
-            <HelperText>
-              <HelperTextItem>{CLUSTER_LAUNCH_INSTANCE_DEMO.serviceCidrHelper}</HelperTextItem>
-            </HelperText>
-          </FormHelperText>
-        </FormGroup>
+        <div className="tenant-user-launch-wizard__network-section">
+          <Content component="h3" className="tenant-user-launch-wizard__network-section-title">
+            {CLUSTER_LAUNCH_INSTANCE_DEMO.clusterNetworkTitle}
+          </Content>
+          <Content component="p" className="tenant-user-launch-wizard__network-section-lede">
+            {CLUSTER_LAUNCH_INSTANCE_DEMO.clusterNetworkLede}
+          </Content>
+          <FormGroup label="Pod CIDR" fieldId="launch-cluster-pod-cidr">
+            <TextInput
+              id="launch-cluster-pod-cidr"
+              value={form.podCidr}
+              onChange={(_event, value) => setForm((current) => ({ ...current, podCidr: value }))}
+            />
+            <FormHelperText>
+              <HelperText>
+                <HelperTextItem>{CLUSTER_LAUNCH_INSTANCE_DEMO.podCidrHelper}</HelperTextItem>
+              </HelperText>
+            </FormHelperText>
+          </FormGroup>
+
+          <FormGroup label="Service CIDR" fieldId="launch-cluster-service-cidr">
+            <TextInput
+              id="launch-cluster-service-cidr"
+              value={form.serviceCidr}
+              onChange={(_event, value) =>
+                setForm((current) => ({ ...current, serviceCidr: value }))
+              }
+            />
+            <FormHelperText>
+              <HelperText>
+                <HelperTextItem>{CLUSTER_LAUNCH_INSTANCE_DEMO.serviceCidrHelper}</HelperTextItem>
+              </HelperText>
+            </FormHelperText>
+          </FormGroup>
+        </div>
       </Form>
     </div>
   )
@@ -1121,6 +1177,10 @@ export function TenantUserLaunchInstanceWizard({
       getCatalogSecurityGroupOptions().find(
         (option) => option.id === networkSelections.securityGroupId,
       )?.name ?? securityGroupLabel
+    const externalIpPoolReviewLabel =
+      getCatalogExternalIpPoolOptions().find(
+        (option) => option.id === networkSelections.externalIpPoolId,
+      )?.name ?? networking.externalIpPool
 
     return (
       <div className="tenant-user-launch-wizard__step">
@@ -1181,6 +1241,12 @@ export function TenantUserLaunchInstanceWizard({
                   {securityGroupReviewLabel}
                 </DescriptionListDescription>
               </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>External IP pool</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {externalIpPoolReviewLabel}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
             </>
           ) : isVmCatalogItem ? (
             <>
@@ -1234,6 +1300,12 @@ export function TenantUserLaunchInstanceWizard({
                   {securityGroupReviewLabel}
                 </DescriptionListDescription>
               </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>External IP pool</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {externalIpPoolReviewLabel}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
             </>
           ) : isClusterCatalogItem ? (
             <>
@@ -1255,14 +1327,6 @@ export function TenantUserLaunchInstanceWizard({
                 </DescriptionListGroup>
               ))}
               <DescriptionListGroup>
-                <DescriptionListTerm>Pod CIDR</DescriptionListTerm>
-                <DescriptionListDescription>{form.podCidr.trim()}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Service CIDR</DescriptionListTerm>
-                <DescriptionListDescription>{form.serviceCidr.trim()}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
                 <DescriptionListTerm>Virtual network</DescriptionListTerm>
                 <DescriptionListDescription>{virtualNetworkLabel}</DescriptionListDescription>
               </DescriptionListGroup>
@@ -1275,6 +1339,20 @@ export function TenantUserLaunchInstanceWizard({
                 <DescriptionListDescription>
                   {securityGroupReviewLabel}
                 </DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>External IP pool</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {externalIpPoolReviewLabel}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Pod CIDR</DescriptionListTerm>
+                <DescriptionListDescription>{form.podCidr.trim()}</DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Service CIDR</DescriptionListTerm>
+                <DescriptionListDescription>{form.serviceCidr.trim()}</DescriptionListDescription>
               </DescriptionListGroup>
             </>
           ) : (

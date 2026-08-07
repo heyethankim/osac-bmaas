@@ -132,6 +132,7 @@ export function TenantUserWorkspacePage() {
   const [openSubnetId, setOpenSubnetId] = useState<string | null>(null)
   const [openSecurityGroupId, setOpenSecurityGroupId] = useState<string | null>(null)
   const [openCatalogItemKey, setOpenCatalogItemKey] = useState<string | null>(null)
+  const [navContentKey, setNavContentKey] = useState(0)
   const provisioningTimersRef = useRef<Map<string, number>>(new Map())
 
   const clearProvisioningTimer = useCallback((instanceId: string) => {
@@ -227,7 +228,8 @@ export function TenantUserWorkspacePage() {
       const nextNavId = navId as TenantUserNavId
       setActiveNavId(nextNavId)
       setTenantUserActiveNav(tenantSlug, nextNavId)
-      syncWorkspaceNavParam(setSearchParams, nextNavId)
+      setNavContentKey((current) => current + 1)
+      syncWorkspaceNavParam(setSearchParams, nextNavId, { showLanding: true })
 
       if (isServicesNavId(nextNavId)) {
         setInstances(ensureTenantDemoInstances(tenantSlug))
@@ -428,7 +430,7 @@ export function TenantUserWorkspacePage() {
       activeNavId={activeNavId}
       onNavChange={handleNavChange}
     >
-      {renderWorkspaceContent()}
+      <div key={navContentKey}>{renderWorkspaceContent()}</div>
     </TenantShell>
   )
 }

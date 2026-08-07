@@ -129,7 +129,7 @@ const CLUSTER_STATUS_FILTER_OPTIONS: Array<{
   label: string
 }> = [
   { value: 'all', label: 'All statuses' },
-  { value: 'running', label: 'Ready' },
+  { value: 'running', label: 'Running' },
   { value: 'provisioning', label: 'Provisioning' },
   { value: 'restarting', label: 'Restarting' },
   { value: 'stopped', label: 'Stopped' },

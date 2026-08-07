@@ -29,6 +29,8 @@ export type TenantInstanceNetworking = {
   virtualNetwork: string
   subnet: string
   securityGroup: string
+  /** Optional external IP pool selected at launch. */
+  externalIpPool?: string
 }
 
 export type TenantClusterNodeSetStatus = 'ready' | 'updating' | 'behind' | 'pending'
@@ -759,9 +761,6 @@ export function resolveClusterNodeInventories(
 }
 
 export function getClusterStatusLabel(status: TenantInstanceStatus): string {
-  if (status === 'running') {
-    return 'Ready'
-  }
   return getTenantInstanceStatusLabel(status)
 }
 
@@ -813,6 +812,7 @@ export const DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_03 = 'instance-demo-vm-03'
 export const DEMO_TENANT_CLUSTER_INSTANCE_ID = 'instance-demo-cluster-01'
 export const DEMO_TENANT_CLUSTER_INSTANCE_ID_02 = 'instance-demo-cluster-02'
 export const DEMO_TENANT_CLUSTER_INSTANCE_ID_03 = 'instance-demo-cluster-03'
+export const DEMO_TENANT_CLUSTER_INSTANCE_ID_04 = 'instance-demo-cluster-04'
 
 /** Cluster demo row that stays Provisioning on Services for walkthroughs. */
 export const DEMO_TENANT_CLUSTER_PROVISIONING_INSTANCE_ID = DEMO_TENANT_CLUSTER_INSTANCE_ID_03
@@ -834,6 +834,7 @@ export const DEMO_TENANT_CLUSTER_STATES: ReadonlyArray<{
     name: 'ocp-cluster-03',
     status: 'provisioning',
   },
+  { id: DEMO_TENANT_CLUSTER_INSTANCE_ID_04, name: 'ocp-cluster-04', status: 'running' },
 ]
 
 export function getTenantInstanceGpuLabel(instance: TenantInstance): string {
@@ -1201,6 +1202,45 @@ export function createDemoTenantClusterInstance03(organizationName: string): Ten
     hostType: 'gpu-host',
     nodeCount: 4,
     hoursAgo: 1,
+  })
+}
+
+export function createDemoTenantClusterInstance04(organizationName: string): TenantInstance {
+  return createDemoTenantClusterInstanceVariant(organizationName, {
+    id: DEMO_TENANT_CLUSTER_INSTANCE_ID_04,
+    name: 'ocp-cluster-04',
+    status: 'running',
+    platform: 'Red Hat OpenShift 4.21',
+    hostType: 'standard-host',
+    nodeCount: 3,
+    hoursAgo: 8,
+    upgradeStatus: 'up-to-date',
+    nodeSets: [
+      {
+        id: 'node-set-1',
+        name: 'infra',
+        hostType: 'standard-host',
+        nodeCount: 3,
+        version: '4.21',
+        status: 'ready',
+      },
+      {
+        id: 'node-set-2',
+        name: 'compute',
+        hostType: 'standard-host',
+        nodeCount: 6,
+        version: '4.21',
+        status: 'ready',
+      },
+      {
+        id: 'node-set-3',
+        name: 'gpu-workers',
+        hostType: 'gpu-host',
+        nodeCount: 2,
+        version: '4.21',
+        status: 'ready',
+      },
+    ],
   })
 }
 

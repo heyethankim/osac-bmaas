@@ -12,6 +12,7 @@ import { getOsImageLabel } from '../../providerAdmin/osImageLabels'
 import {
   getBmaasTemplateStatus,
   getTemplateNetworkDefaults,
+  isClusterTemplate,
   type BmaasTemplateStatus,
 } from '../../providerAdmin/bmaasTemplates'
 import {
@@ -54,6 +55,10 @@ export function BmaasTemplateDetailsPage({
   const network = getTemplateNetworkDefaults(template.hardwareProfileId)
   const hardwareSpecs = resolveHardwareSpecsFromTemplate(template)
   const canPublish = Boolean(status !== 'published' && !isPublishing)
+  const isCluster = isClusterTemplate(template)
+  const linkedCatalog = getProviderCatalogItems().find(
+    (item) => item.templateRefId === template.templateRefId,
+  )
 
   return (
     <EntityDetailsPageShell
@@ -63,10 +68,12 @@ export function BmaasTemplateDetailsPage({
       titleId="bmaas-template-details-title"
       description={
         template.description.trim() ||
-        'Private master template for Bare Metal catalog offerings.'
+        (isCluster
+          ? 'Cluster profile used when publishing OpenShift catalog offerings.'
+          : 'Private master template for Bare Metal catalog offerings.')
       }
       actions={
-        onEdit || onPublish ? (
+        !isCluster && (onEdit || onPublish) ? (
           <>
             {onEdit ? (
               <Button variant="secondary" onClick={onEdit}>
@@ -115,75 +122,135 @@ export function BmaasTemplateDetailsPage({
           </DescriptionList>
         </div>
 
-        <div className="entity-details-page__column">
-          <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
-            Hardware &amp; image
-          </Title>
-          <DescriptionList
-            isCompact
-            className="entity-details-page__dl"
-            aria-label="Hardware and image"
-          >
-            <DescriptionListGroup>
-              <DescriptionListTerm>Hardware profile</DescriptionListTerm>
-              <DescriptionListDescription>
-                {getHardwareProfileLabel(template.hardwareProfileId)}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>CPU</DescriptionListTerm>
-              <DescriptionListDescription>{hardwareSpecs.cpu}</DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>RAM</DescriptionListTerm>
-              <DescriptionListDescription>{hardwareSpecs.ram}</DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>GPU</DescriptionListTerm>
-              <DescriptionListDescription>{hardwareSpecs.gpu}</DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>OS image</DescriptionListTerm>
-              <DescriptionListDescription>
-                {getOsImageLabel(template.osImageId)}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-          </DescriptionList>
-        </div>
+        {isCluster ? (
+          <div className="entity-details-page__column">
+            <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
+              Cluster defaults
+            </Title>
+            <DescriptionList
+              isCompact
+              className="entity-details-page__dl"
+              aria-label="Cluster defaults"
+            >
+              <DescriptionListGroup>
+                <DescriptionListTerm>Suggested catalog item</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {template.suggestedDisplayName}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Cluster version</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {linkedCatalog?.diskImageLabel ?? 'Red Hat OpenShift 4.19'}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Instance type</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {linkedCatalog?.instanceTypeLabel ?? 'OpenShift small'}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+            </DescriptionList>
+          </div>
+        ) : (
+          <div className="entity-details-page__column">
+            <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
+              Hardware &amp; image
+            </Title>
+            <DescriptionList
+              isCompact
+              className="entity-details-page__dl"
+              aria-label="Hardware and image"
+            >
+              <DescriptionListGroup>
+                <DescriptionListTerm>Hardware profile</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {getHardwareProfileLabel(template.hardwareProfileId)}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>CPU</DescriptionListTerm>
+                <DescriptionListDescription>{hardwareSpecs.cpu}</DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>RAM</DescriptionListTerm>
+                <DescriptionListDescription>{hardwareSpecs.ram}</DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>GPU</DescriptionListTerm>
+                <DescriptionListDescription>{hardwareSpecs.gpu}</DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>OS image</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {getOsImageLabel(template.osImageId)}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+            </DescriptionList>
+          </div>
+        )}
 
-        <div className="entity-details-page__column">
-          <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
-            Network defaults
-          </Title>
-          <DescriptionList
-            isCompact
-            className="entity-details-page__dl"
-            aria-label="Network defaults"
-          >
-            <DescriptionListGroup>
-              <DescriptionListTerm>Subnet CIDR</DescriptionListTerm>
-              <DescriptionListDescription>{network.subnetCidr}</DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>VLAN ID</DescriptionListTerm>
-              <DescriptionListDescription>{network.vlanId}</DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Default gateway</DescriptionListTerm>
-              <DescriptionListDescription>{network.defaultGateway}</DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>MTU</DescriptionListTerm>
-              <DescriptionListDescription>{network.mtu}</DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Switch port profile</DescriptionListTerm>
-              <DescriptionListDescription>
-                {getSwitchPortProfileLabel(network.switchPortProfile)}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-          </DescriptionList>
-        </div>
+        {isCluster ? (
+          <div className="entity-details-page__column">
+            <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
+              Provisioning
+            </Title>
+            <DescriptionList
+              isCompact
+              className="entity-details-page__dl"
+              aria-label="Cluster provisioning"
+            >
+              <DescriptionListGroup>
+                <DescriptionListTerm>Path</DescriptionListTerm>
+                <DescriptionListDescription>
+                  Assisted Installer / Hive
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Control plane</DescriptionListTerm>
+                <DescriptionListDescription>3× master · highly available</DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>CNI</DescriptionListTerm>
+                <DescriptionListDescription>OVN-Kubernetes</DescriptionListDescription>
+              </DescriptionListGroup>
+            </DescriptionList>
+          </div>
+        ) : (
+          <div className="entity-details-page__column">
+            <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
+              Network defaults
+            </Title>
+            <DescriptionList
+              isCompact
+              className="entity-details-page__dl"
+              aria-label="Network defaults"
+            >
+              <DescriptionListGroup>
+                <DescriptionListTerm>Subnet CIDR</DescriptionListTerm>
+                <DescriptionListDescription>{network.subnetCidr}</DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>VLAN ID</DescriptionListTerm>
+                <DescriptionListDescription>{network.vlanId}</DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Default gateway</DescriptionListTerm>
+                <DescriptionListDescription>{network.defaultGateway}</DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>MTU</DescriptionListTerm>
+                <DescriptionListDescription>{network.mtu}</DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Switch port profile</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {getSwitchPortProfileLabel(network.switchPortProfile)}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+            </DescriptionList>
+          </div>
+        )}
       </div>
     </EntityDetailsPageShell>
   )

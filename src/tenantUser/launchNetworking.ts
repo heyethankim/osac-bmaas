@@ -7,6 +7,7 @@ import {
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../providerSetup/storage'
 import {
+  getCatalogExternalIpPoolOptions,
   getCatalogItemNetworkPolicy,
   getCatalogSecurityGroupOptions,
   getCatalogSubnetOptions,
@@ -21,7 +22,11 @@ import {
   resolveEffectiveNetworkPolicyForUsers,
 } from '../tenantAdmin/networking'
 
-export type LaunchNetworkFieldKind = 'virtual-network' | 'subnet' | 'security-group'
+export type LaunchNetworkFieldKind =
+  | 'virtual-network'
+  | 'subnet'
+  | 'security-group'
+  | 'external-ip-pool'
 
 export type LaunchNetworkFieldView = {
   kind: LaunchNetworkFieldKind
@@ -30,6 +35,13 @@ export type LaunchNetworkFieldView = {
   selectedId: string
   locked: boolean
   options: readonly CatalogNetworkResourceOption[]
+}
+
+export type LaunchNetworkSelections = {
+  virtualNetworkId: string
+  subnetId: string
+  securityGroupId: string
+  externalIpPoolId: string
 }
 
 export type LaunchNetworkContext = {
@@ -118,6 +130,11 @@ export function resolveLaunchNetworkContext(
     securityGroupOptions.find((option) => option.id === basePolicy.securityGroup.id)?.id ??
     securityGroupOptions[0]?.id ??
     DEFAULT_CATALOG_NETWORK_POLICY.securityGroup.id
+  const externalIpPoolOptions = getCatalogExternalIpPoolOptions()
+  const preferredExternalIpPoolId =
+    externalIpPoolOptions.find((option) => option.id === basePolicy.externalIpPool.id)?.id ??
+    externalIpPoolOptions[0]?.id ??
+    DEFAULT_CATALOG_NETWORK_POLICY.externalIpPool.id
 
   const virtualNetworkName =
     virtualNetworkOptions.find((option) => option.id === preferredVirtualNetworkId)?.name ??
@@ -127,6 +144,9 @@ export function resolveLaunchNetworkContext(
   const securityGroupName =
     securityGroupOptions.find((option) => option.id === preferredSecurityGroupId)?.name ??
     basePolicy.securityGroup.name
+  const externalIpPoolName =
+    externalIpPoolOptions.find((option) => option.id === preferredExternalIpPoolId)?.name ??
+    basePolicy.externalIpPool.name
 
   const policy: CatalogNetworkPolicy = {
     enabled: true,
@@ -145,8 +165,10 @@ export function resolveLaunchNetworkContext(
       name: securityGroupName,
       locked: basePolicy.securityGroup.locked,
     },
-    externalIpPool: basePolicy.externalIpPool ?? {
-      ...DEFAULT_CATALOG_NETWORK_POLICY.externalIpPool,
+    externalIpPool: {
+      id: preferredExternalIpPoolId,
+      name: externalIpPoolName,
+      locked: basePolicy.externalIpPool?.locked ?? false,
     },
   }
 
@@ -175,6 +197,14 @@ export function resolveLaunchNetworkContext(
       locked: policy.securityGroup.locked,
       options: securityGroupOptions,
     },
+    {
+      kind: 'external-ip-pool',
+      label: 'External IP pool',
+      value: getNetworkOptionDetail(externalIpPoolOptions, policy.externalIpPool.id),
+      selectedId: policy.externalIpPool.id,
+      locked: policy.externalIpPool.locked,
+      options: externalIpPoolOptions,
+    },
   ]
 
   return {
@@ -196,32 +226,26 @@ export function getLaunchNetworkFieldLabel(
 
 export function formatLaunchInstanceNetworkLabel(
   context: LaunchNetworkContext,
-  selections: {
-    virtualNetworkId: string
-    subnetId: string
-    securityGroupId: string
-  },
+  selections: LaunchNetworkSelections,
 ): string {
   const details = resolveLaunchInstanceNetworking(context, selections)
   if (!details.enabled) {
     return 'Networking off'
   }
 
-  return `${details.virtualNetwork} / ${details.subnet} · ${details.securityGroup}`
+  const externalIpPool = details.externalIpPool ? ` · ${details.externalIpPool}` : ''
+  return `${details.virtualNetwork} / ${details.subnet} · ${details.securityGroup}${externalIpPool}`
 }
 
 export function resolveLaunchInstanceNetworking(
   context: LaunchNetworkContext,
-  selections: {
-    virtualNetworkId: string
-    subnetId: string
-    securityGroupId: string
-  },
+  selections: LaunchNetworkSelections,
 ): {
   enabled: boolean
   virtualNetwork: string
   subnet: string
   securityGroup: string
+  externalIpPool: string
 } {
   if (!context.enabled) {
     return {
@@ -229,12 +253,14 @@ export function resolveLaunchInstanceNetworking(
       virtualNetwork: '',
       subnet: '',
       securityGroup: '',
+      externalIpPool: '',
     }
   }
 
   const virtualNetworkField = context.fields.find((field) => field.kind === 'virtual-network')
   const subnetField = context.fields.find((field) => field.kind === 'subnet')
   const securityGroupField = context.fields.find((field) => field.kind === 'security-group')
+  const externalIpPoolField = context.fields.find((field) => field.kind === 'external-ip-pool')
 
   return {
     enabled: true,
@@ -247,6 +273,9 @@ export function resolveLaunchInstanceNetworking(
     securityGroup: securityGroupField
       ? getLaunchNetworkFieldLabel(securityGroupField, selections.securityGroupId)
       : context.policy.securityGroup.name,
+    externalIpPool: externalIpPoolField
+      ? getLaunchNetworkFieldLabel(externalIpPoolField, selections.externalIpPoolId)
+      : context.policy.externalIpPool.name,
   }
 }
 
@@ -275,6 +304,10 @@ export function formatInstanceNetworkLabel(networking: {
   virtualNetwork: string
   subnet: string
   securityGroup: string
+  externalIpPool?: string
 }): string {
-  return `${networking.virtualNetwork} / ${networking.subnet} · ${networking.securityGroup}`
+  const externalIpPool = networking.externalIpPool?.trim()
+    ? ` · ${networking.externalIpPool.trim()}`
+    : ''
+  return `${networking.virtualNetwork} / ${networking.subnet} · ${networking.securityGroup}${externalIpPool}`
 }

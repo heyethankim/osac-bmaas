@@ -11,7 +11,6 @@ import {
   Title,
   Tooltip,
 } from '@patternfly/react-core'
-import { CheckCircleIcon } from '@patternfly/react-icons/dist/esm/icons/check-circle-icon'
 import { PlusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/plus-circle-icon'
 import { EntityDetailsPageShell } from '../shared/EntityDetailsPageShell'
 import { CatalogClusterVersionValue } from '../catalog/CatalogClusterVersionValue'
@@ -140,9 +139,7 @@ function InstanceStatusLabel({
       color={getStatusColor(status)}
       isCompact
       icon={
-        status === 'running' && isCluster ? (
-          <CheckCircleIcon />
-        ) : status === 'provisioning' || status === 'restarting' ? (
+        status === 'provisioning' || status === 'restarting' ? (
           <Spinner
             isInline
             diameter="0.625rem"

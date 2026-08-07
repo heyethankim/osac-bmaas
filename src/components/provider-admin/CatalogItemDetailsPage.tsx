@@ -147,8 +147,9 @@ export function CatalogItemDetailsPage({
           )
         : specRows
   const specsSectionLabel = getCatalogSpecsSectionLabel(serviceId)
-  const canLinkToBareMetalTemplate =
-    Boolean(onNavigateToLinkedTemplate) && serviceId === 'baremetal'
+  const canLinkToTemplate =
+    Boolean(onNavigateToLinkedTemplate) &&
+    (serviceId === 'baremetal' || serviceId === 'cluster')
   const templatePresentation = getProvisioningTemplatePresentation(
     findCatalogLinkedTemplate(catalog.templateRefId, catalog.templateName),
     serviceId,
@@ -344,7 +345,7 @@ export function CatalogItemDetailsPage({
                 <DescriptionListGroup>
                   <DescriptionListTerm>Template</DescriptionListTerm>
                   <DescriptionListDescription>
-                    {canLinkToBareMetalTemplate && onNavigateToLinkedTemplate ? (
+                    {canLinkToTemplate && onNavigateToLinkedTemplate ? (
                       <Button
                         variant="link"
                         isInline

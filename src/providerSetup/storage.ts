@@ -739,6 +739,7 @@ export function rewriteProviderCatalogItemIdentity(
   identity: {
     catalogItemId: string
     templateRefId?: string
+    templateName?: string
     displayName?: string
     description?: string
     scope?: PublishCatalogScope
@@ -756,6 +757,7 @@ export function rewriteProviderCatalogItemIdentity(
     ...current,
     catalogItemId: identity.catalogItemId,
     ...(identity.templateRefId ? { templateRefId: identity.templateRefId } : {}),
+    ...(identity.templateName ? { templateName: identity.templateName } : {}),
     ...(identity.displayName ? { displayName: identity.displayName } : {}),
     ...(identity.description !== undefined ? { description: identity.description } : {}),
   }

@@ -1847,6 +1847,29 @@
   margin-block-end: 0;
 }
 
+.tenant-user-launch-wizard__network-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+}
+
+.tenant-user-launch-wizard__network-section + .tenant-user-launch-wizard__network-section {
+  margin-block-start: var(--pf-t--global--spacer--lg);
+  padding-block-start: var(--pf-t--global--spacer--lg);
+  border-block-start: var(--pf-t--global--border--width--regular) solid
+    var(--pf-t--global--border--color--default);
+}
+
+.tenant-user-launch-wizard__network-section-title.pf-v6-c-content--h3 {
+  margin: 0;
+  font-size: var(--pf-t--global--font--size--lg);
+}
+
+.tenant-user-launch-wizard__network-section-lede.pf-v6-c-content--p {
+  margin: 0;
+  color: var(--pf-t--global--text--color--subtle);
+}
+
 .tenant-user-launch-wizard__node-sets {
   display: flex;
   flex-direction: column;

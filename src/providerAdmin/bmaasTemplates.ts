@@ -12,6 +12,9 @@ import { getProviderCatalogItems, getProviderSavedTemplates } from '../providerS
 /** Matches the catalog prototype seed (`createDefaultCatalogDraft`). */
 export const DEFAULT_MASTER_TEMPLATE_REF_ID = 'bm-dell-r750'
 
+/** Cluster master template linked from the cluster-node-sets catalog item. */
+export const STANDARD_CLUSTER_TEMPLATE_REF_ID = 'cl-node-sets-fc430'
+
 export type BmaasTemplateStatus = 'published' | 'private' | 'draft'
 
 export type BmaasTemplateLookup = {
@@ -31,13 +34,39 @@ export function getDefaultMasterTemplate(): SavedMasterTemplate {
   }
 }
 
+export function getStandardClusterTemplate(): SavedMasterTemplate {
+  return {
+    templateRefId: STANDARD_CLUSTER_TEMPLATE_REF_ID,
+    templateName: 'standard-cluster-template',
+    description:
+      'Provisions OpenShift clusters using the Assisted Installer / Hive path, including control-plane bootstrap and worker join.',
+    hardwareProfileId: 'dell-r750',
+    osImageId: 'rhel-9.4',
+    suggestedDisplayName: 'cluster-node-sets-object',
+    rateCard: {
+      hourlyRate: 22,
+      monthlyRate: 14800,
+      currency: 'USD',
+      billingUnit: 'per-instance',
+    },
+  }
+}
+
+export function isClusterTemplate(template: Pick<SavedMasterTemplate, 'templateRefId'>): boolean {
+  return template.templateRefId.startsWith('cl-')
+}
+
+export function isBareMetalTemplate(template: Pick<SavedMasterTemplate, 'templateRefId'>): boolean {
+  return template.templateRefId.startsWith('bm-')
+}
+
 export function mergeAvailableTemplates(
   savedTemplates: SavedMasterTemplate[] = getProviderSavedTemplates(),
 ): SavedMasterTemplate[] {
   const templates =
     savedTemplates.length > 0
       ? savedTemplates
-      : [getDefaultMasterTemplate(), ...DEMO_EXISTING_MASTER_TEMPLATES]
+      : [getDefaultMasterTemplate(), getStandardClusterTemplate(), ...DEMO_EXISTING_MASTER_TEMPLATES]
   const seen = new Set<string>()
 
   return templates.filter((item) => {
@@ -48,6 +77,18 @@ export function mergeAvailableTemplates(
     seen.add(item.templateRefId)
     return true
   })
+}
+
+export function mergeBareMetalTemplates(
+  savedTemplates: SavedMasterTemplate[] = getProviderSavedTemplates(),
+): SavedMasterTemplate[] {
+  return mergeAvailableTemplates(savedTemplates).filter(isBareMetalTemplate)
+}
+
+export function mergeClusterTemplates(
+  savedTemplates: SavedMasterTemplate[] = getProviderSavedTemplates(),
+): SavedMasterTemplate[] {
+  return mergeAvailableTemplates(savedTemplates).filter(isClusterTemplate)
 }
 
 export function findBmaasTemplate(

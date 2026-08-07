@@ -9,15 +9,19 @@ export type CatalogSpecRow = {
 
 /** Demo offering: object-level validation on `node_sets.fc430`. */
 export const CLUSTER_NODE_SETS_TEMPLATE_REF_ID = 'cl-node-sets-fc430'
-export const CLUSTER_NODE_SETS_TEMPLATE_NAME = 'cluster-node-sets-object'
+export const CLUSTER_NODE_SETS_TEMPLATE_NAME = 'standard-cluster-template'
 export const CLUSTER_NODE_SETS_DISPLAY_NAME = 'cluster-node-sets-object'
 export const CLUSTER_NODE_SETS_CATALOG_ITEM_ID = 'cat-node-sets-fc430'
 /** Pre-Kubernetes-convention identifiers — matched when migrating stored catalogs. */
 export const LEGACY_CLUSTER_NODE_SETS_TEMPLATE_REF_ID = 'cl_node_sets_fc430'
+export const LEGACY_CLUSTER_NODE_SETS_TEMPLATE_NAME = 'cluster-node-sets-object'
 export const LEGACY_CLUSTER_NODE_SETS_DISPLAY_NAME = 'Cluster - Node Sets Object'
 export const LEGACY_CLUSTER_NODE_SETS_CATALOG_ITEM_ID = 'cat_NODE_SETS_FC430'
 export const CLUSTER_NODE_SETS_DESCRIPTION =
   'Demonstrates a validation_schema for a whole object-valued field (node_sets.fc430), not just a single scalar leaf like node_sets.fc430.size. The whole ClusterNodeSet object is validated as a unit: host_type is pinned, and size is bounded between 1 and 4.'
+
+export const CLUSTER_NODE_SETS_TEMPLATE_DESCRIPTION =
+  'Provisions OpenShift clusters using the Assisted Installer / Hive path, including control-plane bootstrap and worker join.'
 
 export const CLUSTER_NODE_SETS_RATE_CARD = {
   hourlyRate: 22,

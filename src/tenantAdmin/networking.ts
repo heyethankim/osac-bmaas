@@ -401,6 +401,14 @@ export function getTenantCatalogNetworkFieldSummaries(
       lockedForUsers: getTenantLockForUsers(overrides, 'security-group'),
       selectedId: policy.securityGroup.id,
     },
+    {
+      kind: 'external-ip-pool',
+      label: 'External IP pool',
+      value: getNetworkOptionDetail(getCatalogExternalIpPoolOptions(), policy.externalIpPool.id),
+      providerLocked: policy.externalIpPool.locked,
+      lockedForUsers: getTenantLockForUsers(overrides, 'external-ip-pool'),
+      selectedId: policy.externalIpPool.id,
+    },
   ]
 }
 

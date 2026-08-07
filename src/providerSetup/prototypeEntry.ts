@@ -13,6 +13,7 @@ import {
   CLUSTER_NODE_SETS_TEMPLATE_REF_ID,
   LEGACY_CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
   LEGACY_CLUSTER_NODE_SETS_DISPLAY_NAME,
+  LEGACY_CLUSTER_NODE_SETS_TEMPLATE_NAME,
   LEGACY_CLUSTER_NODE_SETS_TEMPLATE_REF_ID,
   LEGACY_VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID,
   LEGACY_VM_NETWORK_ATTACHMENTS_DISPLAY_NAME,
@@ -28,7 +29,7 @@ import {
   DEFAULT_CLUSTER_CATALOG_VERSION_ID,
   formatClusterPlatformLabel,
 } from '../catalog/catalogPublishConfig'
-import { getDefaultMasterTemplate } from '../providerAdmin/bmaasTemplates'
+import { getDefaultMasterTemplate, getStandardClusterTemplate } from '../providerAdmin/bmaasTemplates'
 import {
   addProviderCatalogItem,
   getCatalogItemNetworkPolicy,
@@ -406,6 +407,8 @@ function hasClusterNodeSetsCatalogItem(items: ProviderCatalogDraft[]): boolean {
       item.catalogItemId === LEGACY_CLUSTER_NODE_SETS_CATALOG_ITEM_ID ||
       item.templateRefId === CLUSTER_NODE_SETS_TEMPLATE_REF_ID ||
       item.templateRefId === LEGACY_CLUSTER_NODE_SETS_TEMPLATE_REF_ID ||
+      item.templateName === CLUSTER_NODE_SETS_TEMPLATE_NAME ||
+      item.templateName === LEGACY_CLUSTER_NODE_SETS_TEMPLATE_NAME ||
       item.displayName === CLUSTER_NODE_SETS_DISPLAY_NAME ||
       item.displayName === LEGACY_CLUSTER_NODE_SETS_DISPLAY_NAME,
   )
@@ -420,6 +423,8 @@ function syncClusterNodeSetsCatalogItem(): void {
       item.catalogItemId === LEGACY_CLUSTER_NODE_SETS_CATALOG_ITEM_ID ||
       item.templateRefId === CLUSTER_NODE_SETS_TEMPLATE_REF_ID ||
       item.templateRefId === LEGACY_CLUSTER_NODE_SETS_TEMPLATE_REF_ID ||
+      item.templateName === CLUSTER_NODE_SETS_TEMPLATE_NAME ||
+      item.templateName === LEGACY_CLUSTER_NODE_SETS_TEMPLATE_NAME ||
       item.displayName === CLUSTER_NODE_SETS_DISPLAY_NAME ||
       item.displayName === LEGACY_CLUSTER_NODE_SETS_DISPLAY_NAME,
   )
@@ -430,11 +435,13 @@ function syncClusterNodeSetsCatalogItem(): void {
   if (
     current.catalogItemId !== CLUSTER_NODE_SETS_CATALOG_ITEM_ID ||
     current.templateRefId !== CLUSTER_NODE_SETS_TEMPLATE_REF_ID ||
+    current.templateName !== CLUSTER_NODE_SETS_TEMPLATE_NAME ||
     current.displayName !== CLUSTER_NODE_SETS_DISPLAY_NAME
   ) {
     rewriteProviderCatalogItemIdentity(current.catalogItemId, {
       catalogItemId: CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
       templateRefId: CLUSTER_NODE_SETS_TEMPLATE_REF_ID,
+      templateName: CLUSTER_NODE_SETS_TEMPLATE_NAME,
       displayName: CLUSTER_NODE_SETS_DISPLAY_NAME,
       description: current.description ?? CLUSTER_NODE_SETS_DESCRIPTION,
     })
@@ -507,6 +514,7 @@ function syncVmNetworkAttachmentsCatalogItem(): void {
 
 function ensureDemoBareMetalTemplates(): void {
   upsertProviderSavedTemplate(getDefaultMasterTemplate())
+  upsertProviderSavedTemplate(getStandardClusterTemplate())
 
   const inferenceTemplate =
     DEMO_EXISTING_MASTER_TEMPLATES.find(

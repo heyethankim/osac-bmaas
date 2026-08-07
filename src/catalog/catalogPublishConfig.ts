@@ -287,6 +287,14 @@ export function getProvisioningTemplatePresentation(
     return getBareMetalProvisioningPresentation(isGpu)
   }
   if (serviceId === 'cluster') {
+    if (template.templateRefId.startsWith('cl-') && template.templateName.trim()) {
+      return {
+        title: template.templateName,
+        description:
+          template.description.trim() || getClusterProvisioningPresentation(isGpu).description,
+        parameters: [],
+      }
+    }
     return getClusterProvisioningPresentation(isGpu)
   }
   if (serviceId === 'models') {

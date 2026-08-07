@@ -139,6 +139,7 @@ export function TenantAdminWorkspacePage() {
   const [openSubnetId, setOpenSubnetId] = useState<string | null>(null)
   const [openSecurityGroupId, setOpenSecurityGroupId] = useState<string | null>(null)
   const [openCatalogItemKey, setOpenCatalogItemKey] = useState<string | null>(null)
+  const [navContentKey, setNavContentKey] = useState(0)
   const provisioningTimersRef = useRef<Map<string, number>>(new Map())
 
   useLayoutEffect(() => {
@@ -176,7 +177,8 @@ export function TenantAdminWorkspacePage() {
     const nextNavId = navId as TenantAdminNavId
     setActiveNavId(nextNavId)
     setTenantActiveNav(tenant, nextNavId)
-    syncWorkspaceNavParam(setSearchParams, nextNavId)
+    setNavContentKey((current) => current + 1)
+    syncWorkspaceNavParam(setSearchParams, nextNavId, { showLanding: true })
     if (isServicesNavId(nextNavId)) {
       setInstances(ensureTenantDemoInstances(tenant, organization.name))
     }
@@ -342,7 +344,7 @@ export function TenantAdminWorkspacePage() {
       activeNavId={activeNavId}
       onNavChange={handleNavChange}
     >
-      {renderWorkspaceContent()}
+      <div key={navContentKey}>{renderWorkspaceContent()}</div>
     </TenantShell>
   )
 }
