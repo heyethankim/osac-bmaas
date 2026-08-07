@@ -1724,8 +1724,10 @@
 }
 
 .tenant-user-instances__condition-item {
-  display: grid;
-  gap: var(--pf-t--global--spacer--xs);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pf-t--global--spacer--sm);
   padding-block: var(--pf-t--global--spacer--sm);
   padding-inline: var(--pf-t--global--spacer--sm);
 }
@@ -1738,11 +1740,16 @@
   background-color: var(--pf-t--global--background--color--secondary--default);
 }
 
-.tenant-user-instances__condition-item-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--pf-t--global--spacer--sm);
+.tenant-user-instances__condition-item-body {
+  display: grid;
+  gap: var(--pf-t--global--spacer--xs);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.tenant-user-instances__condition-item > .pf-v6-c-label {
+  flex-shrink: 0;
+  align-self: center;
 }
 
 .tenant-user-instances__condition-type-row {

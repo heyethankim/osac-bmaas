@@ -178,22 +178,22 @@ function InstanceConditionsSection({
 
           return (
             <li key={condition.type} className="tenant-user-instances__condition-item">
-              <div className="tenant-user-instances__condition-item-header">
-                <span className="tenant-user-instances__condition-type-row">
+              <div className="tenant-user-instances__condition-item-body">
+                <div className="tenant-user-instances__condition-type-row">
                   <span className="tenant-user-instances__condition-type">{condition.type}</span>
                   {lastTransition ? (
                     <span className="tenant-user-instances__condition-time">{lastTransition}</span>
                   ) : null}
-                </span>
-                <Label color={condition.status === 'True' ? 'green' : 'grey'} isCompact>
-                  {condition.status}
-                </Label>
+                </div>
+                {metaParts.length > 0 ? (
+                  <Content component="p" className="tenant-user-instances__condition-meta">
+                    {metaParts.join(' · ')}
+                  </Content>
+                ) : null}
               </div>
-              {metaParts.length > 0 ? (
-                <Content component="p" className="tenant-user-instances__condition-meta">
-                  {metaParts.join(' · ')}
-                </Content>
-              ) : null}
+              <Label color={condition.status === 'True' ? 'green' : 'grey'} isCompact>
+                {condition.status}
+              </Label>
             </li>
           )
         })}
