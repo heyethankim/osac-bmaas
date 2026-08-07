@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { Navigate, useParams, useSearchParams } from 'react-router-dom'
-import { syncWorkspaceNavParam } from '../shared/workspaceNavUrl'
+import { syncWorkspaceCatalogItemParam, syncWorkspaceNavParam } from '../shared/workspaceNavUrl'
 import { TenantShell } from '../components/tenant/TenantShell'
 import { DEMO_TENANT_DISPLAY_ADMIN, isDemoTenantId } from '../demoTenant'
 import { PlaceholderTenantAdminPage } from './PlaceholderTenantAdminPage'
@@ -259,8 +259,8 @@ export function TenantAdminWorkspacePage() {
             lockedServiceId={lockedServiceId ?? 'baremetal'}
             activeNavId={activeNavId}
             onNavigateToCatalogItem={(catalogItemDisplayName) => {
-              setOpenCatalogItemKey(catalogItemDisplayName)
               handleNavChange('catalog')
+              syncWorkspaceCatalogItemParam(setSearchParams, catalogItemDisplayName)
             }}
           />
         )

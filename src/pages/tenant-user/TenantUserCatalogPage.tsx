@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Button,
   Card,
@@ -39,6 +40,11 @@ import { resolveLaunchNetworkContext } from '../../tenantUser/launchNetworking'
 import { TENANT_USER_CATALOG_PAGE } from '../../tenantUser/constants'
 import type { TenantInstance } from '../../tenantUser/instances'
 import type { TenantUserScopeKind } from '../../tenantUser/scope'
+import {
+  findCatalogItemByWorkspaceParam,
+  getWorkspaceCatalogItemParam,
+  syncWorkspaceCatalogItemParam,
+} from '../../shared/workspaceNavUrl'
 
 type TenantUserCatalogPageProps = {
   organization: RegisteredOrganization | null
@@ -161,6 +167,7 @@ export function TenantUserCatalogPage({
   onDismissDuringProvisioning,
   onWizardFinished,
 }: TenantUserCatalogPageProps) {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [viewMode, setViewMode] = useState<CatalogViewMode>(() => getCatalogViewMode('grid'))
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false)
@@ -180,6 +187,7 @@ export function TenantUserCatalogPage({
     () => new Set(initialServiceFilters.length > 0 ? initialServiceFilters : ['baremetal']),
   )
   const knownServiceFiltersRef = useRef(new Set(initialServiceFilters))
+  const itemParam = getWorkspaceCatalogItemParam(searchParams)
 
   useEffect(() => {
     setSelectedFilters((current) => {
@@ -230,20 +238,31 @@ export function TenantUserCatalogPage({
       return
     }
 
-    const key = openCatalogItemKey.trim().toLowerCase()
-    const match =
-      catalogItems.find((item) => item.catalogItemId.toLowerCase() === key) ??
-      catalogItems.find((item) => item.displayName.toLowerCase() === key) ??
-      catalogItems.find((item) => item.displayName.toLowerCase().includes(key))
-
+    const match = findCatalogItemByWorkspaceParam(catalogItems, openCatalogItemKey)
     if (match) {
       setSelectedCatalogItem(match)
       setIsDetailsDrawerOpen(true)
       setIsWizardOpen(false)
+      syncWorkspaceCatalogItemParam(setSearchParams, match.displayName, { replace: true })
     }
 
     onOpenCatalogItemConsumed?.()
-  }, [openCatalogItemKey, catalogItems, onOpenCatalogItemConsumed])
+  }, [openCatalogItemKey, catalogItems, onOpenCatalogItemConsumed, setSearchParams])
+
+  useEffect(() => {
+    const match = findCatalogItemByWorkspaceParam(catalogItems, itemParam)
+    if (match) {
+      setSelectedCatalogItem(match)
+      if (!isWizardOpen) {
+        setIsDetailsDrawerOpen(true)
+      }
+      return
+    }
+
+    if (!itemParam) {
+      setIsDetailsDrawerOpen(false)
+    }
+  }, [itemParam, catalogItems, isWizardOpen])
 
   const serviceCounts = useMemo(
     () => countCatalogServices(catalogItems.map((item) => item.serviceId)),
@@ -301,16 +320,19 @@ export function TenantUserCatalogPage({
   const openDetails = (item: TenantUserCatalogCard) => {
     setSelectedCatalogItem(item)
     setIsDetailsDrawerOpen(true)
+    syncWorkspaceCatalogItemParam(setSearchParams, item.displayName)
   }
 
   const closeDetails = () => {
     setIsDetailsDrawerOpen(false)
+    syncWorkspaceCatalogItemParam(setSearchParams, null)
   }
 
   const openLaunchWizard = (item: TenantUserCatalogCard) => {
     setSelectedCatalogItem(item)
     setIsDetailsDrawerOpen(false)
     setIsWizardOpen(true)
+    syncWorkspaceCatalogItemParam(setSearchParams, null, { replace: true })
   }
 
   const activeCatalogItem = selectedCatalogItem ?? catalogItems[0] ?? null

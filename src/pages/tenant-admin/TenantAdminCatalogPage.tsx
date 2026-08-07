@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Button,
   Card,
@@ -40,6 +41,11 @@ import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import { formatCatalogConfigurationSummary } from '../../catalog/catalogSpecs'
 import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
 import { getCatalogViewMode, setCatalogViewMode, type CatalogViewMode } from '../../catalog/viewMode'
+import {
+  findCatalogItemByWorkspaceParam,
+  getWorkspaceCatalogItemParam,
+  syncWorkspaceCatalogItemParam,
+} from '../../shared/workspaceNavUrl'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import { getProviderCatalogItems } from '../../providerSetup/storage'
@@ -291,6 +297,7 @@ export function TenantAdminCatalogPage({
   onDismissDuringProvisioning,
   onWizardFinished,
 }: TenantAdminCatalogPageProps) {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [catalogItems, setCatalogItems] = useState(() =>
     getTenantCatalogGovernanceItems(organization, catalogDraft),
   )
@@ -310,6 +317,7 @@ export function TenantAdminCatalogPage({
   const [editDisplayName, setEditDisplayName] = useState('')
   const [isUnpublishModalOpen, setIsUnpublishModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const itemParam = getWorkspaceCatalogItemParam(searchParams)
 
   useEffect(() => {
     setCatalogItems(getTenantCatalogGovernanceItems(organization, catalogDraft))
@@ -407,6 +415,7 @@ export function TenantAdminCatalogPage({
   const openDetails = (item: TenantCatalogGovernanceItemWithNetworking) => {
     setSelectedCatalogItem(item)
     setIsDetailsDrawerOpen(true)
+    syncWorkspaceCatalogItemParam(setSearchParams, item.displayName)
   }
 
   useEffect(() => {
@@ -414,12 +423,7 @@ export function TenantAdminCatalogPage({
       return
     }
 
-    const key = openCatalogItemKey.trim().toLowerCase()
-    const match =
-      catalogItems.find((item) => item.catalogItemId.toLowerCase() === key) ??
-      catalogItems.find((item) => item.displayName.toLowerCase() === key) ??
-      catalogItems.find((item) => item.displayName.toLowerCase().includes(key))
-
+    const match = findCatalogItemByWorkspaceParam(catalogItems, openCatalogItemKey)
     if (match) {
       openDetails(match)
       setIsWizardOpen(false)
@@ -428,6 +432,21 @@ export function TenantAdminCatalogPage({
     onOpenCatalogItemConsumed?.()
   }, [openCatalogItemKey, catalogItems, onOpenCatalogItemConsumed])
 
+  useEffect(() => {
+    const match = findCatalogItemByWorkspaceParam(catalogItems, itemParam)
+    if (match) {
+      setSelectedCatalogItem(match)
+      if (!isWizardOpen) {
+        setIsDetailsDrawerOpen(true)
+      }
+      return
+    }
+
+    if (!itemParam) {
+      setIsDetailsDrawerOpen(false)
+    }
+  }, [itemParam, catalogItems, isWizardOpen])
+
   const openLaunchWizard = (item: TenantCatalogGovernanceItemWithNetworking) => {
     if (item.status === 'Unpublished') {
       return
@@ -435,6 +454,7 @@ export function TenantAdminCatalogPage({
     setSelectedCatalogItem(item)
     setIsDetailsDrawerOpen(false)
     setIsWizardOpen(true)
+    syncWorkspaceCatalogItemParam(setSearchParams, null, { replace: true })
   }
 
   const launchCatalogCard = selectedCatalogItem ? toLaunchCatalogCard(selectedCatalogItem) : null
@@ -448,6 +468,7 @@ export function TenantAdminCatalogPage({
 
   const closeDetails = () => {
     setIsDetailsDrawerOpen(false)
+    syncWorkspaceCatalogItemParam(setSearchParams, null)
   }
 
   const handleChangeLockForUsers = (kind: TenantNetworkResourceKind, locked: boolean) => {
@@ -572,6 +593,7 @@ export function TenantAdminCatalogPage({
     const deletedId = selectedCatalogItem.id
     setCatalogItems((current) => current.filter((item) => item.id !== deletedId))
     setIsDetailsDrawerOpen(false)
+    syncWorkspaceCatalogItemParam(setSearchParams, null, { replace: true })
     setIsEditModalOpen(false)
     setSelectedCatalogItem(null)
     setIsDeleteModalOpen(false)

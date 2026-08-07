@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { syncWorkspaceNavParam } from '../shared/workspaceNavUrl'
+import { syncWorkspaceCatalogItemParam, syncWorkspaceNavParam } from '../shared/workspaceNavUrl'
 import { ProviderAdminShell } from '../components/provider-admin/ProviderAdminShell'
 import { ProviderSetupWizardPanel } from '../components/provider-setup/ProviderSetupWizardPanel'
 import type { ProviderAdminNavId } from '../providerAdmin/constants'
@@ -328,8 +328,8 @@ export function ProviderAdminWorkspacePage() {
             lockedServiceId={lockedServiceId ?? 'baremetal'}
             activeNavId={activeNavId}
             onNavigateToCatalogItem={(catalogItemDisplayName) => {
-              setOpenCatalogItemKey(catalogItemDisplayName)
               handleNavChange('catalog')
+              syncWorkspaceCatalogItemParam(setSearchParams, catalogItemDisplayName)
             }}
           />
         )

@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
@@ -49,6 +50,11 @@ import {
 import { CatalogSpecRowsList } from '../components/catalog/CatalogSpecRowsList'
 import { findCatalogLinkedTemplate } from '../catalog/hardwareSpecs'
 import { getCatalogViewMode, setCatalogViewMode, type CatalogViewMode } from '../catalog/viewMode'
+import {
+  findCatalogItemByWorkspaceParam,
+  getWorkspaceCatalogItemParam,
+  syncWorkspaceCatalogItemParam,
+} from '../shared/workspaceNavUrl'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
 import { getCatalogNetworkLockSummary } from '../providerAdmin/catalogNetworkPolicy'
 import { sortByDemoCatalogOrder } from '../providerSetup/prototypeEntry'
@@ -317,6 +323,7 @@ export function ProviderAdminCatalogPage({
   onDismissDuringProvisioning,
   onWizardFinished,
 }: ProviderAdminCatalogPageProps) {
+  const [searchParams, setSearchParams] = useSearchParams()
   const initialServiceFilters = catalogItems.map(getDraftServiceId)
   const [selectedFilters, setSelectedFilters] = useState<Set<CatalogServiceId>>(
     () => new Set(initialServiceFilters.length > 0 ? initialServiceFilters : ['baremetal']),
@@ -346,6 +353,7 @@ export function ProviderAdminCatalogPage({
   const [creatingCardHeightPx, setCreatingCardHeightPx] = useState<number | null>(null)
   const createRevealTimeoutRef = useRef<number | null>(null)
   const catalogCardGridRef = useRef<HTMLDivElement | null>(null)
+  const itemParam = getWorkspaceCatalogItemParam(searchParams)
 
   const newestCatalogItem = catalogItems[0] ?? null
   const knownServiceFiltersRef = useRef(new Set(initialServiceFilters))
@@ -529,10 +537,12 @@ export function ProviderAdminCatalogPage({
   const openDetails = (item: ProviderCatalogDraft) => {
     setSelectedCatalogItem(item)
     setIsViewingDetails(true)
+    syncWorkspaceCatalogItemParam(setSearchParams, item.displayName)
   }
 
   const closeDetails = () => {
     setIsViewingDetails(false)
+    syncWorkspaceCatalogItemParam(setSearchParams, null)
   }
 
   useEffect(() => {
@@ -540,12 +550,7 @@ export function ProviderAdminCatalogPage({
       return
     }
 
-    const key = openCatalogItemKey.trim().toLowerCase()
-    const match =
-      catalogItems.find((item) => item.catalogItemId.toLowerCase() === key) ??
-      catalogItems.find((item) => item.displayName.toLowerCase() === key) ??
-      catalogItems.find((item) => item.displayName.toLowerCase().includes(key))
-
+    const match = findCatalogItemByWorkspaceParam(catalogItems, openCatalogItemKey)
     if (match) {
       openDetails(match)
       setIsWizardOpen(false)
@@ -553,6 +558,21 @@ export function ProviderAdminCatalogPage({
 
     onOpenCatalogItemConsumed?.()
   }, [openCatalogItemKey, catalogItems, onOpenCatalogItemConsumed])
+
+  useEffect(() => {
+    const match = findCatalogItemByWorkspaceParam(catalogItems, itemParam)
+    if (match) {
+      setSelectedCatalogItem(match)
+      if (!isWizardOpen) {
+        setIsViewingDetails(true)
+      }
+      return
+    }
+
+    if (!itemParam) {
+      setIsViewingDetails(false)
+    }
+  }, [itemParam, catalogItems, isWizardOpen])
 
   const openAssign = (item: ProviderCatalogDraft) => {
     setSelectedCatalogItem(item)
@@ -615,6 +635,7 @@ export function ProviderAdminCatalogPage({
     const deleted = deleteProviderCatalogItem(deletedId)
     if (deleted) {
       setIsViewingDetails(false)
+      syncWorkspaceCatalogItemParam(setSearchParams, null, { replace: true })
       setIsAssignModalOpen(false)
       setIsEditModalOpen(false)
       setSelectedCatalogItem(null)
@@ -703,7 +724,9 @@ export function ProviderAdminCatalogPage({
       return
     }
     setSelectedCatalogItem(catalog)
+    setIsViewingDetails(false)
     setIsWizardOpen(true)
+    syncWorkspaceCatalogItemParam(setSearchParams, null, { replace: true })
   }
 
   const linkedTemplateForDetails = drawerCatalog
@@ -1103,6 +1126,7 @@ export function ProviderAdminCatalogPage({
             setSearchValue('')
             beginCatalogItemCreateReveal(created.catalogItemId)
             setIsViewingDetails(false)
+            syncWorkspaceCatalogItemParam(setSearchParams, null, { replace: true })
           }
         }}
         onRegisterOrganization={() => handleRegisterOrganizationFromVip({ kind: 'publish' })}
