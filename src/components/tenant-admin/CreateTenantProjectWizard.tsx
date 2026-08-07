@@ -14,8 +14,11 @@ import {
   Button,
   Card,
   CardBody,
-  Checkbox,
   Content,
+  DescriptionList,
+  DescriptionListDescription,
+  DescriptionListGroup,
+  DescriptionListTerm,
   EmptyState,
   EmptyStateBody,
   Flex,
@@ -35,8 +38,6 @@ import {
 } from '@patternfly/react-core'
 import { KubernetesResourceNameField } from '../shared/KubernetesResourceNameHelper'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
-import type { AttachableCatalogOption } from '../../tenantAdmin/catalogItems'
-import { getTenantCatalogGovernanceSpecSummary, TENANT_CATALOG_GOVERNANCE_ITEMS } from '../../tenantAdmin/catalogManager'
 import {
   CREATE_PROJECT_WIZARD_DEMO,
   CREATE_PROJECT_WIZARD_STEPS,
@@ -44,9 +45,7 @@ import {
   generateProjectWizardMemberId,
   getProjectMemberInitials,
   getTenantProjectMemberRoleShortLabel,
-  isCatalogItemSelected,
   isProjectMemberEmailValid,
-  toggleWizardCatalogItemSelection,
   TENANT_PROJECT_ENVIRONMENTS,
   TENANT_PROJECT_MEMBER_ROLES,
   type CreateProjectWizardForm,
@@ -64,7 +63,6 @@ import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceNa
 type CreateTenantProjectWizardProps = {
   isOpen: boolean
   organization: RegisteredOrganization
-  catalogOptions: AttachableCatalogOption[]
   onClose: () => void
   onCreate: (project: TenantProject) => void
 }
@@ -79,7 +77,6 @@ const ENVIRONMENT_ICONS: Record<TenantProjectEnvironment, ReactNode> = {
 export function CreateTenantProjectWizard({
   isOpen,
   organization,
-  catalogOptions,
   onClose,
   onCreate,
 }: CreateTenantProjectWizardProps) {
@@ -114,11 +111,12 @@ export function CreateTenantProjectWizard({
       id: generateTenantProjectId(),
       name: form.name.trim(),
       description: form.description.trim(),
+      environmentType: form.environmentType,
       instanceQuota: form.instanceQuota,
       externalIpPoolId: organizationPool?.id ?? null,
       externalIpPoolName: organizationPool?.name ?? null,
       externalIpPoolCidr: form.ipPoolSlice.trim(),
-      catalogItems: form.catalogItems,
+      catalogItems: [],
       members: form.members.map((member) => ({
         id: member.id,
         name: member.name,
@@ -212,7 +210,10 @@ export function CreateTenantProjectWizard({
                       name="new-project-environment"
                       isChecked={form.environmentType === environment.id}
                       onChange={() =>
-                        setForm((current) => ({ ...current, environmentType: environment.id }))
+                        setForm((current) => ({
+                          ...current,
+                          environmentType: environment.id,
+                        }))
                       }
                       aria-label={environment.label}
                     />
@@ -224,81 +225,6 @@ export function CreateTenantProjectWizard({
         </div>
       </FormGroup>
     </Form>
-  )
-
-  const renderCatalogStep = () => (
-    <div className="tenant-admin-projects-teams__wizard-catalog">
-      <Content component="p" className="tenant-admin-projects-teams__wizard-catalog-lede">
-        {CREATE_PROJECT_WIZARD_DEMO.catalogLede}
-      </Content>
-
-      {catalogOptions.length === 0 ? (
-        <EmptyState className="tenant-admin-projects-teams__wizard-catalog-empty">
-          <EmptyStateBody>{CREATE_PROJECT_WIZARD_DEMO.catalogEmptyTitle}</EmptyStateBody>
-        </EmptyState>
-      ) : (
-        <div
-          className="tenant-admin-projects-teams__catalog-grid"
-          role="group"
-          aria-label="Catalog items"
-        >
-          {catalogOptions.map((option) => {
-            const governanceItem = TENANT_CATALOG_GOVERNANCE_ITEMS.find(
-              (item) => item.id === option.id,
-            )
-
-            return (
-              <Card
-                key={option.id}
-                isCompact
-                className="tenant-admin-projects-teams__catalog-card"
-              >
-                <CardBody className="tenant-admin-projects-teams__catalog-card-body">
-                  <Flex
-                    alignItems={{ default: 'alignItemsCenter' }}
-                    justifyContent={{ default: 'justifyContentSpaceBetween' }}
-                    className="tenant-admin-projects-teams__catalog-option"
-                  >
-                    <FlexItem>
-                      <span className="tenant-admin-projects-teams__catalog-radio-label">
-                        <span className="tenant-admin-projects-teams__catalog-title">
-                          {option.displayName}
-                        </span>
-                        <span className="tenant-admin-projects-teams__catalog-badge">
-                          {option.sourceLabel}
-                        </span>
-                        {governanceItem ? (
-                          <span className="tenant-admin-projects-teams__catalog-specs">
-                            {getTenantCatalogGovernanceSpecSummary(governanceItem)}
-                          </span>
-                        ) : null}
-                      </span>
-                    </FlexItem>
-                    <FlexItem>
-                      <Checkbox
-                        id={`new-project-catalog-${option.id}`}
-                        isChecked={isCatalogItemSelected(form.catalogItems, option.id)}
-                        onChange={(_event, isChecked) =>
-                          setForm((current) => ({
-                            ...current,
-                            catalogItems: toggleWizardCatalogItemSelection(
-                              current.catalogItems,
-                              { id: option.id, displayName: option.displayName },
-                              isChecked,
-                            ),
-                          }))
-                        }
-                        aria-label={option.displayName}
-                      />
-                    </FlexItem>
-                  </Flex>
-                </CardBody>
-              </Card>
-            )
-          })}
-        </div>
-      )}
-    </div>
   )
 
   const renderTeamMembersStep = () => (
@@ -424,14 +350,78 @@ export function CreateTenantProjectWizard({
     </div>
   )
 
+  const environmentLabel =
+    TENANT_PROJECT_ENVIRONMENTS.find((entry) => entry.id === form.environmentType)?.label ??
+    form.environmentType
+
+  const renderReviewStep = () => (
+    <div className="tenant-admin-projects-teams__wizard-review">
+      <Content component="p" className="tenant-admin-projects-teams__wizard-review-lede">
+        {CREATE_PROJECT_WIZARD_DEMO.reviewLede}
+      </Content>
+
+      <DescriptionList
+        isHorizontal
+        isCompact
+        className="tenant-admin-projects-teams__wizard-review-list"
+      >
+        <DescriptionListGroup>
+          <DescriptionListTerm>Project name</DescriptionListTerm>
+          <DescriptionListDescription>
+            <code>{form.name.trim() || '—'}</code>
+          </DescriptionListDescription>
+        </DescriptionListGroup>
+        <DescriptionListGroup>
+          <DescriptionListTerm>Description</DescriptionListTerm>
+          <DescriptionListDescription>
+            {form.description.trim() || CREATE_PROJECT_WIZARD_DEMO.reviewNoDescription}
+          </DescriptionListDescription>
+        </DescriptionListGroup>
+        <DescriptionListGroup>
+          <DescriptionListTerm>Environment</DescriptionListTerm>
+          <DescriptionListDescription>{environmentLabel}</DescriptionListDescription>
+        </DescriptionListGroup>
+        <DescriptionListGroup>
+          <DescriptionListTerm>Instance quota</DescriptionListTerm>
+          <DescriptionListDescription>{form.instanceQuota}</DescriptionListDescription>
+        </DescriptionListGroup>
+        <DescriptionListGroup>
+          <DescriptionListTerm>External IP pool</DescriptionListTerm>
+          <DescriptionListDescription>
+            {organizationPool
+              ? `${organizationPool.name} (${form.ipPoolSlice.trim() || organizationPool.cidr})`
+              : form.ipPoolSlice.trim() || '—'}
+          </DescriptionListDescription>
+        </DescriptionListGroup>
+        <DescriptionListGroup>
+          <DescriptionListTerm>Team members</DescriptionListTerm>
+          <DescriptionListDescription>
+            {form.members.length === 0 ? (
+              CREATE_PROJECT_WIZARD_DEMO.reviewNoMembers
+            ) : (
+              <ul className="tenant-admin-projects-teams__wizard-review-members">
+                {form.members.map((member) => (
+                  <li key={member.id}>
+                    {member.name} · {member.email} ·{' '}
+                    {getTenantProjectMemberRoleShortLabel(member.role)}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </DescriptionListDescription>
+        </DescriptionListGroup>
+      </DescriptionList>
+    </div>
+  )
+
   const renderStepContent = (stepId: CreateProjectWizardStepId) => {
     switch (stepId) {
       case 'project-info':
         return renderProjectInfoStep()
-      case 'catalog':
-        return renderCatalogStep()
       case 'team-members':
         return renderTeamMembersStep()
+      case 'review':
+        return renderReviewStep()
       default:
         return null
     }
@@ -450,7 +440,7 @@ export function CreateTenantProjectWizard({
       }
     }
 
-    if (stepId === 'catalog') {
+    if (stepId === 'team-members') {
       return {
         isCancelHidden: true,
         backButtonText: (
@@ -459,7 +449,6 @@ export function CreateTenantProjectWizard({
             <span>Back</span>
           </span>
         ),
-        isNextDisabled: catalogOptions.length === 0 || form.catalogItems.length === 0,
         nextButtonText: (
           <span className="tenant-admin-projects-teams__wizard-footer-label">
             <span>{CREATE_PROJECT_WIZARD_DEMO.continueLabel}</span>

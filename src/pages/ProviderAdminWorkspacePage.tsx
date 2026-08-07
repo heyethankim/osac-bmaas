@@ -19,6 +19,7 @@ import { ProviderAdminQuotasPage } from './ProviderAdminQuotasPage'
 import { PlaceholderProviderAdminPage } from './PlaceholderProviderAdminPage'
 import { ProviderServiceSelectionPage } from './provider-setup/ProviderServiceSelectionPage'
 import { TenantUserInstancesPage } from './tenant-user/TenantUserInstancesPage'
+import { TenantAdminProjectsTeamsPage } from './tenant-admin/TenantAdminProjectsTeamsPage'
 import type { ProviderServiceId } from '../providerSetup/constants'
 import { generateCatalogItemId, type PublishedTemplatePayload } from '../providerSetup/templateDemo'
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
@@ -47,12 +48,22 @@ import {
   updateTenantUserInstance,
 } from '../tenantUser/storage'
 import {
+  getTenantInstanceServiceId,
   isStickyDemoProvisioningInstance,
   type TenantInstance,
 } from '../tenantUser/instances'
 import { LAUNCH_INSTANCE_PROVISIONING_DURATION_MS, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS } from '../tenantUser/launchInstanceWizard'
 import type { WorkspaceTransition } from '../providerAdmin/workspace'
 import type { BmaasTemplateLookup } from '../providerAdmin/bmaasTemplates'
+import { ensureTenantDemoProjects } from '../tenantAdmin/storage'
+import type { TenantProject } from '../tenantAdmin/projects'
+import { getWorkspaceOrganization } from '../tenantAdmin/organizations'
+import {
+  getProjectScopeId,
+  isAllProjectsScope,
+  setProjectScopeId,
+  type ProjectScopeId,
+} from '../tenantUser/projectScope'
 
 function getServicesNavId(serviceId: CatalogServiceId): ProviderAdminNavId {
   switch (serviceId) {
@@ -125,8 +136,16 @@ export function ProviderAdminWorkspacePage() {
   const [openSubnetId, setOpenSubnetId] = useState<string | null>(null)
   const [openSecurityGroupId, setOpenSecurityGroupId] = useState<string | null>(null)
   const [openCatalogItemKey, setOpenCatalogItemKey] = useState<string | null>(null)
+  const [openInstanceId, setOpenInstanceId] = useState<string | null>(null)
+  const [openProjectId, setOpenProjectId] = useState<string | null>(null)
   const [instances, setInstances] = useState(() =>
     ensureTenantDemoInstances(PROVIDER_SERVICES_DEMO_TENANT),
+  )
+  const [projects, setProjects] = useState<TenantProject[]>(() =>
+    ensureTenantDemoProjects(PROVIDER_SERVICES_DEMO_TENANT),
+  )
+  const [projectScopeId, setProjectScopeIdState] = useState<ProjectScopeId>(() =>
+    getProjectScopeId(PROVIDER_SERVICES_DEMO_TENANT),
   )
   const [navContentKey, setNavContentKey] = useState(0)
   const provisioningTimersRef = useRef<Map<string, number>>(new Map())
@@ -142,6 +161,8 @@ export function ProviderAdminWorkspacePage() {
       setActiveNavId(requestedNav)
       setProviderActiveNav(requestedNav)
       setInstances(ensureTenantDemoInstances(PROVIDER_SERVICES_DEMO_TENANT))
+      setProjects(ensureTenantDemoProjects(PROVIDER_SERVICES_DEMO_TENANT))
+      setProjectScopeIdState(getProjectScopeId(PROVIDER_SERVICES_DEMO_TENANT))
       return
     }
 
@@ -240,6 +261,11 @@ export function ProviderAdminWorkspacePage() {
     handleNavChange('administration-organizations')
   }
 
+  const handleProjectScopeChange = (scopeId: ProjectScopeId) => {
+    setProjectScopeIdState(scopeId)
+    setProjectScopeId(PROVIDER_SERVICES_DEMO_TENANT, scopeId)
+  }
+
   const handleNavChange = (navId: ProviderAdminNavId) => {
     setActiveNavId(navId)
     setProviderActiveNav(navId)
@@ -326,12 +352,42 @@ export function ProviderAdminWorkspacePage() {
             tenantSlug={PROVIDER_SERVICES_DEMO_TENANT}
             instances={instances}
             onInstancesChange={setInstances}
-            defaultScopeFieldLabel="Organization"
+            projects={projects}
+            projectScopeId={projectScopeId}
+            onProjectScopeChange={handleProjectScopeChange}
+            onProjectsChange={setProjects}
+            organization={getWorkspaceOrganization(PROVIDER_SERVICES_DEMO_TENANT)}
             lockedServiceId={lockedServiceId ?? 'baremetal'}
             activeNavId={activeNavId}
             onNavigateToCatalogItem={(catalogItemDisplayName) => {
               handleNavChange('catalog')
               syncWorkspaceCatalogItemParam(setSearchParams, catalogItemDisplayName)
+            }}
+            openInstanceId={openInstanceId}
+            onOpenInstanceConsumed={() => setOpenInstanceId(null)}
+            onNavigateToProject={(project) => {
+              setOpenProjectId(project.id)
+              handleNavChange('projects-teams')
+            }}
+          />
+        )
+      case 'projects-teams':
+        return (
+          <TenantAdminProjectsTeamsPage
+            tenantSlug={PROVIDER_SERVICES_DEMO_TENANT}
+            organization={getWorkspaceOrganization(PROVIDER_SERVICES_DEMO_TENANT)}
+            projects={projects}
+            instances={instances}
+            onProjectsChange={setProjects}
+            openProjectId={openProjectId}
+            onOpenProjectConsumed={() => setOpenProjectId(null)}
+            onNavigateToInstance={(instance) => {
+              const project = projects.find((entry) => entry.name === instance.projectName)
+              if (project) {
+                handleProjectScopeChange(project.id)
+              }
+              setOpenInstanceId(instance.id)
+              handleNavChange(getServicesNavId(getTenantInstanceServiceId(instance)))
             }}
           />
         )
@@ -354,6 +410,11 @@ export function ProviderAdminWorkspacePage() {
             onProvisioningStarted={handleProvisioningStarted}
             onDismissDuringProvisioning={handleNavigateToServices}
             onWizardFinished={handleNavigateToServices}
+            tenantSlug={PROVIDER_SERVICES_DEMO_TENANT}
+            projects={projects}
+            initialProjectId={isAllProjectsScope(projectScopeId) ? null : projectScopeId}
+            onProjectScopeChange={handleProjectScopeChange}
+            onProjectsChange={setProjects}
           />
         )
       case 'infrastructure-data-centers':

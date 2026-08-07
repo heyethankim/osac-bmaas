@@ -7,6 +7,8 @@ import {
   Content,
   EmptyState,
   EmptyStateBody,
+  Flex,
+  FlexItem,
   Label,
   SearchInput,
   Title,
@@ -39,7 +41,7 @@ import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWiza
 import { resolveLaunchNetworkContext } from '../../tenantUser/launchNetworking'
 import { TENANT_USER_CATALOG_PAGE } from '../../tenantUser/constants'
 import type { TenantInstance } from '../../tenantUser/instances'
-import type { TenantUserScopeKind } from '../../tenantUser/scope'
+import type { TenantProject } from '../../tenantAdmin/projects'
 import {
   findCatalogItemByWorkspaceParam,
   getWorkspaceCatalogItemParam,
@@ -49,9 +51,11 @@ import {
 type TenantUserCatalogPageProps = {
   organization: RegisteredOrganization | null
   catalogDraft: ProviderCatalogDraft | null
-  scopeKind: TenantUserScopeKind
-  scopeLabel: string
-  scopeFieldLabel: 'Organization' | 'Project'
+  tenantSlug: string
+  projects: readonly TenantProject[]
+  initialProjectId?: string | null
+  onProjectScopeChange?: (projectId: string) => void
+  onProjectsChange: (projects: TenantProject[]) => void
   /** When true, open the launch wizard immediately (provider preview). */
   autoOpenLaunchWizard?: boolean
   /** Prefer the provided catalog draft even if org assignment differs. */
@@ -155,9 +159,11 @@ function getCatalogItemActions(
 export function TenantUserCatalogPage({
   organization,
   catalogDraft,
-  scopeKind,
-  scopeLabel,
-  scopeFieldLabel,
+  tenantSlug,
+  projects,
+  initialProjectId = null,
+  onProjectScopeChange,
+  onProjectsChange,
   autoOpenLaunchWizard = false,
   preferCatalogDraft = false,
   openCatalogItemKey = null,
@@ -351,14 +357,21 @@ export function TenantUserCatalogPage({
         />
       ) : (
       <div className="tenant-user-workspace-page tenant-user-catalog">
-        <Title headingLevel="h1" size="3xl" className="tenant-user-catalog__title">
-          Catalog
-        </Title>
-        <Content component="p" className="tenant-user-catalog__lede">
-          {scopeKind === 'organization'
-            ? TENANT_USER_CATALOG_PAGE.organizationLede
-            : TENANT_USER_CATALOG_PAGE.projectLede}
-        </Content>
+        <Flex
+          className="tenant-user-catalog__page-header"
+          justifyContent={{ default: 'justifyContentSpaceBetween' }}
+          alignItems={{ default: 'alignItemsFlexStart' }}
+          gap={{ default: 'gapMd' }}
+        >
+          <FlexItem>
+            <Title headingLevel="h1" size="3xl" className="tenant-user-catalog__title">
+              Catalog
+            </Title>
+            <Content component="p" className="tenant-user-catalog__lede">
+              {TENANT_USER_CATALOG_PAGE.organizationLede}
+            </Content>
+          </FlexItem>
+        </Flex>
 
         <div className="catalog-view-toolbar tenant-user-catalog__toolbar">
           <div className="catalog-view-toolbar__start">
@@ -547,9 +560,11 @@ export function TenantUserCatalogPage({
             organization={organization}
             catalogDraft={catalogDraft}
             preferCatalogDraft={preferCatalogDraft}
-            scopeKind={scopeKind}
-            scopeLabel={scopeLabel}
-            scopeFieldLabel={scopeFieldLabel}
+            tenantSlug={tenantSlug}
+            projects={projects}
+            initialProjectId={initialProjectId}
+            onProjectScopeChange={onProjectScopeChange}
+            onProjectsChange={onProjectsChange}
             existingInstanceNames={existingInstanceNames}
             onClose={() => setIsWizardOpen(false)}
             onProvisioningStarted={onProvisioningStarted}

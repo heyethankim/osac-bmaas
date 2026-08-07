@@ -129,6 +129,7 @@ export function getProviderActiveNav(): ProviderAdminNavId {
       value === 'services-clusters' ||
       value === 'services-models' ||
       value === 'services-virtual-machines' ||
+      value === 'projects-teams' ||
       value === 'infrastructure-data-centers' ||
       value === 'infrastructure-hardware-inventory' ||
       value === 'infrastructure-bmaas-templates' ||

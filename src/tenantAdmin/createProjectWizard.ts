@@ -1,8 +1,8 @@
-import type { TenantProjectCatalogItem } from './projects'
+import type { TenantProjectCatalogItem, TenantProjectEnvironment } from './projects'
 
-export type CreateProjectWizardStepId = 'project-info' | 'catalog' | 'team-members'
+export type CreateProjectWizardStepId = 'project-info' | 'team-members' | 'review'
 
-export type TenantProjectEnvironment = 'development' | 'staging' | 'production' | 'research'
+export type { TenantProjectEnvironment }
 
 export type TenantProjectMemberRole = 'developer' | 'project-admin' | 'viewer'
 
@@ -24,13 +24,13 @@ export const CREATE_PROJECT_WIZARD_STEPS: ReadonlyArray<{
     description: '',
   },
   {
-    id: 'catalog',
-    label: 'Catalog',
+    id: 'team-members',
+    label: 'Team Members',
     description: '',
   },
   {
-    id: 'team-members',
-    label: 'Team Members',
+    id: 'review',
+    label: 'Review',
     description: '',
   },
 ]
@@ -60,16 +60,16 @@ export const TENANT_PROJECT_MEMBER_ROLES: ReadonlyArray<{
 ]
 
 export const CREATE_PROJECT_WIZARD_DEMO = {
-  projectNamePlaceholder: 'e.g. ml-dev-team',
+  projectNamePlaceholder: 'e.g. edge-inference',
   descriptionPlaceholder: "Optional — describe this project's purpose",
   memberNamePlaceholder: 'Full name',
   memberEmailPlaceholder: 'email@northsummitbank.com',
   membersEmptyTitle: 'No members added yet. You can also add them later.',
   membersInviteNote:
     'Invitees will receive an email to join the platform and be scoped to this project.',
-  catalogLede:
-    'Attach approved catalog items so project members can provision instances from your governed offerings.',
-  catalogEmptyTitle: 'No approved catalog items yet. Approve offerings in Catalog first.',
+  reviewLede: 'Confirm project details before creating.',
+  reviewNoDescription: 'No description',
+  reviewNoMembers: 'No members yet — you can invite them later.',
   addMemberLabel: 'Add',
   continueLabel: 'Continue',
   createProjectLabel: 'Create project',
@@ -89,12 +89,11 @@ export type CreateProjectWizardForm = {
   memberEmail: string
   memberRole: TenantProjectMemberRole
   members: TenantProjectWizardMember[]
-  catalogItems: TenantProjectCatalogItem[]
 }
 
 export const DEFAULT_CREATE_PROJECT_WIZARD_FORM: CreateProjectWizardForm = {
-  name: 'ml-dev-team',
-  description: 'GPU training and ML experimentation workloads for the data science group.',
+  name: 'edge-inference',
+  description: 'Low-latency inference and edge rollout workloads for branch and regional sites.',
   environmentType: 'development',
   vcpuAllocation: 80,
   ramAllocationGb: 512,
@@ -109,12 +108,6 @@ export const DEFAULT_CREATE_PROJECT_WIZARD_FORM: CreateProjectWizardForm = {
       name: 'Chris Morgan',
       email: 'chris@northsummitbank.com',
       role: 'developer',
-    },
-  ],
-  catalogItems: [
-    {
-      id: 'cat-bm-gpu-training',
-      displayName: 'bare-metal-gpu-training-server',
     },
   ],
 }

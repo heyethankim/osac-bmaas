@@ -96,6 +96,8 @@ import {
   getTenantUserInstances,
   updateTenantUserInstance,
 } from '../tenantUser/storage'
+import type { TenantProject } from '../tenantAdmin/projects'
+import type { DemoTenantId } from '../demoTenant'
 
 type ProviderAdminCatalogPageProps = {
   catalogItems: ProviderCatalogDraft[]
@@ -115,6 +117,11 @@ type ProviderAdminCatalogPageProps = {
   onProvisioningStarted?: (instance: TenantInstance) => void
   onDismissDuringProvisioning?: (instanceId: string, serviceId: CatalogServiceId) => void
   onWizardFinished?: (instanceId: string, serviceId: CatalogServiceId) => void
+  tenantSlug?: DemoTenantId
+  projects?: readonly TenantProject[]
+  initialProjectId?: string | null
+  onProjectScopeChange?: (projectId: string) => void
+  onProjectsChange?: (projects: TenantProject[]) => void
 }
 
 /** Intentional create latency before revealing the new catalog card. */
@@ -322,6 +329,11 @@ export function ProviderAdminCatalogPage({
   onProvisioningStarted,
   onDismissDuringProvisioning,
   onWizardFinished,
+  tenantSlug = PROVIDER_LAUNCH_DEMO_TENANT,
+  projects = [],
+  initialProjectId = null,
+  onProjectScopeChange,
+  onProjectsChange,
 }: ProviderAdminCatalogPageProps) {
   const [searchParams, setSearchParams] = useSearchParams()
   const initialServiceFilters = catalogItems.map(getDraftServiceId)
@@ -408,6 +420,7 @@ export function ProviderAdminCatalogPage({
       ),
     [organizations],
   )
+
   const filteredCatalogItems = useMemo(() => {
     const query = searchValue.trim().toLowerCase()
     const selectedOrganization = organizationFilter
@@ -1232,9 +1245,11 @@ export function ProviderAdminCatalogPage({
           organization={launchOrganization}
           catalogDraft={drawerCatalog}
           preferCatalogDraft
-          scopeKind="organization"
-          scopeLabel={launchOrganization?.name ?? 'Organization'}
-          scopeFieldLabel="Organization"
+          tenantSlug={tenantSlug}
+          projects={projects}
+          initialProjectId={initialProjectId}
+          onProjectScopeChange={onProjectScopeChange}
+          onProjectsChange={onProjectsChange ?? (() => undefined)}
           existingInstanceNames={existingInstanceNames}
           onClose={() => setIsWizardOpen(false)}
           onProvisioningStarted={(instance) => {

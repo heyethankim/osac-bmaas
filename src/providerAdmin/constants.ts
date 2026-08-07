@@ -5,6 +5,7 @@ export type ProviderAdminNavId =
   | 'services-clusters'
   | 'services-models'
   | 'services-virtual-machines'
+  | 'projects-teams'
   | 'networking-virtual-networks'
   | 'networking-subnets'
   | 'networking-security-groups'
@@ -25,6 +26,7 @@ export type ProviderAdminNavItem = {
 export const PROVIDER_ADMIN_NAV_ITEMS: ProviderAdminNavItem[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'catalog', label: 'Catalog' },
+  { id: 'projects-teams', label: 'Projects & teams' },
   { id: 'billing-metering', label: 'Billing & metering' },
 ]
 

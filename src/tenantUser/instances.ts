@@ -5,6 +5,12 @@ import {
   getReleaseImageForClusterVersion,
 } from '../catalog/catalogPublishConfig'
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
+import {
+  DEMO_TENANT_PROJECT_ID,
+  DEMO_TENANT_PROJECT_ID_02,
+  DEMO_TENANT_PROJECT_NAME,
+  DEMO_TENANT_PROJECT_NAME_02,
+} from '../tenantAdmin/projects'
 import { parseVmLaunchInstanceTypeOption } from './launchInstanceWizard'
 
 export type TenantInstanceStatus =
@@ -117,7 +123,12 @@ export type TenantInstance = {
   inventory?: TenantMachineInventory
   /** SSH public key captured at launch (bare metal, VM, and cluster). */
   sshPublicKey?: string
-  /** Scope label: project name when project-scoped, organization name otherwise. */
+  /**
+   * Projects this service belongs to (multi-project). Empty = organization-scoped.
+   * Prefer this over `projectName` / `scopeKind` for membership checks.
+   */
+  projectIds: string[]
+  /** Scope label: primary project name when project-scoped, organization name otherwise. */
   projectName: string
   scopeKind: TenantInstanceScopeKind
   status: TenantInstanceStatus
@@ -799,7 +810,112 @@ export function getClusterDemoPassword(instance: TenantInstance): string {
 export function getTenantInstanceScopeFieldLabel(
   instance: TenantInstance,
 ): 'Organization' | 'Project' {
-  return instance.scopeKind === 'organization' ? 'Organization' : 'Project'
+  return getTenantInstanceProjectIds(instance).length > 0 ? 'Project' : 'Organization'
+}
+
+/** Normalized project membership ids (supports legacy single-project instances). */
+export function getTenantInstanceProjectIds(instance: TenantInstance): string[] {
+  if (Array.isArray(instance.projectIds) && instance.projectIds.length > 0) {
+    return [...new Set(instance.projectIds.filter(Boolean))]
+  }
+
+  // Demo instances always resolve to seeded project memberships, even when session
+  // storage still has legacy org-scoped rows with an empty/missing projectIds field.
+  const demoProjectIds = getDemoInstanceProjectIds(instance.id)
+  if (demoProjectIds.length > 0) {
+    return demoProjectIds
+  }
+
+  if (instance.scopeKind === 'project' && instance.projectName === DEMO_TENANT_PROJECT_NAME) {
+    return [DEMO_TENANT_PROJECT_ID]
+  }
+
+  if (instance.scopeKind === 'project' && instance.projectName === DEMO_TENANT_PROJECT_NAME_02) {
+    return [DEMO_TENANT_PROJECT_ID_02]
+  }
+
+  return []
+}
+
+export function instanceBelongsToProject(
+  instance: TenantInstance,
+  project: { id: string; name: string },
+): boolean {
+  const projectIds = getTenantInstanceProjectIds(instance)
+  if (projectIds.includes(project.id)) {
+    return true
+  }
+
+  return (
+    projectIds.length === 0 &&
+    instance.scopeKind === 'project' &&
+    instance.projectName === project.name
+  )
+}
+
+/** Project name for Services card/table; organization-scoped instances have no project. */
+export function getTenantInstanceProjectLabel(
+  instance: TenantInstance,
+  projects: readonly { id: string; name: string }[] = [],
+): string {
+  const projectIds = getTenantInstanceProjectIds(instance)
+  if (projectIds.length === 0) {
+    return instance.scopeKind === 'project' && instance.projectName.trim()
+      ? instance.projectName
+      : '—'
+  }
+
+  const names = projectIds.map((projectId) => {
+    const fromList = projects.find((project) => project.id === projectId)?.name
+    if (fromList) {
+      return fromList
+    }
+    if (projectId === DEMO_TENANT_PROJECT_ID) {
+      return DEMO_TENANT_PROJECT_NAME
+    }
+    if (projectId === DEMO_TENANT_PROJECT_ID_02) {
+      return DEMO_TENANT_PROJECT_NAME_02
+    }
+    return projectId
+  })
+  if (names.length === 1) {
+    return names[0]!
+  }
+
+  return `${names[0]} +${names.length - 1}`
+}
+
+/**
+ * Sync `projectIds` with legacy `projectName` / `scopeKind` fields used across the demo.
+ */
+export function withInstanceProjectIds(
+  instance: TenantInstance,
+  projectIds: string[],
+  projects: readonly { id: string; name: string }[],
+  organizationName: string,
+): TenantInstance {
+  const uniqueIds = [...new Set(projectIds.filter(Boolean))]
+  const resolvedNames = uniqueIds
+    .map((projectId) => projects.find((project) => project.id === projectId)?.name)
+    .filter((name): name is string => Boolean(name))
+
+  if (resolvedNames.length === 0) {
+    return {
+      ...instance,
+      projectIds: [],
+      scopeKind: 'organization',
+      projectName: organizationName,
+    }
+  }
+
+  return {
+    ...instance,
+    projectIds: uniqueIds.filter((projectId) =>
+      projects.some((project) => project.id === projectId),
+    ),
+    scopeKind: 'project',
+    projectName: resolvedNames[0]!,
+  }
 }
 
 /** Stable demo instance IDs so ensure can re-seed without duplicates. */
@@ -836,6 +952,46 @@ export const DEMO_TENANT_CLUSTER_STATES: ReadonlyArray<{
   },
   { id: DEMO_TENANT_CLUSTER_INSTANCE_ID_04, name: 'ocp-cluster-04', status: 'running' },
 ]
+
+/** Demo instances seeded under the default tenant project (`ml-project`). */
+export const DEMO_TENANT_PROJECT_INSTANCE_IDS = [
+  DEMO_TENANT_BARE_METAL_INSTANCE_ID,
+  DEMO_TENANT_BARE_METAL_INSTANCE_ID_02,
+  DEMO_TENANT_BARE_METAL_INSTANCE_ID_03,
+  DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID,
+  DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_02,
+  DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_03,
+  DEMO_TENANT_CLUSTER_INSTANCE_ID,
+  DEMO_TENANT_CLUSTER_INSTANCE_ID_02,
+  DEMO_TENANT_CLUSTER_INSTANCE_ID_03,
+  DEMO_TENANT_CLUSTER_INSTANCE_ID_04,
+] as const
+
+/** Demo instances that also belong to `ml-dev-team` (two projects). */
+export const DEMO_TENANT_SECONDARY_PROJECT_INSTANCE_IDS = [
+  DEMO_TENANT_BARE_METAL_INSTANCE_ID,
+  DEMO_TENANT_BARE_METAL_INSTANCE_ID_02,
+  DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID,
+  DEMO_TENANT_CLUSTER_INSTANCE_ID,
+  DEMO_TENANT_CLUSTER_INSTANCE_ID_04,
+] as const
+
+export function getDemoInstanceProjectIds(instanceId: string): string[] {
+  const belongsToPrimary = DEMO_TENANT_PROJECT_INSTANCE_IDS.includes(
+    instanceId as (typeof DEMO_TENANT_PROJECT_INSTANCE_IDS)[number],
+  )
+  if (!belongsToPrimary) {
+    return []
+  }
+
+  const belongsToSecondary = DEMO_TENANT_SECONDARY_PROJECT_INSTANCE_IDS.includes(
+    instanceId as (typeof DEMO_TENANT_SECONDARY_PROJECT_INSTANCE_IDS)[number],
+  )
+
+  return belongsToSecondary
+    ? [DEMO_TENANT_PROJECT_ID, DEMO_TENANT_PROJECT_ID_02]
+    : [DEMO_TENANT_PROJECT_ID]
+}
 
 export function getTenantInstanceGpuLabel(instance: TenantInstance): string {
   const fromField = instance.gpuLabel.trim()
@@ -964,6 +1120,42 @@ export function getTenantInstanceCardSpecRows(instance: TenantInstance): Catalog
   return allSpecRows.slice(0, 3)
 }
 
+function resolveDemoInstanceProjectFields(options: {
+  id: string
+  projectName?: string
+  scopeKind?: TenantInstanceScopeKind
+  projectIds?: string[]
+  organizationName: string
+}): Pick<TenantInstance, 'projectIds' | 'projectName' | 'scopeKind'> {
+  const demoProjectIds = options.projectIds ?? getDemoInstanceProjectIds(options.id)
+  if (demoProjectIds.length > 0) {
+    return {
+      projectIds: demoProjectIds,
+      projectName:
+        demoProjectIds[0] === DEMO_TENANT_PROJECT_ID_02
+          ? DEMO_TENANT_PROJECT_NAME_02
+          : DEMO_TENANT_PROJECT_NAME,
+      scopeKind: 'project',
+    }
+  }
+
+  const scopeKind = options.scopeKind ?? 'organization'
+  const projectName = options.projectName ?? options.organizationName
+  if (scopeKind === 'project' && projectName === DEMO_TENANT_PROJECT_NAME) {
+    return {
+      projectIds: [DEMO_TENANT_PROJECT_ID],
+      projectName,
+      scopeKind,
+    }
+  }
+
+  return {
+    projectIds: [],
+    projectName,
+    scopeKind,
+  }
+}
+
 function createDemoTenantBareMetalInstanceVariant(
   organizationName: string,
   options: {
@@ -977,6 +1169,8 @@ function createDemoTenantBareMetalInstanceVariant(
     ram: string
     hoursAgo: number
     catalogItemDisplayName?: string
+    projectName?: string
+    scopeKind?: TenantInstanceScopeKind
   },
 ): TenantInstance {
   const createdAt = new Date(Date.now() - 1000 * 60 * 60 * options.hoursAgo).toISOString()
@@ -1008,8 +1202,12 @@ function createDemoTenantBareMetalInstanceVariant(
         ? undefined
         : { networkInterfaces: createDemoNetworkInterfaces(options.id, 2) },
     sshPublicKey: DEFAULT_BARE_METAL_SSH_PUBLIC_KEY,
-    projectName: organizationName,
-    scopeKind: 'organization',
+    ...resolveDemoInstanceProjectFields({
+      id: options.id,
+      projectName: options.projectName,
+      scopeKind: options.scopeKind,
+      organizationName,
+    }),
     status: options.status,
     createdAt,
     provisionedAt: options.status === 'provisioning' ? null : createdAt,
@@ -1073,6 +1271,8 @@ function createDemoTenantClusterInstanceVariant(
     desiredVersion?: string
     upgradeStatus?: TenantClusterUpgradeStatus
     nodeSets?: TenantClusterNodeSet[]
+    projectName?: string
+    scopeKind?: TenantInstanceScopeKind
   },
 ): TenantInstance {
   const createdAt = new Date(Date.now() - 1000 * 60 * 60 * options.hoursAgo).toISOString()
@@ -1141,8 +1341,12 @@ function createDemoTenantClusterInstanceVariant(
           ? undefined
           : buildClusterNodeInventories(options.id, nodeSets),
     },
-    projectName: organizationName,
-    scopeKind: 'organization',
+    ...resolveDemoInstanceProjectFields({
+      id: options.id,
+      projectName: options.projectName,
+      scopeKind: options.scopeKind,
+      organizationName,
+    }),
     status: options.status,
     createdAt,
     provisionedAt: options.status === 'provisioning' ? null : createdAt,
@@ -1260,6 +1464,8 @@ function createDemoTenantVirtualMachineInstanceVariant(
     sizeLabel: string
     internalIp: string
     hoursAgo: number
+    projectName?: string
+    scopeKind?: TenantInstanceScopeKind
   },
 ): TenantInstance {
   const createdAt = new Date(Date.now() - 1000 * 60 * 60 * options.hoursAgo).toISOString()
@@ -1302,8 +1508,12 @@ function createDemoTenantVirtualMachineInstanceVariant(
       publicIp: null,
       publicIpFamily: null,
     },
-    projectName: organizationName,
-    scopeKind: 'organization',
+    ...resolveDemoInstanceProjectFields({
+      id: options.id,
+      projectName: options.projectName,
+      scopeKind: options.scopeKind,
+      organizationName,
+    }),
     status: options.status,
     createdAt,
     provisionedAt: options.status === 'provisioning' ? null : createdAt,

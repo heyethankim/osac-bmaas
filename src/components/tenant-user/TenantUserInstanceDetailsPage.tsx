@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Button,
   Content,
@@ -7,12 +7,20 @@ import {
   DescriptionListGroup,
   DescriptionListTerm,
   Label,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  ModalVariant,
   Spinner,
   Title,
   Tooltip,
 } from '@patternfly/react-core'
 import { PlusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/plus-circle-icon'
+import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
+import { TrashIcon } from '@patternfly/react-icons/dist/esm/icons/trash-icon'
 import { EntityDetailsPageShell } from '../shared/EntityDetailsPageShell'
+import { AddInstanceProjectModal } from './AddInstanceProjectModal'
 import { CatalogClusterVersionValue } from '../catalog/CatalogClusterVersionValue'
 import { CatalogNetworkingLocksSection } from '../catalog/CatalogNetworkingLocksSection'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
@@ -41,7 +49,7 @@ import {
   getClusterStatusLabel,
   getClusterUpgradeStatus,
   getClusterVersionShortLabel,
-  getTenantInstanceScopeFieldLabel,
+  getTenantInstanceProjectIds,
   getTenantInstanceServiceId,
   getTenantInstanceSpecRows,
   getTenantInstanceStatusLabel,
@@ -68,9 +76,12 @@ import {
   matchNetworkOptionId,
   resolveLaunchNetworkContext,
 } from '../../tenantUser/launchNetworking'
+import type { TenantProject } from '../../tenantAdmin/projects'
+import { getTenantProjectEnvironmentLabel } from '../../tenantAdmin/projects'
 
 type TenantUserInstanceDetailsPageProps = {
   instance: TenantInstance
+  projects: readonly TenantProject[]
   onBack: () => void
   onRequestTerminate: (instance: TenantInstance) => void
   onRestart: (instanceId: string) => void
@@ -82,6 +93,9 @@ type TenantUserInstanceDetailsPageProps = {
     networking: TenantInstanceNetworking,
     networkLabel: string,
   ) => void
+  onAddProject: (instanceId: string, projectId: string) => void
+  onRemoveProject: (instanceId: string, projectId: string) => void
+  onNavigateToProject?: (project: TenantProject) => void
   /** Opens the matching catalog item detail page in Catalog. */
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
   /** Opens the cluster demo password modal. */
@@ -921,15 +935,23 @@ function getNodeSetStatusColor(
 
 function ClusterInstancePageBody({
   instance,
+  projects,
   onUpdateNetworking,
+  onAddProject,
+  onRemoveProject,
+  onNavigateToProject,
   onNavigateToCatalogItem,
 }: {
   instance: TenantInstance
+  projects: readonly TenantProject[]
   onUpdateNetworking?: (
     instanceId: string,
     networking: TenantInstanceNetworking,
     networkLabel: string,
   ) => void
+  onAddProject: (instanceId: string, projectId: string) => void
+  onRemoveProject: (instanceId: string, projectId: string) => void
+  onNavigateToProject?: (project: TenantProject) => void
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
 }) {
   const clusterConfig = resolveClusterConfig(instance)
@@ -1019,6 +1041,14 @@ function ClusterInstancePageBody({
               </DescriptionList>
             </div>
           </div>
+
+          <InstanceProjectsSection
+            instance={instance}
+            projects={projects}
+            onAddProject={onAddProject}
+            onRemoveProject={onRemoveProject}
+            onNavigateToProject={onNavigateToProject}
+          />
 
           <InstanceInheritedNetworkingSection
             instance={instance}
@@ -1168,17 +1198,25 @@ function ClusterInstancePageBody({
 
 function VmInstancePageBody({
   instance,
+  projects,
   onAttachPublicIp,
   onUpdateNetworking,
+  onAddProject,
+  onRemoveProject,
+  onNavigateToProject,
   onNavigateToCatalogItem,
 }: {
   instance: TenantInstance
+  projects: readonly TenantProject[]
   onAttachPublicIp?: (instance: TenantInstance) => void
   onUpdateNetworking?: (
     instanceId: string,
     networking: TenantInstanceNetworking,
     networkLabel: string,
   ) => void
+  onAddProject: (instanceId: string, projectId: string) => void
+  onRemoveProject: (instanceId: string, projectId: string) => void
+  onNavigateToProject?: (project: TenantProject) => void
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
 }) {
   const isBusy = instance.status === 'provisioning' || instance.status === 'restarting'
@@ -1268,6 +1306,14 @@ function VmInstancePageBody({
             </div>
           </div>
 
+          <InstanceProjectsSection
+            instance={instance}
+            projects={projects}
+            onAddProject={onAddProject}
+            onRemoveProject={onRemoveProject}
+            onNavigateToProject={onNavigateToProject}
+          />
+
           <InstanceInheritedNetworkingSection
             instance={instance}
             onUpdateNetworking={onUpdateNetworking}
@@ -1339,15 +1385,23 @@ function VmInstancePageBody({
 
 function DefaultInstancePageBody({
   instance,
+  projects,
   onUpdateNetworking,
+  onAddProject,
+  onRemoveProject,
+  onNavigateToProject,
   onNavigateToCatalogItem,
 }: {
   instance: TenantInstance
+  projects: readonly TenantProject[]
   onUpdateNetworking?: (
     instanceId: string,
     networking: TenantInstanceNetworking,
     networkLabel: string,
   ) => void
+  onAddProject: (instanceId: string, projectId: string) => void
+  onRemoveProject: (instanceId: string, projectId: string) => void
+  onNavigateToProject?: (project: TenantProject) => void
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
 }) {
   const isBareMetal = getTenantInstanceServiceId(instance) === 'baremetal'
@@ -1374,12 +1428,6 @@ function DefaultInstancePageBody({
                   <DescriptionListDescription>
                     <InstanceStatusLabel status={instance.status} />
                   </DescriptionListDescription>
-                </DescriptionListGroup>
-                <DescriptionListGroup>
-                  <DescriptionListTerm>
-                    {getTenantInstanceScopeFieldLabel(instance)}
-                  </DescriptionListTerm>
-                  <DescriptionListDescription>{instance.projectName}</DescriptionListDescription>
                 </DescriptionListGroup>
                 <DescriptionListGroup>
                   <DescriptionListTerm>Catalog item</DescriptionListTerm>
@@ -1427,6 +1475,14 @@ function DefaultInstancePageBody({
               </DescriptionList>
             </div>
           </div>
+
+          <InstanceProjectsSection
+            instance={instance}
+            projects={projects}
+            onAddProject={onAddProject}
+            onRemoveProject={onRemoveProject}
+            onNavigateToProject={onNavigateToProject}
+          />
 
           <InstanceInheritedNetworkingSection
             instance={instance}
@@ -1484,8 +1540,148 @@ function DefaultInstancePageBody({
   )
 }
 
+function InstanceProjectsSection({
+  instance,
+  projects,
+  onAddProject,
+  onRemoveProject,
+  onNavigateToProject,
+}: {
+  instance: TenantInstance
+  projects: readonly TenantProject[]
+  onAddProject: (instanceId: string, projectId: string) => void
+  onRemoveProject: (instanceId: string, projectId: string) => void
+  onNavigateToProject?: (project: TenantProject) => void
+}) {
+  const [isAddOpen, setIsAddOpen] = useState(false)
+  const [projectPendingRemove, setProjectPendingRemove] = useState<TenantProject | null>(null)
+  const attachedProjectIds = useMemo(() => getTenantInstanceProjectIds(instance), [instance])
+  const attachedProjects = useMemo(
+    () =>
+      attachedProjectIds
+        .map((projectId) => projects.find((project) => project.id === projectId))
+        .filter((project): project is TenantProject => Boolean(project)),
+    [attachedProjectIds, projects],
+  )
+
+  const closeRemoveProject = () => {
+    setProjectPendingRemove(null)
+  }
+
+  const handleConfirmRemoveProject = () => {
+    if (!projectPendingRemove) {
+      return
+    }
+    onRemoveProject(instance.id, projectPendingRemove.id)
+    setProjectPendingRemove(null)
+  }
+
+  return (
+    <>
+      <div className="entity-details-page__column entity-details-page__column--span-2 tenant-user-instance-details__projects">
+        <div className="entity-details-page__section-header">
+          <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
+            Projects ({attachedProjects.length})
+          </Title>
+          <Button
+            variant="link"
+            isInline
+            icon={<PlusIcon />}
+            onClick={() => setIsAddOpen(true)}
+            isDisabled={projects.every((project) => attachedProjectIds.includes(project.id))}
+          >
+            Add
+          </Button>
+        </div>
+        {attachedProjects.length === 0 ? (
+          <Content component="p" className="tenant-admin-project-details__empty">
+            Not associated with a project yet. Add a project so its members can manage this service.
+          </Content>
+        ) : (
+          <ul className="tenant-admin-project-details__list" aria-label="Associated projects">
+            {attachedProjects.map((project) => (
+              <li key={project.id} className="tenant-admin-project-details__list-item">
+                <div className="tenant-admin-project-details__member-row">
+                  <div className="tenant-admin-project-details__member-copy">
+                    <Content component="p" className="tenant-admin-project-details__primary">
+                      {onNavigateToProject ? (
+                        <Button
+                          variant="link"
+                          isInline
+                          className="tenant-admin-project-details__service-link"
+                          onClick={() => onNavigateToProject(project)}
+                        >
+                          {project.name}
+                        </Button>
+                      ) : (
+                        project.name
+                      )}
+                    </Content>
+                    <Content component="p" className="tenant-admin-project-details__meta">
+                      {getTenantProjectEnvironmentLabel(project.environmentType)}
+                    </Content>
+                  </div>
+                  <Button
+                    variant="plain"
+                    icon={<TrashIcon />}
+                    aria-label={`Remove ${project.name}`}
+                    onClick={() => setProjectPendingRemove(project)}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <AddInstanceProjectModal
+        isOpen={isAddOpen}
+        projects={projects}
+        attachedProjectIds={attachedProjectIds}
+        onClose={() => setIsAddOpen(false)}
+        onAdd={(projectId) => onAddProject(instance.id, projectId)}
+      />
+
+      <Modal
+        variant={ModalVariant.small}
+        isOpen={projectPendingRemove !== null}
+        onClose={closeRemoveProject}
+        aria-labelledby="remove-instance-project-title"
+        aria-describedby="remove-instance-project-description"
+      >
+        <ModalHeader
+          title="Remove project?"
+          titleIconVariant="warning"
+          labelId="remove-instance-project-title"
+        />
+        <ModalBody>
+          <Content component="p" id="remove-instance-project-description">
+            {projectPendingRemove ? (
+              <>
+                <strong>{projectPendingRemove.name}</strong> will no longer be associated with{' '}
+                <strong>{formatTenantInstanceName(instance.name)}</strong>.
+              </>
+            ) : (
+              'This project will no longer be associated with this service.'
+            )}
+          </Content>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="danger" onClick={handleConfirmRemoveProject}>
+            Remove
+          </Button>
+          <Button variant="link" onClick={closeRemoveProject}>
+            Cancel
+          </Button>
+        </ModalFooter>
+      </Modal>
+    </>
+  )
+}
+
 export function TenantUserInstanceDetailsPage({
   instance,
+  projects,
   onBack,
   onRequestTerminate,
   onRestart,
@@ -1493,6 +1689,9 @@ export function TenantUserInstanceDetailsPage({
   onStop,
   onAttachPublicIp,
   onUpdateNetworking,
+  onAddProject,
+  onRemoveProject,
+  onNavigateToProject,
   onNavigateToCatalogItem,
   onViewPassword,
 }: TenantUserInstanceDetailsPageProps) {
@@ -1543,20 +1742,32 @@ export function TenantUserInstanceDetailsPage({
       {isCluster ? (
         <ClusterInstancePageBody
           instance={instance}
+          projects={projects}
           onUpdateNetworking={onUpdateNetworking}
+          onAddProject={onAddProject}
+          onRemoveProject={onRemoveProject}
+          onNavigateToProject={onNavigateToProject}
           onNavigateToCatalogItem={onNavigateToCatalogItem}
         />
       ) : isVm ? (
         <VmInstancePageBody
           instance={instance}
+          projects={projects}
           onAttachPublicIp={onAttachPublicIp}
           onUpdateNetworking={onUpdateNetworking}
+          onAddProject={onAddProject}
+          onRemoveProject={onRemoveProject}
+          onNavigateToProject={onNavigateToProject}
           onNavigateToCatalogItem={onNavigateToCatalogItem}
         />
       ) : (
         <DefaultInstancePageBody
           instance={instance}
+          projects={projects}
           onUpdateNetworking={onUpdateNetworking}
+          onAddProject={onAddProject}
+          onRemoveProject={onRemoveProject}
+          onNavigateToProject={onNavigateToProject}
           onNavigateToCatalogItem={onNavigateToCatalogItem}
         />
       )}

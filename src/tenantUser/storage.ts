@@ -21,8 +21,16 @@ import {
   DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID,
   DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_02,
   DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_03,
+  getDemoInstanceProjectIds,
+  getTenantInstanceProjectIds,
   type TenantInstance,
 } from './instances'
+import {
+  DEMO_TENANT_PROJECT_ID,
+  DEMO_TENANT_PROJECT_ID_02,
+  DEMO_TENANT_PROJECT_NAME,
+  DEMO_TENANT_PROJECT_NAME_02,
+} from '../tenantAdmin/storage'
 
 const TENANT_USER_ONBOARDING_COMPLETE_KEY_PREFIX = 'bmaas-tenant-user-onboarding-complete-'
 const TENANT_USER_ACTIVE_NAV_KEY_PREFIX = 'bmaas-tenant-user-active-nav-'
@@ -34,6 +42,7 @@ export type TenantUserNavId =
   | 'services-clusters'
   | 'services-models'
   | 'services-virtual-machines'
+  | 'projects-teams'
   | 'networking-virtual-networks'
   | 'networking-subnets'
   | 'networking-security-groups'
@@ -46,6 +55,7 @@ const TENANT_USER_NAV_IDS: TenantUserNavId[] = [
   'services-clusters',
   'services-models',
   'services-virtual-machines',
+  'projects-teams',
   'networking-virtual-networks',
   'networking-subnets',
   'networking-security-groups',
@@ -121,6 +131,9 @@ function isTenantInstance(value: unknown): value is TenantInstance {
     typeof instance.gpuLabel === 'string' &&
     validSpecRows &&
     typeof instance.projectName === 'string' &&
+    (instance.projectIds === undefined ||
+      (Array.isArray(instance.projectIds) &&
+        instance.projectIds.every((projectId) => typeof projectId === 'string'))) &&
     (instance.scopeKind === undefined ||
       instance.scopeKind === 'organization' ||
       instance.scopeKind === 'project') &&
@@ -192,10 +205,22 @@ export function getTenantUserInstances(slug: string): TenantInstance[] {
       return []
     }
 
-    return parsed.filter(isTenantInstance).map((instance) => ({
-      ...instance,
-      scopeKind: instance.scopeKind ?? 'project',
-    }))
+    return parsed.filter(isTenantInstance).map((instance) => {
+      const projectIds = getTenantInstanceProjectIds(instance)
+      const primaryProjectName =
+        projectIds[0] === DEMO_TENANT_PROJECT_ID_02
+          ? DEMO_TENANT_PROJECT_NAME_02
+          : projectIds.includes(DEMO_TENANT_PROJECT_ID)
+            ? DEMO_TENANT_PROJECT_NAME
+            : instance.projectName
+
+      return {
+        ...instance,
+        projectIds,
+        scopeKind: projectIds.length > 0 ? 'project' : (instance.scopeKind ?? 'organization'),
+        projectName: projectIds.length > 0 ? primaryProjectName : instance.projectName,
+      }
+    })
   } catch {
     return []
   }
@@ -247,20 +272,61 @@ export function ensureTenantDemoInstances(
       continue
     }
 
+    const current = next[existingIndex]!
+    const desiredProjectIds = getDemoInstanceProjectIds(demo.id)
+    const currentProjectIds = Array.isArray(current.projectIds)
+      ? [...new Set(current.projectIds.filter(Boolean))]
+      : []
+    const desiredKey = desiredProjectIds.slice().sort().join(',')
+    const currentKey = currentProjectIds.slice().sort().join(',')
+    const needsProjectSync =
+      desiredProjectIds.length > 0 &&
+      (desiredKey !== currentKey ||
+        current.scopeKind !== 'project' ||
+        current.projectName === 'ml-platform' ||
+        !current.projectName.trim() ||
+        current.projectName === organizationName)
+
+    if (needsProjectSync) {
+      next[existingIndex] = {
+        ...current,
+        scopeKind: 'project',
+        projectName: DEMO_TENANT_PROJECT_NAME,
+        projectIds: desiredProjectIds,
+      }
+      changed = true
+    } else if (current.scopeKind === 'project' && current.projectName === 'ml-platform') {
+      next[existingIndex] = {
+        ...current,
+        projectName: DEMO_TENANT_PROJECT_NAME,
+        projectIds:
+          desiredProjectIds.length > 0
+            ? desiredProjectIds
+            : [...new Set([...currentProjectIds, DEMO_TENANT_PROJECT_ID])],
+      }
+      changed = true
+    } else if (!Array.isArray(current.projectIds)) {
+      next[existingIndex] = {
+        ...current,
+        projectIds: getTenantInstanceProjectIds(current),
+      }
+      changed = true
+    }
+
     const clusterState = DEMO_TENANT_CLUSTER_STATES.find((entry) => entry.id === demo.id)
     if (!clusterState) {
       continue
     }
 
-    const current = next[existingIndex]!
+    const refreshed = next[existingIndex]!
     const fresh = demo.create(organizationName)
     const needsClusterConfigRefresh =
       demo.id === DEMO_TENANT_CLUSTER_INSTANCE_ID &&
-      (current.clusterConfig?.upgradeStatus !== fresh.clusterConfig?.upgradeStatus ||
-        current.clusterConfig?.desiredVersion !== fresh.clusterConfig?.desiredVersion ||
-        current.osImage !== fresh.osImage ||
-        (current.clusterConfig?.nodeSets?.length ?? 0) < 2 ||
-        current.clusterConfig?.nodeSets?.some(
+      (refreshed.clusterConfig?.upgradeStatus !== fresh.clusterConfig?.upgradeStatus ||
+        refreshed.clusterConfig?.desiredVersion !== fresh.clusterConfig?.desiredVersion ||
+        refreshed.osImage !== fresh.osImage ||
+        (refreshed.clusterConfig?.nodeSets?.length ?? 0) < 2 ||
+        refreshed.clusterConfig?.nodeSets?.some(
           (nodeSet, index) =>
             !nodeSet.version ||
             !nodeSet.name ||
@@ -268,18 +334,18 @@ export function ensureTenantDemoInstances(
         ))
 
     if (
-      current.name !== clusterState.name ||
-      current.status !== clusterState.status ||
+      refreshed.name !== clusterState.name ||
+      refreshed.status !== clusterState.status ||
       needsClusterConfigRefresh
     ) {
       next[existingIndex] = {
         ...fresh,
         // Keep user-driven lifecycle timestamps when only refreshing config shape.
-        createdAt: current.createdAt,
+        createdAt: refreshed.createdAt,
         provisionedAt:
           clusterState.status === 'provisioning'
             ? null
-            : (current.provisionedAt ?? current.createdAt),
+            : (refreshed.provisionedAt ?? refreshed.createdAt),
         name: clusterState.name,
         status: clusterState.status,
       }

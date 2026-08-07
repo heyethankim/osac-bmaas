@@ -13,6 +13,10 @@ import {
   DescriptionListDescription,
   DescriptionListGroup,
   DescriptionListTerm,
+  Divider,
+  Dropdown,
+  DropdownItem,
+  DropdownList,
   Flex,
   FlexItem,
   Form,
@@ -22,6 +26,7 @@ import {
   FormSelectOption,
   HelperText,
   HelperTextItem,
+  MenuToggle,
   Modal,
   ModalVariant,
   Spinner,
@@ -31,9 +36,23 @@ import {
   WizardHeader,
   WizardStep,
 } from '@patternfly/react-core'
+import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import type { CatalogServiceId } from '../../providerSetup/templateDemo'
+import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
+import {
+  DEFAULT_CREATE_PROJECT_WIZARD_FORM,
+  DEFAULT_PROJECT_IP_SLICE,
+} from '../../tenantAdmin/createProjectWizard'
+import { getWorkspaceOrganization } from '../../tenantAdmin/organizations'
+import {
+  generateTenantProjectId,
+  resolveOrganizationExternalIpPool,
+  TENANT_PROJECTS_TEAMS_DEMO,
+  type TenantProject,
+} from '../../tenantAdmin/projects'
+import { addTenantProject } from '../../tenantAdmin/storage'
 import { resolveCatalogSpecRows } from '../../catalog/catalogSpecs'
 import {
   formatClusterPlatformLabel,
@@ -90,14 +109,27 @@ type TenantUserLaunchInstanceWizardProps = {
   organization: RegisteredOrganization | null
   catalogDraft: ProviderCatalogDraft | null
   preferCatalogDraft?: boolean
-  scopeKind: TenantUserScopeKind
-  scopeLabel: string
-  scopeFieldLabel: 'Organization' | 'Project'
+  tenantSlug: string
+  projects: readonly TenantProject[]
+  /** Prefill from Services project switcher when a specific project is selected. */
+  initialProjectId?: string | null
+  onProjectScopeChange?: (projectId: string) => void
+  onProjectsChange: (projects: TenantProject[]) => void
   existingInstanceNames?: readonly string[]
   onClose: () => void
   onProvisioningStarted: (instance: TenantInstance) => void
   onDismissDuringProvisioning: (instanceId: string, serviceId: CatalogServiceId) => void
   onWizardFinished: (instanceId: string, serviceId: CatalogServiceId) => void
+}
+
+function resolveInitialLaunchProjectId(
+  projects: readonly TenantProject[],
+  initialProjectId?: string | null,
+): string {
+  if (initialProjectId && projects.some((project) => project.id === initialProjectId)) {
+    return initialProjectId
+  }
+  return projects[0]?.id ?? ''
 }
 
 function getBootLogStatus(
@@ -137,9 +169,11 @@ export function TenantUserLaunchInstanceWizard({
   organization,
   catalogDraft,
   preferCatalogDraft = false,
-  scopeKind,
-  scopeLabel,
-  scopeFieldLabel,
+  tenantSlug,
+  projects,
+  initialProjectId = null,
+  onProjectScopeChange,
+  onProjectsChange,
   existingInstanceNames = [],
   onClose,
   onProvisioningStarted,
@@ -162,6 +196,74 @@ export function TenantUserLaunchInstanceWizard({
   const isServiceAwareCatalogItem = isClusterCatalogItem || isVmCatalogItem
   const usesGeneralFirstStep =
     isClusterCatalogItem || isVmCatalogItem || isBareMetalCatalogItem
+  const [selectedProjectId, setSelectedProjectId] = useState(() =>
+    resolveInitialLaunchProjectId(projects, initialProjectId),
+  )
+  const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false)
+  const [isCreatingProject, setIsCreatingProject] = useState(false)
+  const [newProjectName, setNewProjectName] = useState('')
+  const resolvedOrganization = organization ?? getWorkspaceOrganization(tenantSlug)
+  const organizationPool = resolveOrganizationExternalIpPool(resolvedOrganization)
+  const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? null
+  const launchScopeKind: TenantUserScopeKind = selectedProject ? 'project' : 'organization'
+  const launchScopeLabel = selectedProject?.name ?? organization?.name ?? tenantSlug
+  const launchScopeFieldLabel = selectedProject ? 'Project' : 'Organization'
+  const selectedProjectLabel = selectedProject?.name ?? 'Select a project'
+  const projectToggleLabel = isCreatingProject
+    ? TENANT_PROJECTS_TEAMS_DEMO.createProjectLabel
+    : selectedProjectLabel
+  const canCreateProject = isValidKubernetesResourceName(newProjectName)
+  const isProjectSelectionValid =
+    projects.length === 0 ||
+    Boolean(selectedProjectId) ||
+    (isCreatingProject && canCreateProject)
+
+  const selectProject = (projectId: string) => {
+    setIsCreatingProject(false)
+    setNewProjectName('')
+    setSelectedProjectId(projectId)
+    onProjectScopeChange?.(projectId)
+  }
+
+  const startCreateProject = () => {
+    setIsProjectMenuOpen(false)
+    setSelectedProjectId('')
+    setNewProjectName(getNextQuickCreateProjectName(projects))
+    setIsCreatingProject(true)
+  }
+
+  const handleQuickCreateProject = () => {
+    if (!canCreateProject) {
+      return
+    }
+
+    const project: TenantProject = {
+      id: generateTenantProjectId(),
+      name: newProjectName.trim(),
+      description: '',
+      environmentType: DEFAULT_CREATE_PROJECT_WIZARD_FORM.environmentType,
+      instanceQuota: DEFAULT_CREATE_PROJECT_WIZARD_FORM.instanceQuota,
+      externalIpPoolId: organizationPool?.id ?? null,
+      externalIpPoolName: organizationPool?.name ?? null,
+      externalIpPoolCidr: DEFAULT_PROJECT_IP_SLICE,
+      catalogItems: [],
+      members: [],
+      createdAt: new Date().toISOString(),
+    }
+
+    addTenantProject(tenantSlug, project)
+    onProjectsChange([...projects, project])
+    setIsCreatingProject(false)
+    setNewProjectName('')
+    setSelectedProjectId(project.id)
+    onProjectScopeChange?.(project.id)
+  }
+
+  const commitPendingProjectIfNeeded = () => {
+    if (isCreatingProject) {
+      handleQuickCreateProject()
+    }
+  }
   const catalogDetailSpecRows = useMemo(
     () =>
       isServiceAwareCatalogItem
@@ -288,6 +390,10 @@ export function TenantUserLaunchInstanceWizard({
         clusterVersion: catalogClusterVersion || catalogItem.osImage,
       }),
     )
+    setSelectedProjectId(resolveInitialLaunchProjectId(projects, initialProjectId))
+    setIsCreatingProject(false)
+    setNewProjectName('')
+    setIsProjectMenuOpen(false)
     setActiveStepId(usesGeneralFirstStep ? 'general' : 'configure')
     setActiveBootLogIndex(0)
     setIsProvisioningComplete(false)
@@ -333,8 +439,20 @@ export function TenantUserLaunchInstanceWizard({
         clusterVersion: catalogClusterVersion || catalogItem.osImage,
       }),
     )
+    setSelectedProjectId(resolveInitialLaunchProjectId(projects, initialProjectId))
+    setIsCreatingProject(false)
+    setNewProjectName('')
+    setIsProjectMenuOpen(false)
     setActiveStepId(usesGeneralFirstStep ? 'general' : 'configure')
-  }, [isOpen, networkContext, existingInstanceNames, catalogItem.serviceId, usesGeneralFirstStep])
+  }, [
+    isOpen,
+    networkContext,
+    existingInstanceNames,
+    catalogItem.serviceId,
+    usesGeneralFirstStep,
+    projects,
+    initialProjectId,
+  ])
 
   useEffect(() => {
     if (!isOpen || activeStepId !== 'provisioning' || provisioningStartedRef.current) {
@@ -440,8 +558,9 @@ export function TenantUserLaunchInstanceWizard({
             publicIpFamily: null,
           }
         : undefined,
-      projectName: scopeLabel,
-      scopeKind,
+      projectIds: selectedProject ? [selectedProject.id] : [],
+      projectName: launchScopeLabel,
+      scopeKind: launchScopeKind,
       status: 'provisioning',
       createdAt: new Date().toISOString(),
       provisionedAt: null,
@@ -517,6 +636,85 @@ export function TenantUserLaunchInstanceWizard({
     return networkSelections.externalIpPoolId
   }
 
+  const renderProjectField = (fieldId: string) => (
+    <FormGroup label="Project" fieldId={fieldId} isRequired={projects.length > 0 || isCreatingProject}>
+      <div className="tenant-user-launch-wizard__project-control">
+        <Dropdown
+          isOpen={isProjectMenuOpen}
+          onOpenChange={setIsProjectMenuOpen}
+          onSelect={(_event, value) => {
+            if (value == null) {
+              return
+            }
+            selectProject(String(value))
+            setIsProjectMenuOpen(false)
+          }}
+          toggle={(toggleRef) => (
+            <MenuToggle
+              ref={toggleRef}
+              id={fieldId}
+              isExpanded={isProjectMenuOpen}
+              onClick={() => setIsProjectMenuOpen((open) => !open)}
+              className="tenant-user-launch-wizard__project-toggle"
+              aria-label={`Project: ${projectToggleLabel}`}
+            >
+              {projectToggleLabel}
+            </MenuToggle>
+          )}
+        >
+          <DropdownList>
+            {projects.map((project) => (
+              <DropdownItem
+                key={project.id}
+                value={project.id}
+                isSelected={!isCreatingProject && selectedProjectId === project.id}
+              >
+                {project.name}
+              </DropdownItem>
+            ))}
+            {projects.length > 0 ? (
+              <Divider component="li" key="create-project-separator" />
+            ) : null}
+            <DropdownItem
+              icon={<PlusIcon />}
+              isSelected={isCreatingProject}
+              onClick={startCreateProject}
+            >
+              {TENANT_PROJECTS_TEAMS_DEMO.createProjectLabel}
+            </DropdownItem>
+          </DropdownList>
+        </Dropdown>
+      </div>
+      {isCreatingProject ? (
+        <>
+          <div className="tenant-user-launch-wizard__project-name">
+            <KubernetesResourceNameField
+              id={`${fieldId}-name`}
+              value={newProjectName}
+              onChange={setNewProjectName}
+              placeholder="my-project"
+              isRequired
+            />
+          </div>
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem>Add team members later in Projects & teams.</HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        </>
+      ) : null}
+      {!isCreatingProject && projects.length === 0 ? (
+        <FormHelperText>
+          <HelperText>
+            <HelperTextItem>
+              Create a project to launch into, or this instance will use the organization.
+            </HelperTextItem>
+          </HelperText>
+        </FormHelperText>
+      ) : null}
+    </FormGroup>
+  )
+
   const renderGeneralStep = () => {
     const nameFieldId = isBareMetalCatalogItem
       ? 'launch-bm-name'
@@ -537,6 +735,14 @@ export function TenantUserLaunchInstanceWizard({
     return (
       <div className="tenant-user-launch-wizard__step">
         <Form autoComplete="off" className="tenant-user-launch-wizard__form">
+          {renderProjectField(
+            isBareMetalCatalogItem
+              ? 'launch-bm-project'
+              : isVmCatalogItem
+                ? 'launch-vm-project'
+                : 'launch-cluster-project',
+          )}
+
           <FormGroup label="Name" fieldId={nameFieldId} isRequired>
             <KubernetesResourceNameField
               id={nameFieldId}
@@ -1019,6 +1225,8 @@ export function TenantUserLaunchInstanceWizard({
       </Content>
 
       <Form autoComplete="off" className="tenant-user-launch-wizard__form">
+        {renderProjectField('launch-instance-project')}
+
         <FormGroup label="Instance name" fieldId="launch-instance-name" isRequired>
           <KubernetesResourceNameField
             id="launch-instance-name"
@@ -1386,12 +1594,10 @@ export function TenantUserLaunchInstanceWizard({
               </DescriptionListGroup>
             </>
           ) : null}
-          {!isBareMetalCatalogItem ? (
-            <DescriptionListGroup>
-              <DescriptionListTerm>{scopeFieldLabel}</DescriptionListTerm>
-              <DescriptionListDescription>{scopeLabel}</DescriptionListDescription>
-            </DescriptionListGroup>
-          ) : null}
+          <DescriptionListGroup>
+            <DescriptionListTerm>{launchScopeFieldLabel}</DescriptionListTerm>
+            <DescriptionListDescription>{launchScopeLabel}</DescriptionListDescription>
+          </DescriptionListGroup>
         </DescriptionList>
       </div>
     )
@@ -1553,7 +1759,7 @@ export function TenantUserLaunchInstanceWizard({
     ) {
       const isNextDisabled =
         stepId === 'general'
-          ? !isClusterGeneralStepValid(form)
+          ? !isClusterGeneralStepValid(form) || !isProjectSelectionValid
           : stepId === 'configure'
             ? !isClusterConfigureStepValid(form)
             : stepId === 'networking'
@@ -1565,7 +1771,9 @@ export function TenantUserLaunchInstanceWizard({
         nextButtonText:
           stepId === 'review' ? LAUNCH_INSTANCE_WIZARD_DEMO.confirmProvisioningLabel : 'Next',
         backButtonText: 'Back',
-        ...(stepId === 'general' ? { isBackDisabled: true } : {}),
+        ...(stepId === 'general'
+          ? { isBackDisabled: true, onNext: commitPendingProjectIfNeeded }
+          : {}),
         ...(stepId === 'review' ? { isCancelHidden: true } : {}),
       }
     }
@@ -1589,7 +1797,7 @@ export function TenantUserLaunchInstanceWizard({
     ) {
       const isNextDisabled =
         stepId === 'general'
-          ? !isVmGeneralStepValid(form)
+          ? !isVmGeneralStepValid(form) || !isProjectSelectionValid
           : stepId === 'configure'
             ? !isVmConfigureStepValid(form)
             : stepId === 'networking'
@@ -1601,7 +1809,9 @@ export function TenantUserLaunchInstanceWizard({
         nextButtonText:
           stepId === 'review' ? LAUNCH_INSTANCE_WIZARD_DEMO.confirmProvisioningLabel : 'Next',
         backButtonText: 'Back',
-        ...(stepId === 'general' ? { isBackDisabled: true } : {}),
+        ...(stepId === 'general'
+          ? { isBackDisabled: true, onNext: commitPendingProjectIfNeeded }
+          : {}),
         ...(stepId === 'review' ? { isCancelHidden: true } : {}),
       }
     }
@@ -1625,7 +1835,7 @@ export function TenantUserLaunchInstanceWizard({
     ) {
       const isNextDisabled =
         stepId === 'general'
-          ? !isBareMetalGeneralStepValid(form)
+          ? !isBareMetalGeneralStepValid(form) || !isProjectSelectionValid
           : stepId === 'networking'
             ? !isVmNetworkingStepValid(form)
             : false
@@ -1635,7 +1845,9 @@ export function TenantUserLaunchInstanceWizard({
         nextButtonText:
           stepId === 'review' ? LAUNCH_INSTANCE_WIZARD_DEMO.confirmProvisioningLabel : 'Next',
         backButtonText: 'Back',
-        ...(stepId === 'general' ? { isBackDisabled: true } : {}),
+        ...(stepId === 'general'
+          ? { isBackDisabled: true, onNext: commitPendingProjectIfNeeded }
+          : {}),
         ...(stepId === 'review' ? { isCancelHidden: true } : {}),
       }
     }
@@ -1667,8 +1879,11 @@ export function TenantUserLaunchInstanceWizard({
       return {
         isNextDisabled:
           stepId === 'configure'
-            ? !isInstanceNameValid(form.instanceName) || !form.sshPublicKey.trim()
+            ? !isInstanceNameValid(form.instanceName) ||
+              !form.sshPublicKey.trim() ||
+              !isProjectSelectionValid
             : false,
+        ...(stepId === 'configure' ? { onNext: commitPendingProjectIfNeeded } : {}),
         nextButtonText: (
           <span className="tenant-user-launch-wizard__footer-label">
             <span>Continue</span>
@@ -1717,69 +1932,85 @@ export function TenantUserLaunchInstanceWizard({
   }
 
   return (
-    <Modal
-      variant={ModalVariant.medium}
-      width="64rem"
-      maxWidth="64rem"
-      isOpen={isOpen}
-      onEscapePress={handleClose}
-      aria-labelledby="launch-instance-wizard-title"
-      className="tenant-user-launch-wizard__modal"
-    >
-      {isOpen ? (
-        <Wizard
-          key={`launch-instance-wizard-${catalogItem.serviceId}-${includeNetworkingStep ? 'net' : 'no-net'}`}
-          className="tenant-user-launch-wizard"
-          height="40rem"
-          onClose={handleClose}
-          onStepChange={(_event, currentStep) => {
-            const stepId = String(currentStep.id).replace('launch-instance-step-', '')
-            if (
-              stepId === 'general' ||
-              stepId === 'configure' ||
-              stepId === 'networking' ||
-              stepId === 'review' ||
-              stepId === 'provisioning'
-            ) {
-              setActiveStepId(stepId)
-            }
-          }}
-          header={
-            <WizardHeader
-              title={
-                isClusterCatalogItem
-                  ? 'Launch instance for cluster'
-                  : isVmCatalogItem
-                    ? 'Launch instance for virtual machine'
-                    : isBareMetalCatalogItem
-                      ? 'Launch instance for bare metal'
-                      : catalogItem.serviceId === 'models'
-                        ? 'Launch instance for model'
-                        : 'Launch instance'
+    <>
+      <Modal
+        variant={ModalVariant.medium}
+        width="64rem"
+        maxWidth="64rem"
+        isOpen={isOpen}
+        onEscapePress={handleClose}
+        aria-labelledby="launch-instance-wizard-title"
+        className="tenant-user-launch-wizard__modal"
+      >
+        {isOpen ? (
+          <Wizard
+            key={`launch-instance-wizard-${catalogItem.serviceId}-${includeNetworkingStep ? 'net' : 'no-net'}`}
+            className="tenant-user-launch-wizard"
+            height="40rem"
+            onClose={handleClose}
+            onStepChange={(_event, currentStep) => {
+              const stepId = String(currentStep.id).replace('launch-instance-step-', '')
+              if (
+                stepId === 'general' ||
+                stepId === 'configure' ||
+                stepId === 'networking' ||
+                stepId === 'review' ||
+                stepId === 'provisioning'
+              ) {
+                setActiveStepId(stepId)
               }
-              titleId="launch-instance-wizard-title"
-              description={activeStepDescription || undefined}
-              onClose={handleClose}
-              closeButtonAriaLabel="Close launch instance wizard"
-            />
-          }
-        >
-          {wizardSteps.map((step) => (
-            <WizardStep
-              key={step.id}
-              name={step.label}
-              id={`launch-instance-step-${step.id}`}
-              footer={getStepFooter(step.id)}
-            >
-              {renderStepContent(step.id)}
-            </WizardStep>
-          ))}
-        </Wizard>
-      ) : null}
-    </Modal>
+            }}
+            header={
+              <WizardHeader
+                title={
+                  isClusterCatalogItem
+                    ? 'Launch instance for cluster'
+                    : isVmCatalogItem
+                      ? 'Launch instance for virtual machine'
+                      : isBareMetalCatalogItem
+                        ? 'Launch instance for bare metal'
+                        : catalogItem.serviceId === 'models'
+                          ? 'Launch instance for model'
+                          : 'Launch instance'
+                }
+                titleId="launch-instance-wizard-title"
+                description={activeStepDescription || undefined}
+                onClose={handleClose}
+                closeButtonAriaLabel="Close launch instance wizard"
+              />
+            }
+          >
+            {wizardSteps.map((step) => (
+              <WizardStep
+                key={step.id}
+                name={step.label}
+                id={`launch-instance-step-${step.id}`}
+                footer={getStepFooter(step.id)}
+              >
+                {renderStepContent(step.id)}
+              </WizardStep>
+            ))}
+          </Wizard>
+        ) : null}
+      </Modal>
+    </>
   )
 }
 
 function getCatalogOptionLabel(name: string, detail: string): string {
   return `${name} · ${detail}`
+}
+
+function getNextQuickCreateProjectName(projects: readonly TenantProject[]): string {
+  const base = DEFAULT_CREATE_PROJECT_WIZARD_FORM.name
+  const taken = new Set(projects.map((project) => project.name.trim().toLowerCase()))
+  if (!taken.has(base.toLowerCase())) {
+    return base
+  }
+
+  let suffix = 2
+  while (taken.has(`${base}-${suffix}`.toLowerCase())) {
+    suffix += 1
+  }
+  return `${base}-${suffix}`
 }

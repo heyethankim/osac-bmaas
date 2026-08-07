@@ -13,29 +13,32 @@ export type TenantUserLaunchScope = {
 }
 
 /**
- * Resolve launch/ownership scope from real Tenant Admin projects.
- * - No projects → organization-scoped
- * - One or more projects → use the first project (picker comes later)
+ * Resolve launch/ownership scope from the Catalog/Services project switcher.
+ * - All projects (or missing selection) → organization-scoped
+ * - Specific project id → that project
  */
 export function resolveTenantUserLaunchScope(
   tenantSlug: DemoTenantId,
   organization: RegisteredOrganization | null,
+  selectedProjectId?: string | null,
 ): TenantUserLaunchScope {
-  const projects = getTenantProjects(tenantSlug)
   const organizationName = organization?.name ?? DEMO_TENANT_LABEL[tenantSlug]
 
-  if (projects.length === 0) {
-    return {
-      kind: 'organization',
-      label: organizationName,
-      fieldLabel: 'Organization',
+  if (selectedProjectId) {
+    const project = getTenantProjects(tenantSlug).find((entry) => entry.id === selectedProjectId)
+    if (project) {
+      return {
+        kind: 'project',
+        label: project.name,
+        fieldLabel: 'Project',
+      }
     }
   }
 
   return {
-    kind: 'project',
-    label: projects[0].name,
-    fieldLabel: 'Project',
+    kind: 'organization',
+    label: organizationName,
+    fieldLabel: 'Organization',
   }
 }
 

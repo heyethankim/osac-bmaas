@@ -2,6 +2,28 @@ import type { TenantAdminNavId } from './constants'
 import { getTenantAdminLeafNavItems } from './constants'
 import type { TenantCatalogItem } from './catalogItems'
 import type { OrganizationExternalIpPool, TenantProject } from './projects'
+import {
+  DEMO_TENANT_PROJECT_DESCRIPTION,
+  DEMO_TENANT_PROJECT_DESCRIPTION_02,
+  DEMO_TENANT_PROJECT_ENVIRONMENT,
+  DEMO_TENANT_PROJECT_ENVIRONMENT_02,
+  DEMO_TENANT_PROJECT_ID,
+  DEMO_TENANT_PROJECT_ID_02,
+  DEMO_TENANT_PROJECT_NAME,
+  DEMO_TENANT_PROJECT_NAME_02,
+  isTenantProjectEnvironment,
+} from './projects'
+
+export {
+  DEMO_TENANT_PROJECT_DESCRIPTION,
+  DEMO_TENANT_PROJECT_DESCRIPTION_02,
+  DEMO_TENANT_PROJECT_ENVIRONMENT,
+  DEMO_TENANT_PROJECT_ENVIRONMENT_02,
+  DEMO_TENANT_PROJECT_ID,
+  DEMO_TENANT_PROJECT_ID_02,
+  DEMO_TENANT_PROJECT_NAME,
+  DEMO_TENANT_PROJECT_NAME_02,
+}
 
 const TENANT_ONBOARDING_COMPLETE_KEY_PREFIX = 'bmaas-tenant-onboarding-complete-'
 const TENANT_ACTIVE_NAV_KEY_PREFIX = 'bmaas-tenant-active-nav-'
@@ -217,6 +239,9 @@ function normalizeTenantProject(value: TenantProject): TenantProject {
     id: project.id,
     name: project.name,
     description: project.description,
+    environmentType: isTenantProjectEnvironment(project.environmentType)
+      ? project.environmentType
+      : 'development',
     instanceQuota: project.instanceQuota,
     externalIpPoolId: project.externalIpPoolId ?? null,
     externalIpPoolName: project.externalIpPoolName ?? null,
@@ -243,6 +268,214 @@ export function getTenantProjects(slug: string): TenantProject[] {
   } catch {
     return []
   }
+}
+
+const LEGACY_DEMO_TENANT_PROJECT_IDS = ['project_ml-platform', 'project_ml-project'] as const
+const LEGACY_DEMO_TENANT_PROJECT_NAMES = ['ml-platform', 'ml-project'] as const
+
+const DEMO_TENANT_PROJECT_MEMBERS: TenantProject['members'] = [
+  {
+    id: 'member_demo_admin',
+    name: 'Alex Johnson',
+    email: 'alex.johnson@northsummitbank.com',
+    role: 'project-admin',
+  },
+  {
+    id: 'member_demo_dev',
+    name: 'Jordan Lee',
+    email: 'jordan.lee@northsummitbank.com',
+    role: 'developer',
+  },
+  {
+    id: 'member_demo_dev_2',
+    name: 'Sam Rivera',
+    email: 'sam.rivera@northsummitbank.com',
+    role: 'developer',
+  },
+  {
+    id: 'member_demo_dev_3',
+    name: 'Casey Morgan',
+    email: 'casey.morgan@northsummitbank.com',
+    role: 'developer',
+  },
+  {
+    id: 'member_demo_dev_4',
+    name: 'Riley Chen',
+    email: 'riley.chen@northsummitbank.com',
+    role: 'developer',
+  },
+  {
+    id: 'member_demo_viewer',
+    name: 'Taylor Brooks',
+    email: 'taylor.brooks@northsummitbank.com',
+    role: 'viewer',
+  },
+  {
+    id: 'member_demo_viewer_2',
+    name: 'Morgan Ellis',
+    email: 'morgan.ellis@northsummitbank.com',
+    role: 'viewer',
+  },
+  {
+    id: 'member_demo_viewer_3',
+    name: 'Jamie Patel',
+    email: 'jamie.patel@northsummitbank.com',
+    role: 'viewer',
+  },
+]
+
+function createDemoTenantProject(): TenantProject {
+  return {
+    id: DEMO_TENANT_PROJECT_ID,
+    name: DEMO_TENANT_PROJECT_NAME,
+    description: DEMO_TENANT_PROJECT_DESCRIPTION,
+    environmentType: DEMO_TENANT_PROJECT_ENVIRONMENT,
+    instanceQuota: 20,
+    externalIpPoolId: null,
+    externalIpPoolName: null,
+    externalIpPoolCidr: null,
+    catalogItems: [
+      {
+        id: 'cat-bm-gpu-training',
+        displayName: 'bare-metal-gpu-training-server',
+      },
+      {
+        id: 'cat-node-sets-fc430',
+        displayName: 'cluster-node-sets-object',
+      },
+      {
+        id: 'cat-vm-net-attach',
+        displayName: 'vm-configurable-network-attachments',
+      },
+    ],
+    members: DEMO_TENANT_PROJECT_MEMBERS,
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 12).toISOString(),
+  }
+}
+
+function createDemoTenantProject02(): TenantProject {
+  return {
+    id: DEMO_TENANT_PROJECT_ID_02,
+    name: DEMO_TENANT_PROJECT_NAME_02,
+    description: DEMO_TENANT_PROJECT_DESCRIPTION_02,
+    environmentType: DEMO_TENANT_PROJECT_ENVIRONMENT_02,
+    instanceQuota: 12,
+    externalIpPoolId: null,
+    externalIpPoolName: null,
+    externalIpPoolCidr: null,
+    catalogItems: [
+      {
+        id: 'cat-bm-gpu-training',
+        displayName: 'bare-metal-gpu-training-server',
+      },
+      {
+        id: 'cat-vm-net-attach',
+        displayName: 'vm-configurable-network-attachments',
+      },
+    ],
+    members: DEMO_TENANT_PROJECT_MEMBERS.slice(0, 4),
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
+  }
+}
+
+function withDemoProjectDefaults(project: TenantProject): TenantProject {
+  return {
+    ...project,
+    id: DEMO_TENANT_PROJECT_ID,
+    name: DEMO_TENANT_PROJECT_NAME,
+    description: DEMO_TENANT_PROJECT_DESCRIPTION,
+    environmentType: DEMO_TENANT_PROJECT_ENVIRONMENT,
+    members:
+      project.members.length < DEMO_TENANT_PROJECT_MEMBERS.length
+        ? DEMO_TENANT_PROJECT_MEMBERS
+        : project.members,
+  }
+}
+
+function withDemoProject02Defaults(project: TenantProject): TenantProject {
+  return {
+    ...project,
+    id: DEMO_TENANT_PROJECT_ID_02,
+    name: DEMO_TENANT_PROJECT_NAME_02,
+    description: DEMO_TENANT_PROJECT_DESCRIPTION_02,
+    environmentType: DEMO_TENANT_PROJECT_ENVIRONMENT_02,
+    members:
+      project.members.length < 4 ? DEMO_TENANT_PROJECT_MEMBERS.slice(0, 4) : project.members,
+  }
+}
+
+function isLegacyDemoProject(project: TenantProject): boolean {
+  return (
+    LEGACY_DEMO_TENANT_PROJECT_IDS.includes(
+      project.id as (typeof LEGACY_DEMO_TENANT_PROJECT_IDS)[number],
+    ) ||
+    LEGACY_DEMO_TENANT_PROJECT_NAMES.includes(
+      project.name as (typeof LEGACY_DEMO_TENANT_PROJECT_NAMES)[number],
+    )
+  )
+}
+
+export function ensureTenantDemoProjects(slug: string): TenantProject[] {
+  try {
+    const key = getSlugKey(TENANT_PROJECTS_KEY_PREFIX, slug)
+    if (sessionStorage.getItem(key) !== null) {
+      const current = getTenantProjects(slug)
+      const legacyDemo = current.find(isLegacyDemoProject)
+      const hasCurrentDemo = current.some(
+        (project) =>
+          project.id === DEMO_TENANT_PROJECT_ID || project.name === DEMO_TENANT_PROJECT_NAME,
+      )
+      const hasSecondaryDemo = current.some(
+        (project) =>
+          project.id === DEMO_TENANT_PROJECT_ID_02 || project.name === DEMO_TENANT_PROJECT_NAME_02,
+      )
+
+      let updated = current
+      let changed = false
+
+      if (legacyDemo && legacyDemo.name !== DEMO_TENANT_PROJECT_NAME) {
+        updated = updated.map((project) =>
+          isLegacyDemoProject(project) ? withDemoProjectDefaults(project) : project,
+        )
+        changed = true
+      } else if (hasCurrentDemo) {
+        updated = updated.map((project) =>
+          project.id === DEMO_TENANT_PROJECT_ID || project.name === DEMO_TENANT_PROJECT_NAME
+            ? withDemoProjectDefaults(project)
+            : project,
+        )
+        changed = updated.some((project, index) => project !== current[index])
+      } else {
+        updated = [createDemoTenantProject(), ...updated]
+        changed = true
+      }
+
+      if (hasSecondaryDemo) {
+        updated = updated.map((project) =>
+          project.id === DEMO_TENANT_PROJECT_ID_02 || project.name === DEMO_TENANT_PROJECT_NAME_02
+            ? withDemoProject02Defaults(project)
+            : project,
+        )
+        changed = changed || updated.some((project, index) => project !== current[index])
+      } else {
+        updated = [...updated, createDemoTenantProject02()]
+        changed = true
+      }
+
+      if (changed) {
+        setTenantProjects(slug, updated)
+        return updated
+      }
+
+      return current
+    }
+  } catch {
+    /* fall through to seed */
+  }
+
+  const demoProjects = [createDemoTenantProject(), createDemoTenantProject02()]
+  setTenantProjects(slug, demoProjects)
+  return demoProjects
 }
 
 export function setTenantProjects(slug: string, projects: TenantProject[]): void {
@@ -366,6 +599,48 @@ export function setTenantProjectCatalogItems(
       ? {
           ...project,
           catalogItems,
+        }
+      : project,
+  )
+
+  setTenantProjects(slug, updated)
+  return updated
+}
+
+export function addTenantProjectMember(
+  slug: string,
+  projectId: string,
+  member: TenantProject['members'][number],
+): TenantProject[] {
+  const updated = getTenantProjects(slug).map((project) => {
+    if (project.id !== projectId) {
+      return project
+    }
+
+    if (project.members.some((entry) => entry.email.toLowerCase() === member.email.toLowerCase())) {
+      return project
+    }
+
+    return {
+      ...project,
+      members: [...project.members, member],
+    }
+  })
+
+  setTenantProjects(slug, updated)
+  return updated
+}
+
+export function removeTenantProjectMember(
+  slug: string,
+  projectId: string,
+  memberId: string,
+): TenantProject[] {
+  const updated = getTenantProjects(slug).map((project) =>
+    project.id === projectId
+      ? {
+          ...project,
+          members: project.members.filter((member) => member.id !== memberId),
         }
       : project,
   )

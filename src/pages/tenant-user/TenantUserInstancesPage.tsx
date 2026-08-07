@@ -8,6 +8,8 @@ import {
   Content,
   EmptyState,
   EmptyStateBody,
+  Flex,
+  FlexItem,
   Form,
   FormGroup,
   FormSelect,
@@ -52,7 +54,8 @@ import {
   getTenantInstanceActions,
   getTenantInstanceCardSpecRows,
   getTenantInstanceGpuLabel,
-  getTenantInstanceScopeFieldLabel,
+  getTenantInstanceProjectIds,
+  getTenantInstanceProjectLabel,
   getTenantInstanceServiceId,
   getTenantInstanceSpecRows,
   getTenantInstanceStatusLabel,
@@ -61,21 +64,39 @@ import {
   type TenantInstance,
   type TenantInstanceNetworking,
   type TenantInstanceStatus,
+  withInstanceProjectIds,
 } from '../../tenantUser/instances'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
 import { removeTenantUserInstance, updateTenantUserInstance } from '../../tenantUser/storage'
+import type { TenantProject } from '../../tenantAdmin/projects'
+import type { RegisteredOrganization } from '../../providerAdmin/organizations'
+import {
+  filterInstancesByProjectScope,
+  isAllProjectsScope,
+  type ProjectScopeId,
+} from '../../tenantUser/projectScope'
+import { ProjectScopeSwitcher } from '../../components/shared/ProjectScopeSwitcher'
 
 type TenantUserInstancesPageProps = {
   tenantSlug: string
   instances: TenantInstance[]
   onInstancesChange: Dispatch<SetStateAction<TenantInstance[]>>
-  defaultScopeFieldLabel?: 'Organization' | 'Project'
+  projects: readonly TenantProject[]
+  projectScopeId: ProjectScopeId
+  onProjectScopeChange: (scopeId: ProjectScopeId) => void
+  onProjectsChange: (projects: TenantProject[]) => void
+  organization: RegisteredOrganization | null
   /** When set, page is scoped to one service (nav-driven) and hides service filters. */
   lockedServiceId?: CatalogServiceId
   /** Closes the instance detail drawer when left-nav selection changes. */
   activeNavId?: string
   /** Opens the matching catalog item detail page in Catalog. */
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
+  /** Opens the matching project detail page in Projects & teams. */
+  onNavigateToProject?: (project: TenantProject) => void
+  /** Opens this instance's detail page when navigating from another workspace view. */
+  openInstanceId?: string | null
+  onOpenInstanceConsumed?: () => void
 }
 
 function getStatusColor(status: TenantInstance['status']): 'green' | 'blue' | 'orange' | 'red' | 'grey' {
@@ -140,10 +161,17 @@ export function TenantUserInstancesPage({
   tenantSlug,
   instances,
   onInstancesChange,
-  defaultScopeFieldLabel = 'Project',
+  projects,
+  projectScopeId,
+  onProjectScopeChange,
+  onProjectsChange,
+  organization,
   lockedServiceId,
   activeNavId,
   onNavigateToCatalogItem,
+  onNavigateToProject,
+  openInstanceId = null,
+  onOpenInstanceConsumed,
 }: TenantUserInstancesPageProps) {
   const [viewMode, setViewMode] = useState<ViewMode>(() => getInstancesViewMode('grid'))
   const [searchValue, setSearchValue] = useState('')
@@ -167,7 +195,12 @@ export function TenantUserInstancesPage({
   const [isProvisioningNoticeDismissed, setIsProvisioningNoticeDismissed] = useState(false)
   const restartTimersRef = useRef<Map<string, number>>(new Map())
 
-  const hasProvisioningInstances = instances.some((instance) => {
+  const scopedInstances = useMemo(
+    () => filterInstancesByProjectScope(instances, tenantSlug, projectScopeId),
+    [instances, tenantSlug, projectScopeId],
+  )
+
+  const hasProvisioningInstances = scopedInstances.some((instance) => {
     if (instance.status !== 'provisioning') {
       return false
     }
@@ -194,6 +227,19 @@ export function TenantUserInstancesPage({
   }, [activeNavId, lockedServiceId])
 
   useEffect(() => {
+    if (!openInstanceId) {
+      return
+    }
+
+    const match = instances.find((instance) => instance.id === openInstanceId) ?? null
+    if (match) {
+      setSelectedInstanceId(match.id)
+      setIsDetailsDrawerOpen(true)
+    }
+    onOpenInstanceConsumed?.()
+  }, [openInstanceId, instances, onOpenInstanceConsumed])
+
+  useEffect(() => {
     setPowerStateFilter('all')
     setOsFilter('all')
     setGpuFilter('all')
@@ -217,8 +263,8 @@ export function TenantUserInstancesPage({
     hasProvisioningInstances && !isProvisioningNoticeDismissed
 
   const instanceServiceIds = useMemo(
-    () => instances.map((instance) => getTenantInstanceServiceId(instance)),
-    [instances],
+    () => scopedInstances.map((instance) => getTenantInstanceServiceId(instance)),
+    [scopedInstances],
   )
   const initialServiceFilters = lockedServiceId
     ? [lockedServiceId]
@@ -237,22 +283,12 @@ export function TenantUserInstancesPage({
     setSelectedFilters(new Set([lockedServiceId]))
   }, [lockedServiceId])
 
-  const scopeColumnLabel = useMemo(() => {
-    if (instances.length === 0) {
-      return defaultScopeFieldLabel
-    }
-    const labels = new Set(
-      instances.map((instance) => getTenantInstanceScopeFieldLabel(instance)),
-    )
-    return labels.size === 1 ? [...labels][0] : 'Scope'
-  }, [defaultScopeFieldLabel, instances])
-
   const sortedInstances = useMemo(
     () =>
-      [...instances].sort(
+      [...scopedInstances].sort(
         (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
       ),
-    [instances],
+    [scopedInstances],
   )
 
   const serviceCounts = useMemo(
@@ -608,6 +644,42 @@ export function TenantUserInstancesPage({
     )
   }
 
+  const organizationName = organization?.name ?? tenantSlug
+
+  const handleAddInstanceProject = (instanceId: string, projectId: string) => {
+    onInstancesChange((current) => {
+      const target = current.find((instance) => instance.id === instanceId)
+      if (!target) {
+        return current
+      }
+
+      const nextIds = [...new Set([...getTenantInstanceProjectIds(target), projectId])]
+      return updateTenantUserInstance(
+        tenantSlug,
+        instanceId,
+        withInstanceProjectIds(target, nextIds, projects, organizationName),
+        current,
+      )
+    })
+  }
+
+  const handleRemoveInstanceProject = (instanceId: string, projectId: string) => {
+    onInstancesChange((current) => {
+      const target = current.find((instance) => instance.id === instanceId)
+      if (!target) {
+        return current
+      }
+
+      const nextIds = getTenantInstanceProjectIds(target).filter((id) => id !== projectId)
+      return updateTenantUserInstance(
+        tenantSlug,
+        instanceId,
+        withInstanceProjectIds(target, nextIds, projects, organizationName),
+        current,
+      )
+    })
+  }
+
   const closeAttachPublicIp = () => {
     setInstancePendingPublicIp(null)
     setPublicIpFamily('IPv4')
@@ -651,17 +723,26 @@ export function TenantUserInstancesPage({
     ? CATALOG_SERVICE_FILTER_LABELS[lockedServiceId]
     : 'Services'
   const pageLede = lockedServiceId
-    ? `Monitor and manage ${CATALOG_SERVICE_FILTER_LABELS[lockedServiceId].toLowerCase()} instances provisioned in your project.`
-    : 'Monitor and manage instances provisioned in your project.'
+    ? isAllProjectsScope(projectScopeId)
+      ? `Monitor and manage ${CATALOG_SERVICE_FILTER_LABELS[lockedServiceId].toLowerCase()} instances across all projects.`
+      : `Monitor and manage ${CATALOG_SERVICE_FILTER_LABELS[lockedServiceId].toLowerCase()} instances in this project.`
+    : isAllProjectsScope(projectScopeId)
+      ? 'Monitor and manage instances across all projects.'
+      : 'Monitor and manage instances in this project.'
 
   const emptyStateTitle = (() => {
+    if (!isAllProjectsScope(projectScopeId) && scopedInstances.length === 0) {
+      return lockedServiceId
+        ? `No ${CATALOG_SERVICE_FILTER_LABELS[lockedServiceId]} instances in this project`
+        : 'No instances in this project'
+    }
     if (searchValue.trim()) {
       return 'No instances match your search'
     }
     if (lockedServiceId) {
       return `No ${CATALOG_SERVICE_FILTER_LABELS[lockedServiceId]} instances yet`
     }
-    if (instances.length === 0) {
+    if (scopedInstances.length === 0) {
       return 'No instances yet'
     }
     if (selectedFilters.size === 0) {
@@ -679,6 +760,7 @@ export function TenantUserInstancesPage({
       <>
         <TenantUserInstanceDetailsPage
           instance={selectedInstance}
+          projects={projects}
           onBack={closeDetails}
           onRequestTerminate={openTerminateConfirm}
           onRestart={handleRestartInstance}
@@ -689,7 +771,10 @@ export function TenantUserInstancesPage({
             setInstancePendingPublicIp(instance)
           }}
           onUpdateNetworking={handleUpdateNetworking}
+          onAddProject={handleAddInstanceProject}
+          onRemoveProject={handleRemoveInstanceProject}
           onNavigateToCatalogItem={onNavigateToCatalogItem}
+          onNavigateToProject={onNavigateToProject}
           onViewPassword={(instance) => {
             setInstancePendingPassword(instance)
           }}
@@ -804,12 +889,32 @@ export function TenantUserInstancesPage({
   return (
     <>
       <div className="tenant-user-workspace-page tenant-user-instances">
-        <Title headingLevel="h1" size="3xl" className="tenant-user-instances__title">
-          {pageTitle}
-        </Title>
-        <Content component="p" className="tenant-user-instances__lede">
-          {pageLede}
-        </Content>
+        <Flex
+          className="tenant-user-instances__page-header"
+          justifyContent={{ default: 'justifyContentSpaceBetween' }}
+          alignItems={{ default: 'alignItemsFlexStart' }}
+          gap={{ default: 'gapMd' }}
+        >
+          <FlexItem>
+            <div className="page-scope-control">
+              <ProjectScopeSwitcher
+                tenantSlug={tenantSlug}
+                projects={projects}
+                selectedScopeId={projectScopeId}
+                onChange={onProjectScopeChange}
+                organization={organization}
+                onProjectsChange={onProjectsChange}
+                id="tenant-user-instances-project-scope"
+              />
+            </div>
+            <Title headingLevel="h1" size="3xl" className="tenant-user-instances__title">
+              {pageTitle}
+            </Title>
+            <Content component="p" className="tenant-user-instances__lede">
+              {pageLede}
+            </Content>
+          </FlexItem>
+        </Flex>
 
         <div className="catalog-view-toolbar tenant-user-instances__toolbar">
           <div className="catalog-view-toolbar__start">
@@ -992,8 +1097,10 @@ export function TenantUserInstancesPage({
               {emptyStateTitle}
             </Title>
             <EmptyStateBody>
-              {instances.length === 0
-                ? 'Launch an instance from the catalog to start provisioning capacity for your project.'
+              {scopedInstances.length === 0
+                ? isAllProjectsScope(projectScopeId)
+                  ? 'Launch an instance from the catalog to start provisioning capacity.'
+                  : 'Launch an instance from the catalog while this project is selected, or switch to All projects.'
                 : selectedFilters.size === 0
                   ? 'Choose one or more services above to filter your instances.'
                   : searchValue.trim() || hasActiveServiceFilters
@@ -1063,6 +1170,10 @@ export function TenantUserInstancesPage({
 
                     <dl className="tenant-user-instances__card-footer">
                       <div className="tenant-user-instances__card-footer-row">
+                        <dt>Project</dt>
+                        <dd>{getTenantInstanceProjectLabel(instance, projects)}</dd>
+                      </div>
+                      <div className="tenant-user-instances__card-footer-row">
                         <dt>Created</dt>
                         <dd>{formatTenantInstanceCreatedAt(instance.createdAt)}</dd>
                       </div>
@@ -1097,7 +1208,7 @@ export function TenantUserInstancesPage({
                   <Tr>
                     <Th>Name</Th>
                     <Th>Status</Th>
-                    <Th>{scopeColumnLabel}</Th>
+                    <Th>Project</Th>
                     <Th>Profile</Th>
                     <Th>Detail</Th>
                     <Th>Created</Th>
@@ -1125,9 +1236,7 @@ export function TenantUserInstancesPage({
                     <Td dataLabel="Status">
                       <InstanceStatusLabel status={instance.status} />
                     </Td>
-                      <Td dataLabel={getTenantInstanceScopeFieldLabel(instance)}>
-                        {instance.projectName}
-                      </Td>
+                      <Td dataLabel="Project">{getTenantInstanceProjectLabel(instance, projects)}</Td>
                       <Td dataLabel={profileRow?.label ?? 'Profile'}>{profileRow?.value ?? '—'}</Td>
                       <Td dataLabel={detailRow?.label ?? 'Detail'}>{detailRow?.value ?? '—'}</Td>
                       <Td dataLabel="Created">

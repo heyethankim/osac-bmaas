@@ -20,11 +20,17 @@ import {
 import { getWorkspaceOrganization } from '../tenantAdmin/organizations'
 import {
   getTenantActiveNav,
-  getTenantProjects,
+  ensureTenantDemoProjects,
   setTenantActiveNav,
   setTenantOnboardingComplete,
 } from '../tenantAdmin/storage'
 import type { TenantProject } from '../tenantAdmin/projects'
+import {
+  getProjectScopeId,
+  isAllProjectsScope,
+  setProjectScopeId,
+  type ProjectScopeId,
+} from '../tenantUser/projectScope'
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
 import { activateProviderRegisteredOrganizationBySlug, getProviderCatalogDraft } from '../providerSetup/storage'
 import {
@@ -34,6 +40,7 @@ import {
   updateTenantUserInstance,
 } from '../tenantUser/storage'
 import {
+  getTenantInstanceServiceId,
   isStickyDemoProvisioningInstance,
   type TenantInstance,
 } from '../tenantUser/instances'
@@ -129,7 +136,10 @@ export function TenantAdminWorkspacePage() {
   const [activeNavId, setActiveNavId] = useState<TenantAdminNavId>(() =>
     isValidTenant ? readInitialTenantAdminNav(tenant, searchParams) : 'overview',
   )
-  const [projects, setProjects] = useState<TenantProject[]>(() => getTenantProjects(tenant))
+  const [projects, setProjects] = useState<TenantProject[]>(() => ensureTenantDemoProjects(tenant))
+  const [projectScopeId, setProjectScopeIdState] = useState<ProjectScopeId>(() =>
+    getProjectScopeId(tenant),
+  )
   const [instances, setInstances] = useState(() =>
     isValidTenant
       ? getOrEnsureTenantUserInstances(tenant, getWorkspaceOrganization(tenant).name)
@@ -139,6 +149,8 @@ export function TenantAdminWorkspacePage() {
   const [openSubnetId, setOpenSubnetId] = useState<string | null>(null)
   const [openSecurityGroupId, setOpenSecurityGroupId] = useState<string | null>(null)
   const [openCatalogItemKey, setOpenCatalogItemKey] = useState<string | null>(null)
+  const [openInstanceId, setOpenInstanceId] = useState<string | null>(null)
+  const [openProjectId, setOpenProjectId] = useState<string | null>(null)
   const [navContentKey, setNavContentKey] = useState(0)
   const provisioningTimersRef = useRef<Map<string, number>>(new Map())
 
@@ -153,6 +165,8 @@ export function TenantAdminWorkspacePage() {
     const workspaceOrganization = getWorkspaceOrganization(tenant)
     setOrganization(workspaceOrganization)
     setInstances(ensureTenantDemoInstances(tenant, workspaceOrganization.name))
+    setProjects(ensureTenantDemoProjects(tenant))
+    setProjectScopeIdState(getProjectScopeId(tenant))
 
     const requestedNav = normalizeTenantAdminNavParam(searchParams.get('nav'))
     if (requestedNav) {
@@ -172,6 +186,11 @@ export function TenantAdminWorkspacePage() {
   const catalogDraft = getProviderCatalogDraft()
   const displayName = organization.tenantAdminName ?? DEMO_TENANT_DISPLAY_ADMIN.northstar
   const lockedServiceId = getLockedServiceIdFromNav(activeNavId)
+
+  const handleProjectScopeChange = (scopeId: ProjectScopeId) => {
+    setProjectScopeIdState(scopeId)
+    setProjectScopeId(tenant, scopeId)
+  }
 
   const handleNavChange = (navId: string) => {
     const nextNavId = navId as TenantAdminNavId
@@ -257,12 +276,22 @@ export function TenantAdminWorkspacePage() {
             tenantSlug={tenant}
             instances={instances}
             onInstancesChange={setInstances}
-            defaultScopeFieldLabel="Organization"
+            projects={projects}
+            projectScopeId={projectScopeId}
+            onProjectScopeChange={handleProjectScopeChange}
+            onProjectsChange={setProjects}
+            organization={organization}
             lockedServiceId={lockedServiceId ?? 'baremetal'}
             activeNavId={activeNavId}
             onNavigateToCatalogItem={(catalogItemDisplayName) => {
               handleNavChange('catalog')
               syncWorkspaceCatalogItemParam(setSearchParams, catalogItemDisplayName)
+            }}
+            openInstanceId={openInstanceId}
+            onOpenInstanceConsumed={() => setOpenInstanceId(null)}
+            onNavigateToProject={(project) => {
+              setOpenProjectId(project.id)
+              handleNavChange('projects-teams')
             }}
           />
         )
@@ -272,6 +301,9 @@ export function TenantAdminWorkspacePage() {
             organization={organization}
             catalogDraft={catalogDraft}
             projects={projects}
+            initialProjectId={isAllProjectsScope(projectScopeId) ? null : projectScopeId}
+            onProjectScopeChange={handleProjectScopeChange}
+            onProjectsChange={setProjects}
             onNavigateToProjectsTeams={() => handleNavChange('projects-teams')}
             existingInstanceNames={instances.map((instance) => instance.name)}
             openCatalogItemKey={openCatalogItemKey}
@@ -287,7 +319,18 @@ export function TenantAdminWorkspacePage() {
             tenantSlug={tenant}
             organization={organization}
             projects={projects}
+            instances={instances}
             onProjectsChange={setProjects}
+            openProjectId={openProjectId}
+            onOpenProjectConsumed={() => setOpenProjectId(null)}
+            onNavigateToInstance={(instance) => {
+              const project = projects.find((entry) => entry.name === instance.projectName)
+              if (project) {
+                handleProjectScopeChange(project.id)
+              }
+              setOpenInstanceId(instance.id)
+              handleNavChange(getServicesNavId(getTenantInstanceServiceId(instance)))
+            }}
           />
         )
       case 'networking-virtual-networks':

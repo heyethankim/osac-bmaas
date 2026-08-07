@@ -30,10 +30,11 @@ export type TenantUserProjectInvitation = {
 export function getTenantUserProjectInvitation(
   tenantSlug: DemoTenantId,
   organization: RegisteredOrganization | null,
+  selectedProjectId?: string | null,
 ): TenantUserProjectInvitation {
   const organizationPool = organization ? resolveOrganizationExternalIpPool(organization) : null
   const workspaceName = organization?.name ?? DEMO_TENANT_LABEL[tenantSlug]
-  const scope = resolveTenantUserLaunchScope(tenantSlug, organization)
+  const scope = resolveTenantUserLaunchScope(tenantSlug, organization, selectedProjectId)
   const isOrganizationScope = scope.kind === 'organization'
 
   return {

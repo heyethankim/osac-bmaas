@@ -192,6 +192,14 @@ export function ProviderAdminShell({
                 </NavItem>
               ))}
             </NavExpandable>
+            <NavItem
+              itemId="projects-teams"
+              isActive={activeNavId === 'projects-teams'}
+              to="#"
+              preventDefault
+            >
+              Projects & teams
+            </NavItem>
             <NavExpandable
               id="provider-admin-administration-nav"
               title="Administration"

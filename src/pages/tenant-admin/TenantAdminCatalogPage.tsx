@@ -62,6 +62,7 @@ import {
   setTenantNetworkOverrides,
   type TenantNetworkResourceKind,
 } from '../../tenantAdmin/networking'
+import { ensureTenantDemoProjects } from '../../tenantAdmin/storage'
 import type { TenantProject } from '../../tenantAdmin/projects'
 import { getTenantUserCatalogCardFromDraft, TENANT_USER_CATALOG_FALLBACK } from '../../tenantUser/catalog'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
@@ -71,7 +72,10 @@ import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceNa
 type TenantAdminCatalogPageProps = {
   organization: RegisteredOrganization
   catalogDraft: ProviderCatalogDraft | null
-  projects: TenantProject[]
+  projects: readonly TenantProject[]
+  initialProjectId?: string | null
+  onProjectScopeChange?: (projectId: string) => void
+  onProjectsChange: (projects: TenantProject[]) => void
   onNavigateToProjectsTeams: () => void
   existingInstanceNames?: readonly string[]
   /** When set, open this catalog item's detail page (id or display name). */
@@ -289,6 +293,9 @@ export function TenantAdminCatalogPage({
   organization,
   catalogDraft,
   projects,
+  initialProjectId = null,
+  onProjectScopeChange,
+  onProjectsChange,
   onNavigateToProjectsTeams,
   existingInstanceNames = [],
   openCatalogItemKey = null,
@@ -613,6 +620,7 @@ export function TenantAdminCatalogPage({
   const detailsItem = selectedCatalogItem
     ? (catalogItems.find((entry) => entry.id === selectedCatalogItem.id) ?? selectedCatalogItem)
     : null
+  const projectCount = ensureTenantDemoProjects(organization.slug).length
 
   return (
     <>
@@ -620,7 +628,7 @@ export function TenantAdminCatalogPage({
         <TenantCatalogItemDetailsPage
           item={detailsItem}
           organizationSlug={organization.slug}
-          projectCount={projects.length}
+          projectCount={projectCount}
           onBack={closeDetails}
           onNavigateToProjectsTeams={onNavigateToProjectsTeams}
           onChangeLockForUsers={handleChangeLockForUsers}
@@ -966,9 +974,11 @@ export function TenantAdminCatalogPage({
           organization={organization}
           catalogDraft={launchCatalogDraft}
           preferCatalogDraft
-          scopeKind="organization"
-          scopeLabel={organization.name}
-          scopeFieldLabel="Organization"
+          tenantSlug={organization.slug}
+          projects={projects}
+          initialProjectId={initialProjectId}
+          onProjectScopeChange={onProjectScopeChange}
+          onProjectsChange={onProjectsChange}
           existingInstanceNames={existingInstanceNames}
           onClose={() => setIsWizardOpen(false)}
           onProvisioningStarted={(instance) => {

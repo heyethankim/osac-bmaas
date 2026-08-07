@@ -11,8 +11,8 @@ import { getProviderRegisteredOrganizations, activateProviderRegisteredOrganizat
 import { getProviderCatalogDraft, getProviderCatalogItems } from '../providerSetup/storage'
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
 import { getRegisteredOrganizationBySlug } from '../tenantAdmin/organizations'
-import { getTenantUserProjectInvitation } from '../tenantUser/invitation'
 import {
+  getTenantInstanceServiceId,
   isStickyDemoProvisioningInstance,
   type TenantInstance,
 } from '../tenantUser/instances'
@@ -35,6 +35,15 @@ import { ProviderAdminVirtualNetworksPage } from './infrastructure/ProviderAdmin
 import { TenantUserActivityLogPage } from './tenant-user/TenantUserActivityLogPage'
 import { TenantUserCatalogPage } from './tenant-user/TenantUserCatalogPage'
 import { TenantUserInstancesPage } from './tenant-user/TenantUserInstancesPage'
+import { TenantAdminProjectsTeamsPage } from './tenant-admin/TenantAdminProjectsTeamsPage'
+import { ensureTenantDemoProjects } from '../tenantAdmin/storage'
+import type { TenantProject } from '../tenantAdmin/projects'
+import {
+  getProjectScopeId,
+  isAllProjectsScope,
+  setProjectScopeId,
+  type ProjectScopeId,
+} from '../tenantUser/projectScope'
 
 function isTenantUserNavId(value: string | null): value is TenantUserNavId {
   return (
@@ -43,6 +52,7 @@ function isTenantUserNavId(value: string | null): value is TenantUserNavId {
     value === 'services-clusters' ||
     value === 'services-models' ||
     value === 'services-virtual-machines' ||
+    value === 'projects-teams' ||
     value === 'networking-virtual-networks' ||
     value === 'networking-subnets' ||
     value === 'networking-security-groups' ||
@@ -128,10 +138,18 @@ export function TenantUserWorkspacePage() {
   const [instances, setInstances] = useState<TenantInstance[]>(() =>
     isValidTenant ? ensureTenantDemoInstances(tenantSlug) : [],
   )
+  const [projects, setProjects] = useState<TenantProject[]>(() =>
+    isValidTenant ? ensureTenantDemoProjects(tenantSlug) : [],
+  )
+  const [projectScopeId, setProjectScopeIdState] = useState<ProjectScopeId>(() =>
+    isValidTenant ? getProjectScopeId(tenantSlug) : 'all',
+  )
   const [openVirtualNetworkId, setOpenVirtualNetworkId] = useState<string | null>(null)
   const [openSubnetId, setOpenSubnetId] = useState<string | null>(null)
   const [openSecurityGroupId, setOpenSecurityGroupId] = useState<string | null>(null)
   const [openCatalogItemKey, setOpenCatalogItemKey] = useState<string | null>(null)
+  const [openInstanceId, setOpenInstanceId] = useState<string | null>(null)
+  const [openProjectId, setOpenProjectId] = useState<string | null>(null)
   const [navContentKey, setNavContentKey] = useState(0)
   const provisioningTimersRef = useRef<Map<string, number>>(new Map())
 
@@ -211,6 +229,8 @@ export function TenantUserWorkspacePage() {
     setTenantUserOnboardingComplete(tenantSlug)
     activateProviderRegisteredOrganizationBySlug(tenantSlug)
     setInstances(ensureTenantDemoInstances(tenantSlug))
+    setProjects(ensureTenantDemoProjects(tenantSlug))
+    setProjectScopeIdState(getProjectScopeId(tenantSlug))
 
     const requestedNav = normalizeTenantUserNavParam(searchParams.get('nav'))
     if (requestedNav) {
@@ -222,6 +242,14 @@ export function TenantUserWorkspacePage() {
 
     syncWorkspaceNavParam(setSearchParams, getTenantUserActiveNav(tenantSlug), { replace: true })
   }, [isValidTenant, searchParams, setSearchParams, tenantSlug])
+
+  const handleProjectScopeChange = useCallback(
+    (scopeId: ProjectScopeId) => {
+      setProjectScopeIdState(scopeId)
+      setProjectScopeId(tenantSlug, scopeId)
+    },
+    [tenantSlug],
+  )
 
   const handleNavChange = useCallback(
     (navId: string) => {
@@ -337,7 +365,6 @@ export function TenantUserWorkspacePage() {
         ) ?? defaultCatalogDraft)
       : defaultCatalogDraft
   const catalogDraft = focusedCatalogDraft
-  const invitation = getTenantUserProjectInvitation(tenantSlug, organization)
   const displayName = DEMO_TENANT_DISPLAY_USER[tenantSlug]
   const lockedServiceId = getLockedServiceIdFromNav(activeNavId)
 
@@ -352,12 +379,42 @@ export function TenantUserWorkspacePage() {
             tenantSlug={tenantSlug}
             instances={instances}
             onInstancesChange={setInstances}
-            defaultScopeFieldLabel={invitation.scopeFieldLabel}
+            projects={projects}
+            projectScopeId={projectScopeId}
+            onProjectScopeChange={handleProjectScopeChange}
+            onProjectsChange={setProjects}
+            organization={organization}
             lockedServiceId={lockedServiceId ?? 'baremetal'}
             activeNavId={activeNavId}
             onNavigateToCatalogItem={handleNavigateToCatalogItem}
+            openInstanceId={openInstanceId}
+            onOpenInstanceConsumed={() => setOpenInstanceId(null)}
+            onNavigateToProject={(project) => {
+              setOpenProjectId(project.id)
+              handleNavChange('projects-teams')
+            }}
           />
         )
+      case 'projects-teams':
+        return organization ? (
+          <TenantAdminProjectsTeamsPage
+            tenantSlug={tenantSlug}
+            organization={organization}
+            projects={projects}
+            instances={instances}
+            onProjectsChange={setProjects}
+            openProjectId={openProjectId}
+            onOpenProjectConsumed={() => setOpenProjectId(null)}
+            onNavigateToInstance={(instance) => {
+              const project = projects.find((entry) => entry.name === instance.projectName)
+              if (project) {
+                handleProjectScopeChange(project.id)
+              }
+              setOpenInstanceId(instance.id)
+              handleNavChange(getServicesNavId(getTenantInstanceServiceId(instance)))
+            }}
+          />
+        ) : null
       case 'networking-virtual-networks':
         return (
           <ProviderAdminVirtualNetworksPage
@@ -405,9 +462,11 @@ export function TenantUserWorkspacePage() {
           <TenantUserCatalogPage
             organization={organization}
             catalogDraft={catalogDraft}
-            scopeKind={invitation.scopeKind}
-            scopeLabel={invitation.scopeLabel}
-            scopeFieldLabel={invitation.scopeFieldLabel}
+            tenantSlug={tenantSlug}
+            projects={projects}
+            initialProjectId={isAllProjectsScope(projectScopeId) ? null : projectScopeId}
+            onProjectScopeChange={handleProjectScopeChange}
+            onProjectsChange={setProjects}
             preferCatalogDraft={Boolean(previewSession?.catalogItemId)}
             autoOpenLaunchWizard={Boolean(previewSession?.autoLaunch && previewSession.catalogItemId)}
             openCatalogItemKey={openCatalogItemKey}
