@@ -311,7 +311,15 @@
 }
 
 .catalog-networking-locks__alert .pf-v6-c-alert__description {
+  font-size: var(--pf-t--global--font--size--body--default);
   font-weight: var(--pf-t--global--font--weight--body--default);
+}
+
+.catalog-networking-locks__alert
+  .provider-admin-catalog-items__inline-link.pf-v6-c-button {
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
 }
 
 .catalog-networking-locks__form {

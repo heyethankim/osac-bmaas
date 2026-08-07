@@ -2729,7 +2729,9 @@
 }
 
 .provider-admin-catalog-item-details__dl .pf-v6-c-description-list__description code {
-  font-size: var(--pf-t--global--font--size--body--sm);
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
 }
 
 .provider-admin-catalog-item-details__dl .pf-v6-c-description-list__group:last-child {
@@ -3073,6 +3075,26 @@
 }
 
 .entity-details-page__dl .pf-v6-c-description-list__description code {
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.entity-details-page__dl
+  .pf-v6-c-description-list__description
+  .provider-admin-catalog-items__inline-link.pf-v6-c-button,
+.provider-admin-catalog-item-details__dl
+  .pf-v6-c-description-list__description
+  .provider-admin-catalog-items__inline-link.pf-v6-c-button {
+  font-size: var(--pf-t--global--font--size--body--default);
+  font-weight: var(--pf-t--global--font--weight--body--default);
+  line-height: inherit;
+}
+
+.entity-details-page__dl
+  .pf-v6-c-description-list__description
+  code.tenant-user-instances__ssh-key {
+  font-family: var(--pf-t--global--font--family--monospace);
   font-size: var(--pf-t--global--font--size--body--sm);
 }
 
