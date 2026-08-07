@@ -11,7 +11,7 @@ import {
 } from '@patternfly/react-core'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
 import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
-import { BmaasTemplateDetailsDrawer } from '../../components/provider-admin/BmaasTemplateDetailsDrawer'
+import { BmaasTemplateDetailsPage } from '../../components/provider-admin/BmaasTemplateDetailsPage'
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
 import {
   getBmaasTemplateStatus,
@@ -191,7 +191,7 @@ export function ProviderAdminBmaasTemplatesPage({
         )
       : null,
   )
-  const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(() => selectedTemplate !== null)
+  const [isDetailsPageOpen, setIsDetailsPageOpen] = useState(() => selectedTemplate !== null)
 
   const catalogItems = getProviderCatalogItems()
   const availableTemplates = useMemo(
@@ -223,7 +223,7 @@ export function ProviderAdminBmaasTemplatesPage({
     setActiveTab('baremetal')
     if (match) {
       setSelectedTemplate(match)
-      setIsDetailsDrawerOpen(true)
+      setIsDetailsPageOpen(true)
     }
     onOpenTemplateConsumed?.()
   }, [openTemplateLookup, availableTemplates, onOpenTemplateConsumed])
@@ -254,7 +254,7 @@ export function ProviderAdminBmaasTemplatesPage({
   }
 
   const handleOpenEditDesigner = (template: SavedMasterTemplate) => {
-    setIsDetailsDrawerOpen(false)
+    setIsDetailsPageOpen(false)
     setEditingTemplate(template)
     setIsDesignerOpen(true)
   }
@@ -266,31 +266,27 @@ export function ProviderAdminBmaasTemplatesPage({
 
   const openDetails = (template: SavedMasterTemplate) => {
     setSelectedTemplate(template)
-    setIsDetailsDrawerOpen(true)
+    setIsDetailsPageOpen(true)
   }
 
   const closeDetails = () => {
-    setIsDetailsDrawerOpen(false)
+    setIsDetailsPageOpen(false)
   }
 
   return (
-    <BmaasTemplateDetailsDrawer
-      isExpanded={isDetailsDrawerOpen && activeTab === 'baremetal'}
-      template={selectedTemplate}
-      onClose={closeDetails}
-      isPublishing={isPublishing}
-      onEdit={
-        selectedTemplate ? () => handleOpenEditDesigner(selectedTemplate) : undefined
-      }
-      onPublish={
-        selectedTemplate
-          ? () => {
-              closeDetails()
-              handleOpenPublishWizard(selectedTemplate.templateRefId)
-            }
-          : undefined
-      }
-    >
+    <>
+      {isDetailsPageOpen && selectedTemplate ? (
+        <BmaasTemplateDetailsPage
+          template={selectedTemplate}
+          onBack={closeDetails}
+          isPublishing={isPublishing}
+          onEdit={() => handleOpenEditDesigner(selectedTemplate)}
+          onPublish={() => {
+            closeDetails()
+            handleOpenPublishWizard(selectedTemplate.templateRefId)
+          }}
+        />
+      ) : (
       <div className="provider-admin-workspace-page provider-admin-profiles">
         <ProviderAdminWorkspacePageHeader
           kicker="Infrastructure"
@@ -468,42 +464,43 @@ export function ProviderAdminBmaasTemplatesPage({
             resultNoun="VM profile"
           />
         ) : null}
-
-        <ProviderSetupBlueprintDesigner
-          isOpen={isDesignerOpen}
-          initialForm={designerInitialForm}
-          existingTemplateRefId={editingTemplate?.templateRefId}
-          title={editingTemplate ? 'Edit template' : 'Create template for catalog'}
-          onClose={() => {
-            setIsDesignerOpen(false)
-            setEditingTemplate(null)
-          }}
-          onTemplateSaved={handleTemplateSaved}
-        />
-
-        <ProviderSetupPublishCatalogWizard
-          isOpen={isPublishWizardOpen}
-          templates={
-            publishTemplateRefId
-              ? availableTemplates.filter(
-                  (template) => template.templateRefId === publishTemplateRefId,
-                )
-              : availableTemplates.slice(0, 1)
-          }
-          organizations={getProviderRegisteredOrganizations()}
-          defaultTemplateRefId={publishTemplateRefId ?? availableTemplates[0]?.templateRefId}
-          onClose={() => {
-            setIsPublishWizardOpen(false)
-            setPublishTemplateRefId(null)
-          }}
-          onCreateCatalogItem={(payload) => {
-            setIsPublishWizardOpen(false)
-            setPublishTemplateRefId(null)
-            onCreateCatalogItem(payload)
-          }}
-          isPublishing={isPublishing}
-        />
       </div>
-    </BmaasTemplateDetailsDrawer>
+      )}
+
+      <ProviderSetupBlueprintDesigner
+        isOpen={isDesignerOpen}
+        initialForm={designerInitialForm}
+        existingTemplateRefId={editingTemplate?.templateRefId}
+        title={editingTemplate ? 'Edit template' : 'Create template for catalog'}
+        onClose={() => {
+          setIsDesignerOpen(false)
+          setEditingTemplate(null)
+        }}
+        onTemplateSaved={handleTemplateSaved}
+      />
+
+      <ProviderSetupPublishCatalogWizard
+        isOpen={isPublishWizardOpen}
+        templates={
+          publishTemplateRefId
+            ? availableTemplates.filter(
+                (template) => template.templateRefId === publishTemplateRefId,
+              )
+            : availableTemplates.slice(0, 1)
+        }
+        organizations={getProviderRegisteredOrganizations()}
+        defaultTemplateRefId={publishTemplateRefId ?? availableTemplates[0]?.templateRefId}
+        onClose={() => {
+          setIsPublishWizardOpen(false)
+          setPublishTemplateRefId(null)
+        }}
+        onCreateCatalogItem={(payload) => {
+          setIsPublishWizardOpen(false)
+          setPublishTemplateRefId(null)
+          onCreateCatalogItem(payload)
+        }}
+        isPublishing={isPublishing}
+      />
+    </>
   )
 }

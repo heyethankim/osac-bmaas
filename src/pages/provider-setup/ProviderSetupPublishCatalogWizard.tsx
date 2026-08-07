@@ -1071,15 +1071,13 @@ export function ProviderSetupPublishCatalogWizard({
       case 'networking':
         return (
           <div className="provider-setup-template__publish-networking-step">
-            <Content component="p" className="provider-setup-template__publish-step-lede">
-              Locked fields cannot be changed by tenants.
-            </Content>
             <CatalogNetworkingLocksSection
               idPrefix="publish-catalog-networking"
               title=""
               showSavedFeedback={false}
               policy={networkPolicy}
-              lede=""
+              lede="Locked fields cannot be changed by tenants."
+              ledeDescription="Create and edit network objects in Networking."
               virtualNetworkOptions={virtualNetworkOptions}
               subnetOptions={subnetOptions}
               securityGroupOptions={securityGroupOptions}

@@ -31,7 +31,7 @@ import {
 } from '../../components/catalog/CatalogServiceFilterToggle'
 import { ViewModeToggle } from '../../components/catalog/CatalogViewToggle'
 import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
-import { TenantUserInstanceDetailsDrawer } from '../../components/tenant-user/TenantUserInstanceDetailsDrawer'
+import { TenantUserInstanceDetailsPage } from '../../components/tenant-user/TenantUserInstanceDetailsPage'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
 import {
@@ -671,22 +671,131 @@ export function TenantUserInstancesPage({
     return 'No instances for the selected services'
   })()
 
+  if (isDetailsDrawerOpen && selectedInstance) {
+    return (
+      <>
+        <TenantUserInstanceDetailsPage
+          instance={selectedInstance}
+          onBack={closeDetails}
+          onRequestTerminate={openTerminateConfirm}
+          onRestart={handleRestartInstance}
+          onStart={handleStartInstance}
+          onStop={handleStopInstance}
+          onAttachPublicIp={(instance) => {
+            setPublicIpFamily('IPv4')
+            setInstancePendingPublicIp(instance)
+          }}
+          onUpdateNetworking={handleUpdateNetworking}
+        />
+
+        <Modal
+          variant={ModalVariant.small}
+          isOpen={instancePendingTerminate !== null}
+          onClose={closeTerminateConfirm}
+          aria-labelledby="terminate-instance-title"
+          aria-describedby="terminate-instance-description"
+        >
+          <ModalHeader
+            title={
+              instancePendingTerminate &&
+              getTenantInstanceServiceId(instancePendingTerminate) === 'cluster'
+                ? 'Delete cluster?'
+                : instancePendingTerminate &&
+                    getTenantInstanceServiceId(instancePendingTerminate) === 'virtual-machine'
+                  ? 'Delete virtual machine?'
+                  : 'Delete instance?'
+            }
+            titleIconVariant="warning"
+            labelId="terminate-instance-title"
+          />
+          <ModalBody>
+            <Content component="p" id="terminate-instance-description">
+              {instancePendingTerminate ? (
+                <>
+                  <strong>{formatTenantInstanceName(instancePendingTerminate.name)}</strong> will be
+                  permanently removed. This cannot be undone.
+                </>
+              ) : (
+                'This instance will be permanently removed. This cannot be undone.'
+              )}
+            </Content>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="danger" onClick={handleConfirmTerminate}>
+              Delete
+            </Button>
+            <Button variant="link" onClick={closeTerminateConfirm}>
+              Cancel
+            </Button>
+          </ModalFooter>
+        </Modal>
+
+        <Modal
+          variant={ModalVariant.small}
+          isOpen={instancePendingPublicIp !== null}
+          onClose={closeAttachPublicIp}
+          aria-labelledby="attach-public-ip-title"
+        >
+          <ModalHeader title="Attach public IP" labelId="attach-public-ip-title" />
+          <ModalBody>
+            <Form>
+              <FormGroup label="IP family" fieldId="attach-public-ip-family" isRequired>
+                <Radio
+                  id="attach-public-ip-ipv4"
+                  name="attach-public-ip-family"
+                  label="IPv4"
+                  isChecked={publicIpFamily === 'IPv4'}
+                  onChange={() => setPublicIpFamily('IPv4')}
+                />
+                <Radio
+                  id="attach-public-ip-ipv6"
+                  name="attach-public-ip-family"
+                  label="IPv6"
+                  isChecked={publicIpFamily === 'IPv6'}
+                  onChange={() => setPublicIpFamily('IPv6')}
+                />
+              </FormGroup>
+            </Form>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="link" onClick={closeAttachPublicIp}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={handleConfirmAttachPublicIp}>
+              Attach
+            </Button>
+          </ModalFooter>
+        </Modal>
+
+        <Modal
+          variant={ModalVariant.small}
+          isOpen={instancePendingPassword !== null}
+          onClose={() => setInstancePendingPassword(null)}
+          aria-labelledby="cluster-password-modal-title"
+        >
+          <ModalHeader title="Cluster password" labelId="cluster-password-modal-title" />
+          <ModalBody>
+            <Content component="p">
+              Use this kubeadmin password with the OpenShift web console.
+            </Content>
+            {instancePendingPassword ? (
+              <code className="tenant-user-instances__cluster-password">
+                {getClusterDemoPassword(instancePendingPassword)}
+              </code>
+            ) : null}
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="primary" onClick={() => setInstancePendingPassword(null)}>
+              Close
+            </Button>
+          </ModalFooter>
+        </Modal>
+      </>
+    )
+  }
+
   return (
     <>
-    <TenantUserInstanceDetailsDrawer
-      isExpanded={isDetailsDrawerOpen && selectedInstance !== null}
-      onClose={closeDetails}
-      instance={isDetailsDrawerOpen ? selectedInstance : null}
-      onRequestTerminate={openTerminateConfirm}
-      onRestart={handleRestartInstance}
-      onStart={handleStartInstance}
-      onStop={handleStopInstance}
-      onAttachPublicIp={(instance) => {
-        setPublicIpFamily('IPv4')
-        setInstancePendingPublicIp(instance)
-      }}
-      onUpdateNetworking={handleUpdateNetworking}
-    >
       <div className="tenant-user-workspace-page tenant-user-instances">
         <Title headingLevel="h1" size="3xl" className="tenant-user-instances__title">
           {pageTitle}
@@ -1028,7 +1137,6 @@ export function TenantUserInstancesPage({
             </div>
           )}
       </div>
-    </TenantUserInstanceDetailsDrawer>
 
       <Modal
         variant={ModalVariant.small}

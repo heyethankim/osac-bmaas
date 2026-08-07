@@ -265,7 +265,7 @@
 .catalog-networking-locks__header {
   display: flex;
   flex-direction: column;
-  gap: var(--pf-t--global--spacer--xs);
+  gap: var(--pf-t--global--spacer--md);
 }
 
 .catalog-networking-locks__title-row {
@@ -277,12 +277,8 @@
   min-height: 1.5rem;
 }
 
-.catalog-networking-locks__title {
+.catalog-networking-locks__title.pf-v6-c-title {
   margin: 0;
-  font-size: var(--pf-t--global--font--size--body--lg);
-  font-weight: var(--pf-t--global--font--weight--body--bold);
-  color: var(--pf-t--global--text--color--regular);
-  line-height: var(--pf-t--global--font--line-height--body);
 }
 
 .catalog-networking-locks__status {
@@ -307,10 +303,12 @@
   }
 }
 
-.catalog-networking-locks__lede.pf-v6-c-content--p {
-  margin: 0;
-  color: var(--pf-t--global--text--color--subtle);
-  font-size: var(--pf-t--global--font--size--body--sm);
+.catalog-networking-locks__alert.pf-v6-c-alert {
+  width: 100%;
+}
+
+.catalog-networking-locks__alert .pf-v6-c-alert__description {
+  font-weight: var(--pf-t--global--font--weight--body--default);
 }
 
 .catalog-networking-locks__form {

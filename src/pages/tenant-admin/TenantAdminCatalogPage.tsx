@@ -32,7 +32,7 @@ import {
 } from '../../components/catalog/CatalogServiceFilterToggle'
 import { CatalogViewToggle } from '../../components/catalog/CatalogViewToggle'
 import { CatalogPublishScopeIcon } from '../../components/provider-admin/CatalogPublishScopeIcon'
-import { TenantCatalogItemDetailsDrawer } from '../../components/tenant-admin/TenantCatalogItemDetailsDrawer'
+import { TenantCatalogItemDetailsPage } from '../../components/tenant-admin/TenantCatalogItemDetailsPage'
 import { TenantUserLaunchInstanceWizard } from '../../components/tenant-user/TenantUserLaunchInstanceWizard'
 import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
 import { KubernetesResourceNameField } from '../../components/shared/KubernetesResourceNameHelper'
@@ -564,21 +564,23 @@ export function TenantAdminCatalogPage({
       () => openDelete(item),
     )
 
+  const detailsItem = selectedCatalogItem
+    ? (catalogItems.find((entry) => entry.id === selectedCatalogItem.id) ?? selectedCatalogItem)
+    : null
+
   return (
-    <TenantCatalogItemDetailsDrawer
-      isExpanded={isDetailsDrawerOpen && selectedCatalogItem !== null}
-      onClose={closeDetails}
-      item={isDetailsDrawerOpen ? selectedCatalogItem : null}
-      organizationSlug={organization.slug}
-      projectCount={projects.length}
-      onNavigateToProjectsTeams={onNavigateToProjectsTeams}
-      onChangeLockForUsers={handleChangeLockForUsers}
-      onLaunch={() => {
-        if (selectedCatalogItem) {
-          openLaunchWizard(selectedCatalogItem)
-        }
-      }}
-    >
+    <>
+      {isDetailsDrawerOpen && detailsItem ? (
+        <TenantCatalogItemDetailsPage
+          item={detailsItem}
+          organizationSlug={organization.slug}
+          projectCount={projects.length}
+          onBack={closeDetails}
+          onNavigateToProjectsTeams={onNavigateToProjectsTeams}
+          onChangeLockForUsers={handleChangeLockForUsers}
+          onLaunch={() => openLaunchWizard(detailsItem)}
+        />
+      ) : (
       <div className="tenant-admin-workspace-page tenant-admin-catalog-manager">
         <Flex
           className="tenant-admin-catalog-manager__page-header"
@@ -809,6 +811,7 @@ export function TenantAdminCatalogPage({
           </div>
         )}
       </div>
+      )}
 
       <Modal
         variant={ModalVariant.small}
@@ -935,6 +938,6 @@ export function TenantAdminCatalogPage({
           }}
         />
       ) : null}
-    </TenantCatalogItemDetailsDrawer>
+    </>
   )
 }

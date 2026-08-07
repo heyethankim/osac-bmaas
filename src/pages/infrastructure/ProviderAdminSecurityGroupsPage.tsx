@@ -13,7 +13,7 @@ import {
 } from '@patternfly/react-core'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table'
 import { CreateSecurityGroupModal } from '../../components/provider-admin/CreateSecurityGroupModal'
-import { SecurityGroupDetailsDrawer } from '../../components/provider-admin/SecurityGroupDetailsDrawer'
+import { SecurityGroupDetailsPage } from '../../components/provider-admin/SecurityGroupDetailsPage'
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
 import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
 import type {
@@ -110,196 +110,199 @@ export function ProviderAdminSecurityGroupsPage({
     ? getVirtualNetwork(selectedGroup.virtualNetworkId)
     : undefined
 
+  if (isDetailsOpen && selectedGroup) {
+    return (
+      <SecurityGroupDetailsPage
+        group={selectedGroup}
+        virtualNetworkName={selectedVirtualNetwork?.name ?? selectedGroup.virtualNetworkId}
+        virtualNetworkCidr={selectedVirtualNetwork?.cidr ?? ''}
+        onBack={closeDetails}
+        onEdit={() => undefined}
+        onDelete={() => undefined}
+        onNavigateToVirtualNetwork={
+          onNavigateToVirtualNetwork
+            ? () => onNavigateToVirtualNetwork(selectedGroup.virtualNetworkId)
+            : undefined
+        }
+      />
+    )
+  }
+
   return (
-    <SecurityGroupDetailsDrawer
-      isExpanded={isDetailsOpen}
-      group={selectedGroup}
-      virtualNetworkName={selectedVirtualNetwork?.name ?? selectedGroup?.virtualNetworkId ?? ''}
-      virtualNetworkCidr={selectedVirtualNetwork?.cidr ?? ''}
-      onClose={closeDetails}
-      onEdit={() => undefined}
-      onDelete={() => undefined}
-      onNavigateToVirtualNetwork={
-        selectedGroup && onNavigateToVirtualNetwork
-          ? () => onNavigateToVirtualNetwork(selectedGroup.virtualNetworkId)
-          : undefined
-      }
-    >
-      <div className="provider-admin-workspace-page provider-admin-network-inventory">
-        <ProviderAdminWorkspacePageHeader
-          kicker="Networking"
-          title="Security groups"
-          lede="Manage security groups that catalog offerings can lock or expose to tenant admins."
-          action={
-            <Button
-              variant="primary"
-              icon={<PlusIcon />}
-              className="provider-admin-workspace-page__action"
-              onClick={openCreateModal}
-            >
-              Create security group
-            </Button>
-          }
-        />
+    <div className="provider-admin-workspace-page provider-admin-network-inventory">
+      <ProviderAdminWorkspacePageHeader
+        kicker="Networking"
+        title="Security groups"
+        lede="Manage security groups that catalog offerings can lock or expose to tenant admins."
+        action={
+          <Button
+            variant="primary"
+            icon={<PlusIcon />}
+            className="provider-admin-workspace-page__action"
+            onClick={openCreateModal}
+          >
+            Create security group
+          </Button>
+        }
+      />
 
-        <div className="catalog-view-toolbar">
-          <div className="catalog-view-toolbar__start">
-            <FormSelect
-              className="catalog-status-filter"
-              id="security-groups-status-filter"
-              value={selectedStatus}
-              onChange={(_event, value) =>
-                setSelectedStatus(value as 'all' | NetworkInventoryStatus)
-              }
-              aria-label="Filter security groups by status"
-            >
-              <FormSelectOption value="all" label="All statuses" />
-              {NETWORK_INVENTORY_STATUSES.map((status) => (
-                <FormSelectOption key={status} value={status} label={status} />
-              ))}
-            </FormSelect>
-            <SearchInput
-              className="catalog-search"
-              placeholder="Search security groups"
-              value={searchValue}
-              onChange={(_event, value) => setSearchValue(value)}
-              onClear={() => setSearchValue('')}
-              aria-label="Search security groups"
-            />
-          </div>
+      <div className="catalog-view-toolbar">
+        <div className="catalog-view-toolbar__start">
+          <FormSelect
+            className="catalog-status-filter"
+            id="security-groups-status-filter"
+            value={selectedStatus}
+            onChange={(_event, value) =>
+              setSelectedStatus(value as 'all' | NetworkInventoryStatus)
+            }
+            aria-label="Filter security groups by status"
+          >
+            <FormSelectOption value="all" label="All statuses" />
+            {NETWORK_INVENTORY_STATUSES.map((status) => (
+              <FormSelectOption key={status} value={status} label={status} />
+            ))}
+          </FormSelect>
+          <SearchInput
+            className="catalog-search"
+            placeholder="Search security groups"
+            value={searchValue}
+            onChange={(_event, value) => setSearchValue(value)}
+            onClear={() => setSearchValue('')}
+            aria-label="Search security groups"
+          />
         </div>
+      </div>
 
-        {filteredGroups.length === 0 ? (
-          <EmptyState>
-            <Title headingLevel="h2" size="lg">
-              {hasActiveFilters
-                ? 'No security groups match your filters'
-                : 'No security groups yet'}
-            </Title>
-            <EmptyStateBody>
-              {hasActiveFilters
-                ? 'Try a different status, search term, or clear filters.'
-                : 'Create a security group to get started.'}
-            </EmptyStateBody>
-          </EmptyState>
-        ) : (
-          <div className="catalog-table-panel">
-            <Content component="p" className="catalog-table-result-count">
-              {formatCatalogTableResultCount(filteredGroups.length, 'security group')}
-            </Content>
-            <Table
-              aria-label="Security groups"
-              className="catalog-data-table provider-admin-network-inventory__table"
-            >
-              <Thead>
-                <Tr>
-                  <Th className="provider-admin-network-inventory__col-name">Name</Th>
-                  <Th className="provider-admin-network-inventory__col-status">Status</Th>
-                  <Th width={25}>Virtual network</Th>
-                  <Th width={15}>Inbound rules</Th>
-                  <Th width={15}>Outbound rules</Th>
-                  <Th screenReaderText="Actions" />
-                </Tr>
-              </Thead>
-              <Tbody>
-                {filteredGroups.map((group) => {
-                  const status = getNetworkInventoryStatus(group)
-                  return (
-                    <Tr key={group.id}>
-                      <Td
-                        dataLabel="Name"
-                        className="provider-admin-network-inventory__col-name"
+      {filteredGroups.length === 0 ? (
+        <EmptyState>
+          <Title headingLevel="h2" size="lg">
+            {hasActiveFilters
+              ? 'No security groups match your filters'
+              : 'No security groups yet'}
+          </Title>
+          <EmptyStateBody>
+            {hasActiveFilters
+              ? 'Try a different status, search term, or clear filters.'
+              : 'Create a security group to get started.'}
+          </EmptyStateBody>
+        </EmptyState>
+      ) : (
+        <div className="catalog-table-panel">
+          <Content component="p" className="catalog-table-result-count">
+            {formatCatalogTableResultCount(filteredGroups.length, 'security group')}
+          </Content>
+          <Table
+            aria-label="Security groups"
+            className="catalog-data-table provider-admin-network-inventory__table"
+          >
+            <Thead>
+              <Tr>
+                <Th className="provider-admin-network-inventory__col-name">Name</Th>
+                <Th className="provider-admin-network-inventory__col-status">Status</Th>
+                <Th width={25}>Virtual network</Th>
+                <Th width={15}>Inbound rules</Th>
+                <Th width={15}>Outbound rules</Th>
+                <Th screenReaderText="Actions" />
+              </Tr>
+            </Thead>
+            <Tbody>
+              {filteredGroups.map((group) => {
+                const status = getNetworkInventoryStatus(group)
+                return (
+                  <Tr key={group.id}>
+                    <Td
+                      dataLabel="Name"
+                      className="provider-admin-network-inventory__col-name"
+                    >
+                      <Content
+                        component="p"
+                        className="provider-admin-network-inventory__primary-cell"
                       >
-                        <Content
-                          component="p"
-                          className="provider-admin-network-inventory__primary-cell"
+                        <Button
+                          variant="link"
+                          isInline
+                          className="catalog-table-name-link"
+                          onClick={() => openDetails(group)}
                         >
-                          <Button
-                            variant="link"
-                            isInline
-                            className="catalog-table-name-link"
-                            onClick={() => openDetails(group)}
-                          >
-                            {group.name}
-                          </Button>
-                        </Content>
-                        <Content component="p" className="provider-admin-network-inventory__meta-cell">
-                          <code>{group.id}</code>
-                        </Content>
-                      </Td>
-                      <Td
-                        dataLabel="Status"
-                        className="provider-admin-network-inventory__col-status"
-                      >
-                        <Label color={getNetworkInventoryStatusLabelColor(status)} isCompact>
-                          {status}
-                        </Label>
-                      </Td>
-                      <Td dataLabel="Virtual network">
-                        {(() => {
-                          const network = getVirtualNetwork(group.virtualNetworkId)
-                          const name = network?.name ?? group.virtualNetworkId
-                          const cidr = network?.cidr
-                          return (
-                            <>
+                          {group.name}
+                        </Button>
+                      </Content>
+                      <Content component="p" className="provider-admin-network-inventory__meta-cell">
+                        <code>{group.id}</code>
+                      </Content>
+                    </Td>
+                    <Td
+                      dataLabel="Status"
+                      className="provider-admin-network-inventory__col-status"
+                    >
+                      <Label color={getNetworkInventoryStatusLabelColor(status)} isCompact>
+                        {status}
+                      </Label>
+                    </Td>
+                    <Td dataLabel="Virtual network">
+                      {(() => {
+                        const network = getVirtualNetwork(group.virtualNetworkId)
+                        const name = network?.name ?? group.virtualNetworkId
+                        const cidr = network?.cidr
+                        return (
+                          <>
+                            <Content
+                              component="p"
+                              className="provider-admin-network-inventory__primary-cell"
+                            >
+                              {onNavigateToVirtualNetwork ? (
+                                <Button
+                                  variant="link"
+                                  isInline
+                                  className="provider-admin-network-inventory__related-link"
+                                  onClick={() =>
+                                    onNavigateToVirtualNetwork(group.virtualNetworkId)
+                                  }
+                                >
+                                  {name}
+                                </Button>
+                              ) : (
+                                name
+                              )}
+                            </Content>
+                            {cidr ? (
                               <Content
                                 component="p"
-                                className="provider-admin-network-inventory__primary-cell"
+                                className="provider-admin-network-inventory__meta-cell"
                               >
-                                {onNavigateToVirtualNetwork ? (
-                                  <Button
-                                    variant="link"
-                                    isInline
-                                    className="provider-admin-network-inventory__related-link"
-                                    onClick={() =>
-                                      onNavigateToVirtualNetwork(group.virtualNetworkId)
-                                    }
-                                  >
-                                    {name}
-                                  </Button>
-                                ) : (
-                                  name
-                                )}
+                                <code>{cidr}</code>
                               </Content>
-                              {cidr ? (
-                                <Content
-                                  component="p"
-                                  className="provider-admin-network-inventory__meta-cell"
-                                >
-                                  <code>{cidr}</code>
-                                </Content>
-                              ) : null}
-                            </>
-                          )
-                        })()}
-                      </Td>
-                      <Td dataLabel="Inbound rules">{group.inboundRules}</Td>
-                      <Td dataLabel="Outbound rules">{group.outboundRules}</Td>
-                      <Td isActionCell>
-                        <ActionsColumn
-                          items={[
-                            { title: 'View details', onClick: () => openDetails(group) },
-                            { title: 'Edit', onClick: () => undefined },
-                            { isSeparator: true },
-                            { title: 'Delete', isDanger: true, onClick: () => undefined },
-                          ]}
-                        />
-                      </Td>
-                    </Tr>
-                  )
-                })}
-              </Tbody>
-            </Table>
-          </div>
-        )}
+                            ) : null}
+                          </>
+                        )
+                      })()}
+                    </Td>
+                    <Td dataLabel="Inbound rules">{group.inboundRules}</Td>
+                    <Td dataLabel="Outbound rules">{group.outboundRules}</Td>
+                    <Td isActionCell>
+                      <ActionsColumn
+                        items={[
+                          { title: 'View details', onClick: () => openDetails(group) },
+                          { title: 'Edit', onClick: () => undefined },
+                          { isSeparator: true },
+                          { title: 'Delete', isDanger: true, onClick: () => undefined },
+                        ]}
+                      />
+                    </Td>
+                  </Tr>
+                )
+              })}
+            </Tbody>
+          </Table>
+        </div>
+      )}
 
-        <CreateSecurityGroupModal
-          isOpen={isCreateModalOpen}
-          virtualNetworks={virtualNetworks}
-          onClose={() => setIsCreateModalOpen(false)}
-          onCreated={() => setGroups(getProviderSecurityGroups())}
-        />
-      </div>
-    </SecurityGroupDetailsDrawer>
+      <CreateSecurityGroupModal
+        isOpen={isCreateModalOpen}
+        virtualNetworks={virtualNetworks}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreated={() => setGroups(getProviderSecurityGroups())}
+      />
+    </div>
   )
 }

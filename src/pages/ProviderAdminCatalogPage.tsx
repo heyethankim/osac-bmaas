@@ -29,7 +29,7 @@ import { Table, ActionsColumn, Tbody, Td, Th, Thead, Tr, type IAction } from '@p
 import { CatalogServiceFilterToggle, countCatalogServices, toggleCatalogServiceFilter } from '../components/catalog/CatalogServiceFilterToggle'
 import { CatalogViewToggle } from '../components/catalog/CatalogViewToggle'
 import { AssignCatalogToOrganizationModal } from '../components/provider-admin/AssignCatalogToOrganizationModal'
-import { CatalogItemDetailsDrawer } from '../components/provider-admin/CatalogItemDetailsDrawer'
+import { CatalogItemDetailsPage } from '../components/provider-admin/CatalogItemDetailsPage'
 import { CatalogPublishScopeIcon } from '../components/provider-admin/CatalogPublishScopeIcon'
 import {
   formatVipEnterpriseVisibilityLabel,
@@ -47,6 +47,7 @@ import {
   resolveCatalogSpecRows,
 } from '../catalog/catalogSpecs'
 import { CatalogSpecRowsList } from '../components/catalog/CatalogSpecRowsList'
+import { findCatalogLinkedTemplate } from '../catalog/hardwareSpecs'
 import { getCatalogViewMode, setCatalogViewMode, type CatalogViewMode } from '../catalog/viewMode'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
 import { getCatalogNetworkLockSummary } from '../providerAdmin/catalogNetworkPolicy'
@@ -101,6 +102,7 @@ type ProviderAdminCatalogPageProps = {
     templateRefId: string
     templateName: string
   }) => void
+  onNavigateToNetworking?: () => void
   onProvisioningStarted?: (instance: TenantInstance) => void
   onDismissDuringProvisioning?: (instanceId: string, serviceId: CatalogServiceId) => void
   onWizardFinished?: (instanceId: string, serviceId: CatalogServiceId) => void
@@ -251,7 +253,6 @@ function getCatalogItemActions(
   item: ProviderCatalogDraft,
   onViewDetails: () => void,
   onLaunch: () => void,
-  onAssignToOrganization: () => void,
   onEdit: () => void,
   onDuplicate: () => void,
   onTogglePublish: () => void,
@@ -269,13 +270,6 @@ function getCatalogItemActions(
     actions.push({
       title: LAUNCH_INSTANCE_WIZARD_DEMO.launchInstanceLabel,
       onClick: onLaunch,
-    })
-  }
-
-  if (item.scope !== 'vip-enterprise') {
-    actions.push({
-      title: 'Assign to organization',
-      onClick: onAssignToOrganization,
     })
   }
 
@@ -313,6 +307,7 @@ export function ProviderAdminCatalogPage({
   isPublishing = false,
   onRegisterOrganization,
   onNavigateToLinkedTemplate,
+  onNavigateToNetworking,
   onProvisioningStarted,
   onDismissDuringProvisioning,
   onWizardFinished,
@@ -332,7 +327,7 @@ export function ProviderAdminCatalogPage({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isUnpublishModalOpen, setIsUnpublishModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false)
+  const [isViewingDetails, setIsViewingDetails] = useState(false)
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [existingInstanceNames, setExistingInstanceNames] = useState(() =>
     getTenantUserInstances(PROVIDER_LAUNCH_DEMO_TENANT).map((instance) => instance.name),
@@ -528,7 +523,11 @@ export function ProviderAdminCatalogPage({
 
   const openDetails = (item: ProviderCatalogDraft) => {
     setSelectedCatalogItem(item)
-    setIsDetailsDrawerOpen(true)
+    setIsViewingDetails(true)
+  }
+
+  const closeDetails = () => {
+    setIsViewingDetails(false)
   }
 
   const openAssign = (item: ProviderCatalogDraft) => {
@@ -591,7 +590,7 @@ export function ProviderAdminCatalogPage({
     const deletedId = selectedCatalogItem.catalogItemId
     const deleted = deleteProviderCatalogItem(deletedId)
     if (deleted) {
-      setIsDetailsDrawerOpen(false)
+      setIsViewingDetails(false)
       setIsAssignModalOpen(false)
       setIsEditModalOpen(false)
       setSelectedCatalogItem(null)
@@ -663,7 +662,10 @@ export function ProviderAdminCatalogPage({
     return 'Create a catalog item for this service to see it listed here.'
   })()
 
-  const drawerCatalog = selectedCatalogItem ?? newestCatalogItem
+  const drawerCatalog = selectedCatalogItem
+    ? (catalogItems.find((item) => item.catalogItemId === selectedCatalogItem.catalogItemId) ??
+      selectedCatalogItem)
+    : null
   const launchOrganization =
     organizations.find((organization) => organization.slug === PROVIDER_LAUNCH_DEMO_TENANT) ??
     organizations[0] ??
@@ -677,50 +679,42 @@ export function ProviderAdminCatalogPage({
       return
     }
     setSelectedCatalogItem(catalog)
-    setIsDetailsDrawerOpen(false)
     setIsWizardOpen(true)
   }
 
+  const linkedTemplateForDetails = drawerCatalog
+    ? findCatalogLinkedTemplate(drawerCatalog.templateRefId, drawerCatalog.templateName)
+    : null
+
   return (
-    <CatalogItemDetailsDrawer
-      isExpanded={isDetailsDrawerOpen}
-      onClose={() => setIsDetailsDrawerOpen(false)}
-      catalog={drawerCatalog}
-      serviceId={drawerCatalog ? getDraftServiceId(drawerCatalog) : 'baremetal'}
-      templateDescription={linkedTemplate.description}
-      onPublish={() => {
-        if (!drawerCatalog) {
-          return
-        }
-        openTogglePublish(drawerCatalog)
-      }}
-      onLaunch={() => {
-        if (drawerCatalog) {
-          openLaunchWizard(drawerCatalog)
-        }
-      }}
-      onNavigateToLinkedTemplate={
-        onNavigateToLinkedTemplate
-          ? (template) => {
-              setIsDetailsDrawerOpen(false)
-              onNavigateToLinkedTemplate(template)
+    <>
+      {isViewingDetails && drawerCatalog ? (
+        <CatalogItemDetailsPage
+          catalog={drawerCatalog}
+          templateDescription={
+            linkedTemplateForDetails?.description ?? linkedTemplate.description
+          }
+          onBackToCatalog={closeDetails}
+          onPublish={() => openTogglePublish(drawerCatalog)}
+          onUnpublish={() => openTogglePublish(drawerCatalog)}
+          onLaunch={() => openLaunchWizard(drawerCatalog)}
+          onEdit={() => openEdit(drawerCatalog)}
+          onDuplicate={() => handleDuplicate(drawerCatalog)}
+          onDelete={() => openDelete(drawerCatalog)}
+          onNavigateToLinkedTemplate={onNavigateToLinkedTemplate}
+          onNavigateToNetworking={onNavigateToNetworking}
+          onNetworkPolicyChange={(networkPolicy) => {
+            const updated = updateProviderCatalogNetworkPolicy(
+              drawerCatalog.catalogItemId,
+              networkPolicy,
+            )
+            if (updated) {
+              setSelectedCatalogItem(updated)
+              onCatalogItemsChange?.()
             }
-          : undefined
-      }
-      onNetworkPolicyChange={(networkPolicy) => {
-        if (!drawerCatalog) {
-          return
-        }
-        const updated = updateProviderCatalogNetworkPolicy(
-          drawerCatalog.catalogItemId,
-          networkPolicy,
-        )
-        if (updated) {
-          setSelectedCatalogItem(updated)
-          onCatalogItemsChange?.()
-        }
-      }}
-    >
+          }}
+        />
+      ) : (
     <div
       className={`provider-admin-catalog-items${
         isEntering ? ' provider-admin-catalog-items--entering' : ''
@@ -857,7 +851,6 @@ export function ProviderAdminCatalogPage({
               item,
               () => openDetails(item),
               () => openLaunchWizard(item),
-              () => openAssign(item),
               () => openEdit(item),
               () => handleDuplicate(item),
               () => openTogglePublish(item),
@@ -998,7 +991,6 @@ export function ProviderAdminCatalogPage({
                 item,
                 () => openDetails(item),
                 () => openLaunchWizard(item),
-                () => openAssign(item),
                 () => openEdit(item),
                 () => handleDuplicate(item),
                 () => openTogglePublish(item),
@@ -1057,6 +1049,8 @@ export function ProviderAdminCatalogPage({
         </Table>
         </div>
       )}
+    </div>
+      )}
 
       <ProviderSetupPublishCatalogWizard
         isOpen={isPublishWizardOpen}
@@ -1084,6 +1078,7 @@ export function ProviderAdminCatalogPage({
             setSelectedStatus('all')
             setSearchValue('')
             beginCatalogItemCreateReveal(created.catalogItemId)
+            setIsViewingDetails(false)
           }
         }}
         onRegisterOrganization={() => handleRegisterOrganizationFromVip({ kind: 'publish' })}
@@ -1222,7 +1217,6 @@ export function ProviderAdminCatalogPage({
           }}
         />
       ) : null}
-    </div>
-    </CatalogItemDetailsDrawer>
+    </>
   )
 }

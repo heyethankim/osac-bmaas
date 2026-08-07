@@ -20,7 +20,7 @@ import {
 } from '../../components/catalog/CatalogServiceFilterToggle'
 import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
 import { CatalogViewToggle } from '../../components/catalog/CatalogViewToggle'
-import { TenantUserCatalogItemDetailsDrawer } from '../../components/tenant-user/TenantUserCatalogItemDetailsDrawer'
+import { TenantUserCatalogItemDetailsPage } from '../../components/tenant-user/TenantUserCatalogItemDetailsPage'
 import { TenantUserLaunchInstanceWizard } from '../../components/tenant-user/TenantUserLaunchInstanceWizard'
 import { formatCatalogConfigurationSummary } from '../../catalog/catalogSpecs'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
@@ -289,21 +289,20 @@ export function TenantUserCatalogPage({
   }
 
   const activeCatalogItem = selectedCatalogItem ?? catalogItems[0] ?? null
+  const detailsItem = isDetailsDrawerOpen ? selectedCatalogItem : null
 
   return (
-    <TenantUserCatalogItemDetailsDrawer
-      isExpanded={isDetailsDrawerOpen && selectedCatalogItem !== null}
-      onClose={closeDetails}
-      catalogItem={isDetailsDrawerOpen ? selectedCatalogItem : null}
-      organization={organization}
-      catalogDraft={catalogDraft}
-      preferCatalogDraft={preferCatalogDraft}
-      onLaunch={() => {
-        if (selectedCatalogItem) {
-          openLaunchWizard(selectedCatalogItem)
-        }
-      }}
-    >
+    <>
+      {detailsItem ? (
+        <TenantUserCatalogItemDetailsPage
+          catalogItem={detailsItem}
+          organization={organization}
+          catalogDraft={catalogDraft}
+          preferCatalogDraft={preferCatalogDraft}
+          onBack={closeDetails}
+          onLaunch={() => openLaunchWizard(detailsItem)}
+        />
+      ) : (
       <div className="tenant-user-workspace-page tenant-user-catalog">
         <Title headingLevel="h1" size="3xl" className="tenant-user-catalog__title">
           Catalog
@@ -518,6 +517,7 @@ export function TenantUserCatalogPage({
           />
         ) : null}
       </div>
-    </TenantUserCatalogItemDetailsDrawer>
+      )}
+    </>
   )
 }

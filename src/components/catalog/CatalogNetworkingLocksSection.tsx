@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import {
-  Content,
+  Alert,
   Form,
   FormGroup,
   FormSelect,
   FormSelectOption,
   Switch,
+  Title,
 } from '@patternfly/react-core'
 import {
   getCatalogNetworkOptionLabel,
@@ -38,13 +39,21 @@ let networkingSavedFlashUntil = 0
 type CatalogNetworkingLocksSectionProps = {
   idPrefix: string
   policy: CatalogNetworkPolicy
-  lede: string
+  /** Bold alert title (policy guidance). */
+  lede?: ReactNode
+  /** Secondary alert body under the title. */
+  ledeDescription?: ReactNode
   /** Section heading; defaults to Networking. Pass empty string to hide. */
   title?: string
   /** When true (default), show a brief Saved flash after changes. */
   showSavedFeedback?: boolean
   /** When true, dropdowns and switches cannot be changed. */
   readOnly?: boolean
+  /**
+   * When true, lock switches are visible but cannot be changed.
+   * Unlocked field values remain editable unless `readOnly` is set.
+   */
+  locksReadOnly?: boolean
   /** Provider-locked fields stay locked and disabled even when editable for users. */
   providerLocked?: Partial<Record<CatalogNetworkLockField, boolean>>
   virtualNetworkOptions: readonly CatalogNetworkResourceOption[]
@@ -86,9 +95,11 @@ export function CatalogNetworkingLocksSection({
   idPrefix,
   policy,
   lede,
+  ledeDescription,
   title = 'Networking',
   showSavedFeedback = true,
   readOnly = false,
+  locksReadOnly = false,
   providerLocked,
   virtualNetworkOptions,
   subnetOptions,
@@ -165,7 +176,15 @@ export function CatalogNetworkingLocksSection({
         <div className="catalog-networking-locks__header">
           {showTitleRow ? (
             <div className="catalog-networking-locks__title-row">
-              {title ? <span className="catalog-networking-locks__title">{title}</span> : null}
+              {title ? (
+                <Title
+                  headingLevel="h2"
+                  size="lg"
+                  className="catalog-networking-locks__title"
+                >
+                  {title}
+                </Title>
+              ) : null}
               {showSavedFeedback && showSaved ? (
                 <span className="catalog-networking-locks__status" role="status" aria-live="polite">
                   Saved
@@ -174,9 +193,14 @@ export function CatalogNetworkingLocksSection({
             </div>
           ) : null}
           {lede ? (
-            <Content component="p" className="catalog-networking-locks__lede">
-              {lede}
-            </Content>
+            <Alert
+              variant="info"
+              isInline
+              title={lede}
+              className="catalog-networking-locks__alert"
+            >
+              {ledeDescription ?? null}
+            </Alert>
           ) : null}
         </div>
       ) : null}
@@ -191,7 +215,7 @@ export function CatalogNetworkingLocksSection({
             externalIpPoolOptions,
           })
           const selectDisabled = readOnly || isProviderLocked || field.locked
-          const lockDisabled = readOnly || isProviderLocked
+          const lockDisabled = readOnly || locksReadOnly || isProviderLocked
           const fieldId = `${idPrefix}-${key}`
 
           return (

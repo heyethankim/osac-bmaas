@@ -21,7 +21,7 @@ import {
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
 import { ConnectOrganizationIdentityProviderModal } from '../components/provider-admin/ConnectOrganizationIdentityProviderModal'
 import { DefineOrganizationRolesModal } from '../components/provider-admin/DefineOrganizationRolesModal'
-import { OrganizationDetailsDrawer } from '../components/provider-admin/OrganizationDetailsDrawer'
+import { OrganizationDetailsPage } from '../components/provider-admin/OrganizationDetailsPage'
 import { RegisterOrganizationWizard } from '../components/provider-admin/RegisterOrganizationWizard'
 import { SetupIdentityProviderWizard } from '../components/provider-admin/SetupIdentityProviderWizard'
 import {
@@ -316,21 +316,23 @@ export function ProviderAdminOrganizationsPage({
   }
 
   return (
-    <OrganizationDetailsDrawer
-      isExpanded={isDetailsOpen}
-      organization={selectedOrganization}
-      onClose={closeDetails}
-      onEdit={() => undefined}
-      onRemove={selectedOrganization ? () => openRemove(selectedOrganization) : undefined}
-      onReviewIdentityProvider={(organization) => {
-        if (organization.identityProviderConnected) {
-          setIdpOrganization(organization)
-          return
-        }
-        setIdpDelegationOrganization(organization)
-      }}
-      onReviewRoles={(organization) => setRolesOrganization(organization)}
-    >
+    <>
+      {isDetailsOpen && selectedOrganization ? (
+        <OrganizationDetailsPage
+          organization={selectedOrganization}
+          onBack={closeDetails}
+          onEdit={() => undefined}
+          onRemove={() => openRemove(selectedOrganization)}
+          onReviewIdentityProvider={(organization) => {
+            if (organization.identityProviderConnected) {
+              setIdpOrganization(organization)
+              return
+            }
+            setIdpDelegationOrganization(organization)
+          }}
+          onReviewRoles={(organization) => setRolesOrganization(organization)}
+        />
+      ) : (
       <div className="provider-admin-workspace-page provider-admin-organizations">
         {organizations.length > 0 ? (
           <Flex
@@ -506,66 +508,67 @@ export function ProviderAdminOrganizationsPage({
             </Tbody>
           </Table>
         )}
-
-        <RegisterOrganizationWizard
-          isOpen={isWizardOpen}
-          catalogDraft={catalogDraft}
-          onClose={() => setIsWizardOpen(false)}
-          onRegister={handleRegister}
-        />
-        <SetupIdentityProviderWizard
-          isOpen={idpDelegationOrganization !== null}
-          organization={idpDelegationOrganization}
-          onClose={handleIdpModalClose}
-          onUpdated={handleIdpSetupUpdated}
-          onConnected={handleIdentityProviderConnected}
-        />
-        <ConnectOrganizationIdentityProviderModal
-          isOpen={idpOrganization !== null}
-          organization={idpOrganization}
-          onClose={handleIdpModalClose}
-          onConnected={handleIdentityProviderConnected}
-        />
-        <DefineOrganizationRolesModal
-          isOpen={rolesOrganization !== null}
-          organization={rolesOrganization}
-          onClose={() => setRolesOrganization(null)}
-          onConfigured={handleRolesConfigured}
-        />
-        <Modal
-          variant={ModalVariant.small}
-          isOpen={organizationPendingRemove !== null}
-          onClose={() => setOrganizationPendingRemove(null)}
-          aria-labelledby="remove-organization-title"
-          aria-describedby="remove-organization-description"
-        >
-          <ModalHeader
-            title="Remove organization?"
-            titleIconVariant="warning"
-            labelId="remove-organization-title"
-          />
-          <ModalBody>
-            <Content component="p" id="remove-organization-description">
-              {organizationPendingRemove ? (
-                <>
-                  <strong>{organizationPendingRemove.name}</strong> will be permanently removed from
-                  provider administration. This cannot be undone.
-                </>
-              ) : (
-                'This organization will be permanently removed from provider administration. This cannot be undone.'
-              )}
-            </Content>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="danger" onClick={handleConfirmRemove}>
-              Remove
-            </Button>
-            <Button variant="link" onClick={() => setOrganizationPendingRemove(null)}>
-              Cancel
-            </Button>
-          </ModalFooter>
-        </Modal>
       </div>
-    </OrganizationDetailsDrawer>
+      )}
+
+      <RegisterOrganizationWizard
+        isOpen={isWizardOpen}
+        catalogDraft={catalogDraft}
+        onClose={() => setIsWizardOpen(false)}
+        onRegister={handleRegister}
+      />
+      <SetupIdentityProviderWizard
+        isOpen={idpDelegationOrganization !== null}
+        organization={idpDelegationOrganization}
+        onClose={handleIdpModalClose}
+        onUpdated={handleIdpSetupUpdated}
+        onConnected={handleIdentityProviderConnected}
+      />
+      <ConnectOrganizationIdentityProviderModal
+        isOpen={idpOrganization !== null}
+        organization={idpOrganization}
+        onClose={handleIdpModalClose}
+        onConnected={handleIdentityProviderConnected}
+      />
+      <DefineOrganizationRolesModal
+        isOpen={rolesOrganization !== null}
+        organization={rolesOrganization}
+        onClose={() => setRolesOrganization(null)}
+        onConfigured={handleRolesConfigured}
+      />
+      <Modal
+        variant={ModalVariant.small}
+        isOpen={organizationPendingRemove !== null}
+        onClose={() => setOrganizationPendingRemove(null)}
+        aria-labelledby="remove-organization-title"
+        aria-describedby="remove-organization-description"
+      >
+        <ModalHeader
+          title="Remove organization?"
+          titleIconVariant="warning"
+          labelId="remove-organization-title"
+        />
+        <ModalBody>
+          <Content component="p" id="remove-organization-description">
+            {organizationPendingRemove ? (
+              <>
+                <strong>{organizationPendingRemove.name}</strong> will be permanently removed from
+                provider administration. This cannot be undone.
+              </>
+            ) : (
+              'This organization will be permanently removed from provider administration. This cannot be undone.'
+            )}
+          </Content>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="danger" onClick={handleConfirmRemove}>
+            Remove
+          </Button>
+          <Button variant="link" onClick={() => setOrganizationPendingRemove(null)}>
+            Cancel
+          </Button>
+        </ModalFooter>
+      </Modal>
+    </>
   )
 }

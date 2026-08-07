@@ -341,6 +341,7 @@ export function ProviderAdminWorkspacePage() {
               setOpenTemplateLookup(template)
               handleNavChange('infrastructure-bmaas-templates')
             }}
+            onNavigateToNetworking={() => handleNavChange('networking-virtual-networks')}
             onProvisioningStarted={handleProvisioningStarted}
             onDismissDuringProvisioning={handleNavigateToServices}
             onWizardFinished={handleNavigateToServices}
