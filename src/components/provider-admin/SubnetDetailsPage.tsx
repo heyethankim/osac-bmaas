@@ -25,6 +25,16 @@ type SubnetDetailsPageProps = {
   onNavigateToVirtualNetwork?: () => void;
 };
 
+function formatCreatedAt(iso: string): string {
+  return new Date(iso).toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export function SubnetDetailsPage({
   subnet,
   virtualNetworkName,
@@ -95,6 +105,28 @@ export function SubnetDetailsPage({
               </DescriptionListDescription>
             </DescriptionListGroup>
             <DescriptionListGroup>
+              <DescriptionListTerm>Created</DescriptionListTerm>
+              <DescriptionListDescription>
+                {formatCreatedAt(subnet.createdAt)}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+          </DescriptionList>
+        </div>
+
+        <div className="entity-details-page__column">
+          <Title
+            headingLevel="h2"
+            size="lg"
+            className="entity-details-page__section-title"
+          >
+            Configuration
+          </Title>
+          <DescriptionList
+            isCompact
+            className="entity-details-page__dl"
+            aria-label="Subnet configuration"
+          >
+            <DescriptionListGroup>
               <DescriptionListTerm>CIDR</DescriptionListTerm>
               <DescriptionListDescription>
                 <code>{subnet.cidr}</code>
@@ -106,6 +138,22 @@ export function SubnetDetailsPage({
                 {subnet.vlan}
               </DescriptionListDescription>
             </DescriptionListGroup>
+          </DescriptionList>
+        </div>
+
+        <div className="entity-details-page__column">
+          <Title
+            headingLevel="h2"
+            size="lg"
+            className="entity-details-page__section-title"
+          >
+            Parent network
+          </Title>
+          <DescriptionList
+            isCompact
+            className="entity-details-page__dl"
+            aria-label="Subnet parent network"
+          >
             <DescriptionListGroup>
               <DescriptionListTerm>Virtual network</DescriptionListTerm>
               <DescriptionListDescription>

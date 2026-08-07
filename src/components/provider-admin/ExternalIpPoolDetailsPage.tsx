@@ -107,6 +107,28 @@ export function ExternalIpPoolDetailsPage({
               </DescriptionListDescription>
             </DescriptionListGroup>
             <DescriptionListGroup>
+              <DescriptionListTerm>Created</DescriptionListTerm>
+              <DescriptionListDescription>
+                {formatCreatedAt(pool.createdAt)}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+          </DescriptionList>
+        </div>
+
+        <div className="entity-details-page__column">
+          <Title
+            headingLevel="h2"
+            size="lg"
+            className="entity-details-page__section-title"
+          >
+            Capacity
+          </Title>
+          <DescriptionList
+            isCompact
+            className="entity-details-page__dl"
+            aria-label="External IP pool capacity"
+          >
+            <DescriptionListGroup>
               <DescriptionListTerm>CIDR</DescriptionListTerm>
               <DescriptionListDescription>
                 <code>{pool.cidr}</code>
@@ -122,12 +144,6 @@ export function ExternalIpPoolDetailsPage({
               <DescriptionListTerm>Capacity</DescriptionListTerm>
               <DescriptionListDescription>
                 {pool.totalAddresses.toLocaleString()} addresses
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Created</DescriptionListTerm>
-              <DescriptionListDescription>
-                {formatCreatedAt(pool.createdAt)}
               </DescriptionListDescription>
             </DescriptionListGroup>
           </DescriptionList>

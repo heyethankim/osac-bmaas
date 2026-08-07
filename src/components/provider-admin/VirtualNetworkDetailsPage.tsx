@@ -38,28 +38,32 @@ type VirtualNetworkDetailsPageProps = {
   onNavigateToSecurityGroup?: (securityGroupId: string) => void;
 };
 
+function formatCreatedAt(iso: string): string {
+  return new Date(iso).toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 function RelatedResourceList({
-  title,
   emptyLabel,
   items,
   onNavigate,
+  ariaLabel,
 }: {
-  title: string;
   emptyLabel: string;
   items: RelatedItem[];
   onNavigate?: (id: string) => void;
+  ariaLabel: string;
 }) {
   return (
     <section
       className="provider-admin-network-inventory__drawer-related"
-      aria-label={title}
+      aria-label={ariaLabel}
     >
-      <Content
-        component="p"
-        className="provider-admin-network-inventory__drawer-related-title"
-      >
-        {title}
-      </Content>
       {items.length === 0 ? (
         <Content
           component="p"
@@ -198,6 +202,28 @@ export function VirtualNetworkDetailsPage({
               </DescriptionListDescription>
             </DescriptionListGroup>
             <DescriptionListGroup>
+              <DescriptionListTerm>Created</DescriptionListTerm>
+              <DescriptionListDescription>
+                {formatCreatedAt(network.createdAt)}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+          </DescriptionList>
+        </div>
+
+        <div className="entity-details-page__column">
+          <Title
+            headingLevel="h2"
+            size="lg"
+            className="entity-details-page__section-title"
+          >
+            Configuration
+          </Title>
+          <DescriptionList
+            isCompact
+            className="entity-details-page__dl"
+            aria-label="Virtual network configuration"
+          >
+            <DescriptionListGroup>
               <DescriptionListTerm>IPv4 CIDR</DescriptionListTerm>
               <DescriptionListDescription>
                 <code>{network.cidr}</code>
@@ -218,17 +244,24 @@ export function VirtualNetworkDetailsPage({
             size="lg"
             className="entity-details-page__section-title"
           >
-            Related resources
+            Subnets
           </Title>
           <RelatedResourceList
-            title="Subnets"
+            ariaLabel="Related subnets"
             emptyLabel="No subnets associated with this virtual network."
             items={relatedSubnets}
             onNavigate={onNavigateToSubnet}
           />
 
+          <Title
+            headingLevel="h2"
+            size="lg"
+            className="entity-details-page__section-title"
+          >
+            Security groups
+          </Title>
           <RelatedResourceList
-            title="Security groups"
+            ariaLabel="Related security groups"
             emptyLabel="No security groups associated with this virtual network."
             items={relatedSecurityGroups}
             onNavigate={onNavigateToSecurityGroup}

@@ -56,6 +56,25 @@ function getIdentityProviderStepMeta(organization: RegisteredOrganization): stri
   return parts.length > 0 ? parts.join(' · ') : organization.identityProviderName
 }
 
+function PersonField({
+  name,
+  email,
+}: {
+  name: string
+  email: string
+}) {
+  return (
+    <>
+      <Content component="p" className="provider-admin-organizations__primary-cell">
+        {name}
+      </Content>
+      <Content component="p" className="provider-admin-organizations__secondary-cell">
+        <code>{email}</code>
+      </Content>
+    </>
+  )
+}
+
 function ActivationStepRow({
   step,
   organization,
@@ -147,6 +166,8 @@ export function OrganizationDetailsPage({
   onReviewRoles,
 }: OrganizationDetailsPageProps) {
   const activationSteps = getOrganizationActivationSteps(organization)
+  const additionalAdmins = organization.additionalTenantAdmins
+  const invitedUsers = organization.invitedTenantUserEmails
 
   return (
     <EntityDetailsPageShell
@@ -172,133 +193,230 @@ export function OrganizationDetailsPage({
         ) : undefined
       }
     >
-      <div className="entity-details-page__columns">
-        <div className="entity-details-page__column">
-          <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
-            Overview
-          </Title>
-          <DescriptionList
-            isCompact
-            className="entity-details-page__dl"
-            aria-label="Organization overview"
-          >
-            <DescriptionListGroup>
-              <DescriptionListTerm>Status</DescriptionListTerm>
-              <DescriptionListDescription>
-                <Label color={organization.status === 'Active' ? 'green' : 'orange'} isCompact>
-                  {organization.status}
-                </Label>
-                {organization.status === 'Pending activation' &&
-                isOrganizationReadyForLogin(organization) ? (
-                  <Content
-                    component="p"
-                    className="provider-admin-organizations__setup-signal provider-admin-organizations__drawer-ready-signal"
-                  >
-                    Ready for login
-                  </Content>
-                ) : null}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Tenant ID</DescriptionListTerm>
-              <DescriptionListDescription>
-                <code>{organization.tenantId}</code>
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Primary email domain</DescriptionListTerm>
-              <DescriptionListDescription>
-                <code>{organization.primaryDomain || '—'}</code>
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Billing account</DescriptionListTerm>
-              <DescriptionListDescription>
-                <Content component="p" className="provider-admin-organizations__primary-cell">
-                  {organization.billingAccountName}
-                </Content>
-                <Content component="p" className="provider-admin-organizations__secondary-cell">
-                  <code>{organization.billingAccountId}</code>
-                </Content>
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Registered</DescriptionListTerm>
-              <DescriptionListDescription>
-                {formatRegisteredAt(organization.createdAt)}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-          </DescriptionList>
-        </div>
-
-        <div className="entity-details-page__column">
-          <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
-            Accounts
-          </Title>
-          <DescriptionList
-            isCompact
-            className="entity-details-page__dl"
-            aria-label="Organization accounts"
-          >
-            <DescriptionListGroup>
-              <DescriptionListTerm>First tenant admin</DescriptionListTerm>
-              <DescriptionListDescription>
-                {organization.rbacConfigured ? (
-                  <>
+      <div className="entity-details-page__columns entity-details-page__columns--with-rail">
+        <div className="entity-details-page__main-stack">
+          <div className="entity-details-page__columns entity-details-page__columns--2">
+            <div className="entity-details-page__column">
+              <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
+                Overview
+              </Title>
+              <DescriptionList
+                isCompact
+                className="entity-details-page__dl"
+                aria-label="Organization overview"
+              >
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Status</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    <Label color={organization.status === 'Active' ? 'green' : 'orange'} isCompact>
+                      {organization.status}
+                    </Label>
+                    {organization.status === 'Pending activation' &&
+                    isOrganizationReadyForLogin(organization) ? (
+                      <Content
+                        component="p"
+                        className="provider-admin-organizations__setup-signal provider-admin-organizations__drawer-ready-signal"
+                      >
+                        Ready for login
+                      </Content>
+                    ) : null}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Tenant ID</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    <code>{organization.tenantId}</code>
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Primary email domain</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    <code>{organization.primaryDomain || '—'}</code>
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Billing account</DescriptionListTerm>
+                  <DescriptionListDescription>
                     <Content component="p" className="provider-admin-organizations__primary-cell">
-                      {organization.tenantAdminName}
+                      {organization.billingAccountName}
                     </Content>
                     <Content component="p" className="provider-admin-organizations__secondary-cell">
-                      <code>{organization.tenantAdminEmail}</code>
+                      <code>{organization.billingAccountId}</code>
                     </Content>
-                  </>
-                ) : (
-                  '—'
-                )}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Break-glass account</DescriptionListTerm>
-              <DescriptionListDescription>
-                {organization.rbacConfigured && organization.breakGlassEmail ? (
-                  <>
-                    <Content component="p" className="provider-admin-organizations__primary-cell">
-                      {organization.breakGlassName || '—'}
-                    </Content>
-                    <Content component="p" className="provider-admin-organizations__secondary-cell">
-                      <code>{organization.breakGlassEmail}</code>
-                    </Content>
-                  </>
-                ) : (
-                  '—'
-                )}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-          </DescriptionList>
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Registered</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {formatRegisteredAt(organization.createdAt)}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              </DescriptionList>
+            </div>
+
+            <div className="entity-details-page__column">
+              <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
+                Accounts
+              </Title>
+              <DescriptionList
+                isCompact
+                className="entity-details-page__dl"
+                aria-label="Organization accounts"
+              >
+                <DescriptionListGroup>
+                  <DescriptionListTerm>First tenant admin</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {organization.rbacConfigured ? (
+                      <PersonField
+                        name={organization.tenantAdminName}
+                        email={organization.tenantAdminEmail}
+                      />
+                    ) : (
+                      '—'
+                    )}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Additional tenant admins</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {organization.rbacConfigured && additionalAdmins.length > 0 ? (
+                      <ul className="provider-admin-organizations__account-list">
+                        {additionalAdmins.map((admin) => (
+                          <li key={`${admin.email}-${admin.name}`}>
+                            <PersonField name={admin.name} email={admin.email} />
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      '—'
+                    )}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Break-glass account</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {organization.rbacConfigured && organization.breakGlassEmail ? (
+                      <PersonField
+                        name={organization.breakGlassName || '—'}
+                        email={organization.breakGlassEmail}
+                      />
+                    ) : (
+                      '—'
+                    )}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Invited tenant users</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {organization.rbacConfigured && invitedUsers.length > 0 ? (
+                      <ul className="provider-admin-organizations__account-list">
+                        {invitedUsers.map((email) => (
+                          <li key={email}>
+                            <Content
+                              component="p"
+                              className="provider-admin-organizations__secondary-cell"
+                            >
+                              <code>{email}</code>
+                            </Content>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      '—'
+                    )}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              </DescriptionList>
+            </div>
+          </div>
+
+          <div className="entity-details-page__column">
+            <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
+              Resources
+            </Title>
+            <DescriptionList
+              isCompact
+              className="entity-details-page__dl"
+              aria-label="Organization resources"
+            >
+              <DescriptionListGroup>
+                <DescriptionListTerm>Catalog item</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {organization.catalogDisplayName ? (
+                    <>
+                      <Content component="p" className="provider-admin-organizations__primary-cell">
+                        {organization.catalogDisplayName}
+                      </Content>
+                      {organization.catalogItemId ? (
+                        <Content
+                          component="p"
+                          className="provider-admin-organizations__secondary-cell"
+                        >
+                          <code>{organization.catalogItemId}</code>
+                        </Content>
+                      ) : null}
+                    </>
+                  ) : (
+                    '—'
+                  )}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>External IP pool</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {organization.externalIpPoolName ? (
+                    <>
+                      <Content component="p" className="provider-admin-organizations__primary-cell">
+                        {organization.externalIpPoolName}
+                      </Content>
+                      <Content
+                        component="p"
+                        className="provider-admin-organizations__secondary-cell"
+                      >
+                        <code>
+                          {organization.externalIpPoolCidr || organization.externalIpPoolId || '—'}
+                        </code>
+                      </Content>
+                    </>
+                  ) : (
+                    '—'
+                  )}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Max instances</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {organization.maxInstances.toLocaleString()}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+            </DescriptionList>
+          </div>
         </div>
 
-        <div className="entity-details-page__column entity-details-page__column--config">
-          <Title
-            headingLevel="h2"
-            size="md"
-            className="entity-details-page__section-title entity-details-page__section-title--config"
-          >
-            Activation status
-          </Title>
-          <ol
-            className="provider-admin-organizations__status-steps"
-            aria-label="Activation progress"
-          >
-            {activationSteps.map((step) => (
-              <ActivationStepRow
-                key={step.id}
-                step={step}
-                organization={organization}
-                onReviewIdentityProvider={onReviewIdentityProvider}
-                onReviewRoles={onReviewRoles}
-              />
-            ))}
-          </ol>
+        <div className="entity-details-page__rail-stack">
+          <div className="entity-details-page__column entity-details-page__column--config">
+            <Title
+              headingLevel="h2"
+              size="md"
+              className="entity-details-page__section-title entity-details-page__section-title--config"
+            >
+              Activation status
+            </Title>
+            <ol
+              className="provider-admin-organizations__status-steps"
+              aria-label="Activation progress"
+            >
+              {activationSteps.map((step) => (
+                <ActivationStepRow
+                  key={step.id}
+                  step={step}
+                  organization={organization}
+                  onReviewIdentityProvider={onReviewIdentityProvider}
+                  onReviewRoles={onReviewRoles}
+                />
+              ))}
+            </ol>
+          </div>
         </div>
       </div>
     </EntityDetailsPageShell>

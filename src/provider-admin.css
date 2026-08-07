@@ -3702,6 +3702,24 @@
   font-family: var(--pf-t--global--font--family--monospace);
 }
 
+.provider-admin-organizations__account-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.provider-admin-organizations__account-list > li {
+  margin: 0;
+}
+
+.provider-admin-organizations__account-list .provider-admin-organizations__primary-cell,
+.provider-admin-organizations__account-list .provider-admin-organizations__secondary-cell {
+  margin: 0;
+}
+
 .provider-admin-organizations__table,
 .provider-admin-quotas__table,
 .provider-admin-billing__table {

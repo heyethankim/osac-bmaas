@@ -25,6 +25,16 @@ type SecurityGroupDetailsPageProps = {
   onNavigateToVirtualNetwork?: () => void;
 };
 
+function formatCreatedAt(iso: string): string {
+  return new Date(iso).toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export function SecurityGroupDetailsPage({
   group,
   virtualNetworkName,
@@ -95,6 +105,56 @@ export function SecurityGroupDetailsPage({
               </DescriptionListDescription>
             </DescriptionListGroup>
             <DescriptionListGroup>
+              <DescriptionListTerm>Created</DescriptionListTerm>
+              <DescriptionListDescription>
+                {formatCreatedAt(group.createdAt)}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+          </DescriptionList>
+        </div>
+
+        <div className="entity-details-page__column">
+          <Title
+            headingLevel="h2"
+            size="lg"
+            className="entity-details-page__section-title"
+          >
+            Rules
+          </Title>
+          <DescriptionList
+            isCompact
+            className="entity-details-page__dl"
+            aria-label="Security group rules"
+          >
+            <DescriptionListGroup>
+              <DescriptionListTerm>Inbound rules</DescriptionListTerm>
+              <DescriptionListDescription>
+                {group.inboundRules}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Outbound rules</DescriptionListTerm>
+              <DescriptionListDescription>
+                {group.outboundRules}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+          </DescriptionList>
+        </div>
+
+        <div className="entity-details-page__column">
+          <Title
+            headingLevel="h2"
+            size="lg"
+            className="entity-details-page__section-title"
+          >
+            Parent network
+          </Title>
+          <DescriptionList
+            isCompact
+            className="entity-details-page__dl"
+            aria-label="Security group parent network"
+          >
+            <DescriptionListGroup>
               <DescriptionListTerm>Virtual network</DescriptionListTerm>
               <DescriptionListDescription>
                 <Content
@@ -122,18 +182,6 @@ export function SecurityGroupDetailsPage({
                     <code>{virtualNetworkCidr}</code>
                   </Content>
                 ) : null}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Inbound rules</DescriptionListTerm>
-              <DescriptionListDescription>
-                {group.inboundRules}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Outbound rules</DescriptionListTerm>
-              <DescriptionListDescription>
-                {group.outboundRules}
               </DescriptionListDescription>
             </DescriptionListGroup>
           </DescriptionList>
