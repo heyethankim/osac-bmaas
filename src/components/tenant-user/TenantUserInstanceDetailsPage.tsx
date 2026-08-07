@@ -104,7 +104,7 @@ function CatalogItemDisplayLink({
     <Button
       variant="link"
       isInline
-      className="catalog-item-name-link"
+      className="provider-admin-catalog-items__inline-link"
       onClick={() => onNavigate(displayName)}
     >
       {displayName}
@@ -1205,17 +1205,26 @@ function VmInstancePageBody({
           <div className="entity-details-page__columns entity-details-page__columns--2">
             <div className="entity-details-page__column">
               <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
-                Virtual machine summary
+                Overview
               </Title>
               <DescriptionList
                 isCompact
                 className="entity-details-page__dl"
-                aria-label="Virtual machine summary"
+                aria-label="Virtual machine overview"
               >
                 <DescriptionListGroup>
                   <DescriptionListTerm>Status</DescriptionListTerm>
                   <DescriptionListDescription>
                     <InstanceStatusLabel status={instance.status} />
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Catalog item</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    <CatalogItemDisplayLink
+                      displayName={instance.catalogItemDisplayName}
+                      onNavigate={onNavigateToCatalogItem}
+                    />
                   </DescriptionListDescription>
                 </DescriptionListGroup>
                 <DescriptionListGroup>
@@ -1229,28 +1238,6 @@ function VmInstancePageBody({
                 <DescriptionListGroup>
                   <DescriptionListTerm>OS image</DescriptionListTerm>
                   <DescriptionListDescription>{vmOsImage}</DescriptionListDescription>
-                </DescriptionListGroup>
-                <DescriptionListGroup>
-                  <DescriptionListTerm>Public IP</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    {hasPublicIp ? (
-                      vmConfig.publicIp
-                    ) : canAttachPublicIp ? (
-                      <Button
-                        variant="link"
-                        isInline
-                        onClick={() => onAttachPublicIp?.(instance)}
-                      >
-                        Attach public IP
-                      </Button>
-                    ) : (
-                      '—'
-                    )}
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
-                <DescriptionListGroup>
-                  <DescriptionListTerm>Internal IP</DescriptionListTerm>
-                  <DescriptionListDescription>{vmConfig.internalIp}</DescriptionListDescription>
                 </DescriptionListGroup>
               </DescriptionList>
             </div>
@@ -1298,21 +1285,35 @@ function VmInstancePageBody({
             size="md"
             className="entity-details-page__section-title entity-details-page__section-title--config"
           >
-            Details
+            Specifications
           </Title>
           <DescriptionList
             isCompact
             className="entity-details-page__dl"
-            aria-label="Virtual machine details"
+            aria-label="Virtual machine specifications"
           >
             <DescriptionListGroup>
-              <DescriptionListTerm>Catalog item</DescriptionListTerm>
+              <DescriptionListTerm>Public IP</DescriptionListTerm>
               <DescriptionListDescription>
-                <CatalogItemDisplayLink
-                  displayName={instance.catalogItemDisplayName}
-                  onNavigate={onNavigateToCatalogItem}
-                />
+                {hasPublicIp ? (
+                  vmConfig.publicIp
+                ) : canAttachPublicIp ? (
+                  <Button
+                    variant="link"
+                    isInline
+                    className="provider-admin-catalog-items__inline-link"
+                    onClick={() => onAttachPublicIp?.(instance)}
+                  >
+                    Attach public IP
+                  </Button>
+                ) : (
+                  '—'
+                )}
               </DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Internal IP</DescriptionListTerm>
+              <DescriptionListDescription>{vmConfig.internalIp}</DescriptionListDescription>
             </DescriptionListGroup>
             <DescriptionListGroup>
               <DescriptionListTerm>SSH public key</DescriptionListTerm>

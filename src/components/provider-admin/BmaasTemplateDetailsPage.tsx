@@ -57,7 +57,7 @@ export function BmaasTemplateDetailsPage({
 
   return (
     <EntityDetailsPageShell
-      parentLabel="BMaaS templates"
+      parentLabel="Profiles & templates"
       onBack={onBack}
       title={template.templateName}
       titleId="bmaas-template-details-title"
@@ -115,12 +115,8 @@ export function BmaasTemplateDetailsPage({
           </DescriptionList>
         </div>
 
-        <div className="entity-details-page__column entity-details-page__column--config">
-          <Title
-            headingLevel="h2"
-            size="md"
-            className="entity-details-page__section-title entity-details-page__section-title--config"
-          >
+        <div className="entity-details-page__column">
+          <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
             Hardware &amp; image
           </Title>
           <DescriptionList
@@ -155,12 +151,8 @@ export function BmaasTemplateDetailsPage({
           </DescriptionList>
         </div>
 
-        <div className="entity-details-page__column entity-details-page__column--config">
-          <Title
-            headingLevel="h2"
-            size="md"
-            className="entity-details-page__section-title entity-details-page__section-title--config"
-          >
+        <div className="entity-details-page__column">
+          <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
             Network defaults
           </Title>
           <DescriptionList
