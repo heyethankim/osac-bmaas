@@ -74,6 +74,8 @@ type TenantUserInstancesPageProps = {
   lockedServiceId?: CatalogServiceId
   /** Closes the instance detail drawer when left-nav selection changes. */
   activeNavId?: string
+  /** Opens the matching catalog item detail page in Catalog. */
+  onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
 }
 
 function getStatusColor(status: TenantInstance['status']): 'green' | 'blue' | 'orange' | 'red' | 'grey' {
@@ -141,6 +143,7 @@ export function TenantUserInstancesPage({
   defaultScopeFieldLabel = 'Project',
   lockedServiceId,
   activeNavId,
+  onNavigateToCatalogItem,
 }: TenantUserInstancesPageProps) {
   const [viewMode, setViewMode] = useState<ViewMode>(() => getInstancesViewMode('grid'))
   const [searchValue, setSearchValue] = useState('')
@@ -686,6 +689,10 @@ export function TenantUserInstancesPage({
             setInstancePendingPublicIp(instance)
           }}
           onUpdateNetworking={handleUpdateNetworking}
+          onNavigateToCatalogItem={onNavigateToCatalogItem}
+          onViewPassword={(instance) => {
+            setInstancePendingPassword(instance)
+          }}
         />
 
         <Modal

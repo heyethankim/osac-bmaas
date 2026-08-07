@@ -124,6 +124,7 @@ export function ProviderAdminWorkspacePage() {
   const [openVirtualNetworkId, setOpenVirtualNetworkId] = useState<string | null>(null)
   const [openSubnetId, setOpenSubnetId] = useState<string | null>(null)
   const [openSecurityGroupId, setOpenSecurityGroupId] = useState<string | null>(null)
+  const [openCatalogItemKey, setOpenCatalogItemKey] = useState<string | null>(null)
   const [instances, setInstances] = useState(() =>
     ensureTenantDemoInstances(PROVIDER_SERVICES_DEMO_TENANT),
   )
@@ -326,6 +327,10 @@ export function ProviderAdminWorkspacePage() {
             defaultScopeFieldLabel="Organization"
             lockedServiceId={lockedServiceId ?? 'baremetal'}
             activeNavId={activeNavId}
+            onNavigateToCatalogItem={(catalogItemDisplayName) => {
+              setOpenCatalogItemKey(catalogItemDisplayName)
+              handleNavChange('catalog')
+            }}
           />
         )
       case 'catalog':
@@ -342,6 +347,8 @@ export function ProviderAdminWorkspacePage() {
               handleNavChange('infrastructure-bmaas-templates')
             }}
             onNavigateToNetworking={() => handleNavChange('networking-virtual-networks')}
+            openCatalogItemKey={openCatalogItemKey}
+            onOpenCatalogItemConsumed={() => setOpenCatalogItemKey(null)}
             onProvisioningStarted={handleProvisioningStarted}
             onDismissDuringProvisioning={handleNavigateToServices}
             onWizardFinished={handleNavigateToServices}

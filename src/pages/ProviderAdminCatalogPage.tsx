@@ -103,6 +103,9 @@ type ProviderAdminCatalogPageProps = {
     templateName: string
   }) => void
   onNavigateToNetworking?: () => void
+  /** When set, open this catalog item's detail page (id or display name). */
+  openCatalogItemKey?: string | null
+  onOpenCatalogItemConsumed?: () => void
   onProvisioningStarted?: (instance: TenantInstance) => void
   onDismissDuringProvisioning?: (instanceId: string, serviceId: CatalogServiceId) => void
   onWizardFinished?: (instanceId: string, serviceId: CatalogServiceId) => void
@@ -308,6 +311,8 @@ export function ProviderAdminCatalogPage({
   onRegisterOrganization,
   onNavigateToLinkedTemplate,
   onNavigateToNetworking,
+  openCatalogItemKey = null,
+  onOpenCatalogItemConsumed,
   onProvisioningStarted,
   onDismissDuringProvisioning,
   onWizardFinished,
@@ -529,6 +534,25 @@ export function ProviderAdminCatalogPage({
   const closeDetails = () => {
     setIsViewingDetails(false)
   }
+
+  useEffect(() => {
+    if (!openCatalogItemKey) {
+      return
+    }
+
+    const key = openCatalogItemKey.trim().toLowerCase()
+    const match =
+      catalogItems.find((item) => item.catalogItemId.toLowerCase() === key) ??
+      catalogItems.find((item) => item.displayName.toLowerCase() === key) ??
+      catalogItems.find((item) => item.displayName.toLowerCase().includes(key))
+
+    if (match) {
+      openDetails(match)
+      setIsWizardOpen(false)
+    }
+
+    onOpenCatalogItemConsumed?.()
+  }, [openCatalogItemKey, catalogItems, onOpenCatalogItemConsumed])
 
   const openAssign = (item: ProviderCatalogDraft) => {
     setSelectedCatalogItem(item)

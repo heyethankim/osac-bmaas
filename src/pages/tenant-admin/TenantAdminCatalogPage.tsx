@@ -68,6 +68,9 @@ type TenantAdminCatalogPageProps = {
   projects: TenantProject[]
   onNavigateToProjectsTeams: () => void
   existingInstanceNames?: readonly string[]
+  /** When set, open this catalog item's detail page (id or display name). */
+  openCatalogItemKey?: string | null
+  onOpenCatalogItemConsumed?: () => void
   onProvisioningStarted?: (instance: TenantInstance) => void
   onDismissDuringProvisioning?: (instanceId: string, serviceId: CatalogServiceId) => void
   onWizardFinished?: (instanceId: string, serviceId: CatalogServiceId) => void
@@ -282,6 +285,8 @@ export function TenantAdminCatalogPage({
   projects,
   onNavigateToProjectsTeams,
   existingInstanceNames = [],
+  openCatalogItemKey = null,
+  onOpenCatalogItemConsumed,
   onProvisioningStarted,
   onDismissDuringProvisioning,
   onWizardFinished,
@@ -403,6 +408,25 @@ export function TenantAdminCatalogPage({
     setSelectedCatalogItem(item)
     setIsDetailsDrawerOpen(true)
   }
+
+  useEffect(() => {
+    if (!openCatalogItemKey) {
+      return
+    }
+
+    const key = openCatalogItemKey.trim().toLowerCase()
+    const match =
+      catalogItems.find((item) => item.catalogItemId.toLowerCase() === key) ??
+      catalogItems.find((item) => item.displayName.toLowerCase() === key) ??
+      catalogItems.find((item) => item.displayName.toLowerCase().includes(key))
+
+    if (match) {
+      openDetails(match)
+      setIsWizardOpen(false)
+    }
+
+    onOpenCatalogItemConsumed?.()
+  }, [openCatalogItemKey, catalogItems, onOpenCatalogItemConsumed])
 
   const openLaunchWizard = (item: TenantCatalogGovernanceItemWithNetworking) => {
     if (item.status === 'Unpublished') {

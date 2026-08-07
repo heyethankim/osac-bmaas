@@ -131,6 +131,7 @@ export function TenantUserWorkspacePage() {
   const [openVirtualNetworkId, setOpenVirtualNetworkId] = useState<string | null>(null)
   const [openSubnetId, setOpenSubnetId] = useState<string | null>(null)
   const [openSecurityGroupId, setOpenSecurityGroupId] = useState<string | null>(null)
+  const [openCatalogItemKey, setOpenCatalogItemKey] = useState<string | null>(null)
   const provisioningTimersRef = useRef<Map<string, number>>(new Map())
 
   const clearProvisioningTimer = useCallback((instanceId: string) => {
@@ -234,6 +235,18 @@ export function TenantUserWorkspacePage() {
     },
     [setSearchParams, tenantSlug],
   )
+
+  const handleNavigateToCatalogItem = useCallback(
+    (catalogItemDisplayName: string) => {
+      setOpenCatalogItemKey(catalogItemDisplayName)
+      handleNavChange('catalog')
+    },
+    [handleNavChange],
+  )
+
+  const handleOpenCatalogItemConsumed = useCallback(() => {
+    setOpenCatalogItemKey(null)
+  }, [])
 
   const handleNavigateToInstances = useCallback(
     (options?: { serviceId?: CatalogServiceId }) => {
@@ -340,6 +353,7 @@ export function TenantUserWorkspacePage() {
             defaultScopeFieldLabel={invitation.scopeFieldLabel}
             lockedServiceId={lockedServiceId ?? 'baremetal'}
             activeNavId={activeNavId}
+            onNavigateToCatalogItem={handleNavigateToCatalogItem}
           />
         )
       case 'networking-virtual-networks':
@@ -394,6 +408,8 @@ export function TenantUserWorkspacePage() {
             scopeFieldLabel={invitation.scopeFieldLabel}
             preferCatalogDraft={Boolean(previewSession?.catalogItemId)}
             autoOpenLaunchWizard={Boolean(previewSession?.autoLaunch && previewSession.catalogItemId)}
+            openCatalogItemKey={openCatalogItemKey}
+            onOpenCatalogItemConsumed={handleOpenCatalogItemConsumed}
             existingInstanceNames={instances.map((instance) => instance.name)}
             onProvisioningStarted={handleProvisioningStarted}
             onDismissDuringProvisioning={handleDismissDuringProvisioning}

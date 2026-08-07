@@ -250,15 +250,35 @@ export function ensureTenantDemoInstances(
     }
 
     const current = next[existingIndex]!
-    if (current.name !== clusterState.name || current.status !== clusterState.status) {
+    const fresh = demo.create(organizationName)
+    const needsClusterConfigRefresh =
+      demo.id === DEMO_TENANT_CLUSTER_INSTANCE_ID &&
+      (current.clusterConfig?.upgradeStatus !== fresh.clusterConfig?.upgradeStatus ||
+        current.clusterConfig?.desiredVersion !== fresh.clusterConfig?.desiredVersion ||
+        current.osImage !== fresh.osImage ||
+        (current.clusterConfig?.nodeSets?.length ?? 0) < 2 ||
+        current.clusterConfig?.nodeSets?.some(
+          (nodeSet, index) =>
+            !nodeSet.version ||
+            !nodeSet.name ||
+            nodeSet.version !== fresh.clusterConfig?.nodeSets?.[index]?.version,
+        ))
+
+    if (
+      current.name !== clusterState.name ||
+      current.status !== clusterState.status ||
+      needsClusterConfigRefresh
+    ) {
       next[existingIndex] = {
-        ...current,
-        name: clusterState.name,
-        status: clusterState.status,
+        ...fresh,
+        // Keep user-driven lifecycle timestamps when only refreshing config shape.
+        createdAt: current.createdAt,
         provisionedAt:
           clusterState.status === 'provisioning'
             ? null
             : (current.provisionedAt ?? current.createdAt),
+        name: clusterState.name,
+        status: clusterState.status,
       }
       changed = true
     }

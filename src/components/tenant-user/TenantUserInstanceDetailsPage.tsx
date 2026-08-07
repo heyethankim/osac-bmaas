@@ -12,6 +12,7 @@ import {
   Tooltip,
 } from '@patternfly/react-core'
 import { CheckCircleIcon } from '@patternfly/react-icons/dist/esm/icons/check-circle-icon'
+import { PlusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/plus-circle-icon'
 import { EntityDetailsPageShell } from '../shared/EntityDetailsPageShell'
 import { CatalogClusterVersionValue } from '../catalog/CatalogClusterVersionValue'
 import { CatalogNetworkingLocksSection } from '../catalog/CatalogNetworkingLocksSection'
@@ -30,13 +31,17 @@ import {
 import {
   formatTenantInstanceCreatedAt,
   formatTenantInstanceName,
+  downloadClusterKubeconfig,
   getBareMetalInstanceConditions,
   getClusterApiUrl,
   getClusterConsoleUrl,
+  getClusterDesiredVersionLabel,
   getClusterInstanceConditions,
+  getClusterNodeSetsWithDefaults,
   getClusterPlatformLabel,
   getClusterStatusLabel,
-  getClusterWorkerNodeCount,
+  getClusterUpgradeStatus,
+  getClusterVersionShortLabel,
   getTenantInstanceScopeFieldLabel,
   getTenantInstanceServiceId,
   getTenantInstanceSpecRows,
@@ -51,6 +56,8 @@ import {
   resolveTenantInstanceNetworking,
   resolveVmConfig,
   type TenantClusterNodeInventory,
+  type TenantClusterNodeSetStatus,
+  type TenantClusterUpgradeStatus,
   type TenantInstance,
   type TenantInstanceCondition,
   type TenantInstanceNetworking,
@@ -76,6 +83,33 @@ type TenantUserInstanceDetailsPageProps = {
     networking: TenantInstanceNetworking,
     networkLabel: string,
   ) => void
+  /** Opens the matching catalog item detail page in Catalog. */
+  onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
+  /** Opens the cluster demo password modal. */
+  onViewPassword?: (instance: TenantInstance) => void
+}
+
+function CatalogItemDisplayLink({
+  displayName,
+  onNavigate,
+}: {
+  displayName: string
+  onNavigate?: (catalogItemDisplayName: string) => void
+}) {
+  if (!onNavigate) {
+    return <>{displayName}</>
+  }
+
+  return (
+    <Button
+      variant="link"
+      isInline
+      className="catalog-item-name-link"
+      onClick={() => onNavigate(displayName)}
+    >
+      {displayName}
+    </Button>
+  )
 }
 
 function getStatusColor(status: TenantInstance['status']): 'green' | 'blue' | 'red' | 'grey' {
@@ -531,6 +565,74 @@ function InstanceInheritedNetworkingSection({
   )
 }
 
+function ClusterLifecycleActions({
+  instance,
+  onRequestTerminate,
+  onViewPassword,
+}: {
+  instance: TenantInstance
+  onRequestTerminate: (instance: TenantInstance) => void
+  onViewPassword?: (instance: TenantInstance) => void
+}) {
+  const isRunning = instance.status === 'running'
+  const isBusy = instance.status === 'provisioning' || instance.status === 'restarting'
+  const canDelete = !isBusy
+  const consoleUrl = getClusterConsoleUrl(instance)
+
+  const openConsole = () => {
+    window.open(consoleUrl, '_blank', 'noopener,noreferrer')
+  }
+
+  return (
+    <>
+      {isRunning ? (
+        <Button variant="primary" onClick={openConsole}>
+          Console
+        </Button>
+      ) : (
+        <Tooltip content="Console is available when the cluster is ready">
+          <Button variant="primary" isAriaDisabled>
+            Console
+          </Button>
+        </Tooltip>
+      )}
+      {isRunning ? (
+        <Button variant="secondary" onClick={() => downloadClusterKubeconfig(instance)}>
+          Download kubeconfig
+        </Button>
+      ) : (
+        <Tooltip content="Kubeconfig is available when the cluster is ready">
+          <Button variant="secondary" isAriaDisabled>
+            Download kubeconfig
+          </Button>
+        </Tooltip>
+      )}
+      {isRunning ? (
+        <Button variant="secondary" onClick={() => onViewPassword?.(instance)}>
+          View password
+        </Button>
+      ) : (
+        <Tooltip content="Password is available when the cluster is ready">
+          <Button variant="secondary" isAriaDisabled>
+            View password
+          </Button>
+        </Tooltip>
+      )}
+      {canDelete ? (
+        <Button variant="secondary" isDanger onClick={() => onRequestTerminate(instance)}>
+          Delete
+        </Button>
+      ) : (
+        <Tooltip content="Delete is unavailable while provisioning">
+          <Button variant="secondary" isDanger isAriaDisabled>
+            Delete
+          </Button>
+        </Tooltip>
+      )}
+    </>
+  )
+}
+
 function VmLifecycleActions({
   instance,
   onRequestTerminate,
@@ -764,9 +866,66 @@ function DefaultLifecycleActions({
   )
 }
 
+function getClusterUpgradeStatusLabel(status: TenantClusterUpgradeStatus): string {
+  switch (status) {
+    case 'upgrade-available':
+      return 'Upgrade available'
+    case 'upgrading':
+      return 'Upgrading'
+    case 'up-to-date':
+    default:
+      return 'Up to date'
+  }
+}
+
+function getClusterUpgradeStatusColor(
+  status: TenantClusterUpgradeStatus,
+): 'green' | 'blue' | 'orange' | 'grey' {
+  switch (status) {
+    case 'upgrade-available':
+      return 'orange'
+    case 'upgrading':
+      return 'blue'
+    case 'up-to-date':
+    default:
+      return 'green'
+  }
+}
+
+function getNodeSetStatusLabel(status: TenantClusterNodeSetStatus): string {
+  switch (status) {
+    case 'updating':
+      return 'Updating'
+    case 'behind':
+      return 'Behind'
+    case 'pending':
+      return 'Pending'
+    case 'ready':
+    default:
+      return 'Ready'
+  }
+}
+
+function getNodeSetStatusColor(
+  status: TenantClusterNodeSetStatus,
+): 'green' | 'blue' | 'orange' | 'grey' {
+  switch (status) {
+    case 'updating':
+      return 'blue'
+    case 'behind':
+      return 'orange'
+    case 'pending':
+      return 'grey'
+    case 'ready':
+    default:
+      return 'green'
+  }
+}
+
 function ClusterInstancePageBody({
   instance,
   onUpdateNetworking,
+  onNavigateToCatalogItem,
 }: {
   instance: TenantInstance
   onUpdateNetworking?: (
@@ -774,138 +933,237 @@ function ClusterInstancePageBody({
     networking: TenantInstanceNetworking,
     networkLabel: string,
   ) => void
+  onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
 }) {
   const clusterConfig = resolveClusterConfig(instance)
-  const workerCount = getClusterWorkerNodeCount(instance)
   const apiUrl = getClusterApiUrl(instance)
   const consoleUrl = getClusterConsoleUrl(instance)
   const inventoryNodes = resolveClusterNodeInventories(instance)
   const isProvisioning = instance.status === 'provisioning'
+  const upgradeStatus = getClusterUpgradeStatus(instance)
+  const desiredVersion = getClusterDesiredVersionLabel(instance)
+  const nodeSets = getClusterNodeSetsWithDefaults(instance)
 
   return (
     <>
-      <div className="entity-details-page__columns">
-        <div className="entity-details-page__column">
-          <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
-            Overview
-          </Title>
-          <DescriptionList
-            isCompact
-            className="entity-details-page__dl"
-            aria-label="Cluster overview"
-          >
-            <DescriptionListGroup>
-              <DescriptionListTerm>Status</DescriptionListTerm>
-              <DescriptionListDescription>
-                <InstanceStatusLabel status={instance.status} isCluster />
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Worker nodes</DescriptionListTerm>
-              <DescriptionListDescription>{workerCount}</DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>API URL</DescriptionListTerm>
-              <DescriptionListDescription>
-                <code>{apiUrl}</code>
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Console URL</DescriptionListTerm>
-              <DescriptionListDescription>
-                <code>{consoleUrl}</code>
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-          </DescriptionList>
-        </div>
+      <div className="entity-details-page__columns entity-details-page__columns--with-rail">
+        <div className="entity-details-page__main-stack">
+          <div className="entity-details-page__columns entity-details-page__columns--2">
+            <div className="entity-details-page__column">
+              <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
+                Overview
+              </Title>
+              <DescriptionList
+                isCompact
+                className="entity-details-page__dl"
+                aria-label="Cluster overview"
+              >
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Status</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    <InstanceStatusLabel status={instance.status} isCluster />
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Catalog item</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    <CatalogItemDisplayLink
+                      displayName={instance.catalogItemDisplayName}
+                      onNavigate={onNavigateToCatalogItem}
+                    />
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>API URL</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    <code>{apiUrl}</code>
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Console URL</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    <code>{consoleUrl}</code>
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              </DescriptionList>
+            </div>
 
-        <div className="entity-details-page__column">
-          <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
-            Lifecycle
-          </Title>
-          <DescriptionList
-            isCompact
-            className="entity-details-page__dl"
-            aria-label="Cluster lifecycle"
-          >
-            <DescriptionListGroup>
-              <DescriptionListTerm>Created</DescriptionListTerm>
-              <DescriptionListDescription>
-                {formatTenantInstanceCreatedAt(instance.createdAt)}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Provisioned</DescriptionListTerm>
-              <DescriptionListDescription>
-                {instance.provisionedAt
-                  ? formatTenantInstanceCreatedAt(instance.provisionedAt)
-                  : instance.status === 'provisioning'
-                    ? 'In progress'
-                    : '—'}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-          </DescriptionList>
-        </div>
+            <div className="entity-details-page__column">
+              <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
+                Lifecycle
+              </Title>
+              <DescriptionList
+                isCompact
+                className="entity-details-page__dl"
+                aria-label="Cluster lifecycle"
+              >
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Created</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {formatTenantInstanceCreatedAt(instance.createdAt)}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Provisioned</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {instance.provisionedAt
+                      ? formatTenantInstanceCreatedAt(instance.provisionedAt)
+                      : instance.status === 'provisioning'
+                        ? 'In progress'
+                        : '—'}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Creator</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {clusterConfig.creator ?? 'Alex Johnson'}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              </DescriptionList>
+            </div>
+          </div>
 
-        <div className="entity-details-page__column entity-details-page__column--config entity-details-page__column--span-rows">
-          <Title
-            headingLevel="h2"
-            size="md"
-            className="entity-details-page__section-title entity-details-page__section-title--config"
-          >
-            Cluster configuration
-          </Title>
-          <DescriptionList
-            isCompact
-            className="entity-details-page__dl"
-            aria-label="Cluster configuration"
-          >
-            <DescriptionListGroup>
-              <DescriptionListTerm>Cluster version</DescriptionListTerm>
-              <DescriptionListDescription>
-                <CatalogClusterVersionValue>
-                  {getClusterPlatformLabel(instance)}
-                </CatalogClusterVersionValue>
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Pod CIDR</DescriptionListTerm>
-              <DescriptionListDescription>{clusterConfig.podCidr}</DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Service CIDR</DescriptionListTerm>
-              <DescriptionListDescription>{clusterConfig.serviceCidr}</DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Creator</DescriptionListTerm>
-              <DescriptionListDescription>
-                {clusterConfig.creator ?? 'Alex Johnson'}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            {clusterConfig.nodeSets.map((nodeSet, index) => (
-              <DescriptionListGroup key={nodeSet.id}>
-                <DescriptionListTerm>Node set {index + 1}</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {nodeSet.hostType} · {nodeSet.nodeCount}{' '}
-                  {nodeSet.nodeCount === 1 ? 'node' : 'nodes'}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-            ))}
-          </DescriptionList>
-
-          <ClusterInventorySection
-            nodes={inventoryNodes}
-            isProvisioning={isProvisioning}
-            embedded
+          <InstanceInheritedNetworkingSection
+            instance={instance}
+            onUpdateNetworking={onUpdateNetworking}
+            conditions={getClusterInstanceConditions(instance)}
+            conditionsAriaLabel="Cluster conditions"
           />
         </div>
 
-        <InstanceInheritedNetworkingSection
-          instance={instance}
-          onUpdateNetworking={onUpdateNetworking}
-          conditions={getClusterInstanceConditions(instance)}
-          conditionsAriaLabel="Cluster conditions"
-        />
+        <div className="entity-details-page__rail-stack">
+          <div className="entity-details-page__column entity-details-page__column--config">
+            <div className="entity-details-page__column-block">
+              <Title
+                headingLevel="h2"
+                size="md"
+                className="entity-details-page__section-title entity-details-page__section-title--config"
+              >
+                Cluster version
+              </Title>
+            <DescriptionList
+              isCompact
+              className="entity-details-page__dl"
+              aria-label="Cluster version"
+            >
+              <DescriptionListGroup>
+                <DescriptionListTerm>Current</DescriptionListTerm>
+                <DescriptionListDescription>
+                  <span className="entity-details-page__version-row">
+                    <CatalogClusterVersionValue>
+                      {getClusterPlatformLabel(instance)}
+                    </CatalogClusterVersionValue>
+                    <Label color={getClusterUpgradeStatusColor(upgradeStatus)} isCompact>
+                      {getClusterUpgradeStatusLabel(upgradeStatus)}
+                    </Label>
+                  </span>
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+              {desiredVersion && upgradeStatus !== 'up-to-date' ? (
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Desired</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    <span className="entity-details-page__version-row">
+                      <CatalogClusterVersionValue>{desiredVersion}</CatalogClusterVersionValue>
+                      {upgradeStatus === 'upgrade-available' ? (
+                        <Button
+                          variant="link"
+                          isInline
+                          className="entity-details-page__upgrade-cluster-link"
+                        >
+                          Upgrade cluster
+                        </Button>
+                      ) : null}
+                    </span>
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              ) : null}
+            </DescriptionList>
+          </div>
+
+          <div className="entity-details-page__column-block">
+            <div className="entity-details-page__section-header entity-details-page__section-header--config">
+              <Title
+                headingLevel="h2"
+                size="md"
+                className="entity-details-page__section-title entity-details-page__section-title--config"
+              >
+                Node sets
+              </Title>
+              <Button
+                variant="link"
+                isInline
+                icon={<PlusCircleIcon />}
+                className="entity-details-page__add-node-set"
+              >
+                Add node set
+              </Button>
+            </div>
+            <ul className="entity-details-page__node-set-list" aria-label="Cluster node sets">
+              {nodeSets.map((nodeSet) => {
+                const status = nodeSet.status ?? 'ready'
+                return (
+                  <li key={nodeSet.id} className="entity-details-page__node-set-item">
+                    <div className="entity-details-page__node-set-item-header">
+                      <span className="entity-details-page__node-set-name">
+                        {nodeSet.name ?? nodeSet.id}
+                      </span>
+                      <Label color={getNodeSetStatusColor(status)} isCompact>
+                        {getNodeSetStatusLabel(status)}
+                      </Label>
+                    </div>
+                    <Content component="p" className="entity-details-page__node-set-meta">
+                      {nodeSet.hostType} · {nodeSet.nodeCount}{' '}
+                      {nodeSet.nodeCount === 1 ? 'node' : 'nodes'} ·{' '}
+                      {getClusterVersionShortLabel(nodeSet.version ?? '')}
+                    </Content>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+
+          <div className="entity-details-page__column-block">
+            <Title
+              headingLevel="h2"
+              size="md"
+              className="entity-details-page__section-title entity-details-page__section-title--config"
+            >
+              Settings
+            </Title>
+            <DescriptionList
+              isCompact
+              className="entity-details-page__dl"
+              aria-label="Cluster settings"
+            >
+              <DescriptionListGroup>
+                <DescriptionListTerm>Pod CIDR</DescriptionListTerm>
+                <DescriptionListDescription>{clusterConfig.podCidr}</DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Service CIDR</DescriptionListTerm>
+                <DescriptionListDescription>{clusterConfig.serviceCidr}</DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>SSH public key</DescriptionListTerm>
+                <DescriptionListDescription>
+                  <code className="tenant-user-instances__ssh-key">
+                    {resolveBareMetalSshPublicKey(instance)}
+                  </code>
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+            </DescriptionList>
+          </div>
+          </div>
+
+          <div className="entity-details-page__column entity-details-page__column--config">
+            <ClusterInventorySection
+              nodes={inventoryNodes}
+              isProvisioning={isProvisioning}
+              embedded
+            />
+          </div>
+        </div>
       </div>
     </>
   )
@@ -915,6 +1173,7 @@ function VmInstancePageBody({
   instance,
   onAttachPublicIp,
   onUpdateNetworking,
+  onNavigateToCatalogItem,
 }: {
   instance: TenantInstance
   onAttachPublicIp?: (instance: TenantInstance) => void
@@ -923,6 +1182,7 @@ function VmInstancePageBody({
     networking: TenantInstanceNetworking,
     networkLabel: string,
   ) => void
+  onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
 }) {
   const isBusy = instance.status === 'provisioning' || instance.status === 'restarting'
   const vmConfig = resolveVmConfig(instance)
@@ -940,88 +1200,99 @@ function VmInstancePageBody({
 
   return (
     <>
-      <div className="entity-details-page__columns">
-        <div className="entity-details-page__column">
-          <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
-            Virtual machine summary
-          </Title>
-          <DescriptionList
-            isCompact
-            className="entity-details-page__dl"
-            aria-label="Virtual machine summary"
-          >
-            <DescriptionListGroup>
-              <DescriptionListTerm>Status</DescriptionListTerm>
-              <DescriptionListDescription>
-                <InstanceStatusLabel status={instance.status} />
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Instance type</DescriptionListTerm>
-              <DescriptionListDescription>{vmInstanceType}</DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Size</DescriptionListTerm>
-              <DescriptionListDescription>{vmSize}</DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>OS image</DescriptionListTerm>
-              <DescriptionListDescription>{vmOsImage}</DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Public IP</DescriptionListTerm>
-              <DescriptionListDescription>
-                {hasPublicIp ? (
-                  vmConfig.publicIp
-                ) : canAttachPublicIp ? (
-                  <Button
-                    variant="link"
-                    isInline
-                    onClick={() => onAttachPublicIp?.(instance)}
-                  >
-                    Attach public IP
-                  </Button>
-                ) : (
-                  '—'
-                )}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Internal IP</DescriptionListTerm>
-              <DescriptionListDescription>{vmConfig.internalIp}</DescriptionListDescription>
-            </DescriptionListGroup>
-          </DescriptionList>
+      <div className="entity-details-page__columns entity-details-page__columns--with-rail">
+        <div className="entity-details-page__main-stack">
+          <div className="entity-details-page__columns entity-details-page__columns--2">
+            <div className="entity-details-page__column">
+              <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
+                Virtual machine summary
+              </Title>
+              <DescriptionList
+                isCompact
+                className="entity-details-page__dl"
+                aria-label="Virtual machine summary"
+              >
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Status</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    <InstanceStatusLabel status={instance.status} />
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Instance type</DescriptionListTerm>
+                  <DescriptionListDescription>{vmInstanceType}</DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Size</DescriptionListTerm>
+                  <DescriptionListDescription>{vmSize}</DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>OS image</DescriptionListTerm>
+                  <DescriptionListDescription>{vmOsImage}</DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Public IP</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {hasPublicIp ? (
+                      vmConfig.publicIp
+                    ) : canAttachPublicIp ? (
+                      <Button
+                        variant="link"
+                        isInline
+                        onClick={() => onAttachPublicIp?.(instance)}
+                      >
+                        Attach public IP
+                      </Button>
+                    ) : (
+                      '—'
+                    )}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Internal IP</DescriptionListTerm>
+                  <DescriptionListDescription>{vmConfig.internalIp}</DescriptionListDescription>
+                </DescriptionListGroup>
+              </DescriptionList>
+            </div>
+
+            <div className="entity-details-page__column">
+              <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
+                Lifecycle
+              </Title>
+              <DescriptionList
+                isCompact
+                className="entity-details-page__dl"
+                aria-label="Virtual machine lifecycle"
+              >
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Created</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {formatTenantInstanceCreatedAt(instance.createdAt)}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Provisioned</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {instance.provisionedAt
+                      ? formatTenantInstanceCreatedAt(instance.provisionedAt)
+                      : instance.status === 'provisioning'
+                        ? 'In progress'
+                        : '—'}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              </DescriptionList>
+            </div>
+          </div>
+
+          <InstanceInheritedNetworkingSection
+            instance={instance}
+            onUpdateNetworking={onUpdateNetworking}
+            conditions={conditions}
+            conditionsAriaLabel="Virtual machine conditions"
+          />
         </div>
 
-        <div className="entity-details-page__column">
-          <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
-            Lifecycle
-          </Title>
-          <DescriptionList
-            isCompact
-            className="entity-details-page__dl"
-            aria-label="Virtual machine lifecycle"
-          >
-            <DescriptionListGroup>
-              <DescriptionListTerm>Created</DescriptionListTerm>
-              <DescriptionListDescription>
-                {formatTenantInstanceCreatedAt(instance.createdAt)}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Provisioned</DescriptionListTerm>
-              <DescriptionListDescription>
-                {instance.provisionedAt
-                  ? formatTenantInstanceCreatedAt(instance.provisionedAt)
-                  : instance.status === 'provisioning'
-                    ? 'In progress'
-                    : '—'}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-          </DescriptionList>
-        </div>
-
-        <div className="entity-details-page__column entity-details-page__column--config entity-details-page__column--span-rows">
+        <div className="entity-details-page__column entity-details-page__column--config">
           <Title
             headingLevel="h2"
             size="md"
@@ -1036,7 +1307,12 @@ function VmInstancePageBody({
           >
             <DescriptionListGroup>
               <DescriptionListTerm>Catalog item</DescriptionListTerm>
-              <DescriptionListDescription>{instance.catalogItemDisplayName}</DescriptionListDescription>
+              <DescriptionListDescription>
+                <CatalogItemDisplayLink
+                  displayName={instance.catalogItemDisplayName}
+                  onNavigate={onNavigateToCatalogItem}
+                />
+              </DescriptionListDescription>
             </DescriptionListGroup>
             <DescriptionListGroup>
               <DescriptionListTerm>SSH public key</DescriptionListTerm>
@@ -1058,13 +1334,6 @@ function VmInstancePageBody({
             </DescriptionListGroup>
           </DescriptionList>
         </div>
-
-        <InstanceInheritedNetworkingSection
-          instance={instance}
-          onUpdateNetworking={onUpdateNetworking}
-          conditions={conditions}
-          conditionsAriaLabel="Virtual machine conditions"
-        />
       </div>
     </>
   )
@@ -1073,6 +1342,7 @@ function VmInstancePageBody({
 function DefaultInstancePageBody({
   instance,
   onUpdateNetworking,
+  onNavigateToCatalogItem,
 }: {
   instance: TenantInstance
   onUpdateNetworking?: (
@@ -1080,6 +1350,7 @@ function DefaultInstancePageBody({
     networking: TenantInstanceNetworking,
     networkLabel: string,
   ) => void
+  onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
 }) {
   const isBareMetal = getTenantInstanceServiceId(instance) === 'baremetal'
   const specRows = getTenantInstanceSpecRows(instance)
@@ -1088,113 +1359,128 @@ function DefaultInstancePageBody({
 
   return (
     <>
-      <div className="entity-details-page__columns">
-        <div className="entity-details-page__column">
-          <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
-            Overview
-          </Title>
-          <DescriptionList
-            isCompact
-            className="entity-details-page__dl"
-            aria-label="Instance overview"
-          >
-            <DescriptionListGroup>
-              <DescriptionListTerm>Status</DescriptionListTerm>
-              <DescriptionListDescription>
-                <InstanceStatusLabel status={instance.status} />
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>{getTenantInstanceScopeFieldLabel(instance)}</DescriptionListTerm>
-              <DescriptionListDescription>{instance.projectName}</DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Catalog item</DescriptionListTerm>
-              <DescriptionListDescription>{instance.catalogItemDisplayName}</DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Instance ID</DescriptionListTerm>
-              <DescriptionListDescription>
-                <code>{instance.id}</code>
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            {isBareMetal ? (
-              <DescriptionListGroup>
-                <DescriptionListTerm>SSH public key</DescriptionListTerm>
-                <DescriptionListDescription>
-                  <code className="tenant-user-instances__ssh-key">
-                    {resolveBareMetalSshPublicKey(instance)}
-                  </code>
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-            ) : null}
-          </DescriptionList>
+      <div className="entity-details-page__columns entity-details-page__columns--with-rail">
+        <div className="entity-details-page__main-stack">
+          <div className="entity-details-page__columns entity-details-page__columns--2">
+            <div className="entity-details-page__column">
+              <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
+                Overview
+              </Title>
+              <DescriptionList
+                isCompact
+                className="entity-details-page__dl"
+                aria-label="Instance overview"
+              >
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Status</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    <InstanceStatusLabel status={instance.status} />
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>
+                    {getTenantInstanceScopeFieldLabel(instance)}
+                  </DescriptionListTerm>
+                  <DescriptionListDescription>{instance.projectName}</DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Catalog item</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    <CatalogItemDisplayLink
+                      displayName={instance.catalogItemDisplayName}
+                      onNavigate={onNavigateToCatalogItem}
+                    />
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Instance ID</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    <code>{instance.id}</code>
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              </DescriptionList>
+            </div>
+
+            <div className="entity-details-page__column">
+              <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
+                Lifecycle
+              </Title>
+              <DescriptionList
+                isCompact
+                className="entity-details-page__dl"
+                aria-label="Instance lifecycle"
+              >
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Created</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {formatTenantInstanceCreatedAt(instance.createdAt)}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Provisioned</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {instance.provisionedAt
+                      ? formatTenantInstanceCreatedAt(instance.provisionedAt)
+                      : instance.status === 'provisioning'
+                        ? 'In progress'
+                        : '—'}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              </DescriptionList>
+            </div>
+          </div>
+
+          <InstanceInheritedNetworkingSection
+            instance={instance}
+            onUpdateNetworking={onUpdateNetworking}
+            conditions={
+              isBareMetal && bareMetalConditions.length > 0 ? bareMetalConditions : undefined
+            }
+            conditionsAriaLabel={
+              isBareMetal && bareMetalConditions.length > 0 ? 'Bare metal conditions' : undefined
+            }
+          />
         </div>
 
-        <div className="entity-details-page__column">
-          <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
-            Lifecycle
-          </Title>
-          <DescriptionList
-            isCompact
-            className="entity-details-page__dl"
-            aria-label="Instance lifecycle"
-          >
-            <DescriptionListGroup>
-              <DescriptionListTerm>Created</DescriptionListTerm>
-              <DescriptionListDescription>
-                {formatTenantInstanceCreatedAt(instance.createdAt)}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Provisioned</DescriptionListTerm>
-              <DescriptionListDescription>
-                {instance.provisionedAt
-                  ? formatTenantInstanceCreatedAt(instance.provisionedAt)
-                  : instance.status === 'provisioning'
-                    ? 'In progress'
-                    : '—'}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-          </DescriptionList>
-        </div>
-
-        <div className="entity-details-page__column entity-details-page__column--config entity-details-page__column--span-rows">
-          <Title
-            headingLevel="h2"
-            size="md"
-            className="entity-details-page__section-title entity-details-page__section-title--config"
-          >
-            Specifications
-          </Title>
-          <DescriptionList
-            isCompact
-            className="entity-details-page__dl"
-            aria-label="Instance specifications"
-          >
-            {specRows.map((row) => (
-              <DescriptionListGroup key={row.label}>
-                <DescriptionListTerm>{row.label}</DescriptionListTerm>
-                <DescriptionListDescription>{row.value}</DescriptionListDescription>
-              </DescriptionListGroup>
-            ))}
-          </DescriptionList>
+        <div className="entity-details-page__rail-stack">
+          <div className="entity-details-page__column entity-details-page__column--config">
+            <Title
+              headingLevel="h2"
+              size="md"
+              className="entity-details-page__section-title entity-details-page__section-title--config"
+            >
+              Specifications
+            </Title>
+            <DescriptionList
+              isCompact
+              className="entity-details-page__dl"
+              aria-label="Instance specifications"
+            >
+              {specRows.map((row) => (
+                <DescriptionListGroup key={row.label}>
+                  <DescriptionListTerm>{row.label}</DescriptionListTerm>
+                  <DescriptionListDescription>{row.value}</DescriptionListDescription>
+                </DescriptionListGroup>
+              ))}
+              {isBareMetal ? (
+                <DescriptionListGroup>
+                  <DescriptionListTerm>SSH public key</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    <code className="tenant-user-instances__ssh-key">
+                      {resolveBareMetalSshPublicKey(instance)}
+                    </code>
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              ) : null}
+            </DescriptionList>
+          </div>
 
           {isBareMetal ? (
-            <BareMetalInventorySection inventory={bareMetalInventory} embedded />
+            <div className="entity-details-page__column entity-details-page__column--config">
+              <BareMetalInventorySection inventory={bareMetalInventory} embedded />
+            </div>
           ) : null}
         </div>
-
-        <InstanceInheritedNetworkingSection
-          instance={instance}
-          onUpdateNetworking={onUpdateNetworking}
-          conditions={
-            isBareMetal && bareMetalConditions.length > 0 ? bareMetalConditions : undefined
-          }
-          conditionsAriaLabel={
-            isBareMetal && bareMetalConditions.length > 0 ? 'Bare metal conditions' : undefined
-          }
-        />
       </div>
     </>
   )
@@ -1209,6 +1495,8 @@ export function TenantUserInstanceDetailsPage({
   onStop,
   onAttachPublicIp,
   onUpdateNetworking,
+  onNavigateToCatalogItem,
+  onViewPassword,
 }: TenantUserInstanceDetailsPageProps) {
   const serviceId = getTenantInstanceServiceId(instance)
   const isCluster = serviceId === 'cluster'
@@ -1220,7 +1508,13 @@ export function TenantUserInstanceDetailsPage({
       ? 'Review virtual machine configuration, networking, and conditions for this instance.'
       : 'Review configuration, networking, and lifecycle details for this instance.'
 
-  const actions = isCluster ? undefined : isVm ? (
+  const actions = isCluster ? (
+    <ClusterLifecycleActions
+      instance={instance}
+      onRequestTerminate={onRequestTerminate}
+      onViewPassword={onViewPassword}
+    />
+  ) : isVm ? (
     <VmLifecycleActions
       instance={instance}
       onRequestTerminate={onRequestTerminate}
@@ -1249,15 +1543,24 @@ export function TenantUserInstanceDetailsPage({
       actions={actions}
     >
       {isCluster ? (
-        <ClusterInstancePageBody instance={instance} onUpdateNetworking={onUpdateNetworking} />
+        <ClusterInstancePageBody
+          instance={instance}
+          onUpdateNetworking={onUpdateNetworking}
+          onNavigateToCatalogItem={onNavigateToCatalogItem}
+        />
       ) : isVm ? (
         <VmInstancePageBody
           instance={instance}
           onAttachPublicIp={onAttachPublicIp}
           onUpdateNetworking={onUpdateNetworking}
+          onNavigateToCatalogItem={onNavigateToCatalogItem}
         />
       ) : (
-        <DefaultInstancePageBody instance={instance} onUpdateNetworking={onUpdateNetworking} />
+        <DefaultInstancePageBody
+          instance={instance}
+          onUpdateNetworking={onUpdateNetworking}
+          onNavigateToCatalogItem={onNavigateToCatalogItem}
+        />
       )}
     </EntityDetailsPageShell>
   )

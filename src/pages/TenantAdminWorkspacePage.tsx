@@ -138,6 +138,7 @@ export function TenantAdminWorkspacePage() {
   const [openVirtualNetworkId, setOpenVirtualNetworkId] = useState<string | null>(null)
   const [openSubnetId, setOpenSubnetId] = useState<string | null>(null)
   const [openSecurityGroupId, setOpenSecurityGroupId] = useState<string | null>(null)
+  const [openCatalogItemKey, setOpenCatalogItemKey] = useState<string | null>(null)
   const provisioningTimersRef = useRef<Map<string, number>>(new Map())
 
   useLayoutEffect(() => {
@@ -257,6 +258,10 @@ export function TenantAdminWorkspacePage() {
             defaultScopeFieldLabel="Organization"
             lockedServiceId={lockedServiceId ?? 'baremetal'}
             activeNavId={activeNavId}
+            onNavigateToCatalogItem={(catalogItemDisplayName) => {
+              setOpenCatalogItemKey(catalogItemDisplayName)
+              handleNavChange('catalog')
+            }}
           />
         )
       case 'catalog':
@@ -267,6 +272,8 @@ export function TenantAdminWorkspacePage() {
             projects={projects}
             onNavigateToProjectsTeams={() => handleNavChange('projects-teams')}
             existingInstanceNames={instances.map((instance) => instance.name)}
+            openCatalogItemKey={openCatalogItemKey}
+            onOpenCatalogItemConsumed={() => setOpenCatalogItemKey(null)}
             onProvisioningStarted={handleProvisioningStarted}
             onDismissDuringProvisioning={handleNavigateToServices}
             onWizardFinished={handleNavigateToServices}

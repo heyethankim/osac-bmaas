@@ -342,6 +342,50 @@ export function CatalogItemDetailsPage({
                   </DescriptionListDescription>
                 </DescriptionListGroup>
                 <DescriptionListGroup>
+                  <DescriptionListTerm>Template</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {canLinkToBareMetalTemplate && onNavigateToLinkedTemplate ? (
+                      <Button
+                        variant="link"
+                        isInline
+                        className="provider-admin-catalog-items__inline-link"
+                        onClick={() =>
+                          onNavigateToLinkedTemplate({
+                            templateRefId: catalog.templateRefId,
+                            templateName: catalog.templateName,
+                          })
+                        }
+                      >
+                        {templatePresentation.title}
+                      </Button>
+                    ) : (
+                      templatePresentation.title
+                    )}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Rate</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {formatRateCardSummary(catalog.rateCard)}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              </DescriptionList>
+            </div>
+
+            <div className="provider-admin-catalog-item-details__column">
+              <Title
+                headingLevel="h2"
+                size="lg"
+                className="provider-admin-catalog-item-details__section-title"
+              >
+                Publishing
+              </Title>
+              <DescriptionList
+                isCompact
+                className="provider-admin-catalog-item-details__dl"
+                aria-label="Catalog item publishing details"
+              >
+                <DescriptionListGroup>
                   <DescriptionListTerm>Visibility</DescriptionListTerm>
                   <DescriptionListDescription>
                     <span className="provider-admin-catalog-items__scope">
@@ -374,50 +418,6 @@ export function CatalogItemDetailsPage({
                     <DescriptionListDescription>Restricted — unassigned</DescriptionListDescription>
                   </DescriptionListGroup>
                 ) : null}
-              </DescriptionList>
-            </div>
-
-            <div className="provider-admin-catalog-item-details__column">
-              <Title
-                headingLevel="h2"
-                size="lg"
-                className="provider-admin-catalog-item-details__section-title"
-              >
-                Publishing
-              </Title>
-              <DescriptionList
-                isCompact
-                className="provider-admin-catalog-item-details__dl"
-                aria-label="Catalog item publishing details"
-              >
-                <DescriptionListGroup>
-                  <DescriptionListTerm>Template</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    {canLinkToBareMetalTemplate && onNavigateToLinkedTemplate ? (
-                      <Button
-                        variant="link"
-                        isInline
-                        className="provider-admin-catalog-items__inline-link"
-                        onClick={() =>
-                          onNavigateToLinkedTemplate({
-                            templateRefId: catalog.templateRefId,
-                            templateName: catalog.templateName,
-                          })
-                        }
-                      >
-                        {templatePresentation.title}
-                      </Button>
-                    ) : (
-                      templatePresentation.title
-                    )}
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
-                <DescriptionListGroup>
-                  <DescriptionListTerm>Rate</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    {formatRateCardSummary(catalog.rateCard)}
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
                 <DescriptionListGroup>
                   <DescriptionListTerm>Created</DescriptionListTerm>
                   <DescriptionListDescription>

@@ -180,6 +180,20 @@
   text-decoration: none;
 }
 
+/* Keep catalog item links readable as links inside description lists. */
+.entity-details-page__dl .catalog-item-name-link.pf-v6-c-button,
+.provider-admin-catalog-item-details__dl .catalog-item-name-link.pf-v6-c-button {
+  color: var(--pf-t--global--color--brand--default);
+  font-size: var(--pf-t--global--font--size--body--default);
+  font-weight: var(--pf-t--global--font--weight--body--default);
+}
+
+.entity-details-page__dl .catalog-item-name-link.pf-v6-c-button:hover,
+.provider-admin-catalog-item-details__dl .catalog-item-name-link.pf-v6-c-button:hover {
+  color: var(--pf-t--global--color--brand--hover);
+  text-decoration: underline;
+}
+
 .catalog-service-filter {
   flex-wrap: wrap;
 }

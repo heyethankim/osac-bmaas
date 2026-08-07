@@ -408,14 +408,21 @@ export function TenantUserLaunchInstanceWizard({
             serviceCidr: form.serviceCidr.trim(),
             catalogShortName: 'ocp-small',
             creator: 'Alex Johnson',
-            nodeSets: form.nodeSets.map((nodeSet) => ({
+            upgradeStatus: 'up-to-date',
+            nodeSets: form.nodeSets.map((nodeSet, index) => ({
               id: nodeSet.id,
+              name: index === 0 ? 'workers' : `node-set-${index + 1}`,
               hostType: nodeSet.hostType,
               nodeCount: nodeSet.nodeCount,
+              version: formatClusterPlatformLabel(form.releaseImage.trim()) || undefined,
+              status: 'pending' as const,
             })),
           }
         : undefined,
-      sshPublicKey: isBareMetalCatalogItem || isVmCatalogItem ? form.sshPublicKey.trim() : undefined,
+      sshPublicKey:
+        isBareMetalCatalogItem || isVmCatalogItem || isClusterCatalogItem
+          ? form.sshPublicKey.trim()
+          : undefined,
       vmConfig: isVmCatalogItem
         ? {
             instanceType: form.instanceType.trim() || 'small - 1 vCPU, 2 GiB',

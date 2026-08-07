@@ -31,10 +31,33 @@ export type TenantInstanceNetworking = {
   securityGroup: string
 }
 
+export type TenantClusterNodeSetStatus = 'ready' | 'updating' | 'behind' | 'pending'
+
 export type TenantClusterNodeSet = {
   id: string
+  /** Friendly pool name shown in the detail list (e.g. workers). */
+  name?: string
   hostType: string
   nodeCount: number
+  /** Platform version currently running on this node set. */
+  version?: string
+  status?: TenantClusterNodeSetStatus
+}
+
+export type TenantClusterUpgradeStatus = 'up-to-date' | 'upgrade-available' | 'upgrading'
+
+export type TenantClusterConfig = {
+  releaseImage: string
+  podCidr: string
+  serviceCidr: string
+  nodeSets: TenantClusterNodeSet[]
+  /** Per-node inventory once machines are allocated. */
+  nodes?: TenantClusterNodeInventory[]
+  catalogShortName?: string
+  creator?: string
+  /** Desired control-plane version when an upgrade is available or in progress. */
+  desiredVersion?: string
+  upgradeStatus?: TenantClusterUpgradeStatus
 }
 
 /** NIC identity discovered on a specific allocated machine (not the instance type). */
@@ -58,17 +81,6 @@ export type TenantClusterNodeInventory = {
   nodeSetId: string
   hostType: string
   networkInterfaces: TenantNetworkInterfaceInventory[]
-}
-
-export type TenantClusterConfig = {
-  releaseImage: string
-  podCidr: string
-  serviceCidr: string
-  nodeSets: TenantClusterNodeSet[]
-  /** Per-node inventory once machines are allocated. */
-  nodes?: TenantClusterNodeInventory[]
-  catalogShortName?: string
-  creator?: string
 }
 
 export type TenantVmConfig = {
@@ -101,7 +113,7 @@ export type TenantInstance = {
   vmConfig?: TenantVmConfig
   /** Bare metal machine inventory (MAC addresses, etc.) after provision. */
   inventory?: TenantMachineInventory
-  /** SSH public key captured at bare metal launch. */
+  /** SSH public key captured at launch (bare metal, VM, and cluster). */
   sshPublicKey?: string
   /** Scope label: project name when project-scoped, organization name otherwise. */
   projectName: string
@@ -856,6 +868,50 @@ export function getClusterPlatformLabel(instance: TenantInstance): string {
   return '—'
 }
 
+/** Short version token for node-set rows (e.g. "4.16" from "Red Hat OpenShift 4.16"). */
+export function getClusterVersionShortLabel(versionLabel: string): string {
+  const match = versionLabel.match(/(\d+\.\d+(?:\.\d+)?)/)
+  return match?.[1] ?? (versionLabel.trim() || '—')
+}
+
+export function getClusterUpgradeStatus(
+  instance: TenantInstance,
+): TenantClusterUpgradeStatus {
+  const configured = resolveClusterConfig(instance).upgradeStatus
+  if (configured) {
+    return configured
+  }
+  return 'up-to-date'
+}
+
+export function getClusterDesiredVersionLabel(instance: TenantInstance): string | null {
+  const desired = resolveClusterConfig(instance).desiredVersion?.trim()
+  return desired || null
+}
+
+export function getClusterNodeSetsWithDefaults(instance: TenantInstance): TenantClusterNodeSet[] {
+  const clusterVersion = getClusterPlatformLabel(instance)
+  const shortVersion = getClusterVersionShortLabel(clusterVersion)
+  const isProvisioning = instance.status === 'provisioning'
+
+  return resolveClusterConfig(instance).nodeSets.map((nodeSet, index) => ({
+    ...nodeSet,
+    name: nodeSet.name?.trim() || (index === 0 ? 'workers' : `node-set-${index + 1}`),
+    version: nodeSet.version?.trim() || shortVersion,
+    status:
+      nodeSet.status ??
+      (isProvisioning ? 'pending' : 'ready'),
+  }))
+}
+
+export function countClusterNodeSetsOffVersion(instance: TenantInstance): number {
+  const clusterShort = getClusterVersionShortLabel(getClusterPlatformLabel(instance))
+  return getClusterNodeSetsWithDefaults(instance).filter((nodeSet) => {
+    const nodeShort = getClusterVersionShortLabel(nodeSet.version ?? '')
+    return nodeShort !== clusterShort
+  }).length
+}
+
 export function getClusterNodeSetTypeLabel(instance: TenantInstance): string {
   const hostType = resolveClusterConfig(instance).nodeSets[0]?.hostType?.trim()
   if (hostType) {
@@ -1013,6 +1069,9 @@ function createDemoTenantClusterInstanceVariant(
     hostType: 'standard-host' | 'gpu-host'
     nodeCount: number
     hoursAgo: number
+    desiredVersion?: string
+    upgradeStatus?: TenantClusterUpgradeStatus
+    nodeSets?: TenantClusterNodeSet[]
   },
 ): TenantInstance {
   const createdAt = new Date(Date.now() - 1000 * 60 * 60 * options.hoursAgo).toISOString()
@@ -1020,10 +1079,26 @@ function createDemoTenantClusterInstanceVariant(
     { serviceId: 'cluster', templateRefId: '', templateName: '' },
     { includeDetails: true },
   )
-  const nodeSetValue =
-    options.hostType === 'gpu-host'
-      ? `gpu-workers · ${options.nodeCount} node${options.nodeCount === 1 ? '' : 's'}`
-      : `fc430 · worker × ${options.nodeCount}`
+  const shortVersion = getClusterVersionShortLabel(options.platform)
+  const defaultNodeSets: TenantClusterNodeSet[] = [
+    {
+      id: 'node-set-1',
+      name: options.hostType === 'gpu-host' ? 'gpu-workers' : 'workers',
+      hostType: options.hostType,
+      nodeCount: options.nodeCount,
+      version: shortVersion,
+      status: options.status === 'provisioning' ? 'pending' : 'ready',
+    },
+  ]
+  const nodeSets = options.nodeSets ?? defaultNodeSets
+  const nodeSetValue = nodeSets
+    .map(
+      (nodeSet) =>
+        `${nodeSet.name ?? nodeSet.hostType} · ${nodeSet.nodeCount} node${
+          nodeSet.nodeCount === 1 ? '' : 's'
+        }`,
+    )
+    .join(' · ')
   const specRows = baseSpecRows.map((row) => {
     if (row.label === 'Cluster version' || row.label === 'Platform') {
       return { label: 'Cluster version', value: options.platform }
@@ -1050,29 +1125,20 @@ function createDemoTenantClusterInstanceVariant(
     },
     gpuLabel: options.hostType,
     specRows,
+    sshPublicKey: DEFAULT_BARE_METAL_SSH_PUBLIC_KEY,
     clusterConfig: {
       releaseImage: getReleaseImageForClusterVersion(options.platform),
       podCidr: '10.128.0.0/14',
       serviceCidr: '172.30.0.0/16',
       catalogShortName: options.hostType === 'gpu-host' ? 'ocp-gpu' : 'ocp-small',
       creator: 'Alex Johnson',
-      nodeSets: [
-        {
-          id: 'node-set-1',
-          hostType: options.hostType,
-          nodeCount: options.nodeCount,
-        },
-      ],
+      desiredVersion: options.desiredVersion,
+      upgradeStatus: options.upgradeStatus,
+      nodeSets,
       nodes:
         options.status === 'provisioning'
           ? undefined
-          : buildClusterNodeInventories(options.id, [
-              {
-                id: 'node-set-1',
-                hostType: options.hostType,
-                nodeCount: options.nodeCount,
-              },
-            ]),
+          : buildClusterNodeInventories(options.id, nodeSets),
     },
     projectName: organizationName,
     scopeKind: 'organization',
@@ -1087,10 +1153,30 @@ export function createDemoTenantClusterInstance(organizationName: string): Tenan
     id: DEMO_TENANT_CLUSTER_INSTANCE_ID,
     name: 'ocp-cluster-01',
     status: 'running',
-    platform: 'Red Hat OpenShift 4.16',
+    platform: 'Red Hat OpenShift 4.19',
     hostType: 'standard-host',
     nodeCount: 3,
     hoursAgo: 18,
+    desiredVersion: 'Red Hat OpenShift 4.20',
+    upgradeStatus: 'upgrade-available',
+    nodeSets: [
+      {
+        id: 'node-set-1',
+        name: 'workers',
+        hostType: 'standard-host',
+        nodeCount: 3,
+        version: '4.19',
+        status: 'ready',
+      },
+      {
+        id: 'node-set-2',
+        name: 'gpu-workers',
+        hostType: 'gpu-host',
+        nodeCount: 2,
+        version: '4.18',
+        status: 'behind',
+      },
+    ],
   })
 }
 

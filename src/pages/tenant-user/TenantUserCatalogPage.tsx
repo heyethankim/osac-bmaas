@@ -50,6 +50,9 @@ type TenantUserCatalogPageProps = {
   autoOpenLaunchWizard?: boolean
   /** Prefer the provided catalog draft even if org assignment differs. */
   preferCatalogDraft?: boolean
+  /** When set, open this catalog item's detail page (id or display name). */
+  openCatalogItemKey?: string | null
+  onOpenCatalogItemConsumed?: () => void
   existingInstanceNames?: readonly string[]
   onProvisioningStarted: (instance: TenantInstance) => void
   onDismissDuringProvisioning: (instanceId: string, serviceId: CatalogServiceId) => void
@@ -151,6 +154,8 @@ export function TenantUserCatalogPage({
   scopeFieldLabel,
   autoOpenLaunchWizard = false,
   preferCatalogDraft = false,
+  openCatalogItemKey = null,
+  onOpenCatalogItemConsumed,
   existingInstanceNames = [],
   onProvisioningStarted,
   onDismissDuringProvisioning,
@@ -219,6 +224,26 @@ export function TenantUserCatalogPage({
     setSelectedCatalogItem(preferred)
     setIsWizardOpen(true)
   }, [autoOpenLaunchWizard, catalogDraft, catalogItems, preferCatalogDraft])
+
+  useEffect(() => {
+    if (!openCatalogItemKey) {
+      return
+    }
+
+    const key = openCatalogItemKey.trim().toLowerCase()
+    const match =
+      catalogItems.find((item) => item.catalogItemId.toLowerCase() === key) ??
+      catalogItems.find((item) => item.displayName.toLowerCase() === key) ??
+      catalogItems.find((item) => item.displayName.toLowerCase().includes(key))
+
+    if (match) {
+      setSelectedCatalogItem(match)
+      setIsDetailsDrawerOpen(true)
+      setIsWizardOpen(false)
+    }
+
+    onOpenCatalogItemConsumed?.()
+  }, [openCatalogItemKey, catalogItems, onOpenCatalogItemConsumed])
 
   const serviceCounts = useMemo(
     () => countCatalogServices(catalogItems.map((item) => item.serviceId)),
