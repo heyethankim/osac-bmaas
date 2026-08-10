@@ -643,6 +643,11 @@ export function getClusterConsoleUrl(instance: TenantInstance): string {
   return `https://console.${getClusterDnsName(instance)}.mock.osac.dev`
 }
 
+/** Demo VNC/serial console URL for a virtual machine instance. */
+export function getVmConsoleUrl(instance: TenantInstance): string {
+  return `https://console-vm.${getClusterDnsName(instance)}.mock.osac.dev`
+}
+
 export function getClusterWorkerNodeCount(instance: TenantInstance): number {
   const nodeSets = resolveClusterConfig(instance).nodeSets
   return nodeSets.reduce((total, nodeSet) => total + nodeSet.nodeCount, 0)

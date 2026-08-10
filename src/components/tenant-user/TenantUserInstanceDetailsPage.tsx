@@ -43,6 +43,7 @@ import {
   getClusterApiUrl,
   getClusterConsoleUrl,
   getClusterDesiredVersionLabel,
+  getVmConsoleUrl,
   getClusterInstanceConditions,
   getClusterNodeSetsWithDefaults,
   getClusterPlatformLabel,
@@ -665,9 +666,25 @@ function VmLifecycleActions({
   const canStop = isRunning
   const canRestart = isRunning || isStopped
   const canDelete = !isBusy
+  const consoleUrl = getVmConsoleUrl(instance)
+
+  const openConsole = () => {
+    window.open(consoleUrl, '_blank', 'noopener,noreferrer')
+  }
 
   return (
     <>
+      {isRunning ? (
+        <Button variant="primary" onClick={openConsole}>
+          Console
+        </Button>
+      ) : (
+        <Tooltip content="Console is available when the instance is running">
+          <Button variant="primary" isAriaDisabled>
+            Console
+          </Button>
+        </Tooltip>
+      )}
       {canStart ? (
         <Button variant="secondary" onClick={() => onStart?.(instance.id)}>
           Start
