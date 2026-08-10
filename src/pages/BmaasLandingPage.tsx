@@ -237,11 +237,11 @@ export function BmaasLandingPage() {
               variant="link"
               component="a"
               isInline
-              href="https://redhat.atlassian.net/browse/HPUX-1790"
+              href="https://docs.google.com/spreadsheets/d/1Gw4zbnim9oCjHkvqREvoNyViHgLd4JBZcBmtaFrO0xE/edit?gid=1297446303#gid=1297446303"
               target="_blank"
               rel="noopener noreferrer"
             >
-              HPUX-1790
+              OSAC Delivery Overview
             </Button>
           </div>
           <Content component="p" className="bmaas-role-landing__footer-meta">
