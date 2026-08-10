@@ -218,6 +218,33 @@ export const LEGACY_SECOND_CATALOG_ITEM_TITLE_CASE_DISPLAY_NAME = 'Bare Metal - 
 /** Prefill for Provider Admin “Create catalog item” Name step (distinct from seeded items). */
 export const PUBLISH_CATALOG_SUGGESTED_DISPLAY_NAME = 'bare-metal-general-purpose-server'
 
+/** Service-specific Name step prefills for Create catalog item. */
+export const PUBLISH_CATALOG_SUGGESTED_DISPLAY_NAMES = {
+  baremetal: PUBLISH_CATALOG_SUGGESTED_DISPLAY_NAME,
+  cluster: 'cluster-general-purpose',
+  'virtual-machine': 'vm-general-purpose',
+  models: 'model-serving-endpoint',
+} as const satisfies Record<CatalogServiceId, string>
+
+export function getPublishCatalogSuggestedDisplayName(serviceId: CatalogServiceId): string {
+  return PUBLISH_CATALOG_SUGGESTED_DISPLAY_NAMES[serviceId]
+}
+
+/** Service-specific Description step prefills for Create catalog item. */
+export const PUBLISH_CATALOG_SUGGESTED_DESCRIPTIONS = {
+  baremetal: DEFAULT_TEMPLATE_DESCRIPTION,
+  cluster:
+    'Catalog offering for OpenShift clusters with an HA control plane and configurable worker node sets. Provisions via Assisted Installer / Hive, kept private until published to the Catalog.',
+  'virtual-machine':
+    'Catalog offering for general-purpose virtual machines with configurable CPU, memory, and network attachments. Kept private until published to the Catalog.',
+  models:
+    'Catalog offering for curated model-serving endpoints. Kept private until published to the Catalog.',
+} as const satisfies Record<CatalogServiceId, string>
+
+export function getPublishCatalogSuggestedDescription(serviceId: CatalogServiceId): string {
+  return PUBLISH_CATALOG_SUGGESTED_DESCRIPTIONS[serviceId]
+}
+
 export function getCatalogDisplayName(hardwareProfileId: string): string {
   const profile = DISCOVERED_HARDWARE_PROFILES.find((item) => item.id === hardwareProfileId)
   if (!profile) {

@@ -77,7 +77,6 @@ import {
   CATALOG_SERVICE_FILTER_LABELS,
   CATALOG_SERVICE_LABELS,
   DEFAULT_BLUEPRINT_FORM,
-  PUBLISH_CATALOG_SUGGESTED_DISPLAY_NAME,
   formatRateCardSummary,
   parseRateCardFromForm,
   type CatalogServiceId,
@@ -1117,9 +1116,6 @@ export function ProviderAdminCatalogPage({
         templates={availableTemplates}
         organizations={organizations}
         defaultTemplateRefId={newestCatalogItem?.templateRefId}
-        defaultDisplayName={
-          catalogItems.length > 0 ? PUBLISH_CATALOG_SUGGESTED_DISPLAY_NAME : undefined
-        }
         initialPublishScope={publishResumeScope}
         initialEnterpriseTenantId={publishResumeTenantId}
         onClose={() => {

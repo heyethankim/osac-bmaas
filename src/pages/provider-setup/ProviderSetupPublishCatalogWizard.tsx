@@ -85,6 +85,8 @@ import {
 import {
   CATALOG_SERVICE_OFFERINGS,
   getCatalogServiceOffering,
+  getPublishCatalogSuggestedDisplayName,
+  getPublishCatalogSuggestedDescription,
   formatRateCardSummary,
   resolveRateCard,
   PUBLISH_CATALOG_STEPS,
@@ -99,7 +101,10 @@ type ProviderSetupPublishCatalogWizardProps = {
   templates: SavedMasterTemplate[]
   organizations: RegisteredOrganization[]
   defaultTemplateRefId?: string
-  /** When set, prefills the Name step instead of the template suggested name. */
+  /**
+   * Optional Name step override. Prefer service-specific suggestions from
+   * `getPublishCatalogSuggestedDisplayName` when omitted.
+   */
   defaultDisplayName?: string
   /** Resume VIP after registering an organization. */
   initialPublishScope?: PublishCatalogScope
@@ -365,11 +370,11 @@ export function ProviderSetupPublishCatalogWizard({
 
     if (preferredTemplate) {
       setSelectedTemplateRefId(preferredTemplate.templateRefId)
-      setDisplayName(defaultDisplayName ?? preferredTemplate.suggestedDisplayName)
-      setDescription(preferredTemplate.description)
     }
 
     setSelectedServiceId('baremetal')
+    setDisplayName(defaultDisplayName ?? getPublishCatalogSuggestedDisplayName('baremetal'))
+    setDescription(getPublishCatalogSuggestedDescription('baremetal'))
     setPublishScope(initialPublishScope)
     if (initialPublishScope === 'vip-enterprise') {
       const preferredTenantIds = normalizeEnterpriseTenantIds(initialEnterpriseTenantId).filter(
@@ -401,13 +406,14 @@ export function ProviderSetupPublishCatalogWizard({
   }, [isOpen, organizations, publishScope, enterpriseTenantIds])
 
   useEffect(() => {
-    if (!selectedTemplate) {
+    if (!selectedServiceId) {
       return
     }
 
-    setDisplayName(defaultDisplayName ?? selectedTemplate.suggestedDisplayName)
-    setDescription(selectedTemplate.description)
-  }, [selectedTemplate?.templateRefId, defaultDisplayName])
+    // Keep Name and Description aligned with the chosen service.
+    setDisplayName(getPublishCatalogSuggestedDisplayName(selectedServiceId))
+    setDescription(getPublishCatalogSuggestedDescription(selectedServiceId))
+  }, [selectedServiceId])
 
   useEffect(() => {
     if (!selectedServiceId) {
@@ -1191,7 +1197,11 @@ export function ProviderSetupPublishCatalogWizard({
                   value={displayName}
                   onChange={setDisplayName}
                   aria-label="Name"
-                  placeholder="e.g. bare-metal-general-purpose-server"
+                  placeholder={`e.g. ${
+                    selectedServiceId
+                      ? getPublishCatalogSuggestedDisplayName(selectedServiceId)
+                      : getPublishCatalogSuggestedDisplayName('baremetal')
+                  }`}
                   isRequired
                 />
               </FormGroup>
