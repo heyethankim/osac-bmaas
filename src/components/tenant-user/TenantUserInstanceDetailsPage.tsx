@@ -95,6 +95,7 @@ type TenantUserInstanceDetailsPageProps = {
     networkLabel: string,
   ) => void
   onAddProject: (instanceId: string, projectId: string) => void
+  onCreateProject: (instanceId: string, projectName: string) => void
   onRemoveProject: (instanceId: string, projectId: string) => void
   onNavigateToProject?: (project: TenantProject) => void
   /** Opens the matching catalog item detail page in Catalog. */
@@ -955,6 +956,7 @@ function ClusterInstancePageBody({
   projects,
   onUpdateNetworking,
   onAddProject,
+  onCreateProject,
   onRemoveProject,
   onNavigateToProject,
   onNavigateToCatalogItem,
@@ -967,6 +969,7 @@ function ClusterInstancePageBody({
     networkLabel: string,
   ) => void
   onAddProject: (instanceId: string, projectId: string) => void
+  onCreateProject: (instanceId: string, projectName: string) => void
   onRemoveProject: (instanceId: string, projectId: string) => void
   onNavigateToProject?: (project: TenantProject) => void
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
@@ -1063,6 +1066,7 @@ function ClusterInstancePageBody({
             instance={instance}
             projects={projects}
             onAddProject={onAddProject}
+            onCreateProject={onCreateProject}
             onRemoveProject={onRemoveProject}
             onNavigateToProject={onNavigateToProject}
           />
@@ -1219,6 +1223,7 @@ function VmInstancePageBody({
   onAttachPublicIp,
   onUpdateNetworking,
   onAddProject,
+  onCreateProject,
   onRemoveProject,
   onNavigateToProject,
   onNavigateToCatalogItem,
@@ -1232,6 +1237,7 @@ function VmInstancePageBody({
     networkLabel: string,
   ) => void
   onAddProject: (instanceId: string, projectId: string) => void
+  onCreateProject: (instanceId: string, projectName: string) => void
   onRemoveProject: (instanceId: string, projectId: string) => void
   onNavigateToProject?: (project: TenantProject) => void
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
@@ -1327,6 +1333,7 @@ function VmInstancePageBody({
             instance={instance}
             projects={projects}
             onAddProject={onAddProject}
+            onCreateProject={onCreateProject}
             onRemoveProject={onRemoveProject}
             onNavigateToProject={onNavigateToProject}
           />
@@ -1405,6 +1412,7 @@ function DefaultInstancePageBody({
   projects,
   onUpdateNetworking,
   onAddProject,
+  onCreateProject,
   onRemoveProject,
   onNavigateToProject,
   onNavigateToCatalogItem,
@@ -1417,6 +1425,7 @@ function DefaultInstancePageBody({
     networkLabel: string,
   ) => void
   onAddProject: (instanceId: string, projectId: string) => void
+  onCreateProject: (instanceId: string, projectName: string) => void
   onRemoveProject: (instanceId: string, projectId: string) => void
   onNavigateToProject?: (project: TenantProject) => void
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
@@ -1497,6 +1506,7 @@ function DefaultInstancePageBody({
             instance={instance}
             projects={projects}
             onAddProject={onAddProject}
+            onCreateProject={onCreateProject}
             onRemoveProject={onRemoveProject}
             onNavigateToProject={onNavigateToProject}
           />
@@ -1561,12 +1571,14 @@ function InstanceProjectsSection({
   instance,
   projects,
   onAddProject,
+  onCreateProject,
   onRemoveProject,
   onNavigateToProject,
 }: {
   instance: TenantInstance
   projects: readonly TenantProject[]
   onAddProject: (instanceId: string, projectId: string) => void
+  onCreateProject: (instanceId: string, projectName: string) => void
   onRemoveProject: (instanceId: string, projectId: string) => void
   onNavigateToProject?: (project: TenantProject) => void
 }) {
@@ -1605,7 +1617,6 @@ function InstanceProjectsSection({
             isInline
             icon={<PlusIcon />}
             onClick={() => setIsAddOpen(true)}
-            isDisabled={projects.every((project) => attachedProjectIds.includes(project.id))}
           >
             Add
           </Button>
@@ -1657,6 +1668,7 @@ function InstanceProjectsSection({
         attachedProjectIds={attachedProjectIds}
         onClose={() => setIsAddOpen(false)}
         onAdd={(projectId) => onAddProject(instance.id, projectId)}
+        onCreateProject={(projectName) => onCreateProject(instance.id, projectName)}
       />
 
       <Modal
@@ -1707,6 +1719,7 @@ export function TenantUserInstanceDetailsPage({
   onAttachPublicIp,
   onUpdateNetworking,
   onAddProject,
+  onCreateProject,
   onRemoveProject,
   onNavigateToProject,
   onNavigateToCatalogItem,
@@ -1762,6 +1775,7 @@ export function TenantUserInstanceDetailsPage({
           projects={projects}
           onUpdateNetworking={onUpdateNetworking}
           onAddProject={onAddProject}
+          onCreateProject={onCreateProject}
           onRemoveProject={onRemoveProject}
           onNavigateToProject={onNavigateToProject}
           onNavigateToCatalogItem={onNavigateToCatalogItem}
@@ -1773,6 +1787,7 @@ export function TenantUserInstanceDetailsPage({
           onAttachPublicIp={onAttachPublicIp}
           onUpdateNetworking={onUpdateNetworking}
           onAddProject={onAddProject}
+          onCreateProject={onCreateProject}
           onRemoveProject={onRemoveProject}
           onNavigateToProject={onNavigateToProject}
           onNavigateToCatalogItem={onNavigateToCatalogItem}
@@ -1783,6 +1798,7 @@ export function TenantUserInstanceDetailsPage({
           projects={projects}
           onUpdateNetworking={onUpdateNetworking}
           onAddProject={onAddProject}
+          onCreateProject={onCreateProject}
           onRemoveProject={onRemoveProject}
           onNavigateToProject={onNavigateToProject}
           onNavigateToCatalogItem={onNavigateToCatalogItem}

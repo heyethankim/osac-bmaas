@@ -69,6 +69,15 @@ import {
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
 import { removeTenantUserInstance, updateTenantUserInstance } from '../../tenantUser/storage'
 import type { TenantProject } from '../../tenantAdmin/projects'
+import {
+  generateTenantProjectId,
+  resolveOrganizationExternalIpPool,
+} from '../../tenantAdmin/projects'
+import {
+  DEFAULT_CREATE_PROJECT_WIZARD_FORM,
+  DEFAULT_PROJECT_IP_SLICE,
+} from '../../tenantAdmin/createProjectWizard'
+import { addTenantProject } from '../../tenantAdmin/storage'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import {
   filterInstancesByProjectScope,
@@ -663,6 +672,44 @@ export function TenantUserInstancesPage({
     })
   }
 
+  const handleCreateInstanceProject = (instanceId: string, projectName: string) => {
+    const organizationPool = organization
+      ? resolveOrganizationExternalIpPool(organization)
+      : null
+    const project: TenantProject = {
+      id: generateTenantProjectId(),
+      name: projectName.trim(),
+      description: '',
+      environmentType: DEFAULT_CREATE_PROJECT_WIZARD_FORM.environmentType,
+      instanceQuota: DEFAULT_CREATE_PROJECT_WIZARD_FORM.instanceQuota,
+      externalIpPoolId: organizationPool?.id ?? null,
+      externalIpPoolName: organizationPool?.name ?? null,
+      externalIpPoolCidr: DEFAULT_PROJECT_IP_SLICE,
+      catalogItems: [],
+      members: [],
+      createdAt: new Date().toISOString(),
+    }
+
+    addTenantProject(tenantSlug, project)
+    const nextProjects = [...projects, project]
+    onProjectsChange(nextProjects)
+
+    onInstancesChange((current) => {
+      const target = current.find((instance) => instance.id === instanceId)
+      if (!target) {
+        return current
+      }
+
+      const nextIds = [...new Set([...getTenantInstanceProjectIds(target), project.id])]
+      return updateTenantUserInstance(
+        tenantSlug,
+        instanceId,
+        withInstanceProjectIds(target, nextIds, nextProjects, organizationName),
+        current,
+      )
+    })
+  }
+
   const handleRemoveInstanceProject = (instanceId: string, projectId: string) => {
     onInstancesChange((current) => {
       const target = current.find((instance) => instance.id === instanceId)
@@ -772,6 +819,7 @@ export function TenantUserInstancesPage({
           }}
           onUpdateNetworking={handleUpdateNetworking}
           onAddProject={handleAddInstanceProject}
+          onCreateProject={handleCreateInstanceProject}
           onRemoveProject={handleRemoveInstanceProject}
           onNavigateToCatalogItem={onNavigateToCatalogItem}
           onNavigateToProject={onNavigateToProject}
