@@ -109,7 +109,6 @@ export function CatalogItemDetailsPage({
   onBackToCatalog,
   onPublish,
   onUnpublish,
-  isPublishing = false,
   onLaunch,
   onEdit,
   onDuplicate,

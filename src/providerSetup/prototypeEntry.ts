@@ -13,11 +13,8 @@ import {
   CLUSTER_NODE_SETS_TEMPLATE_REF_ID,
   LEGACY_CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
   LEGACY_CLUSTER_NODE_SETS_DISPLAY_NAME,
-  LEGACY_CLUSTER_NODE_SETS_TEMPLATE_NAME,
-  LEGACY_CLUSTER_NODE_SETS_TEMPLATE_REF_ID,
   LEGACY_VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID,
   LEGACY_VM_NETWORK_ATTACHMENTS_DISPLAY_NAME,
-  LEGACY_VM_NETWORK_ATTACHMENTS_TEMPLATE_REF_ID,
   VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID,
   VM_NETWORK_ATTACHMENTS_DESCRIPTION,
   VM_NETWORK_ATTACHMENTS_DISPLAY_NAME,
@@ -315,11 +312,6 @@ function syncBareMetalGpuTrainingCatalogItem(): void {
       enterpriseTenantId: null,
     })
   }
-
-  const synced =
-    getProviderCatalogItems().find(
-      (item) => item.catalogItemId === BARE_METAL_GPU_CATALOG_ITEM_ID,
-    ) ?? current
 
   // Preserve the item's current publish state so detail-page publish/unpublish
   // transitions are user-driven during demos.
