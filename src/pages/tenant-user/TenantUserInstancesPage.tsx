@@ -1247,7 +1247,7 @@ export function TenantUserInstancesPage({
                       </div>
                     ) : null}
                     {serviceId === 'baremetal' ? (
-                      <div className="tenant-user-instances__card-console tenant-user-instances__card-console--split">
+                      <div className="tenant-user-instances__card-console">
                         <Button
                           variant="primary"
                           isDisabled={instance.status !== 'running'}
@@ -1258,21 +1258,6 @@ export function TenantUserInstancesPage({
                           }}
                         >
                           Connect via SSH
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          isDisabled={instance.status !== 'running'}
-                          className="tenant-user-instances__console-button"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            window.open(
-                              getBareMetalSerialConsoleUrl(instance),
-                              '_blank',
-                              'noopener,noreferrer',
-                            )
-                          }}
-                        >
-                          Serial console
                         </Button>
                       </div>
                     ) : null}

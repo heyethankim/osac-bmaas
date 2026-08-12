@@ -860,11 +860,6 @@ function BareMetalLifecycleActions({
   const canStop = isRunning
   const canRestart = isRunning || isStopped
   const canTerminate = instance.status !== 'provisioning' && instance.status !== 'restarting'
-  const serialConsoleUrl = getBareMetalSerialConsoleUrl(instance)
-
-  const openSerialConsole = () => {
-    window.open(serialConsoleUrl, '_blank', 'noopener,noreferrer')
-  }
 
   return (
     <>
@@ -876,19 +871,6 @@ function BareMetalLifecycleActions({
         <Tooltip content="SSH is available when the instance is running">
           <Button variant="primary" isAriaDisabled>
             Connect via SSH
-          </Button>
-        </Tooltip>
-      )}
-      {isRunning ? (
-        <Tooltip content="BMC serial-over-LAN (SoL) console for early boot and break-glass access">
-          <Button variant="secondary" onClick={openSerialConsole}>
-            Serial console
-          </Button>
-        </Tooltip>
-      ) : (
-        <Tooltip content="Serial console is available when the instance is running">
-          <Button variant="secondary" isAriaDisabled>
-            Serial console
           </Button>
         </Tooltip>
       )}
@@ -1687,7 +1669,23 @@ function DefaultInstancePageBody({
                   <DescriptionListGroup>
                     <DescriptionListTerm>Serial console</DescriptionListTerm>
                     <DescriptionListDescription>
-                      BMC serial-over-LAN (SoL) for early boot and break-glass access.
+                      {instance.status === 'running' ? (
+                        <Button
+                          variant="link"
+                          isInline
+                          onClick={() =>
+                            window.open(
+                              getBareMetalSerialConsoleUrl(instance),
+                              '_blank',
+                              'noopener,noreferrer',
+                            )
+                          }
+                        >
+                          Open serial console
+                        </Button>
+                      ) : (
+                        'Available when the instance is running (BMC serial-over-LAN).'
+                      )}
                     </DescriptionListDescription>
                   </DescriptionListGroup>
                 </DescriptionList>

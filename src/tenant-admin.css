@@ -1452,12 +1452,6 @@
   margin-block-start: auto;
 }
 
-.tenant-user-instances__card-console--split {
-  display: flex;
-  flex-direction: column;
-  gap: var(--pf-t--global--spacer--sm);
-}
-
 .tenant-user-instances__console-button.pf-v6-c-button {
   width: 100%;
 }
