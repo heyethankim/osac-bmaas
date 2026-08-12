@@ -45,7 +45,6 @@ import {
 import { clearProviderOnboardingState } from '../../providerSetup/storage'
 import type { WorkspaceTransition } from '../../providerAdmin/workspace'
 import { VertexaCloudMastheadLogo } from './VertexaCloudMastheadLogo'
-import { ConceptualDesignSticker } from '../ConceptualDesignSticker'
 
 type ProviderAdminShellProps = {
   children: ReactNode
@@ -296,7 +295,6 @@ export function ProviderAdminShell({
         ) : null}
         <div className="provider-admin-shell__content">{children}</div>
       </PageSection>
-      <ConceptualDesignSticker />
     </Page>
   )
 }

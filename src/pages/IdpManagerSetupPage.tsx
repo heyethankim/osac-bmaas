@@ -39,7 +39,6 @@ import {
   OrganizationActionWorkingState,
   type OrganizationActionCompletionPhase,
 } from '../components/provider-admin/OrganizationActionSuccessState'
-import { ConceptualDesignSticker } from '../components/ConceptualDesignSticker'
 import { RouterButton } from '../components/RouterButton'
 import { BlueSolaceFinancialGroupLoginPage } from './BlueSolaceFinancialGroupLoginPage'
 import { NorthstarBankLoginPage } from './NorthstarBankLoginPage'
@@ -294,7 +293,6 @@ export function IdpManagerSetupPage() {
             </div>
           )}
         </div>
-        <ConceptualDesignSticker />
       </div>
     )
   }
@@ -523,7 +521,6 @@ export function IdpManagerSetupPage() {
           </>
         ) : null}
       </div>
-      <ConceptualDesignSticker />
     </div>
   )
 }

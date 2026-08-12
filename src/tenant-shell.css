@@ -69,7 +69,8 @@
   position: fixed;
   bottom: var(--pf-t--global--spacer--md);
   left: var(--pf-t--global--spacer--md);
-  z-index: 200;
+  /* Above PatternFly page/sidebar chrome so the badge stays visible on every route. */
+  z-index: 10000;
   pointer-events: none;
 }
 

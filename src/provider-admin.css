@@ -3302,10 +3302,16 @@
 .provider-admin-catalog-items__card-header-actions {
   display: inline-flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
   gap: var(--pf-t--global--spacer--sm);
   margin-inline-start: auto;
+  min-block-size: 1.75rem;
+}
+
+.provider-admin-catalog-items__status--publishing.pf-v6-c-label {
+  /* Keep header width stable vs Unpublished / Live so masonry/row layout does not jump. */
+  min-inline-size: 7.5rem;
 }
 
 .provider-admin-catalog-items__card-label.pf-v6-c-label {

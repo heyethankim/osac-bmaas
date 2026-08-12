@@ -7,7 +7,6 @@ import {
   Title,
 } from '@patternfly/react-core'
 import { CatalogSpecRowsList } from '../components/catalog/CatalogSpecRowsList'
-import { ConceptualDesignSticker } from '../components/ConceptualDesignSticker'
 import { RouterButton } from '../components/RouterButton'
 import { getCatalogServiceIcon } from '../catalog/serviceIcons'
 import { resolveCatalogSpecRows } from '../catalog/catalogSpecs'
@@ -92,7 +91,6 @@ export function TenantAdminSampleCatalogPage() {
           </RouterButton>
         </div>
       </div>
-      <ConceptualDesignSticker />
     </div>
   )
 }

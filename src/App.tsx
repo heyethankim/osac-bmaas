@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { ConceptualDesignSticker } from './components/ConceptualDesignSticker'
 import { BmaasLandingPage } from './pages/BmaasLandingPage'
 import { IdpManagerSetupPage } from './pages/IdpManagerSetupPage'
 import { ProviderAdminWorkspacePage } from './pages/ProviderAdminWorkspacePage'
@@ -11,6 +12,7 @@ import { TenantUserWorkspacePage } from './pages/TenantUserWorkspacePage'
 export default function App() {
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
+      <ConceptualDesignSticker />
       <Routes>
         <Route path="/" element={<BmaasLandingPage />} />
         <Route path="/idp-setup/:token" element={<IdpManagerSetupPage />} />

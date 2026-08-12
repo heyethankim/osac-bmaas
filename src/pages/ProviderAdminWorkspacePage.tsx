@@ -150,16 +150,24 @@ export function ProviderAdminWorkspacePage() {
   const [navContentKey, setNavContentKey] = useState(0)
   const provisioningTimersRef = useRef<Map<string, number>>(new Map())
 
+  const navParam = searchParams.get('nav')
+
   useLayoutEffect(() => {
-    const requestedNav = normalizeProviderNavParam(searchParams.get('nav'))
+    const requestedNav = normalizeProviderNavParam(navParam)
     if (requestedNav) {
-      ensureProviderPostSetupPrototype(requestedNav)
+      // Do not re-run full demo seed/sync on every left-nav click — that rewrote
+      // catalog identities and could drop unpublished drafts when returning to Catalog.
+      const storedItems = getProviderCatalogItems()
+      if (storedItems.length === 0) {
+        ensureProviderPostSetupPrototype(requestedNav)
+      } else {
+        setProviderActiveNav(requestedNav)
+      }
       setCatalogItems(getProviderCatalogItems())
       setSelectedServices(getProviderSelectedServices())
       setServicesSelected(true)
       setSetupComplete(true)
       setActiveNavId(requestedNav)
-      setProviderActiveNav(requestedNav)
       setInstances(ensureTenantDemoInstances(PROVIDER_SERVICES_DEMO_TENANT))
       setProjects(ensureTenantDemoProjects(PROVIDER_SERVICES_DEMO_TENANT))
       setProjectScopeIdState(getProjectScopeId(PROVIDER_SERVICES_DEMO_TENANT))
@@ -170,9 +178,13 @@ export function ProviderAdminWorkspacePage() {
     syncWorkspaceNavParam(setSearchParams, fallbackNav, { replace: true })
 
     if (isProviderSetupComplete()) {
-      setCatalogItems(ensureProviderCatalogDemoItems())
+      const storedItems = getProviderCatalogItems()
+      setCatalogItems(
+        storedItems.length > 0 ? storedItems : ensureProviderCatalogDemoItems(),
+      )
     }
-  }, [searchParams, setSearchParams])
+    // Only react when `nav` changes — not when `item=` opens catalog details.
+  }, [navParam, setSearchParams])
 
   const lockedServiceId = getLockedServiceIdFromNav(activeNavId)
 
@@ -397,7 +409,7 @@ export function ProviderAdminWorkspacePage() {
             catalogItems={catalogItems}
             isEntering={workspaceTransition === 'entering'}
             onCreateCatalogItem={handleCreateCatalogItem}
-            onCatalogItemsChange={() => setCatalogItems(getProviderCatalogItems())}
+            onCatalogItemsChange={(items) => setCatalogItems(items ?? getProviderCatalogItems())}
             isPublishing={workspaceTransition !== 'idle'}
             onRegisterOrganization={handleRegisterOrganization}
             onNavigateToLinkedTemplate={(template) => {

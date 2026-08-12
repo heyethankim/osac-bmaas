@@ -7,7 +7,6 @@ import {
   TextInput,
   Title,
 } from '@patternfly/react-core'
-import { ConceptualDesignSticker } from '../components/ConceptualDesignSticker'
 import redHatHatLogoUrl from '../assets/Logo-RedHat-Hat-Color-RGB.svg?url'
 
 export type OsacSignInPageProps = {
@@ -109,7 +108,6 @@ export function OsacSignInPage({
           <Spinner size="lg" aria-label="Continuing to sign in" />
         </div>
       ) : null}
-      <ConceptualDesignSticker />
     </div>
   )
 }

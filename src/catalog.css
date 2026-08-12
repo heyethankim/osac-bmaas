@@ -82,7 +82,7 @@
 
 /* True masonry packing when supported: next items settle into the shortest column. */
 @supports (grid-template-rows: masonry) {
-  .catalog-card-grid {
+  .catalog-card-grid:not(.catalog-card-grid--stable) {
     grid-template-rows: masonry;
     align-tracks: start;
   }

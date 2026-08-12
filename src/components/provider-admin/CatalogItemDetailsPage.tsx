@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { RocketIcon } from '@patternfly/react-icons/dist/esm/icons/rocket-icon'
 import {
   Breadcrumb,
@@ -18,6 +18,7 @@ import {
   Icon,
   Label,
   MenuToggle,
+  Spinner,
   Title,
 } from '@patternfly/react-core'
 import { CatalogClusterVersionValue } from '../catalog/CatalogClusterVersionValue'
@@ -63,12 +64,19 @@ import {
 import { findCatalogLinkedTemplate } from '../../catalog/hardwareSpecs'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
 
+/** Demo delay for Publish → Publishing ... → Launch instance. */
+const DETAIL_PUBLISH_REVEAL_MS = 1500
+
+type DetailPublishCtaPhase = 'publish' | 'publishing' | 'launch'
+
 type CatalogItemDetailsPageProps = {
   catalog: ProviderCatalogDraft
   templateDescription: string
   onBackToCatalog: () => void
+  /** Persist the item as live (parent should write storage immediately). */
   onPublish: () => void
   onUnpublish: () => void
+  isPublishing?: boolean
   onLaunch: () => void
   onEdit: () => void
   onDuplicate: () => void
@@ -91,12 +99,17 @@ function formatCreatedAt(iso: string): string {
   })
 }
 
+function getInitialPublishCtaPhase(catalog: ProviderCatalogDraft): DetailPublishCtaPhase {
+  return getCatalogItemStatus(catalog) === 'live' ? 'launch' : 'publish'
+}
+
 export function CatalogItemDetailsPage({
   catalog,
   templateDescription,
   onBackToCatalog,
   onPublish,
   onUnpublish,
+  isPublishing = false,
   onLaunch,
   onEdit,
   onDuplicate,
@@ -156,6 +169,12 @@ export function CatalogItemDetailsPage({
   )
 
   const [isActionsOpen, setIsActionsOpen] = useState(false)
+  // Detail page owns the CTA so Publish → Publishing ... → Launch cannot be stolen by
+  // lagging list props. Parent still persists status for cards / navigation.
+  const [publishCtaPhase, setPublishCtaPhase] = useState<DetailPublishCtaPhase>(() =>
+    getInitialPublishCtaPhase(catalog),
+  )
+  const publishCtaTimerRef = useRef<number | null>(null)
   const [networkPolicy, setNetworkPolicy] = useState<CatalogNetworkPolicy | null>(null)
   const [virtualNetworkOptions, setVirtualNetworkOptions] = useState<CatalogNetworkResourceOption[]>(
     () => getCatalogVirtualNetworkOptions(),
@@ -184,6 +203,30 @@ export function CatalogItemDetailsPage({
     setSubnetOptions(getCatalogSubnetOptions(networkPolicy.virtualNetwork.id))
   }, [networkPolicy?.enabled, networkPolicy?.virtualNetwork.id])
 
+  useEffect(() => {
+    if (publishCtaTimerRef.current !== null) {
+      window.clearTimeout(publishCtaTimerRef.current)
+      publishCtaTimerRef.current = null
+    }
+    setPublishCtaPhase(getInitialPublishCtaPhase(catalog))
+  }, [catalog.catalogItemId])
+
+  useEffect(() => {
+    // Ignore storage while the local Publishing animation is running.
+    if (publishCtaPhase === 'publishing') {
+      return
+    }
+    setPublishCtaPhase(isLive ? 'launch' : 'publish')
+  }, [isLive, publishCtaPhase, catalog.catalogItemId])
+
+  useEffect(() => {
+    return () => {
+      if (publishCtaTimerRef.current !== null) {
+        window.clearTimeout(publishCtaTimerRef.current)
+      }
+    }
+  }, [])
+
   const updateNetworkPolicy = (next: CatalogNetworkPolicy) => {
     setNetworkPolicy(next)
     onNetworkPolicyChange?.(next)
@@ -211,6 +254,27 @@ export function CatalogItemDetailsPage({
       ),
     })
   }
+
+  const handlePublishClick = () => {
+    if (publishCtaPhase !== 'publish') {
+      return
+    }
+
+    setPublishCtaPhase('publishing')
+    onPublish()
+
+    if (publishCtaTimerRef.current !== null) {
+      window.clearTimeout(publishCtaTimerRef.current)
+    }
+    publishCtaTimerRef.current = window.setTimeout(() => {
+      setPublishCtaPhase('launch')
+      publishCtaTimerRef.current = null
+    }, DETAIL_PUBLISH_REVEAL_MS)
+  }
+
+  // Local phase is the source of truth for the primary CTA during Publish → Launch.
+  const showPublishing = publishCtaPhase === 'publishing'
+  const showLaunch = publishCtaPhase === 'launch'
 
   return (
     <div className="provider-admin-catalog-item-details">
@@ -254,13 +318,24 @@ export function CatalogItemDetailsPage({
         </FlexItem>
         <FlexItem alignSelf={{ default: 'alignSelfFlexStart' }}>
           <div className="provider-admin-catalog-item-details__actions">
-            {isLive ? (
+            {showLaunch ? (
               <Button variant="primary" icon={<RocketIcon />} onClick={onLaunch}>
                 {LAUNCH_INSTANCE_WIZARD_DEMO.launchInstanceLabel}
               </Button>
             ) : (
-              <Button variant="primary" onClick={onPublish}>
-                Publish
+              <Button
+                variant="primary"
+                onClick={handlePublishClick}
+                isDisabled={showPublishing}
+              >
+                {showPublishing ? (
+                  <span className="provider-admin-catalog__submit-label">
+                    <Spinner size="sm" aria-label={`Publishing ${catalog.displayName}`} />
+                    <span>Publishing ...</span>
+                  </span>
+                ) : (
+                  'Publish'
+                )}
               </Button>
             )}
             <Dropdown
@@ -288,12 +363,12 @@ export function CatalogItemDetailsPage({
                   Duplicate
                 </DropdownItem>
                 <Divider component="li" key="separator" />
-                {isLive ? (
+                {showLaunch ? (
                   <DropdownItem value="unpublish" onClick={onUnpublish}>
                     Unpublish
                   </DropdownItem>
                 ) : null}
-                <DropdownItem value="delete" isDanger onClick={onDelete}>
+                <DropdownItem value="delete" isDanger onClick={onDelete} isDisabled={showPublishing}>
                   Delete
                 </DropdownItem>
               </DropdownList>
@@ -331,8 +406,11 @@ export function CatalogItemDetailsPage({
                 <DescriptionListGroup>
                   <DescriptionListTerm>Status</DescriptionListTerm>
                   <DescriptionListDescription>
-                    <Label color={isLive ? 'green' : 'grey'} isCompact>
-                      {isLive ? 'Live' : 'Unpublished'}
+                    <Label
+                      color={showLaunch ? 'green' : showPublishing ? 'blue' : 'grey'}
+                      isCompact
+                    >
+                      {showLaunch ? 'Live' : showPublishing ? 'Publishing' : 'Unpublished'}
                     </Label>
                   </DescriptionListDescription>
                 </DescriptionListGroup>

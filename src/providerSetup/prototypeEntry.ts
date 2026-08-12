@@ -33,13 +33,11 @@ import { getDefaultMasterTemplate, getStandardClusterTemplate } from '../provide
 import {
   addProviderCatalogItem,
   getCatalogItemNetworkPolicy,
-  getCatalogItemStatus,
   getProviderCatalogDraft,
   getProviderCatalogItems,
   getProviderRegisteredOrganizations,
   getProviderSelectedServices,
   setProviderActiveNav,
-  setProviderCatalogItemStatus,
   setProviderSelectedServices,
   setProviderSetupComplete,
   updateProviderCatalogNetworkPolicy,
@@ -94,8 +92,10 @@ function demoCatalogItemOrderIndex(catalogItemId: string): number {
 }
 
 /**
- * Demo storefront order for known offerings. Newly added items (unknown IDs) sort first
- * by createdAt (newest first) so they appear at the top-left of the catalog grid.
+ * Demo storefront order for known offerings.
+ * Newly created items (unknown IDs) sort first by createdAt (newest first) so they
+ * appear top-left; demo IDs keep their fixed relative order and never move on
+ * publish/unpublish.
  */
 export function sortByDemoCatalogOrder<
   T extends { catalogItemId: string; createdAt?: string },
@@ -106,6 +106,7 @@ export function sortByDemoCatalogOrder<
     const leftKnown = leftIndex !== -1
     const rightKnown = rightIndex !== -1
 
+    // Unknown (in-session) items stay ahead of the demo set — newest first.
     if (!leftKnown && rightKnown) {
       return -1
     }
@@ -205,8 +206,6 @@ function hasBareMetalGpuCatalogItem(items: ProviderCatalogDraft[]): boolean {
     (item) =>
       item.catalogItemId === BARE_METAL_GPU_CATALOG_ITEM_ID ||
       item.catalogItemId === LEGACY_BARE_METAL_GPU_CATALOG_ITEM_ID ||
-      item.templateRefId === BARE_METAL_GPU_TEMPLATE_REF_ID ||
-      item.templateRefId === LEGACY_BARE_METAL_GPU_TEMPLATE_REF_ID ||
       item.displayName === DEFAULT_CATALOG_ITEM_DISPLAY_NAME ||
       item.displayName === LEGACY_DEFAULT_CATALOG_ITEM_DISPLAY_NAME,
   )
@@ -215,12 +214,12 @@ function hasBareMetalGpuCatalogItem(items: ProviderCatalogDraft[]): boolean {
 function findBareMetalAiInferenceCatalogItem(
   items: ProviderCatalogDraft[],
 ): ProviderCatalogDraft | undefined {
+  // Match only the demo identity — never by templateRefId alone, or a user-created
+  // unpublished draft that reuses the demo template gets rewritten/deduped away.
   return items.find(
     (item) =>
       item.catalogItemId === BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID ||
       item.catalogItemId === LEGACY_BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID ||
-      item.templateRefId === BARE_METAL_AI_INFERENCE_TEMPLATE_REF_ID ||
-      item.templateRefId === LEGACY_BARE_METAL_AI_INFERENCE_TEMPLATE_REF_ID ||
       item.displayName === SECOND_CATALOG_ITEM_DISPLAY_NAME ||
       item.displayName === LEGACY_SECOND_CATALOG_ITEM_TITLE_CASE_DISPLAY_NAME ||
       item.displayName === LEGACY_SECOND_CATALOG_ITEM_DISPLAY_NAME,
@@ -231,7 +230,7 @@ function hasBareMetalAiInferenceCatalogItem(items: ProviderCatalogDraft[]): bool
   return Boolean(findBareMetalAiInferenceCatalogItem(items))
 }
 
-/** Keep stored demo item title, VIP scope, unpublished status, and networking-off in sync. */
+/** Keep stored demo item title, VIP scope, and networking-off in sync. */
 function syncBareMetalAiInferenceCatalogItem(): void {
   const items = getProviderCatalogItems()
   const current = findBareMetalAiInferenceCatalogItem(items)
@@ -260,9 +259,7 @@ function syncBareMetalAiInferenceCatalogItem(): void {
   const synced =
     findBareMetalAiInferenceCatalogItem(getProviderCatalogItems()) ?? current
 
-  if (getCatalogItemStatus(synced) !== 'unpublished') {
-    setProviderCatalogItemStatus(synced.catalogItemId, 'unpublished')
-  }
+  // Preserve publish state so detail-page Publish → Launch instance stays user-driven.
 
   const networkPolicy = getCatalogItemNetworkPolicy(synced)
   if (networkPolicy.enabled) {
@@ -294,8 +291,6 @@ function syncBareMetalGpuTrainingCatalogItem(): void {
     (item) =>
       item.catalogItemId === BARE_METAL_GPU_CATALOG_ITEM_ID ||
       item.catalogItemId === LEGACY_BARE_METAL_GPU_CATALOG_ITEM_ID ||
-      item.templateRefId === BARE_METAL_GPU_TEMPLATE_REF_ID ||
-      item.templateRefId === LEGACY_BARE_METAL_GPU_TEMPLATE_REF_ID ||
       item.displayName === DEFAULT_CATALOG_ITEM_DISPLAY_NAME ||
       item.displayName === LEGACY_DEFAULT_CATALOG_ITEM_DISPLAY_NAME,
   )
@@ -326,9 +321,8 @@ function syncBareMetalGpuTrainingCatalogItem(): void {
       (item) => item.catalogItemId === BARE_METAL_GPU_CATALOG_ITEM_ID,
     ) ?? current
 
-  if (getCatalogItemStatus(synced) !== 'live') {
-    setProviderCatalogItemStatus(synced.catalogItemId, 'live')
-  }
+  // Preserve the item's current publish state so detail-page publish/unpublish
+  // transitions are user-driven during demos.
 }
 
 /**
@@ -405,26 +399,18 @@ function hasClusterNodeSetsCatalogItem(items: ProviderCatalogDraft[]): boolean {
     (item) =>
       item.catalogItemId === CLUSTER_NODE_SETS_CATALOG_ITEM_ID ||
       item.catalogItemId === LEGACY_CLUSTER_NODE_SETS_CATALOG_ITEM_ID ||
-      item.templateRefId === CLUSTER_NODE_SETS_TEMPLATE_REF_ID ||
-      item.templateRefId === LEGACY_CLUSTER_NODE_SETS_TEMPLATE_REF_ID ||
-      item.templateName === CLUSTER_NODE_SETS_TEMPLATE_NAME ||
-      item.templateName === LEGACY_CLUSTER_NODE_SETS_TEMPLATE_NAME ||
       item.displayName === CLUSTER_NODE_SETS_DISPLAY_NAME ||
       item.displayName === LEGACY_CLUSTER_NODE_SETS_DISPLAY_NAME,
   )
 }
 
-/** Keep the Cluster demo offering published so tenants can launch it. */
+/** Keep the Cluster demo identity/config in sync without forcing publish state. */
 function syncClusterNodeSetsCatalogItem(): void {
   const items = getProviderCatalogItems()
   const current = items.find(
     (item) =>
       item.catalogItemId === CLUSTER_NODE_SETS_CATALOG_ITEM_ID ||
       item.catalogItemId === LEGACY_CLUSTER_NODE_SETS_CATALOG_ITEM_ID ||
-      item.templateRefId === CLUSTER_NODE_SETS_TEMPLATE_REF_ID ||
-      item.templateRefId === LEGACY_CLUSTER_NODE_SETS_TEMPLATE_REF_ID ||
-      item.templateName === CLUSTER_NODE_SETS_TEMPLATE_NAME ||
-      item.templateName === LEGACY_CLUSTER_NODE_SETS_TEMPLATE_NAME ||
       item.displayName === CLUSTER_NODE_SETS_DISPLAY_NAME ||
       item.displayName === LEGACY_CLUSTER_NODE_SETS_DISPLAY_NAME,
   )
@@ -452,9 +438,8 @@ function syncClusterNodeSetsCatalogItem(): void {
       (item) => item.catalogItemId === CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
     ) ?? current
 
-  if (getCatalogItemStatus(synced) !== 'live') {
-    setProviderCatalogItemStatus(synced.catalogItemId, 'live')
-  }
+  // Preserve the item's current publish state so detail-page publish/unpublish
+  // transitions are user-driven during demos.
 
   const needsVersion =
     synced.diskImageId !== DEFAULT_CLUSTER_CATALOG_VERSION_ID ||
@@ -477,8 +462,6 @@ function hasVmNetworkAttachmentsCatalogItem(items: ProviderCatalogDraft[]): bool
     (item) =>
       item.catalogItemId === VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID ||
       item.catalogItemId === LEGACY_VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID ||
-      item.templateRefId === VM_NETWORK_ATTACHMENTS_TEMPLATE_REF_ID ||
-      item.templateRefId === LEGACY_VM_NETWORK_ATTACHMENTS_TEMPLATE_REF_ID ||
       item.displayName === VM_NETWORK_ATTACHMENTS_DISPLAY_NAME ||
       item.displayName === LEGACY_VM_NETWORK_ATTACHMENTS_DISPLAY_NAME,
   )
@@ -489,8 +472,6 @@ function syncVmNetworkAttachmentsCatalogItem(): void {
     (item) =>
       item.catalogItemId === VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID ||
       item.catalogItemId === LEGACY_VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID ||
-      item.templateRefId === VM_NETWORK_ATTACHMENTS_TEMPLATE_REF_ID ||
-      item.templateRefId === LEGACY_VM_NETWORK_ATTACHMENTS_TEMPLATE_REF_ID ||
       item.displayName === VM_NETWORK_ATTACHMENTS_DISPLAY_NAME ||
       item.displayName === LEGACY_VM_NETWORK_ATTACHMENTS_DISPLAY_NAME,
   )

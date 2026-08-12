@@ -443,6 +443,37 @@ function catalogItemIdentityChanged(
   )
 }
 
+function dedupeProviderCatalogItems(items: ProviderCatalogDraft[]): ProviderCatalogDraft[] {
+  const byId = new Map<string, ProviderCatalogDraft>()
+
+  for (const item of items) {
+    const existing = byId.get(item.catalogItemId)
+    if (!existing) {
+      byId.set(item.catalogItemId, item)
+      continue
+    }
+
+    const existingLive = existing.status !== 'unpublished'
+    const nextLive = item.status !== 'unpublished'
+
+    // Prefer the live row when duplicates share an id.
+    if (!existingLive && nextLive) {
+      byId.set(item.catalogItemId, item)
+      continue
+    }
+    if (existingLive && !nextLive) {
+      continue
+    }
+
+    // Same publish state: keep the newer row.
+    if ((item.createdAt ?? '') >= (existing.createdAt ?? '')) {
+      byId.set(item.catalogItemId, item)
+    }
+  }
+
+  return Array.from(byId.values())
+}
+
 export function getProviderCatalogItems(): ProviderCatalogDraft[] {
   try {
     const raw = sessionStorage.getItem(PROVIDER_CATALOG_ITEMS_KEY)
@@ -451,8 +482,14 @@ export function getProviderCatalogItems(): ProviderCatalogDraft[] {
       if (Array.isArray(parsed)) {
         const items = parsed.filter(isProviderCatalogDraft)
         const migrated = items.map(migrateCatalogItemDns1123Identity)
-        if (migrated.some((item, index) => catalogItemIdentityChanged(items[index]!, item))) {
-          persistProviderCatalogItems(migrated)
+        const deduped = dedupeProviderCatalogItems(migrated)
+        const identityChanged = migrated.some((item, index) =>
+          catalogItemIdentityChanged(items[index]!, item),
+        )
+        const duplicatesRemoved = deduped.length !== migrated.length
+
+        if (identityChanged || duplicatesRemoved) {
+          persistProviderCatalogItems(deduped)
 
           try {
             const organizations = getProviderRegisteredOrganizations()
@@ -462,7 +499,7 @@ export function getProviderCatalogItems(): ProviderCatalogDraft[] {
                 .filter(([from, to]) => from !== to),
             )
             if (idRemap.size > 0 || organizations.some((org) =>
-              migrated.some(
+              deduped.some(
                 (item) =>
                   org.catalogItemId === item.catalogItemId &&
                   org.catalogDisplayName !== item.displayName,
@@ -473,7 +510,7 @@ export function getProviderCatalogItems(): ProviderCatalogDraft[] {
                   const remappedId = org.catalogItemId
                     ? idRemap.get(org.catalogItemId) ?? org.catalogItemId
                     : null
-                  const catalog = migrated.find((item) => item.catalogItemId === remappedId)
+                  const catalog = deduped.find((item) => item.catalogItemId === remappedId)
                   if (!catalog) {
                     return org.catalogItemId && idRemap.has(org.catalogItemId)
                       ? {
@@ -495,7 +532,7 @@ export function getProviderCatalogItems(): ProviderCatalogDraft[] {
             /* demo storage unavailable */
           }
         }
-        return migrated
+        return deduped
       }
     }
   } catch {

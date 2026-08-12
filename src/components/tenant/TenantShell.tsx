@@ -37,7 +37,6 @@ import {
 import type { TenantNavGroup, TenantNavItem } from '../../tenantShell/constants'
 import { flattenTenantNavItems } from '../../tenantShell/constants'
 import { NorthstarBankMastheadLogo } from './NorthstarBankMastheadLogo'
-import { ConceptualDesignSticker } from '../ConceptualDesignSticker'
 
 type TenantShellRole = 'tenant-admin' | 'tenant-user'
 
@@ -265,7 +264,6 @@ export function TenantShell({
       >
         {children}
       </PageSection>
-      <ConceptualDesignSticker />
     </Page>
   )
 }

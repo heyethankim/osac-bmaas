@@ -15,7 +15,6 @@ import {
 } from '@patternfly/react-core'
 import { BluestoneMarkIcon } from '../components/tenant/BluestoneMarkIcon'
 import { DEMO_LOGIN_PREFILLED_PASSWORD } from '../demoTenant'
-import { ConceptualDesignSticker } from '../components/ConceptualDesignSticker'
 
 const BLUESTONE_LOGIN_ILLUSTRATION_SRC = `${import.meta.env.BASE_URL}bluestone-login-illustration.png`
 
@@ -210,7 +209,6 @@ export function BlueSolaceFinancialGroupLoginPage({
           ) : null}
         </Card>
       </div>
-      <ConceptualDesignSticker />
     </div>
   )
 }

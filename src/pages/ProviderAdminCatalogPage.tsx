@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
 import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
@@ -65,6 +66,7 @@ import {
   duplicateProviderCatalogItem,
   getCatalogItemNetworkPolicy,
   getCatalogItemStatus,
+  getProviderCatalogItems,
   getProviderRegisteredOrganizations,
   getProviderSavedTemplate,
   deleteProviderCatalogItem,
@@ -102,7 +104,7 @@ type ProviderAdminCatalogPageProps = {
   catalogItems: ProviderCatalogDraft[]
   isEntering?: boolean
   onCreateCatalogItem: (payload: PublishedTemplatePayload) => ProviderCatalogDraft | void
-  onCatalogItemsChange?: () => void
+  onCatalogItemsChange?: (items?: ProviderCatalogDraft[]) => void
   isPublishing?: boolean
   onRegisterOrganization?: () => void
   onNavigateToLinkedTemplate?: (template: {
@@ -125,10 +127,43 @@ type ProviderAdminCatalogPageProps = {
 
 /** Intentional create latency before revealing the new catalog card. */
 const CATALOG_ITEM_CREATE_REVEAL_MS = 1600
+/** Intentional publish latency before revealing the live state. */
+const CATALOG_ITEM_PUBLISH_REVEAL_MS = 1500
 const PROVIDER_LAUNCH_DEMO_TENANT = 'northstar'
 
 function getDraftServiceId(catalogDraft: ProviderCatalogDraft): CatalogServiceId {
   return catalogDraft.serviceId ?? 'baremetal'
+}
+
+function dedupeCatalogItemsById(items: ProviderCatalogDraft[]): ProviderCatalogDraft[] {
+  const byId = new Map<string, ProviderCatalogDraft>()
+
+  for (const item of items) {
+    const existing = byId.get(item.catalogItemId)
+    if (!existing) {
+      byId.set(item.catalogItemId, item)
+      continue
+    }
+
+    const existingStatus = getCatalogItemStatus(existing)
+    const nextStatus = getCatalogItemStatus(item)
+
+    // Never let an unpublished duplicate replace a live row.
+    if (existingStatus === 'live' && nextStatus !== 'live') {
+      continue
+    }
+    if (existingStatus !== 'live' && nextStatus === 'live') {
+      byId.set(item.catalogItemId, item)
+      continue
+    }
+
+    const createdAtComparison = (item.createdAt ?? '').localeCompare(existing.createdAt ?? '')
+    if (createdAtComparison >= 0) {
+      byId.set(item.catalogItemId, item)
+    }
+  }
+
+  return Array.from(byId.values())
 }
 
 function catalogItemMatchesOrganization(
@@ -152,7 +187,25 @@ function formatCatalogCreatedAt(iso: string): string {
   })
 }
 
-function CatalogStatusLabel({ item }: { item: ProviderCatalogDraft }) {
+function CatalogStatusLabel({
+  item,
+  isPublishing = false,
+}: {
+  item: ProviderCatalogDraft
+  isPublishing?: boolean
+}) {
+  if (isPublishing) {
+    return (
+      <Label
+        color="blue"
+        className="provider-admin-catalog-items__card-label provider-admin-catalog-items__status provider-admin-catalog-items__status--publishing"
+        icon={<Spinner size="sm" aria-hidden />}
+      >
+        Publishing ...
+      </Label>
+    )
+  }
+
   const status = getCatalogItemStatus(item)
   const isLive = status === 'live'
 
@@ -266,6 +319,7 @@ function getTemplateRowData() {
 
 function getCatalogItemActions(
   item: ProviderCatalogDraft,
+  isPublishing: boolean,
   onViewDetails: () => void,
   onLaunch: () => void,
   onEdit: () => void,
@@ -281,7 +335,7 @@ function getCatalogItemActions(
     },
   ]
 
-  if (!isUnpublished) {
+  if (!isUnpublished && !isPublishing) {
     actions.push({
       title: LAUNCH_INSTANCE_WIZARD_DEMO.launchInstanceLabel,
       onClick: onLaunch,
@@ -292,22 +346,26 @@ function getCatalogItemActions(
     {
       title: 'Edit',
       onClick: onEdit,
+      isDisabled: isPublishing,
     },
     {
       title: 'Duplicate',
       onClick: onDuplicate,
+      isDisabled: isPublishing,
     },
     {
       isSeparator: true,
     },
     {
-      title: isUnpublished ? 'Publish' : 'Unpublish',
+      title: isPublishing ? 'Publishing ...' : isUnpublished ? 'Publish' : 'Unpublish',
       onClick: onTogglePublish,
+      isDisabled: isPublishing,
     },
     {
       title: 'Delete',
       isDanger: true,
       onClick: onDelete,
+      isDisabled: isPublishing,
     },
   )
 
@@ -362,17 +420,56 @@ export function ProviderAdminCatalogPage({
   const [editResumeTenantId, setEditResumeTenantId] = useState<string | undefined>(undefined)
   const [creatingCatalogItemId, setCreatingCatalogItemId] = useState<string | null>(null)
   const [creatingCardHeightPx, setCreatingCardHeightPx] = useState<number | null>(null)
+  const [publishingCatalogItemId, setPublishingCatalogItemId] = useState<string | null>(null)
   const createRevealTimeoutRef = useRef<number | null>(null)
+  const publishRevealTimeoutRef = useRef<number | null>(null)
   const catalogCardGridRef = useRef<HTMLDivElement | null>(null)
   const itemParam = getWorkspaceCatalogItemParam(searchParams)
 
-  const newestCatalogItem = catalogItems[0] ?? null
+  const uniqueCatalogItems = useMemo(
+    () => dedupeCatalogItemsById(catalogItems),
+    [catalogItems],
+  )
+  /** Freeze card order for the session so publish/unpublish never reshuffles the grid. */
+  const catalogDisplayOrderRef = useRef<string[] | null>(null)
+  const orderedCatalogItems = useMemo(() => {
+    const byId = new Map(
+      uniqueCatalogItems.map((item) => [item.catalogItemId, item] as const),
+    )
+    const currentIds = new Set(byId.keys())
+
+    if (!catalogDisplayOrderRef.current) {
+      catalogDisplayOrderRef.current = sortByDemoCatalogOrder(uniqueCatalogItems).map(
+        (item) => item.catalogItemId,
+      )
+    } else {
+      const retained = catalogDisplayOrderRef.current.filter((id) => currentIds.has(id))
+      const retainedSet = new Set(retained)
+      const added = sortByDemoCatalogOrder(
+        uniqueCatalogItems.filter((item) => !retainedSet.has(item.catalogItemId)),
+      ).map((item) => item.catalogItemId)
+      // New cards prepend; existing cards keep their places (including across publish).
+      catalogDisplayOrderRef.current = [...added, ...retained]
+    }
+
+    return catalogDisplayOrderRef.current
+      .map((id) => byId.get(id))
+      .filter((item): item is ProviderCatalogDraft => Boolean(item))
+  }, [uniqueCatalogItems])
+  const newestCatalogItem = orderedCatalogItems[0] ?? null
   const knownServiceFiltersRef = useRef(new Set(initialServiceFilters))
+
+  const refreshCatalogItems = () => {
+    onCatalogItemsChange?.(getProviderCatalogItems())
+  }
 
   useEffect(() => {
     return () => {
       if (createRevealTimeoutRef.current !== null) {
         window.clearTimeout(createRevealTimeoutRef.current)
+      }
+      if (publishRevealTimeoutRef.current !== null) {
+        window.clearTimeout(publishRevealTimeoutRef.current)
       }
     }
   }, [])
@@ -395,7 +492,7 @@ export function ProviderAdminCatalogPage({
       const next = new Set(current)
       let changed = false
 
-      for (const item of catalogItems) {
+      for (const item of orderedCatalogItems) {
         const serviceId = getDraftServiceId(item)
         if (!knownServiceFiltersRef.current.has(serviceId)) {
           knownServiceFiltersRef.current.add(serviceId)
@@ -406,11 +503,11 @@ export function ProviderAdminCatalogPage({
 
       return changed ? next : current
     })
-  }, [catalogItems])
+  }, [orderedCatalogItems])
 
   const serviceCounts = useMemo(
-    () => countCatalogServices(catalogItems.map(getDraftServiceId)),
-    [catalogItems],
+    () => countCatalogServices(orderedCatalogItems.map(getDraftServiceId)),
+    [orderedCatalogItems],
   )
   const organizationOptions = useMemo(
     () =>
@@ -429,34 +526,33 @@ export function ProviderAdminCatalogPage({
         )
       : null
 
-    return sortByDemoCatalogOrder(
-      catalogItems.filter((item) => {
-        if (!selectedFilters.has(getDraftServiceId(item))) {
-          return false
-        }
+    // Filter only — preserve frozen display order (do not re-sort on status changes).
+    return orderedCatalogItems.filter((item) => {
+      if (!selectedFilters.has(getDraftServiceId(item))) {
+        return false
+      }
 
-        if (selectedStatus !== 'all' && getCatalogItemStatus(item) !== selectedStatus) {
-          return false
-        }
+      if (selectedStatus !== 'all' && getCatalogItemStatus(item) !== selectedStatus) {
+        return false
+      }
 
-        if (selectedOrganization && !catalogItemMatchesOrganization(item, selectedOrganization)) {
-          return false
-        }
+      if (selectedOrganization && !catalogItemMatchesOrganization(item, selectedOrganization)) {
+        return false
+      }
 
-        if (!query) {
-          return true
-        }
+      if (!query) {
+        return true
+      }
 
-        return (
-          item.displayName.toLowerCase().includes(query) ||
-          item.catalogItemId.toLowerCase().includes(query) ||
-          item.templateName.toLowerCase().includes(query) ||
-          item.templateRefId.toLowerCase().includes(query)
-        )
-      }),
-    )
+      return (
+        item.displayName.toLowerCase().includes(query) ||
+        item.catalogItemId.toLowerCase().includes(query) ||
+        item.templateName.toLowerCase().includes(query) ||
+        item.templateRefId.toLowerCase().includes(query)
+      )
+    })
   }, [
-    catalogItems,
+    orderedCatalogItems,
     selectedFilters,
     selectedStatus,
     organizationFilter,
@@ -549,7 +645,8 @@ export function ProviderAdminCatalogPage({
   const openDetails = (item: ProviderCatalogDraft) => {
     setSelectedCatalogItem(item)
     setIsViewingDetails(true)
-    syncWorkspaceCatalogItemParam(setSearchParams, item.displayName)
+    // Prefer stable id in the URL so display-name collisions cannot open the wrong row.
+    syncWorkspaceCatalogItemParam(setSearchParams, item.catalogItemId)
   }
 
   const closeDetails = () => {
@@ -562,19 +659,30 @@ export function ProviderAdminCatalogPage({
       return
     }
 
-    const match = findCatalogItemByWorkspaceParam(catalogItems, openCatalogItemKey)
+    const match = findCatalogItemByWorkspaceParam(orderedCatalogItems, openCatalogItemKey)
     if (match) {
       openDetails(match)
       setIsWizardOpen(false)
     }
 
     onOpenCatalogItemConsumed?.()
-  }, [openCatalogItemKey, catalogItems, onOpenCatalogItemConsumed])
+  }, [openCatalogItemKey, orderedCatalogItems, onOpenCatalogItemConsumed])
 
   useEffect(() => {
-    const match = findCatalogItemByWorkspaceParam(catalogItems, itemParam)
+    const match = findCatalogItemByWorkspaceParam(orderedCatalogItems, itemParam)
     if (match) {
-      setSelectedCatalogItem(match)
+      setSelectedCatalogItem((current) => {
+        // While publishing, keep the current selection so the CTA stays on Publishing ...
+        // until storage + list both report live.
+        if (
+          current &&
+          current.catalogItemId === match.catalogItemId &&
+          publishingCatalogItemId === current.catalogItemId
+        ) {
+          return current
+        }
+        return match
+      })
       if (!isWizardOpen) {
         setIsViewingDetails(true)
       }
@@ -584,7 +692,7 @@ export function ProviderAdminCatalogPage({
     if (!itemParam) {
       setIsViewingDetails(false)
     }
-  }, [itemParam, catalogItems, isWizardOpen])
+  }, [itemParam, orderedCatalogItems, isWizardOpen, publishingCatalogItemId])
 
   const openAssign = (item: ProviderCatalogDraft) => {
     setSelectedCatalogItem(item)
@@ -603,20 +711,50 @@ export function ProviderAdminCatalogPage({
     }
 
     setSelectedCatalogItem(duplicate)
-    onCatalogItemsChange?.()
+    refreshCatalogItems()
   }
 
-  const openTogglePublish = (item: ProviderCatalogDraft) => {
-    setSelectedCatalogItem(item)
-    if (getCatalogItemStatus(item) === 'unpublished') {
-      const updated = setProviderCatalogItemStatus(item.catalogItemId, 'live')
-      if (updated) {
-        setSelectedCatalogItem(updated)
-        onCatalogItemsChange?.()
-      }
+  const publishCatalogItem = (item: ProviderCatalogDraft) => {
+    if (getCatalogItemStatus(item) === 'live') {
+      return
+    }
+    if (publishingCatalogItemId === item.catalogItemId) {
       return
     }
 
+    if (publishRevealTimeoutRef.current !== null) {
+      window.clearTimeout(publishRevealTimeoutRef.current)
+    }
+
+    const catalogItemId = item.catalogItemId
+    // Persist live immediately so the detail CTA can complete Publishing → Launch.
+    // Keep publishingCatalogItemId for the 1.5s card/detail "Publishing ..." chrome.
+    const updated = setProviderCatalogItemStatus(catalogItemId, 'live')
+    const nextItems = getProviderCatalogItems()
+
+    flushSync(() => {
+      if (updated) {
+        setSelectedCatalogItem(updated)
+      } else {
+        setSelectedCatalogItem(item)
+      }
+      onCatalogItemsChange?.(nextItems)
+      setPublishingCatalogItemId(catalogItemId)
+    })
+
+    publishRevealTimeoutRef.current = window.setTimeout(() => {
+      setPublishingCatalogItemId((current) => (current === catalogItemId ? null : current))
+      publishRevealTimeoutRef.current = null
+    }, CATALOG_ITEM_PUBLISH_REVEAL_MS)
+  }
+
+  const openTogglePublish = (item: ProviderCatalogDraft) => {
+    if (getCatalogItemStatus(item) === 'unpublished') {
+      publishCatalogItem(item)
+      return
+    }
+
+    setSelectedCatalogItem(item)
     setIsUnpublishModalOpen(true)
   }
 
@@ -628,7 +766,7 @@ export function ProviderAdminCatalogPage({
     const updated = setProviderCatalogItemStatus(selectedCatalogItem.catalogItemId, 'unpublished')
     if (updated) {
       setSelectedCatalogItem(updated)
-      onCatalogItemsChange?.()
+      refreshCatalogItems()
     }
     setIsUnpublishModalOpen(false)
   }
@@ -646,12 +784,13 @@ export function ProviderAdminCatalogPage({
     const deletedId = selectedCatalogItem.catalogItemId
     const deleted = deleteProviderCatalogItem(deletedId)
     if (deleted) {
-      setIsViewingDetails(false)
+      closeDetails()
       syncWorkspaceCatalogItemParam(setSearchParams, null, { replace: true })
+      setIsWizardOpen(false)
       setIsAssignModalOpen(false)
       setIsEditModalOpen(false)
       setSelectedCatalogItem(null)
-      onCatalogItemsChange?.()
+      refreshCatalogItems()
       refreshOrganizations()
     }
     setIsDeleteModalOpen(false)
@@ -675,7 +814,7 @@ export function ProviderAdminCatalogPage({
     const updated = updateProviderCatalogItem(selectedCatalogItem.catalogItemId, fields)
     if (updated) {
       setSelectedCatalogItem(updated)
-      onCatalogItemsChange?.()
+      refreshCatalogItems()
       refreshOrganizations()
     }
   }
@@ -719,9 +858,21 @@ export function ProviderAdminCatalogPage({
     return 'Create a catalog item for this service to see it listed here.'
   })()
 
+  // Persisted list is the source of truth so card + detail status stay aligned.
+  // During publish, keep the pre-live row so Publishing ... can render until flush completes.
   const drawerCatalog = selectedCatalogItem
-    ? (catalogItems.find((item) => item.catalogItemId === selectedCatalogItem.catalogItemId) ??
-      selectedCatalogItem)
+    ? (() => {
+        const catalogFromList =
+          orderedCatalogItems.find(
+            (item) => item.catalogItemId === selectedCatalogItem.catalogItemId,
+          ) ?? null
+
+        if (publishingCatalogItemId === selectedCatalogItem.catalogItemId) {
+          return catalogFromList ?? selectedCatalogItem
+        }
+
+        return catalogFromList ?? selectedCatalogItem
+      })()
     : null
   const launchOrganization =
     organizations.find((organization) => organization.slug === PROVIDER_LAUNCH_DEMO_TENANT) ??
@@ -754,8 +905,9 @@ export function ProviderAdminCatalogPage({
             linkedTemplateForDetails?.description ?? linkedTemplate.description
           }
           onBackToCatalog={closeDetails}
-          onPublish={() => openTogglePublish(drawerCatalog)}
+          onPublish={() => publishCatalogItem(drawerCatalog)}
           onUnpublish={() => openTogglePublish(drawerCatalog)}
+          isPublishing={publishingCatalogItemId === drawerCatalog.catalogItemId}
           onLaunch={() => openLaunchWizard(drawerCatalog)}
           onEdit={() => openEdit(drawerCatalog)}
           onDuplicate={() => handleDuplicate(drawerCatalog)}
@@ -769,7 +921,7 @@ export function ProviderAdminCatalogPage({
             )
             if (updated) {
               setSelectedCatalogItem(updated)
-              onCatalogItemsChange?.()
+              refreshCatalogItems()
             }
           }}
         />
@@ -901,13 +1053,15 @@ export function ProviderAdminCatalogPage({
       ) : viewMode === 'grid' ? (
         <div
           ref={catalogCardGridRef}
-          className="catalog-card-grid provider-admin-catalog-items__card-grid"
+          className="catalog-card-grid catalog-card-grid--stable provider-admin-catalog-items__card-grid"
         >
           {filteredCatalogItems.map((item) => {
             const serviceId = getDraftServiceId(item)
             const isCreating = creatingCatalogItemId === item.catalogItemId
+            const isPublishing = publishingCatalogItemId === item.catalogItemId
             const catalogItemActions = getCatalogItemActions(
               item,
+              isPublishing,
               () => openDetails(item),
               () => openLaunchWizard(item),
               () => openEdit(item),
@@ -966,7 +1120,7 @@ export function ProviderAdminCatalogPage({
                       <Label color="blue" className="provider-admin-catalog-items__card-label">
                         {CATALOG_SERVICE_LABELS[serviceId]}
                       </Label>
-                      <CatalogStatusLabel item={item} />
+                      <CatalogStatusLabel item={item} isPublishing={isPublishing} />
                       <ActionsColumn items={catalogItemActions} />
                     </div>
                   </div>
@@ -1048,6 +1202,7 @@ export function ProviderAdminCatalogPage({
             {filteredCatalogItems.map((item) => {
               const catalogItemActions = getCatalogItemActions(
                 item,
+                publishingCatalogItemId === item.catalogItemId,
                 () => openDetails(item),
                 () => openLaunchWizard(item),
                 () => openEdit(item),
@@ -1074,7 +1229,10 @@ export function ProviderAdminCatalogPage({
                     </Content>
                   </Td>
                   <Td dataLabel="Status">
-                    <CatalogStatusLabel item={item} />
+                    <CatalogStatusLabel
+                      item={item}
+                      isPublishing={publishingCatalogItemId === item.catalogItemId}
+                    />
                   </Td>
                   <Td dataLabel="Profile / template">{item.templateName}</Td>
                   <Td dataLabel="Configuration">

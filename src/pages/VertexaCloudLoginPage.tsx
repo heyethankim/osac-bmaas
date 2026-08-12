@@ -14,7 +14,6 @@ import {
   Title,
 } from '@patternfly/react-core'
 import { DEMO_LOGIN_PREFILLED_PASSWORD } from '../demoTenant'
-import { ConceptualDesignSticker } from '../components/ConceptualDesignSticker'
 
 const VERTEXA_LOGIN_WAVE_STROKES: { d: string; o: number; w: number }[] = [
   {
@@ -281,7 +280,6 @@ export function VertexaCloudLoginPage({
           <p className="vertexa-login__loading-veil__text">Signing in…</p>
         </div>
       ) : null}
-      <ConceptualDesignSticker />
     </div>
   )
 }

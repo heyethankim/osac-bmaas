@@ -5,7 +5,6 @@ import { UserIcon } from '@patternfly/react-icons/dist/esm/icons/user-icon'
 import { UsersIcon } from '@patternfly/react-icons/dist/esm/icons/users-icon'
 import type { ReactNode } from 'react'
 import { RouterButton } from '../components/RouterButton'
-import { ConceptualDesignSticker } from '../components/ConceptualDesignSticker'
 import { BMAAS_LANDING_LAST_UPDATED } from '../bmaasLandingLastUpdated'
 import {
   getIdpManagerSetupRoute,
@@ -274,7 +273,6 @@ export function BmaasLandingPage() {
           </Content>
         </footer>
       </div>
-      <ConceptualDesignSticker />
     </div>
   )
 }
