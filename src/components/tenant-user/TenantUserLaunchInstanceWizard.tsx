@@ -1771,9 +1771,7 @@ export function TenantUserLaunchInstanceWizard({
         nextButtonText:
           stepId === 'review' ? LAUNCH_INSTANCE_WIZARD_DEMO.confirmProvisioningLabel : 'Next',
         backButtonText: 'Back',
-        ...(stepId === 'general'
-          ? { isBackDisabled: true, onNext: commitPendingProjectIfNeeded }
-          : {}),
+        ...(stepId === 'general' ? { isBackDisabled: true } : {}),
         ...(stepId === 'review' ? { isCancelHidden: true } : {}),
       }
     }
@@ -1809,9 +1807,7 @@ export function TenantUserLaunchInstanceWizard({
         nextButtonText:
           stepId === 'review' ? LAUNCH_INSTANCE_WIZARD_DEMO.confirmProvisioningLabel : 'Next',
         backButtonText: 'Back',
-        ...(stepId === 'general'
-          ? { isBackDisabled: true, onNext: commitPendingProjectIfNeeded }
-          : {}),
+        ...(stepId === 'general' ? { isBackDisabled: true } : {}),
         ...(stepId === 'review' ? { isCancelHidden: true } : {}),
       }
     }
@@ -1845,9 +1841,7 @@ export function TenantUserLaunchInstanceWizard({
         nextButtonText:
           stepId === 'review' ? LAUNCH_INSTANCE_WIZARD_DEMO.confirmProvisioningLabel : 'Next',
         backButtonText: 'Back',
-        ...(stepId === 'general'
-          ? { isBackDisabled: true, onNext: commitPendingProjectIfNeeded }
-          : {}),
+        ...(stepId === 'general' ? { isBackDisabled: true } : {}),
         ...(stepId === 'review' ? { isCancelHidden: true } : {}),
       }
     }
@@ -1883,7 +1877,6 @@ export function TenantUserLaunchInstanceWizard({
               !form.sshPublicKey.trim() ||
               !isProjectSelectionValid
             : false,
-        ...(stepId === 'configure' ? { onNext: commitPendingProjectIfNeeded } : {}),
         nextButtonText: (
           <span className="tenant-user-launch-wizard__footer-label">
             <span>Continue</span>
@@ -1948,8 +1941,26 @@ export function TenantUserLaunchInstanceWizard({
             className="tenant-user-launch-wizard"
             height="40rem"
             onClose={handleClose}
-            onStepChange={(_event, currentStep) => {
-              const stepId = String(currentStep.id).replace('launch-instance-step-', '')
+            onStepChange={(_event, currentStep, prevStep) => {
+              const stepId = String(currentStep?.id ?? '').replace(
+                'launch-instance-step-',
+                '',
+              )
+              const previousStepId = String(prevStep?.id ?? '').replace(
+                'launch-instance-step-',
+                '',
+              )
+              // Commit quick-create project when leaving the step that collects it.
+              // Do not put this in footer onNext — that overrides Wizard navigation.
+              if (
+                previousStepId === 'general' ||
+                (previousStepId === 'configure' &&
+                  !isClusterCatalogItem &&
+                  !isVmCatalogItem &&
+                  !isBareMetalCatalogItem)
+              ) {
+                commitPendingProjectIfNeeded()
+              }
               if (
                 stepId === 'general' ||
                 stepId === 'configure' ||
