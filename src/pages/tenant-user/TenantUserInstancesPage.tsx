@@ -33,7 +33,7 @@ import {
 } from '../../components/catalog/CatalogServiceFilterToggle'
 import { ViewModeToggle } from '../../components/catalog/CatalogViewToggle'
 import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
-import { TenantUserInstanceDetailsPage } from '../../components/tenant-user/TenantUserInstanceDetailsPage'
+import { TenantUserInstanceDetailsPage, BareMetalConnectSshModal } from '../../components/tenant-user/TenantUserInstanceDetailsPage'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
 import {
@@ -47,6 +47,7 @@ import {
   downloadClusterKubeconfig,
   formatTenantInstanceCreatedAt,
   formatTenantInstanceName,
+  getBareMetalSerialConsoleUrl,
   getClusterDemoPassword,
   getClusterNodeSetTypeLabel,
   getClusterPlatformLabel,
@@ -197,6 +198,7 @@ export function TenantUserInstancesPage({
   const [instancePendingPassword, setInstancePendingPassword] = useState<TenantInstance | null>(
     null,
   )
+  const [sshAccessInstance, setSshAccessInstance] = useState<TenantInstance | null>(null)
   const [instancePendingPublicIp, setInstancePendingPublicIp] = useState<TenantInstance | null>(
     null,
   )
@@ -633,6 +635,14 @@ export function TenantUserInstancesPage({
           setInstancePendingPublicIp(target)
         },
       },
+      {
+        onConnectSsh: (target) => {
+          setSshAccessInstance(target)
+        },
+        onOpenSerialConsole: (target) => {
+          window.open(getBareMetalSerialConsoleUrl(target), '_blank', 'noopener,noreferrer')
+        },
+      },
     )
 
   const handleUpdateNetworking = (
@@ -944,17 +954,6 @@ export function TenantUserInstancesPage({
           gap={{ default: 'gapMd' }}
         >
           <FlexItem>
-            <div className="page-scope-control">
-              <ProjectScopeSwitcher
-                tenantSlug={tenantSlug}
-                projects={projects}
-                selectedScopeId={projectScopeId}
-                onChange={onProjectScopeChange}
-                organization={organization}
-                onProjectsChange={onProjectsChange}
-                id="tenant-user-instances-project-scope"
-              />
-            </div>
             <Title headingLevel="h1" size="3xl" className="tenant-user-instances__title">
               {pageTitle}
             </Title>
@@ -966,6 +965,15 @@ export function TenantUserInstancesPage({
 
         <div className="catalog-view-toolbar tenant-user-instances__toolbar">
           <div className="catalog-view-toolbar__start">
+            <ProjectScopeSwitcher
+              tenantSlug={tenantSlug}
+              projects={projects}
+              selectedScopeId={projectScopeId}
+              onChange={onProjectScopeChange}
+              organization={organization}
+              onProjectsChange={onProjectsChange}
+              id="tenant-user-instances-project-scope"
+            />
             {lockedServiceId ? null : (
               <CatalogServiceFilterToggle
                 selectedFilters={selectedFilters}
@@ -1238,6 +1246,36 @@ export function TenantUserInstancesPage({
                         </Button>
                       </div>
                     ) : null}
+                    {serviceId === 'baremetal' ? (
+                      <div className="tenant-user-instances__card-console tenant-user-instances__card-console--split">
+                        <Button
+                          variant="primary"
+                          isDisabled={instance.status !== 'running'}
+                          className="tenant-user-instances__console-button"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setSshAccessInstance(instance)
+                          }}
+                        >
+                          Connect via SSH
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          isDisabled={instance.status !== 'running'}
+                          className="tenant-user-instances__console-button"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            window.open(
+                              getBareMetalSerialConsoleUrl(instance),
+                              '_blank',
+                              'noopener,noreferrer',
+                            )
+                          }}
+                        >
+                          Serial console
+                        </Button>
+                      </div>
+                    ) : null}
                   </CardBody>
                 </Card>
                 )
@@ -1404,6 +1442,12 @@ export function TenantUserInstancesPage({
           </Button>
         </ModalFooter>
       </Modal>
+
+      <BareMetalConnectSshModal
+        instance={sshAccessInstance}
+        isOpen={sshAccessInstance !== null}
+        onClose={() => setSshAccessInstance(null)}
+      />
     </>
   )
 }

@@ -720,8 +720,8 @@
   gap: var(--pf-t--global--spacer--md);
 }
 
-.page-scope-control {
-  margin-block: 0 var(--pf-t--global--spacer--md);
+.catalog-view-toolbar__start .project-scope-switcher {
+  flex: 0 0 auto;
 }
 
 .project-scope-switcher {
@@ -1452,6 +1452,12 @@
   margin-block-start: auto;
 }
 
+.tenant-user-instances__card-console--split {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
 .tenant-user-instances__console-button.pf-v6-c-button {
   width: 100%;
 }
@@ -2097,6 +2103,10 @@
   gap: var(--pf-t--global--spacer--sm);
 }
 
+.tenant-user-launch-wizard__step > .tenant-user-launch-wizard__preconfigured-section {
+  margin-block-end: var(--pf-t--global--spacer--lg);
+}
+
 .tenant-user-launch-wizard__preconfigured-title {
   display: inline-flex;
   align-items: center;
@@ -2107,15 +2117,22 @@
   color: var(--pf-t--global--text--color--subtle);
 }
 
+.tenant-user-launch-wizard__preconfigured-catalog-name.pf-v6-c-content--p {
+  margin: 0;
+  color: var(--pf-t--global--text--color--regular);
+  font-size: var(--pf-t--global--font--size--body--default);
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+}
+
 .tenant-user-launch-wizard__preconfigured-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--pf-t--global--spacer--md);
   margin: 0;
 }
 
 .tenant-user-launch-wizard__preconfigured-grid--with-network {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .tenant-user-launch-wizard__preconfigured-item {

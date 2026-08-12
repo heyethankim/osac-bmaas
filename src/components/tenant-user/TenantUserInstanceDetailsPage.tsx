@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   Button,
+  ClipboardCopy,
   Content,
   DescriptionList,
   DescriptionListDescription,
@@ -40,6 +41,9 @@ import {
   formatTenantInstanceName,
   downloadClusterKubeconfig,
   getBareMetalInstanceConditions,
+  getBareMetalSerialConsoleUrl,
+  getBareMetalSshCommand,
+  getBareMetalSshHost,
   getClusterApiUrl,
   getClusterConsoleUrl,
   getClusterDesiredVersionLabel,
@@ -775,7 +779,67 @@ function VmLifecycleActions({
   )
 }
 
-function DefaultLifecycleActions({
+export function BareMetalConnectSshModal({
+  instance,
+  isOpen,
+  onClose,
+}: {
+  instance: TenantInstance | null
+  isOpen: boolean
+  onClose: () => void
+}) {
+  if (!instance) {
+    return null
+  }
+
+  const host = getBareMetalSshHost(instance)
+  const command = getBareMetalSshCommand(instance)
+
+  return (
+    <Modal
+      variant={ModalVariant.small}
+      isOpen={isOpen}
+      onClose={onClose}
+      aria-labelledby="bare-metal-ssh-modal-title"
+    >
+      <ModalHeader title="Connect via SSH" labelId="bare-metal-ssh-modal-title" />
+      <ModalBody>
+        <Content component="p">
+          Use the SSH public key from launch to connect to this host when it is running.
+        </Content>
+        <DescriptionList isCompact className="entity-details-page__dl" aria-label="SSH connection">
+          <DescriptionListGroup>
+            <DescriptionListTerm>Host</DescriptionListTerm>
+            <DescriptionListDescription>
+              <code>{host}</code>
+            </DescriptionListDescription>
+          </DescriptionListGroup>
+          <DescriptionListGroup>
+            <DescriptionListTerm>Command</DescriptionListTerm>
+            <DescriptionListDescription>
+              <ClipboardCopy
+                isReadOnly
+                isCode
+                hoverTip="Copy SSH command"
+                clickTip="SSH command copied"
+                textAriaLabel="SSH connect command"
+              >
+                {command}
+              </ClipboardCopy>
+            </DescriptionListDescription>
+          </DescriptionListGroup>
+        </DescriptionList>
+      </ModalBody>
+      <ModalFooter>
+        <Button variant="primary" onClick={onClose}>
+          Close
+        </Button>
+      </ModalFooter>
+    </Modal>
+  )
+}
+
+function BareMetalLifecycleActions({
   instance,
   onRequestTerminate,
   onRestart,
@@ -788,39 +852,65 @@ function DefaultLifecycleActions({
   onStart?: (instanceId: string) => void
   onStop?: (instanceId: string) => void
 }) {
+  const [isSshModalOpen, setIsSshModalOpen] = useState(false)
   const isRunning = instance.status === 'running'
   const isStopped = instance.status === 'stopped'
   const isRestarting = instance.status === 'restarting'
-  const isBareMetal = getTenantInstanceServiceId(instance) === 'baremetal'
-  const canRestart = isBareMetal ? isRunning || isStopped : isRunning
-  const canStart = isBareMetal && isStopped
-  const canStop = isBareMetal && isRunning
-  const canTerminate =
-    instance.status !== 'provisioning' && instance.status !== 'restarting'
+  const canStart = isStopped
+  const canStop = isRunning
+  const canRestart = isRunning || isStopped
+  const canTerminate = instance.status !== 'provisioning' && instance.status !== 'restarting'
+  const serialConsoleUrl = getBareMetalSerialConsoleUrl(instance)
+
+  const openSerialConsole = () => {
+    window.open(serialConsoleUrl, '_blank', 'noopener,noreferrer')
+  }
 
   return (
     <>
-      {isBareMetal ? (
-        canStart ? (
-          <Button variant="secondary" onClick={() => onStart?.(instance.id)}>
+      {isRunning ? (
+        <Button variant="primary" onClick={() => setIsSshModalOpen(true)}>
+          Connect via SSH
+        </Button>
+      ) : (
+        <Tooltip content="SSH is available when the instance is running">
+          <Button variant="primary" isAriaDisabled>
+            Connect via SSH
+          </Button>
+        </Tooltip>
+      )}
+      {isRunning ? (
+        <Tooltip content="BMC serial-over-LAN (SoL) console for early boot and break-glass access">
+          <Button variant="secondary" onClick={openSerialConsole}>
+            Serial console
+          </Button>
+        </Tooltip>
+      ) : (
+        <Tooltip content="Serial console is available when the instance is running">
+          <Button variant="secondary" isAriaDisabled>
+            Serial console
+          </Button>
+        </Tooltip>
+      )}
+      {canStart ? (
+        <Button variant="secondary" onClick={() => onStart?.(instance.id)}>
+          Start
+        </Button>
+      ) : (
+        <Tooltip
+          content={
+            isRunning
+              ? 'Instance is already running'
+              : isRestarting
+                ? 'Start is unavailable while restarting'
+                : 'Start is available when the instance is stopped'
+          }
+        >
+          <Button variant="secondary" isAriaDisabled>
             Start
           </Button>
-        ) : (
-          <Tooltip
-            content={
-              isRunning
-                ? 'Instance is already running'
-                : isRestarting
-                  ? 'Start is unavailable while restarting'
-                  : 'Start is available when the instance is stopped'
-            }
-          >
-            <Button variant="secondary" isAriaDisabled>
-              Start
-            </Button>
-          </Tooltip>
-        )
-      ) : null}
+        </Tooltip>
+      )}
       {canRestart ? (
         <Button variant="secondary" onClick={() => onRestart(instance.id)}>
           Restart
@@ -830,9 +920,7 @@ function DefaultLifecycleActions({
           content={
             isRestarting
               ? 'Restart is already in progress'
-              : isBareMetal
-                ? 'Restart is available when the instance is running or stopped'
-                : 'Restart is available when the instance is running'
+              : 'Restart is available when the instance is running or stopped'
           }
         >
           <Button
@@ -853,27 +941,100 @@ function DefaultLifecycleActions({
           </Button>
         </Tooltip>
       )}
-      {isBareMetal ? (
-        canStop ? (
-          <Button variant="secondary" onClick={() => onStop?.(instance.id)}>
+      {canStop ? (
+        <Button variant="secondary" onClick={() => onStop?.(instance.id)}>
+          Stop
+        </Button>
+      ) : (
+        <Tooltip
+          content={
+            isStopped
+              ? 'Instance is already stopped'
+              : isRestarting
+                ? 'Stop is unavailable while restarting'
+                : 'Stop is available when the instance is running'
+          }
+        >
+          <Button variant="secondary" isAriaDisabled>
             Stop
           </Button>
-        ) : (
-          <Tooltip
-            content={
-              isStopped
-                ? 'Instance is already stopped'
-                : isRestarting
-                  ? 'Stop is unavailable while restarting'
-                  : 'Stop is available when the instance is running'
+        </Tooltip>
+      )}
+      {canTerminate ? (
+        <Button variant="secondary" isDanger onClick={() => onRequestTerminate(instance)}>
+          Delete
+        </Button>
+      ) : (
+        <Tooltip
+          content={
+            isRestarting
+              ? 'Delete is unavailable while restarting'
+              : 'Delete is unavailable while provisioning'
+          }
+        >
+          <Button variant="secondary" isDanger isAriaDisabled>
+            Delete
+          </Button>
+        </Tooltip>
+      )}
+      <BareMetalConnectSshModal
+        instance={instance}
+        isOpen={isSshModalOpen}
+        onClose={() => setIsSshModalOpen(false)}
+      />
+    </>
+  )
+}
+
+function DefaultLifecycleActions({
+  instance,
+  onRequestTerminate,
+  onRestart,
+}: {
+  instance: TenantInstance
+  onRequestTerminate: (instance: TenantInstance) => void
+  onRestart: (instanceId: string) => void
+  onStart?: (instanceId: string) => void
+  onStop?: (instanceId: string) => void
+}) {
+  const isRunning = instance.status === 'running'
+  const isRestarting = instance.status === 'restarting'
+  const canRestart = isRunning
+  const canTerminate =
+    instance.status !== 'provisioning' && instance.status !== 'restarting'
+
+  return (
+    <>
+      {canRestart ? (
+        <Button variant="secondary" onClick={() => onRestart(instance.id)}>
+          Restart
+        </Button>
+      ) : (
+        <Tooltip
+          content={
+            isRestarting
+              ? 'Restart is already in progress'
+              : 'Restart is available when the instance is running'
+          }
+        >
+          <Button
+            variant="secondary"
+            isAriaDisabled
+            icon={
+              isRestarting ? (
+                <Spinner
+                  isInline
+                  diameter="0.875rem"
+                  aria-hidden
+                  className="tenant-user-instances__status-spinner"
+                />
+              ) : undefined
             }
           >
-            <Button variant="secondary" isAriaDisabled>
-              Stop
-            </Button>
-          </Tooltip>
-        )
-      ) : null}
+            {isRestarting ? 'Restarting…' : 'Restart'}
+          </Button>
+        </Tooltip>
+      )}
       {canTerminate ? (
         <Button variant="secondary" isDanger onClick={() => onRequestTerminate(instance)}>
           Delete
@@ -1470,36 +1631,96 @@ function DefaultInstancePageBody({
                     <code>{instance.id}</code>
                   </DescriptionListDescription>
                 </DescriptionListGroup>
+                {isBareMetal ? (
+                  <>
+                    <DescriptionListGroup>
+                      <DescriptionListTerm>Created</DescriptionListTerm>
+                      <DescriptionListDescription>
+                        {formatTenantInstanceCreatedAt(instance.createdAt)}
+                      </DescriptionListDescription>
+                    </DescriptionListGroup>
+                    <DescriptionListGroup>
+                      <DescriptionListTerm>Provisioned</DescriptionListTerm>
+                      <DescriptionListDescription>
+                        {instance.provisionedAt
+                          ? formatTenantInstanceCreatedAt(instance.provisionedAt)
+                          : instance.status === 'provisioning'
+                            ? 'In progress'
+                            : '—'}
+                      </DescriptionListDescription>
+                    </DescriptionListGroup>
+                  </>
+                ) : null}
               </DescriptionList>
             </div>
 
-            <div className="entity-details-page__column">
-              <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
-                Lifecycle
-              </Title>
-              <DescriptionList
-                isCompact
-                className="entity-details-page__dl"
-                aria-label="Instance lifecycle"
-              >
-                <DescriptionListGroup>
-                  <DescriptionListTerm>Created</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    {formatTenantInstanceCreatedAt(instance.createdAt)}
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
-                <DescriptionListGroup>
-                  <DescriptionListTerm>Provisioned</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    {instance.provisionedAt
-                      ? formatTenantInstanceCreatedAt(instance.provisionedAt)
-                      : instance.status === 'provisioning'
-                        ? 'In progress'
-                        : '—'}
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
-              </DescriptionList>
-            </div>
+            {isBareMetal ? (
+              <div className="entity-details-page__column">
+                <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
+                  Access
+                </Title>
+                <DescriptionList
+                  isCompact
+                  className="entity-details-page__dl"
+                  aria-label="Bare metal access"
+                >
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Host</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      <code>{getBareMetalSshHost(instance)}</code>
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>SSH command</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      <ClipboardCopy
+                        isReadOnly
+                        isCode
+                        hoverTip="Copy SSH command"
+                        clickTip="SSH command copied"
+                        textAriaLabel="SSH connect command"
+                      >
+                        {getBareMetalSshCommand(instance)}
+                      </ClipboardCopy>
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Serial console</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      BMC serial-over-LAN (SoL) for early boot and break-glass access.
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                </DescriptionList>
+              </div>
+            ) : (
+              <div className="entity-details-page__column">
+                <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
+                  Lifecycle
+                </Title>
+                <DescriptionList
+                  isCompact
+                  className="entity-details-page__dl"
+                  aria-label="Instance lifecycle"
+                >
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Created</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      {formatTenantInstanceCreatedAt(instance.createdAt)}
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Provisioned</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      {instance.provisionedAt
+                        ? formatTenantInstanceCreatedAt(instance.provisionedAt)
+                        : instance.status === 'provisioning'
+                          ? 'In progress'
+                          : '—'}
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                </DescriptionList>
+              </div>
+            )}
           </div>
 
           <InstanceProjectsSection
@@ -1728,12 +1949,15 @@ export function TenantUserInstanceDetailsPage({
   const serviceId = getTenantInstanceServiceId(instance)
   const isCluster = serviceId === 'cluster'
   const isVm = serviceId === 'virtual-machine'
+  const isBareMetal = serviceId === 'baremetal'
 
   const description = isCluster
     ? 'Review cluster endpoints, configuration, and node sets for this instance.'
     : isVm
       ? 'Review virtual machine configuration, networking, and conditions for this instance.'
-      : 'Review configuration, networking, and lifecycle details for this instance.'
+      : isBareMetal
+        ? 'Review configuration, networking, and how to access this bare metal host.'
+        : 'Review configuration, networking, and lifecycle details for this instance.'
 
   const actions = isCluster ? (
     <ClusterLifecycleActions
@@ -1749,13 +1973,19 @@ export function TenantUserInstanceDetailsPage({
       onStart={onStart}
       onStop={onStop}
     />
-  ) : (
-    <DefaultLifecycleActions
+  ) : isBareMetal ? (
+    <BareMetalLifecycleActions
       instance={instance}
       onRequestTerminate={onRequestTerminate}
       onRestart={onRestart}
       onStart={onStart}
       onStop={onStop}
+    />
+  ) : (
+    <DefaultLifecycleActions
+      instance={instance}
+      onRequestTerminate={onRequestTerminate}
+      onRestart={onRestart}
     />
   )
 

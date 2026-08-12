@@ -47,14 +47,13 @@ export const LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   },
 ]
 
-/** Bare metal launch flow: General → Configure → Networking → Review → Provisioning. */
+/** Bare metal launch flow: General → Networking → Review → Provisioning. */
 export const BAREMETAL_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   id: LaunchInstanceWizardStepId
   label: string
   description: string
 }> = [
   { id: 'general', label: 'General', description: '' },
-  { id: 'configure', label: 'Configure', description: '' },
   { id: 'networking', label: 'Networking', description: '' },
   { id: 'review', label: 'Review', description: '' },
   { id: 'provisioning', label: 'Provisioning', description: '' },
@@ -241,8 +240,6 @@ export const BAREMETAL_LAUNCH_INSTANCE_DEMO = {
   nameHelper: CLUSTER_LAUNCH_INSTANCE_DEMO.nameHelper,
   sshPublicKey: CLUSTER_LAUNCH_INSTANCE_DEMO.sshPublicKey,
   sshHelper: CLUSTER_LAUNCH_INSTANCE_DEMO.sshHelper,
-  userDataHelper: 'Optional cloud-init user data (max 64 KB).',
-  defaultUserData: '',
 } as const
 
 export const PROVISIONING_BOOT_LOG_STEPS: ProvisioningBootLogStep[] = [
@@ -411,11 +408,7 @@ export function createLaunchInstanceWizardForm(options: {
     runStrategy: isVm
       ? VM_LAUNCH_INSTANCE_DEMO.defaultRunStrategy
       : DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM.runStrategy,
-    cloudInitUserData: isVm
-      ? VM_LAUNCH_INSTANCE_DEMO.cloudInitUserData
-      : isBaremetal
-        ? BAREMETAL_LAUNCH_INSTANCE_DEMO.defaultUserData
-        : '',
+    cloudInitUserData: isVm ? VM_LAUNCH_INSTANCE_DEMO.cloudInitUserData : '',
     virtualNetworkId: options.virtualNetworkId,
     subnetId: options.subnetId,
     securityGroupId: options.securityGroupId,

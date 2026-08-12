@@ -381,14 +381,19 @@ export function getCatalogInstanceTypeOptions(
       ? CATALOG_VM_INSTANCE_TYPE_OPTIONS
       : CATALOG_INSTANCE_TYPE_OPTIONS
 
-  return [
-    ...presets,
-    {
-      id: CUSTOM_INSTANCE_TYPE_ID,
-      label: 'Custom',
-      detail: 'Set CPUs, memory, NICs, and GPUs',
-    },
-  ]
+  // Bare metal and models-style presets only — Custom is VM-only.
+  if (serviceId === 'virtual-machine') {
+    return [
+      ...presets,
+      {
+        id: CUSTOM_INSTANCE_TYPE_ID,
+        label: 'Custom',
+        detail: 'Set CPUs, memory, NICs, and GPUs',
+      },
+    ]
+  }
+
+  return [...presets]
 }
 
 export function getCatalogDiskImageOptions(): CatalogDiskImageOption[] {

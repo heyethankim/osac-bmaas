@@ -306,12 +306,18 @@ export function ProviderSetupPublishCatalogWizard({
   const hasSingleTemplate = templates.length <= 1
   const publishSteps = useMemo(
     () =>
-      PUBLISH_CATALOG_STEPS.filter(
-        (step) => step.id !== 'field-policies' || hasLockableParameters,
-      ).map((step) =>
+      PUBLISH_CATALOG_STEPS.filter((step) => {
+        if (step.id === 'template' && hasSingleTemplate) {
+          return false
+        }
+        if (step.id === 'field-policies' && !hasLockableParameters) {
+          return false
+        }
+        return true
+      }).map((step) =>
         step.id === 'hardware-os' ? { ...step, label: hardwareOsStepLabel } : step,
       ),
-    [hasLockableParameters, hardwareOsStepLabel],
+    [hasLockableParameters, hasSingleTemplate, hardwareOsStepLabel],
   )
 
   const selectVipEnterprise = () => {
@@ -758,12 +764,15 @@ export function ProviderSetupPublishCatalogWizard({
                 >
                   <div
                     id="publish-catalog-instance-type"
-                    className="provider-setup-template__card-group provider-setup-template__card-group--instance-types"
+                    className={`provider-setup-template__card-group provider-setup-template__card-group--instance-types${
+                      instanceTypeCards.length === 3
+                        ? ' provider-setup-template__card-group--instance-types-fill'
+                        : ''
+                    }`}
                     role="presentation"
                   >
                     {instanceTypeCards.map((option) => {
                       const isSelected = option.id === selectedInstanceTypeId
-                      const isCustomCard = isCustomInstanceTypeId(option.id)
 
                       return (
                         <button
@@ -796,9 +805,7 @@ export function ProviderSetupPublishCatalogWizard({
                             component="p"
                             className="provider-setup-template__select-card-detail"
                           >
-                            {isCustomCard && !isSelected
-                              ? 'Set CPUs, memory, NICs, and GPUs'
-                              : option.detail}
+                            {option.detail}
                           </Content>
                           {option.accelerator ? (
                             <Content
@@ -821,7 +828,7 @@ export function ProviderSetupPublishCatalogWizard({
                     })}
                   </div>
                 </FormGroup>
-                {isCustomInstanceTypeSelected ? (
+                {isCustomInstanceTypeSelected && selectedServiceId === 'virtual-machine' ? (
                   <Form className="provider-setup-template__custom-instance-type">
                     <div className="provider-setup-template__custom-instance-type-fields">
                       <FormGroup label="CPUs" fieldId="custom-instance-type-vcpus" isRequired>
@@ -1302,9 +1309,12 @@ export function ProviderSetupPublishCatalogWizard({
           </div>
         )
       case 'review': {
-        const provisioner = selectedTemplate
-          ? getProvisioningTemplatePresentation(selectedTemplate, selectedServiceId)
-          : null
+        const includesPublishStep = (stepId: (typeof PUBLISH_CATALOG_STEPS)[number]['id']) =>
+          publishSteps.some((step) => step.id === stepId)
+        const provisioner =
+          includesPublishStep('template') && selectedTemplate
+            ? getProvisioningTemplatePresentation(selectedTemplate, selectedServiceId)
+            : null
 
         return (
           <div className="provider-setup-template__publish-review-step">
@@ -1324,12 +1334,14 @@ export function ProviderSetupPublishCatalogWizard({
                     : '—'}
                 </DescriptionListDescription>
               </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Template</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {provisioner?.title ?? '—'}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
+              {includesPublishStep('template') ? (
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Template</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {provisioner?.title ?? '—'}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              ) : null}
               <DescriptionListGroup>
                 <DescriptionListTerm>Name</DescriptionListTerm>
                 <DescriptionListDescription>
@@ -1370,7 +1382,7 @@ export function ProviderSetupPublishCatalogWizard({
                   )}
                 </DescriptionListDescription>
               </DescriptionListGroup>
-              {networkLockSummary ? (
+              {includesPublishStep('networking') && networkLockSummary ? (
                 <DescriptionListGroup>
                   <DescriptionListTerm>Networking</DescriptionListTerm>
                   <DescriptionListDescription>
@@ -1378,7 +1390,7 @@ export function ProviderSetupPublishCatalogWizard({
                   </DescriptionListDescription>
                 </DescriptionListGroup>
               ) : null}
-              {hasLockableParameters ? (
+              {includesPublishStep('field-policies') ? (
                 <DescriptionListGroup>
                   <DescriptionListTerm>Field policies</DescriptionListTerm>
                   <DescriptionListDescription>

@@ -288,6 +288,24 @@ export function TenantUserLaunchInstanceWizard({
       catalogItem.specRows,
     ],
   )
+  const launchCatalogSummaryRows = useMemo(() => {
+    if (catalogDetailSpecRows.length > 0) {
+      return catalogDetailSpecRows.slice(0, 4)
+    }
+
+    return [
+      { label: 'CPU', value: catalogItem.cpu },
+      { label: 'RAM', value: catalogItem.ram },
+      { label: 'GPU', value: catalogItem.gpu },
+      { label: 'OS image', value: catalogItem.osImage },
+    ].filter((row) => row.value.trim().length > 0 && row.value !== '—')
+  }, [
+    catalogDetailSpecRows,
+    catalogItem.cpu,
+    catalogItem.ram,
+    catalogItem.gpu,
+    catalogItem.osImage,
+  ])
   const resolvedVmOsImage = useMemo(() => {
     if (!isVmCatalogItem) {
       return ''
@@ -518,12 +536,7 @@ export function TenantUserLaunchInstanceWizard({
               { label: 'Pod CIDR', value: form.podCidr.trim() },
               { label: 'Service CIDR', value: form.serviceCidr.trim() },
             ]
-        : isBareMetalCatalogItem && form.cloudInitUserData.trim()
-          ? [
-              ...catalogItem.specRows,
-              { label: 'User data', value: form.cloudInitUserData.trim() },
-            ]
-          : catalogItem.specRows,
+        : catalogItem.specRows,
       clusterConfig: isClusterCatalogItem
         ? {
             releaseImage: form.releaseImage.trim(),
@@ -715,6 +728,60 @@ export function TenantUserLaunchInstanceWizard({
     </FormGroup>
   )
 
+  const renderCatalogOfferingSummary = (options?: { includeAssignedNetwork?: boolean }) => {
+    const includeAssignedNetwork = Boolean(
+      options?.includeAssignedNetwork && networkContext.enabled && !includeNetworkingStep,
+    )
+
+    if (launchCatalogSummaryRows.length === 0 && !includeAssignedNetwork) {
+      return null
+    }
+
+    return (
+      <div className="tenant-user-launch-wizard__preconfigured-section">
+        <div className="tenant-user-launch-wizard__preconfigured-title">
+          <LockIcon aria-hidden />
+          <span>{LAUNCH_INSTANCE_WIZARD_DEMO.preConfiguredTitle}</span>
+        </div>
+        <Content component="p" className="tenant-user-launch-wizard__preconfigured-catalog-name">
+          {catalogItem.displayName}
+        </Content>
+
+        <div
+          className={`tenant-user-launch-wizard__preconfigured-grid${
+            includeAssignedNetwork
+              ? ' tenant-user-launch-wizard__preconfigured-grid--with-network'
+              : ''
+          }`}
+        >
+          {launchCatalogSummaryRows.map((row) => (
+            <div key={row.label} className="tenant-user-launch-wizard__preconfigured-item">
+              <Content component="p" className="tenant-user-launch-wizard__preconfigured-label">
+                {row.label}
+              </Content>
+              <Content component="p" className="tenant-user-launch-wizard__preconfigured-value">
+                {row.value}
+              </Content>
+            </div>
+          ))}
+          {includeAssignedNetwork ? (
+            <div className="tenant-user-launch-wizard__preconfigured-item">
+              <Content component="p" className="tenant-user-launch-wizard__preconfigured-label">
+                Network
+              </Content>
+              <Content component="p" className="tenant-user-launch-wizard__preconfigured-value">
+                {assignedNetworkSummary}
+              </Content>
+              <Content component="p" className="tenant-user-launch-wizard__assigned-helper">
+                {LAUNCH_INSTANCE_WIZARD_DEMO.networkingAssignedHelper}
+              </Content>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    )
+  }
+
   const renderGeneralStep = () => {
     const nameFieldId = isBareMetalCatalogItem
       ? 'launch-bm-name'
@@ -730,10 +797,12 @@ export function TenantUserLaunchInstanceWizard({
       ? BAREMETAL_LAUNCH_INSTANCE_DEMO.sshHelper
       : isVmCatalogItem
         ? VM_LAUNCH_INSTANCE_DEMO.sshHelper
-        : CLUSTER_LAUNCH_INSTANCE_DEMO.sshHelper
+      : CLUSTER_LAUNCH_INSTANCE_DEMO.sshHelper
 
     return (
       <div className="tenant-user-launch-wizard__step">
+        {renderCatalogOfferingSummary()}
+
         <Form autoComplete="off" className="tenant-user-launch-wizard__form">
           {renderProjectField(
             isBareMetalCatalogItem
@@ -787,29 +856,6 @@ export function TenantUserLaunchInstanceWizard({
       </div>
     )
   }
-
-  const renderBareMetalConfigureStep = () => (
-    <div className="tenant-user-launch-wizard__step">
-      <Form autoComplete="off" className="tenant-user-launch-wizard__form">
-        <FormGroup label="User data" fieldId="launch-bm-user-data">
-          <TextArea
-            id="launch-bm-user-data"
-            value={form.cloudInitUserData}
-            onChange={(_event, value) =>
-              setForm((current) => ({ ...current, cloudInitUserData: value }))
-            }
-            resizeOrientation="vertical"
-            rows={10}
-          />
-          <FormHelperText>
-            <HelperText>
-              <HelperTextItem>{BAREMETAL_LAUNCH_INSTANCE_DEMO.userDataHelper}</HelperTextItem>
-            </HelperText>
-          </FormHelperText>
-        </FormGroup>
-      </Form>
-    </div>
-  )
 
   const renderVmConfigureStep = () => (
     <div className="tenant-user-launch-wizard__step">
@@ -1247,65 +1293,7 @@ export function TenantUserLaunchInstanceWizard({
           />
         </FormGroup>
 
-        <div className="tenant-user-launch-wizard__preconfigured-section">
-          <div className="tenant-user-launch-wizard__preconfigured-title">
-            <LockIcon aria-hidden />
-            <span>{LAUNCH_INSTANCE_WIZARD_DEMO.preConfiguredTitle}</span>
-          </div>
-
-          <div
-            className={`tenant-user-launch-wizard__preconfigured-grid${
-              networkContext.enabled && !includeNetworkingStep
-                ? ' tenant-user-launch-wizard__preconfigured-grid--with-network'
-                : ''
-            }`}
-          >
-            {isServiceAwareCatalogItem ? (
-              catalogDetailSpecRows.slice(0, 4).map((row) => (
-                <div key={row.label} className="tenant-user-launch-wizard__preconfigured-item">
-                  <Content component="p" className="tenant-user-launch-wizard__preconfigured-label">
-                    {row.label}
-                  </Content>
-                  <Content component="p" className="tenant-user-launch-wizard__preconfigured-value">
-                    {row.value}
-                  </Content>
-                </div>
-              ))
-            ) : (
-              <>
-                <div className="tenant-user-launch-wizard__preconfigured-item">
-                  <Content component="p" className="tenant-user-launch-wizard__preconfigured-label">
-                    Hardware profile
-                  </Content>
-                  <Content component="p" className="tenant-user-launch-wizard__preconfigured-value">
-                    {catalogItem.hardwareProfile}
-                  </Content>
-                </div>
-                <div className="tenant-user-launch-wizard__preconfigured-item">
-                  <Content component="p" className="tenant-user-launch-wizard__preconfigured-label">
-                    OS image
-                  </Content>
-                  <Content component="p" className="tenant-user-launch-wizard__preconfigured-value">
-                    {catalogItem.osImage}
-                  </Content>
-                </div>
-              </>
-            )}
-            {networkContext.enabled && !includeNetworkingStep ? (
-              <div className="tenant-user-launch-wizard__preconfigured-item">
-                <Content component="p" className="tenant-user-launch-wizard__preconfigured-label">
-                  Network
-                </Content>
-                <Content component="p" className="tenant-user-launch-wizard__preconfigured-value">
-                  {assignedNetworkSummary}
-                </Content>
-                <Content component="p" className="tenant-user-launch-wizard__assigned-helper">
-                  {LAUNCH_INSTANCE_WIZARD_DEMO.networkingAssignedHelper}
-                </Content>
-              </div>
-            ) : null}
-          </div>
-        </div>
+        {renderCatalogOfferingSummary({ includeAssignedNetwork: true })}
       </Form>
     </div>
   )
@@ -1408,6 +1396,8 @@ export function TenantUserLaunchInstanceWizard({
           </Content>
         </Alert>
 
+        {usesGeneralFirstStep ? renderCatalogOfferingSummary() : null}
+
         <DescriptionList isCompact className="tenant-user-launch-wizard__review-list">
           <DescriptionListGroup>
             <DescriptionListTerm>Catalog item</DescriptionListTerm>
@@ -1419,22 +1409,6 @@ export function TenantUserLaunchInstanceWizard({
           </DescriptionListGroup>
           {isBareMetalCatalogItem ? (
             <>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Hardware</DescriptionListTerm>
-                <DescriptionListDescription>{catalogItem.hardwareProfile}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>GPU</DescriptionListTerm>
-                <DescriptionListDescription>{catalogItem.gpu}</DescriptionListDescription>
-              </DescriptionListGroup>
-              {form.cloudInitUserData.trim() ? (
-                <DescriptionListGroup>
-                  <DescriptionListTerm>User data</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    {form.cloudInitUserData.trim()}
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
-              ) : null}
               <DescriptionListGroup>
                 <DescriptionListTerm>Virtual network</DescriptionListTerm>
                 <DescriptionListDescription>{virtualNetworkLabel}</DescriptionListDescription>
@@ -1723,8 +1697,6 @@ export function TenantUserLaunchInstanceWizard({
       switch (stepId) {
         case 'general':
           return renderGeneralStep()
-        case 'configure':
-          return renderBareMetalConfigureStep()
         case 'networking':
           return renderBareMetalNetworkingStep()
         case 'review':
@@ -1823,12 +1795,7 @@ export function TenantUserLaunchInstanceWizard({
   }
 
   const bareMetalStepFooter = (stepId: LaunchInstanceWizardStepId) => {
-    if (
-      stepId === 'general' ||
-      stepId === 'configure' ||
-      stepId === 'networking' ||
-      stepId === 'review'
-    ) {
+    if (stepId === 'general' || stepId === 'networking' || stepId === 'review') {
       const isNextDisabled =
         stepId === 'general'
           ? !isBareMetalGeneralStepValid(form) || !isProjectSelectionValid

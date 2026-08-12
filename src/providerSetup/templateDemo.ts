@@ -232,13 +232,10 @@ export function getPublishCatalogSuggestedDisplayName(serviceId: CatalogServiceI
 
 /** Service-specific Description step prefills for Create catalog item. */
 export const PUBLISH_CATALOG_SUGGESTED_DESCRIPTIONS = {
-  baremetal: DEFAULT_TEMPLATE_DESCRIPTION,
-  cluster:
-    'Catalog offering for OpenShift clusters with an HA control plane and configurable worker node sets. Provisions via Assisted Installer / Hive, kept private until published to the Catalog.',
-  'virtual-machine':
-    'Catalog offering for general-purpose virtual machines with configurable CPU, memory, and network attachments. Kept private until published to the Catalog.',
-  models:
-    'Catalog offering for curated model-serving endpoints. Kept private until published to the Catalog.',
+  baremetal: 'General-purpose bare metal server for compute and GPU workloads.',
+  cluster: 'OpenShift cluster for application and platform workloads.',
+  'virtual-machine': 'General-purpose virtual machine for application workloads.',
+  models: 'Model serving endpoint for AI inference workloads.',
 } as const satisfies Record<CatalogServiceId, string>
 
 export function getPublishCatalogSuggestedDescription(serviceId: CatalogServiceId): string {

@@ -229,6 +229,10 @@ export function getTenantInstanceActions(
   vmActions?: {
     onAttachPublicIp?: (instance: TenantInstance) => void
   },
+  bareMetalActions?: {
+    onConnectSsh?: (instance: TenantInstance) => void
+    onOpenSerialConsole?: (instance: TenantInstance) => void
+  },
 ): Array<{
   title: string
   isAriaDisabled?: boolean
@@ -283,6 +287,20 @@ export function getTenantInstanceActions(
         title: 'View details',
         onClick: () => {
           onViewDetails?.(instance)
+        },
+      },
+      {
+        title: 'Connect via SSH',
+        isAriaDisabled: !isRunning,
+        onClick: () => {
+          bareMetalActions?.onConnectSsh?.(instance)
+        },
+      },
+      {
+        title: 'Serial console',
+        isAriaDisabled: !isRunning,
+        onClick: () => {
+          bareMetalActions?.onOpenSerialConsole?.(instance)
         },
       },
       {
@@ -646,6 +664,21 @@ export function getClusterConsoleUrl(instance: TenantInstance): string {
 /** Demo VNC/serial console URL for a virtual machine instance. */
 export function getVmConsoleUrl(instance: TenantInstance): string {
   return `https://console-vm.${getClusterDnsName(instance)}.mock.osac.dev`
+}
+
+/** Demo management IP used for SSH after bare metal provision. */
+export function getBareMetalSshHost(instance: TenantInstance): string {
+  return createDemoPublicIp('IPv4', instance.id)
+}
+
+/** SSH connect command for a provisioned bare metal instance (RHEL cloud-user). */
+export function getBareMetalSshCommand(instance: TenantInstance): string {
+  return `ssh cloud-user@${getBareMetalSshHost(instance)}`
+}
+
+/** Demo BMC serial-over-LAN console URL for a bare metal instance. */
+export function getBareMetalSerialConsoleUrl(instance: TenantInstance): string {
+  return `https://console-sol.${getClusterDnsName(instance)}.mock.osac.dev`
 }
 
 export function getClusterWorkerNodeCount(instance: TenantInstance): number {

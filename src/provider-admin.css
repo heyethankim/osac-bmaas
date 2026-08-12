@@ -1610,6 +1610,10 @@
   gap: var(--pf-t--global--spacer--md);
 }
 
+.provider-setup-template__card-group.provider-setup-template__card-group--instance-types-fill {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .provider-setup-template__custom-instance-type {
   margin-block-start: var(--pf-t--global--spacer--md);
   padding: var(--pf-t--global--spacer--md);
