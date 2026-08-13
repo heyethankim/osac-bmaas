@@ -107,9 +107,12 @@ import {
 import { formatTenantInstanceName, generateTenantInstanceId, type TenantInstance } from '../../tenantUser/instances'
 import type { TenantUserScopeKind } from '../../tenantUser/scope'
 import { KubernetesResourceNameField } from '../shared/KubernetesResourceNameHelper'
+import { CatalogWizardPageShell } from '../catalog/CatalogWizardPageShell'
 
 type TenantUserLaunchInstanceWizardProps = {
   isOpen: boolean
+  /** `page` replaces the catalog landing (breadcrumb back to Catalog). Default `modal`. */
+  presentation?: 'modal' | 'page'
   catalogItem: TenantUserCatalogCard
   organization: RegisteredOrganization | null
   catalogDraft: ProviderCatalogDraft | null
@@ -170,6 +173,7 @@ function AssignedNetworkField({ field }: { field: LaunchNetworkFieldView }) {
 
 export function TenantUserLaunchInstanceWizard({
   isOpen,
+  presentation = 'modal',
   catalogItem,
   organization,
   catalogDraft,
@@ -1963,87 +1967,102 @@ export function TenantUserLaunchInstanceWizard({
     }
   }
 
-  return (
-    <>
-      <Modal
-        variant={ModalVariant.medium}
-        width="64rem"
-        maxWidth="64rem"
-        isOpen={isOpen}
-        onEscapePress={handleClose}
-        aria-labelledby="launch-instance-wizard-title"
-        className="tenant-user-launch-wizard__modal"
-      >
-        {isOpen ? (
-          <Wizard
-            key={`launch-instance-wizard-${catalogItem.serviceId}-${includeNetworkingStep ? 'net' : 'no-net'}`}
-            className="tenant-user-launch-wizard"
-            height="40rem"
+  const isPage = presentation === 'page'
+  const wizardTitle = isClusterCatalogItem
+    ? 'Launch instance for cluster'
+    : isVmCatalogItem
+      ? 'Launch instance for virtual machine'
+      : isBareMetalCatalogItem
+        ? 'Launch instance for bare metal'
+        : catalogItem.serviceId === 'models'
+          ? 'Launch instance for model'
+          : 'Launch instance'
+
+  const wizard = isOpen ? (
+    <Wizard
+      key={`launch-instance-wizard-${catalogItem.serviceId}-${includeNetworkingStep ? 'net' : 'no-net'}`}
+      className={['tenant-user-launch-wizard', isPage ? 'catalog-wizard-page__wizard' : undefined]
+        .filter(Boolean)
+        .join(' ')}
+      height={isPage ? '100%' : '40rem'}
+      isPlain={isPage}
+      onClose={isPage ? undefined : handleClose}
+      onStepChange={(_event, currentStep, prevStep) => {
+        const stepId = String(currentStep?.id ?? '').replace('launch-instance-step-', '')
+        const previousStepId = String(prevStep?.id ?? '').replace('launch-instance-step-', '')
+        // Commit quick-create project when leaving the step that collects it.
+        // Do not put this in footer onNext — that overrides Wizard navigation.
+        if (
+          previousStepId === 'general' ||
+          (previousStepId === 'configure' &&
+            !isClusterCatalogItem &&
+            !isVmCatalogItem &&
+            !isBareMetalCatalogItem)
+        ) {
+          commitPendingProjectIfNeeded()
+        }
+        if (
+          stepId === 'general' ||
+          stepId === 'configure' ||
+          stepId === 'networking' ||
+          stepId === 'review' ||
+          stepId === 'provisioning'
+        ) {
+          setActiveStepId(stepId)
+        }
+      }}
+      header={
+        isPage ? undefined : (
+          <WizardHeader
+            title={wizardTitle}
+            titleId="launch-instance-wizard-title"
+            description={activeStepDescription || undefined}
             onClose={handleClose}
-            onStepChange={(_event, currentStep, prevStep) => {
-              const stepId = String(currentStep?.id ?? '').replace(
-                'launch-instance-step-',
-                '',
-              )
-              const previousStepId = String(prevStep?.id ?? '').replace(
-                'launch-instance-step-',
-                '',
-              )
-              // Commit quick-create project when leaving the step that collects it.
-              // Do not put this in footer onNext — that overrides Wizard navigation.
-              if (
-                previousStepId === 'general' ||
-                (previousStepId === 'configure' &&
-                  !isClusterCatalogItem &&
-                  !isVmCatalogItem &&
-                  !isBareMetalCatalogItem)
-              ) {
-                commitPendingProjectIfNeeded()
-              }
-              if (
-                stepId === 'general' ||
-                stepId === 'configure' ||
-                stepId === 'networking' ||
-                stepId === 'review' ||
-                stepId === 'provisioning'
-              ) {
-                setActiveStepId(stepId)
-              }
-            }}
-            header={
-              <WizardHeader
-                title={
-                  isClusterCatalogItem
-                    ? 'Launch instance for cluster'
-                    : isVmCatalogItem
-                      ? 'Launch instance for virtual machine'
-                      : isBareMetalCatalogItem
-                        ? 'Launch instance for bare metal'
-                        : catalogItem.serviceId === 'models'
-                          ? 'Launch instance for model'
-                          : 'Launch instance'
-                }
-                titleId="launch-instance-wizard-title"
-                description={activeStepDescription || undefined}
-                onClose={handleClose}
-                closeButtonAriaLabel="Close launch instance wizard"
-              />
-            }
-          >
-            {wizardSteps.map((step) => (
-              <WizardStep
-                key={step.id}
-                name={step.label}
-                id={`launch-instance-step-${step.id}`}
-                footer={getStepFooter(step.id)}
-              >
-                {renderStepContent(step.id)}
-              </WizardStep>
-            ))}
-          </Wizard>
-        ) : null}
-      </Modal>
-    </>
+            closeButtonAriaLabel="Close launch instance wizard"
+          />
+        )
+      }
+    >
+      {wizardSteps.map((step) => (
+        <WizardStep
+          key={step.id}
+          name={step.label}
+          id={`launch-instance-step-${step.id}`}
+          footer={getStepFooter(step.id)}
+        >
+          {renderStepContent(step.id)}
+        </WizardStep>
+      ))}
+    </Wizard>
+  ) : null
+
+  if (isPage) {
+    if (!isOpen) {
+      return null
+    }
+    return (
+      <CatalogWizardPageShell
+        title={wizardTitle}
+        description={activeStepDescription || undefined}
+        onBackToCatalog={handleClose}
+      >
+        {wizard}
+      </CatalogWizardPageShell>
+    )
+  }
+
+  return (
+    <Modal
+      variant={ModalVariant.medium}
+      width="64rem"
+      maxWidth="64rem"
+      isOpen={isOpen}
+      onEscapePress={handleClose}
+      aria-labelledby="launch-instance-wizard-title"
+      className="tenant-user-launch-wizard__modal"
+    >
+      {wizard}
+    </Modal>
   )
 }
 

@@ -252,6 +252,7 @@ export function TenantUserCatalogPage({
 
   const openDetails = (item: TenantUserCatalogCard) => {
     setSelectedCatalogItem(item)
+    setIsWizardOpen(false)
     setIsDetailsDrawerOpen(true)
     syncWorkspaceCatalogItemParam(setSearchParams, item.displayName)
   }
@@ -259,6 +260,10 @@ export function TenantUserCatalogPage({
   const closeDetails = () => {
     setIsDetailsDrawerOpen(false)
     syncWorkspaceCatalogItemParam(setSearchParams, null)
+  }
+
+  const closeLaunchWizard = () => {
+    setIsWizardOpen(false)
   }
 
   const openLaunchWizard = (item: TenantUserCatalogCard) => {
@@ -273,7 +278,32 @@ export function TenantUserCatalogPage({
 
   return (
     <>
-      {detailsItem ? (
+      {isWizardOpen && activeCatalogItem ? (
+        <TenantUserLaunchInstanceWizard
+          presentation="page"
+          isOpen={isWizardOpen}
+          catalogItem={activeCatalogItem}
+          organization={organization}
+          catalogDraft={catalogDraft}
+          preferCatalogDraft={preferCatalogDraft}
+          tenantSlug={tenantSlug}
+          projects={projects}
+          initialProjectId={initialProjectId}
+          onProjectScopeChange={onProjectScopeChange}
+          onProjectsChange={onProjectsChange}
+          existingInstanceNames={existingInstanceNames}
+          onClose={closeLaunchWizard}
+          onProvisioningStarted={onProvisioningStarted}
+          onDismissDuringProvisioning={(instanceId, serviceId) => {
+            onDismissDuringProvisioning(instanceId, serviceId)
+            closeLaunchWizard()
+          }}
+          onWizardFinished={(instanceId, serviceId) => {
+            onWizardFinished(instanceId, serviceId)
+            closeLaunchWizard()
+          }}
+        />
+      ) : detailsItem ? (
         <TenantUserCatalogItemDetailsPage
           catalogItem={detailsItem}
           onBack={closeDetails}
@@ -459,32 +489,6 @@ export function TenantUserCatalogPage({
             </Table>
           </div>
         )}
-
-        {activeCatalogItem ? (
-          <TenantUserLaunchInstanceWizard
-            isOpen={isWizardOpen}
-            catalogItem={activeCatalogItem}
-            organization={organization}
-            catalogDraft={catalogDraft}
-            preferCatalogDraft={preferCatalogDraft}
-            tenantSlug={tenantSlug}
-            projects={projects}
-            initialProjectId={initialProjectId}
-            onProjectScopeChange={onProjectScopeChange}
-            onProjectsChange={onProjectsChange}
-            existingInstanceNames={existingInstanceNames}
-            onClose={() => setIsWizardOpen(false)}
-            onProvisioningStarted={onProvisioningStarted}
-            onDismissDuringProvisioning={(instanceId, serviceId) => {
-              onDismissDuringProvisioning(instanceId, serviceId)
-              setIsWizardOpen(false)
-            }}
-            onWizardFinished={(instanceId, serviceId) => {
-              onWizardFinished(instanceId, serviceId)
-              setIsWizardOpen(false)
-            }}
-          />
-        ) : null}
       </div>
       )}
     </>

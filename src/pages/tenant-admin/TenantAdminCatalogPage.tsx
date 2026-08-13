@@ -343,6 +343,7 @@ export function TenantAdminCatalogPage({
 
   const openDetails = (item: TenantCatalogGovernanceItemWithNetworking) => {
     setSelectedCatalogItem(item)
+    setIsWizardOpen(false)
     setIsDetailsDrawerOpen(true)
     syncWorkspaceCatalogItemParam(setSearchParams, item.displayName)
   }
@@ -398,6 +399,10 @@ export function TenantAdminCatalogPage({
   const closeDetails = () => {
     setIsDetailsDrawerOpen(false)
     syncWorkspaceCatalogItemParam(setSearchParams, null)
+  }
+
+  const closeLaunchWizard = () => {
+    setIsWizardOpen(false)
   }
 
   const updateCatalogItem = (
@@ -510,7 +515,34 @@ export function TenantAdminCatalogPage({
 
   return (
     <>
-      {isDetailsDrawerOpen && detailsItem ? (
+      {isWizardOpen && launchCatalogCard ? (
+        <TenantUserLaunchInstanceWizard
+          presentation="page"
+          isOpen={isWizardOpen}
+          catalogItem={launchCatalogCard}
+          organization={organization}
+          catalogDraft={launchCatalogDraft}
+          preferCatalogDraft
+          tenantSlug={organization.slug}
+          projects={projects}
+          initialProjectId={initialProjectId}
+          onProjectScopeChange={onProjectScopeChange}
+          onProjectsChange={onProjectsChange}
+          existingInstanceNames={existingInstanceNames}
+          onClose={closeLaunchWizard}
+          onProvisioningStarted={(instance) => {
+            onProvisioningStarted?.(instance)
+          }}
+          onDismissDuringProvisioning={(instanceId, serviceId) => {
+            onDismissDuringProvisioning?.(instanceId, serviceId)
+            closeLaunchWizard()
+          }}
+          onWizardFinished={(instanceId, serviceId) => {
+            onWizardFinished?.(instanceId, serviceId)
+            closeLaunchWizard()
+          }}
+        />
+      ) : isDetailsDrawerOpen && detailsItem ? (
         <TenantCatalogItemDetailsPage
           item={detailsItem}
           projectCount={projectCount}
@@ -837,34 +869,6 @@ export function TenantAdminCatalogPage({
           </Button>
         </ModalFooter>
       </Modal>
-
-      {launchCatalogCard ? (
-        <TenantUserLaunchInstanceWizard
-          isOpen={isWizardOpen}
-          catalogItem={launchCatalogCard}
-          organization={organization}
-          catalogDraft={launchCatalogDraft}
-          preferCatalogDraft
-          tenantSlug={organization.slug}
-          projects={projects}
-          initialProjectId={initialProjectId}
-          onProjectScopeChange={onProjectScopeChange}
-          onProjectsChange={onProjectsChange}
-          existingInstanceNames={existingInstanceNames}
-          onClose={() => setIsWizardOpen(false)}
-          onProvisioningStarted={(instance) => {
-            onProvisioningStarted?.(instance)
-          }}
-          onDismissDuringProvisioning={(instanceId, serviceId) => {
-            onDismissDuringProvisioning?.(instanceId, serviceId)
-            setIsWizardOpen(false)
-          }}
-          onWizardFinished={(instanceId, serviceId) => {
-            onWizardFinished?.(instanceId, serviceId)
-            setIsWizardOpen(false)
-          }}
-        />
-      ) : null}
     </>
   )
 }

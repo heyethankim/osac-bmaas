@@ -545,6 +545,8 @@ export function ProviderAdminCatalogPage({
     if (intent.kind === 'publish') {
       setPublishResumeScope('vip-enterprise')
       setPublishResumeTenantId(preferredTenantId)
+      setIsViewingDetails(false)
+      setIsWizardOpen(false)
       setIsPublishWizardOpen(true)
       return
     }
@@ -576,6 +578,8 @@ export function ProviderAdminCatalogPage({
 
   const openDetails = (item: ProviderCatalogDraft) => {
     setSelectedCatalogItem(item)
+    setIsPublishWizardOpen(false)
+    setIsWizardOpen(false)
     setIsViewingDetails(true)
     // Prefer stable id in the URL so display-name collisions cannot open the wrong row.
     syncWorkspaceCatalogItemParam(setSearchParams, item.catalogItemId)
@@ -584,6 +588,25 @@ export function ProviderAdminCatalogPage({
   const closeDetails = () => {
     setIsViewingDetails(false)
     syncWorkspaceCatalogItemParam(setSearchParams, null)
+  }
+
+  const closeCreateWizard = () => {
+    setIsPublishWizardOpen(false)
+    setPublishResumeScope('global-public')
+    setPublishResumeTenantId('')
+  }
+
+  const closeLaunchWizard = () => {
+    setIsWizardOpen(false)
+  }
+
+  const openCreateWizard = () => {
+    setIsViewingDetails(false)
+    setIsWizardOpen(false)
+    setPublishResumeScope('global-public')
+    setPublishResumeTenantId('')
+    setIsPublishWizardOpen(true)
+    syncWorkspaceCatalogItemParam(setSearchParams, null, { replace: true })
   }
 
   useEffect(() => {
@@ -819,6 +842,7 @@ export function ProviderAdminCatalogPage({
       return
     }
     setSelectedCatalogItem(catalog)
+    setIsPublishWizardOpen(false)
     setIsViewingDetails(false)
     setIsWizardOpen(true)
     syncWorkspaceCatalogItemParam(setSearchParams, null, { replace: true })
@@ -830,7 +854,75 @@ export function ProviderAdminCatalogPage({
 
   return (
     <>
-      {isViewingDetails && drawerCatalog ? (
+      {isPublishWizardOpen ? (
+        <ProviderSetupPublishCatalogWizard
+          presentation="page"
+          isOpen={isPublishWizardOpen}
+          templates={availableTemplates}
+          organizations={organizations}
+          defaultTemplateRefId={newestCatalogItem?.templateRefId}
+          initialPublishScope={publishResumeScope}
+          initialEnterpriseTenantId={publishResumeTenantId}
+          onClose={closeCreateWizard}
+          onCreateCatalogItem={(payload) => {
+            closeCreateWizard()
+            const created = onCreateCatalogItem(payload)
+            if (created?.catalogItemId) {
+              setViewMode('grid')
+              setCatalogViewMode('grid')
+              setSelectedStatus('all')
+              setSearchValue('')
+              beginCatalogItemCreateReveal(created.catalogItemId)
+              setIsViewingDetails(false)
+              syncWorkspaceCatalogItemParam(setSearchParams, null, { replace: true })
+            }
+          }}
+          onRegisterOrganization={() => handleRegisterOrganizationFromVip({ kind: 'publish' })}
+          isPublishing={isPublishing}
+        />
+      ) : isWizardOpen && launchCatalogCard ? (
+        <TenantUserLaunchInstanceWizard
+          presentation="page"
+          isOpen={isWizardOpen}
+          catalogItem={launchCatalogCard}
+          organization={launchOrganization}
+          catalogDraft={drawerCatalog}
+          preferCatalogDraft
+          tenantSlug={tenantSlug}
+          projects={projects}
+          initialProjectId={initialProjectId}
+          onProjectScopeChange={onProjectScopeChange}
+          onProjectsChange={onProjectsChange ?? (() => undefined)}
+          existingInstanceNames={existingInstanceNames}
+          onClose={closeLaunchWizard}
+          onProvisioningStarted={(instance) => {
+            onProvisioningStarted?.(instance)
+            if (!onProvisioningStarted) {
+              addTenantUserInstance(PROVIDER_LAUNCH_DEMO_TENANT, instance)
+              window.setTimeout(() => {
+                updateTenantUserInstance(PROVIDER_LAUNCH_DEMO_TENANT, instance.id, {
+                  status: 'running',
+                  provisionedAt: new Date().toISOString(),
+                })
+              }, LAUNCH_INSTANCE_PROVISIONING_DURATION_MS)
+            }
+            setExistingInstanceNames(
+              getTenantUserInstances(PROVIDER_LAUNCH_DEMO_TENANT).map((item) => item.name),
+            )
+          }}
+          onDismissDuringProvisioning={(instanceId, serviceId) => {
+            onDismissDuringProvisioning?.(instanceId, serviceId)
+            closeLaunchWizard()
+          }}
+          onWizardFinished={(instanceId, serviceId) => {
+            onWizardFinished?.(instanceId, serviceId)
+            closeLaunchWizard()
+            setExistingInstanceNames(
+              getTenantUserInstances(PROVIDER_LAUNCH_DEMO_TENANT).map((item) => item.name),
+            )
+          }}
+        />
+      ) : isViewingDetails && drawerCatalog ? (
         <CatalogItemDetailsPage
           catalog={drawerCatalog}
           templateDescription={
@@ -876,11 +968,7 @@ export function ProviderAdminCatalogPage({
             icon={<PlusIcon />}
             className="provider-admin-catalog-items__create"
             isDisabled={isPublishing}
-            onClick={() => {
-              setPublishResumeScope('global-public')
-              setPublishResumeTenantId('')
-              setIsPublishWizardOpen(true)
-            }}
+            onClick={openCreateWizard}
           >
             Create catalog item
           </Button>
@@ -1181,37 +1269,6 @@ export function ProviderAdminCatalogPage({
     </div>
       )}
 
-      <ProviderSetupPublishCatalogWizard
-        isOpen={isPublishWizardOpen}
-        templates={availableTemplates}
-        organizations={organizations}
-        defaultTemplateRefId={newestCatalogItem?.templateRefId}
-        initialPublishScope={publishResumeScope}
-        initialEnterpriseTenantId={publishResumeTenantId}
-        onClose={() => {
-          setIsPublishWizardOpen(false)
-          setPublishResumeScope('global-public')
-          setPublishResumeTenantId('')
-        }}
-        onCreateCatalogItem={(payload) => {
-          setIsPublishWizardOpen(false)
-          setPublishResumeScope('global-public')
-          setPublishResumeTenantId('')
-          const created = onCreateCatalogItem(payload)
-          if (created?.catalogItemId) {
-            setViewMode('grid')
-            setCatalogViewMode('grid')
-            setSelectedStatus('all')
-            setSearchValue('')
-            beginCatalogItemCreateReveal(created.catalogItemId)
-            setIsViewingDetails(false)
-            syncWorkspaceCatalogItemParam(setSearchParams, null, { replace: true })
-          }
-        }}
-        onRegisterOrganization={() => handleRegisterOrganizationFromVip({ kind: 'publish' })}
-        isPublishing={isPublishing}
-      />
-
       <AssignCatalogToOrganizationModal
         catalog={isAssignModalOpen ? selectedCatalogItem : null}
         organizations={organizations}
@@ -1304,48 +1361,6 @@ export function ProviderAdminCatalogPage({
           </Button>
         </ModalFooter>
       </Modal>
-      {launchCatalogCard ? (
-        <TenantUserLaunchInstanceWizard
-          isOpen={isWizardOpen}
-          catalogItem={launchCatalogCard}
-          organization={launchOrganization}
-          catalogDraft={drawerCatalog}
-          preferCatalogDraft
-          tenantSlug={tenantSlug}
-          projects={projects}
-          initialProjectId={initialProjectId}
-          onProjectScopeChange={onProjectScopeChange}
-          onProjectsChange={onProjectsChange ?? (() => undefined)}
-          existingInstanceNames={existingInstanceNames}
-          onClose={() => setIsWizardOpen(false)}
-          onProvisioningStarted={(instance) => {
-            onProvisioningStarted?.(instance)
-            if (!onProvisioningStarted) {
-              addTenantUserInstance(PROVIDER_LAUNCH_DEMO_TENANT, instance)
-              window.setTimeout(() => {
-                updateTenantUserInstance(PROVIDER_LAUNCH_DEMO_TENANT, instance.id, {
-                  status: 'running',
-                  provisionedAt: new Date().toISOString(),
-                })
-              }, LAUNCH_INSTANCE_PROVISIONING_DURATION_MS)
-            }
-            setExistingInstanceNames(
-              getTenantUserInstances(PROVIDER_LAUNCH_DEMO_TENANT).map((item) => item.name),
-            )
-          }}
-          onDismissDuringProvisioning={(instanceId, serviceId) => {
-            onDismissDuringProvisioning?.(instanceId, serviceId)
-            setIsWizardOpen(false)
-          }}
-          onWizardFinished={(instanceId, serviceId) => {
-            onWizardFinished?.(instanceId, serviceId)
-            setIsWizardOpen(false)
-            setExistingInstanceNames(
-              getTenantUserInstances(PROVIDER_LAUNCH_DEMO_TENANT).map((item) => item.name),
-            )
-          }}
-        />
-      ) : null}
     </>
   )
 }

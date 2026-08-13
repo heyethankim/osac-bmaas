@@ -2817,6 +2817,137 @@
   gap: var(--pf-t--global--spacer--md);
 }
 
+/* Catalog create / launch wizards — full page within Catalog nav (in-page, not modal) */
+.provider-admin-shell-page .provider-admin-shell__main.pf-v6-c-page-section:has(.catalog-wizard-page),
+.tenant-shell-page .tenant-shell-page__main.osac-page-main-section:has(.catalog-wizard-page) {
+  /* Avoid extra page padding pushing the footer below the fold */
+  padding-block-end: var(--pf-t--global--spacer--md);
+}
+
+.catalog-wizard-page {
+  /*
+    Fit breadcrumb + title + wizard into the remaining viewport so the full footer
+    (including bottom padding/border) stays visible without page scrolling.
+  */
+  --catalog-wizard-page--shell-offset: 9.25rem; /* masthead + page section padding */
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+  height: calc(100dvh - var(--catalog-wizard-page--shell-offset));
+  max-height: calc(100dvh - var(--catalog-wizard-page--shell-offset));
+  min-height: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.catalog-wizard-page__header {
+  flex: 0 0 auto;
+  margin-block-start: var(--pf-t--global--spacer--sm);
+}
+
+.catalog-wizard-page__title.pf-v6-c-title {
+  margin: 0;
+}
+
+.catalog-wizard-page__lede.pf-v6-c-content--p {
+  margin-block-start: var(--pf-t--global--spacer--sm);
+  margin-block-end: 0;
+  color: var(--pf-t--global--text--color--subtle);
+  max-width: 48rem;
+}
+
+.catalog-wizard-page__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-block-start: var(--pf-t--global--spacer--sm);
+  overflow: hidden;
+}
+
+/* Wizard panel fills space under the page title; footer stays on the bottom edge */
+.catalog-wizard-page__wizard.pf-v6-c-wizard,
+.catalog-wizard-page__wizard.provider-setup-template__designer-wizard.pf-v6-c-wizard,
+.catalog-wizard-page__wizard.tenant-user-launch-wizard.pf-v6-c-wizard {
+  --pf-v6-c-wizard--Height: 100%;
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+  border-radius: 0;
+}
+
+.catalog-wizard-page__wizard.pf-v6-c-wizard.pf-m-plain {
+  background: transparent;
+}
+
+.catalog-wizard-page__wizard.pf-v6-c-wizard .pf-v6-c-wizard__header {
+  display: none;
+}
+
+.catalog-wizard-page__wizard.pf-v6-c-wizard .pf-v6-c-wizard__outer-wrap,
+.catalog-wizard-page__wizard.provider-setup-template__designer-wizard.pf-v6-c-wizard
+  .pf-v6-c-wizard__outer-wrap,
+.catalog-wizard-page__wizard.tenant-user-launch-wizard.pf-v6-c-wizard .pf-v6-c-wizard__outer-wrap {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  min-height: 0;
+  border: solid var(--pf-t--global--border--width--regular)
+    var(--pf-t--global--border--color--default);
+  border-radius: var(--pf-t--global--border--radius--medium);
+  background: var(--pf-t--global--background--color--primary--default);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.catalog-wizard-page__wizard.pf-v6-c-wizard .pf-v6-c-wizard__nav {
+  align-self: stretch;
+  overflow: auto;
+}
+
+.catalog-wizard-page__wizard.pf-v6-c-wizard .pf-v6-c-wizard__inner-wrap,
+.catalog-wizard-page__wizard.provider-setup-template__designer-wizard.pf-v6-c-wizard
+  .pf-v6-c-wizard__inner-wrap {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+.catalog-wizard-page__wizard.pf-v6-c-wizard .pf-v6-c-wizard__main,
+.catalog-wizard-page__wizard.provider-setup-template__designer-wizard.pf-v6-c-wizard
+  .pf-v6-c-wizard__main {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.catalog-wizard-page__wizard.pf-v6-c-wizard .pf-v6-c-wizard__main-body,
+.catalog-wizard-page__wizard.provider-setup-template__designer-wizard.pf-v6-c-wizard
+  .pf-v6-c-wizard__main-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.catalog-wizard-page__wizard.pf-v6-c-wizard .pf-v6-c-wizard__footer {
+  flex: 0 0 auto;
+  margin-block-start: 0;
+  position: static;
+  background-color: var(--pf-t--global--background--color--primary--default);
+}
+
 .entity-details-page__header {
   margin-block-start: var(--pf-t--global--spacer--sm);
 }

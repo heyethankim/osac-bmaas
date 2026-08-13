@@ -42,6 +42,7 @@ import {
   WizardStep,
 } from '@patternfly/react-core'
 import { CatalogPublishScopeIcon } from '../../components/provider-admin/CatalogPublishScopeIcon'
+import { CatalogWizardPageShell } from '../../components/catalog/CatalogWizardPageShell'
 import {
   formatVipEnterpriseVisibilityLabel,
   normalizeEnterpriseTenantIds,
@@ -99,6 +100,8 @@ import {
 
 type ProviderSetupPublishCatalogWizardProps = {
   isOpen: boolean
+  /** `page` replaces the catalog landing (breadcrumb back to Catalog). Default `modal`. */
+  presentation?: 'modal' | 'page'
   templates: SavedMasterTemplate[]
   organizations: RegisteredOrganization[]
   defaultTemplateRefId?: string
@@ -189,6 +192,7 @@ function CustomHardwareUnitNumberInput({
 
 export function ProviderSetupPublishCatalogWizard({
   isOpen,
+  presentation = 'modal',
   templates,
   organizations,
   defaultTemplateRefId,
@@ -1819,6 +1823,57 @@ export function ProviderSetupPublishCatalogWizard({
     return undefined
   }
 
+  const wizardTitle = 'Create catalog item'
+  const isPage = presentation === 'page'
+
+  const wizard = isOpen ? (
+    <Wizard
+      key="publish-catalog-wizard"
+      className={[
+        'provider-setup-template__designer-wizard',
+        isPage ? 'catalog-wizard-page__wizard' : undefined,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      height={isPage ? '100%' : '40rem'}
+      isPlain={isPage}
+      onClose={isPage || isPublishing ? undefined : handleClose}
+      header={
+        isPage ? undefined : (
+          <WizardHeader
+            title={wizardTitle}
+            titleId="publish-catalog-wizard-title"
+            className="provider-setup-template__designer-header"
+            onClose={isPublishing ? undefined : handleClose}
+            closeButtonAriaLabel="Close create catalog item wizard"
+          />
+        )
+      }
+    >
+      {publishSteps.map((step) => (
+        <WizardStep
+          key={step.id}
+          name={step.label}
+          id={`publish-catalog-step-${step.id}`}
+          footer={getStepFooter(step.id)}
+        >
+          {renderStepContent(step.id)}
+        </WizardStep>
+      ))}
+    </Wizard>
+  ) : null
+
+  if (isPage) {
+    if (!isOpen) {
+      return null
+    }
+    return (
+      <CatalogWizardPageShell title={wizardTitle} onBackToCatalog={handleClose}>
+        {wizard}
+      </CatalogWizardPageShell>
+    )
+  }
+
   return (
     <Modal
       variant={ModalVariant.medium}
@@ -1829,34 +1884,7 @@ export function ProviderSetupPublishCatalogWizard({
       aria-labelledby="publish-catalog-wizard-title"
       className="provider-setup-template__designer-modal provider-setup-template__publish-modal"
     >
-      {isOpen ? (
-        <Wizard
-          key="publish-catalog-wizard"
-          className="provider-setup-template__designer-wizard"
-          height="40rem"
-          onClose={isPublishing ? undefined : handleClose}
-          header={
-            <WizardHeader
-              title="Create catalog item"
-              titleId="publish-catalog-wizard-title"
-              className="provider-setup-template__designer-header"
-              onClose={isPublishing ? undefined : handleClose}
-              closeButtonAriaLabel="Close create catalog item wizard"
-            />
-          }
-        >
-          {publishSteps.map((step) => (
-            <WizardStep
-              key={step.id}
-              name={step.label}
-              id={`publish-catalog-step-${step.id}`}
-              footer={getStepFooter(step.id)}
-            >
-              {renderStepContent(step.id)}
-            </WizardStep>
-          ))}
-        </Wizard>
-      ) : null}
+      {wizard}
     </Modal>
   )
 }
