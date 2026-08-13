@@ -840,6 +840,10 @@ export function TenantAdminCatalogPage({
                             serviceId: item.serviceId,
                             templateRefId: item.templateRefId,
                             templateName: item.templateName,
+                            instanceTypeLabel: item.instanceTypeLabel,
+                            diskImageLabel: item.diskImageLabel,
+                            diskImageId: item.diskImageId,
+                            clusterVersionMode: item.clusterVersionMode,
                           })}
                         </Content>
                       </Td>

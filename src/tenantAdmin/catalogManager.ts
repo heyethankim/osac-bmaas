@@ -36,6 +36,13 @@ export type TenantCatalogGovernanceItem = {
   templateName: string
   instanceTypeLabel?: string
   diskImageLabel?: string
+  diskImageId?: string
+  clusterVersionMode?: 'locked' | 'editable'
+  nodeSetId?: string
+  nodeSetLabel?: string
+  hostTypeId?: string
+  hostTypeLabel?: string
+  clusterNodeTopologyMode?: 'locked' | 'editable'
   fieldPolicies?: CatalogFieldPolicy[]
   /** Card/table configuration rows (service-aware). */
   specRows: CatalogSpecRow[]
@@ -137,6 +144,13 @@ function mapProviderCatalogToGovernanceItem(
     templateName: draft.templateName,
     instanceTypeLabel: draft.instanceTypeLabel,
     diskImageLabel: draft.diskImageLabel,
+    diskImageId: draft.diskImageId,
+    clusterVersionMode: draft.clusterVersionMode,
+    nodeSetId: draft.nodeSetId,
+    nodeSetLabel: draft.nodeSetLabel,
+    hostTypeId: draft.hostTypeId,
+    hostTypeLabel: draft.hostTypeLabel,
+    clusterNodeTopologyMode: draft.clusterNodeTopologyMode,
     fieldPolicies: draft.fieldPolicies,
     specRows,
     categoryLabel: specRows.map((row) => row.value).join(' · '),
@@ -223,6 +237,13 @@ export function getTenantCatalogItemDetailSpecRows(
       templateName: item.templateName,
       instanceTypeLabel: item.instanceTypeLabel,
       diskImageLabel: item.diskImageLabel,
+      diskImageId: item.diskImageId,
+      clusterVersionMode: item.clusterVersionMode,
+      nodeSetId: item.nodeSetId,
+      nodeSetLabel: item.nodeSetLabel,
+      hostTypeId: item.hostTypeId,
+      hostTypeLabel: item.hostTypeLabel,
+      clusterNodeTopologyMode: item.clusterNodeTopologyMode,
     },
     { includeDetails: true },
   )

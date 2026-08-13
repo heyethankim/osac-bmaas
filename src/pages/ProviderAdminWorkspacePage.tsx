@@ -220,6 +220,16 @@ export function ProviderAdminWorkspacePage() {
       ...(payload.instanceTypeLabel ? { instanceTypeLabel: payload.instanceTypeLabel } : {}),
       ...(payload.diskImageId ? { diskImageId: payload.diskImageId } : {}),
       ...(payload.diskImageLabel ? { diskImageLabel: payload.diskImageLabel } : {}),
+      ...(payload.clusterVersionMode
+        ? { clusterVersionMode: payload.clusterVersionMode }
+        : {}),
+      ...(payload.nodeSetId ? { nodeSetId: payload.nodeSetId } : {}),
+      ...(payload.nodeSetLabel ? { nodeSetLabel: payload.nodeSetLabel } : {}),
+      ...(payload.hostTypeId ? { hostTypeId: payload.hostTypeId } : {}),
+      ...(payload.hostTypeLabel ? { hostTypeLabel: payload.hostTypeLabel } : {}),
+      ...(payload.clusterNodeTopologyMode
+        ? { clusterNodeTopologyMode: payload.clusterNodeTopologyMode }
+        : {}),
       ...(payload.fieldPolicies?.length ? { fieldPolicies: payload.fieldPolicies } : {}),
       status,
       createdAt: new Date().toISOString(),

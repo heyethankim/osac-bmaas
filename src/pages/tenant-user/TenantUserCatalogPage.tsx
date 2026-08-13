@@ -524,6 +524,10 @@ export function TenantUserCatalogPage({
                         serviceId: item.serviceId,
                         templateRefId: item.templateRefId,
                         templateName: item.templateName,
+                        instanceTypeLabel: item.instanceTypeLabel,
+                        diskImageLabel: item.diskImageLabel,
+                        diskImageId: item.diskImageId,
+                        clusterVersionMode: item.clusterVersionMode,
                       })}
                     </Td>
                     <Td dataLabel="Networking">

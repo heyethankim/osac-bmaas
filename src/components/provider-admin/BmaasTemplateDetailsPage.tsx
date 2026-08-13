@@ -141,7 +141,7 @@ export function BmaasTemplateDetailsPage({
               <DescriptionListGroup>
                 <DescriptionListTerm>Cluster version</DescriptionListTerm>
                 <DescriptionListDescription>
-                  {linkedCatalog?.diskImageLabel ?? 'Red Hat OpenShift 4.19'}
+                  {linkedCatalog?.diskImageLabel ?? 'OpenShift 4.19'}
                 </DescriptionListDescription>
               </DescriptionListGroup>
               <DescriptionListGroup>

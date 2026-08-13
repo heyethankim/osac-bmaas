@@ -1063,7 +1063,7 @@ export function getClusterPlatformLabel(instance: TenantInstance): string {
   return '—'
 }
 
-/** Short version token for node-set rows (e.g. "4.16" from "Red Hat OpenShift 4.16"). */
+/** Short version token for node-set rows (e.g. "4.16" from "OpenShift 4.16"). */
 export function getClusterVersionShortLabel(versionLabel: string): string {
   const match = versionLabel.match(/(\d+\.\d+(?:\.\d+)?)/)
   return match?.[1] ?? (versionLabel.trim() || '—')
@@ -1396,11 +1396,11 @@ export function createDemoTenantClusterInstance(organizationName: string): Tenan
     id: DEMO_TENANT_CLUSTER_INSTANCE_ID,
     name: 'ocp-cluster-01',
     status: 'running',
-    platform: 'Red Hat OpenShift 4.19',
+    platform: 'OpenShift 4.19',
     hostType: 'standard-host',
     nodeCount: 3,
     hoursAgo: 18,
-    desiredVersion: 'Red Hat OpenShift 4.20',
+    desiredVersion: 'OpenShift 4.20',
     upgradeStatus: 'upgrade-available',
     nodeSets: [
       {
@@ -1428,7 +1428,7 @@ export function createDemoTenantClusterInstance02(organizationName: string): Ten
     id: DEMO_TENANT_CLUSTER_INSTANCE_ID_02,
     name: 'ocp-cluster-02',
     status: 'failed',
-    platform: 'Red Hat OpenShift 4.15',
+    platform: 'OpenShift 4.15',
     hostType: 'gpu-host',
     nodeCount: 2,
     hoursAgo: 6,
@@ -1440,7 +1440,7 @@ export function createDemoTenantClusterInstance03(organizationName: string): Ten
     id: DEMO_TENANT_CLUSTER_PROVISIONING_INSTANCE_ID,
     name: 'ocp-cluster-03',
     status: 'provisioning',
-    platform: 'Red Hat OpenShift 4.16',
+    platform: 'OpenShift 4.16',
     hostType: 'gpu-host',
     nodeCount: 4,
     hoursAgo: 1,
@@ -1452,7 +1452,7 @@ export function createDemoTenantClusterInstance04(organizationName: string): Ten
     id: DEMO_TENANT_CLUSTER_INSTANCE_ID_04,
     name: 'ocp-cluster-04',
     status: 'running',
-    platform: 'Red Hat OpenShift 4.21',
+    platform: 'OpenShift 4.21',
     hostType: 'standard-host',
     nodeCount: 3,
     hoursAgo: 8,

@@ -1,5 +1,9 @@
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
-import { getReleaseImageForClusterVersion } from '../catalog/catalogPublishConfig'
+import {
+  getCatalogClusterVersionOption,
+  getLatestCatalogClusterVersionId,
+  getReleaseImageForClusterVersion,
+} from '../catalog/catalogPublishConfig'
 import {
   KUBERNETES_RESOURCE_NAME_HELPER,
   isValidKubernetesResourceName,
@@ -271,6 +275,8 @@ export type LaunchInstanceWizardForm = {
   instanceName: string
   sshPublicKey: string
   pullSecret: string
+  /** Selected OpenShift version id when provisioning a cluster. */
+  clusterVersionId: string
   releaseImage: string
   nodeSets: ClusterNodeSetForm[]
   podCidr: string
@@ -334,10 +340,13 @@ export function getNextLaunchInstanceName(
   return `${prefix}-${nextNumber}`
 }
 
-export function createDefaultClusterNodeSet(index = 1): ClusterNodeSetForm {
+export function createDefaultClusterNodeSet(
+  index = 1,
+  hostType: string = CLUSTER_LAUNCH_INSTANCE_DEMO.defaultHostType,
+): ClusterNodeSetForm {
   return {
     id: `node-set-${index}`,
-    hostType: CLUSTER_LAUNCH_INSTANCE_DEMO.defaultHostType,
+    hostType,
     nodeCount: CLUSTER_LAUNCH_INSTANCE_DEMO.defaultNodeCount,
   }
 }
@@ -346,6 +355,7 @@ export const DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM: LaunchInstanceWizardForm = {
   instanceName: LAUNCH_INSTANCE_WIZARD_DEMO.defaultInstanceName,
   sshPublicKey: LAUNCH_INSTANCE_WIZARD_DEMO.defaultSshPublicKey,
   pullSecret: '',
+  clusterVersionId: '',
   releaseImage: '',
   nodeSets: [createDefaultClusterNodeSet()],
   podCidr: '',
@@ -371,11 +381,21 @@ export function createLaunchInstanceWizardForm(options: {
   serviceId?: CatalogServiceId
   /** Catalog cluster version id or Platform label; maps to release image. */
   clusterVersion?: string
+  /** Catalog default host type for the first node set. */
+  hostType?: string
 }): LaunchInstanceWizardForm {
   const serviceId = options.serviceId ?? 'baremetal'
   const isCluster = serviceId === 'cluster'
   const isVm = serviceId === 'virtual-machine'
   const isBaremetal = serviceId === 'baremetal'
+  const matchedClusterVersion = isCluster
+    ? getCatalogClusterVersionOption(options.clusterVersion)
+    : undefined
+  const clusterVersionId = isCluster
+    ? (matchedClusterVersion?.id ?? getLatestCatalogClusterVersionId())
+    : ''
+  const defaultHostType =
+    options.hostType?.trim() || CLUSTER_LAUNCH_INSTANCE_DEMO.defaultHostType
 
   return {
     ...DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM,
@@ -389,12 +409,13 @@ export function createLaunchInstanceWizardForm(options: {
         ? CLUSTER_LAUNCH_INSTANCE_DEMO.sshPublicKey
         : DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM.sshPublicKey,
     pullSecret: isCluster ? CLUSTER_LAUNCH_INSTANCE_DEMO.pullSecret : '',
+    clusterVersionId,
     releaseImage: isCluster
       ? getReleaseImageForClusterVersion(
-          options.clusterVersion || CLUSTER_LAUNCH_INSTANCE_DEMO.releaseImage,
+          clusterVersionId || options.clusterVersion || CLUSTER_LAUNCH_INSTANCE_DEMO.releaseImage,
         )
       : '',
-    nodeSets: [createDefaultClusterNodeSet()],
+    nodeSets: [createDefaultClusterNodeSet(1, defaultHostType)],
     podCidr: isCluster ? CLUSTER_LAUNCH_INSTANCE_DEMO.podCidr : '',
     serviceCidr: isCluster ? CLUSTER_LAUNCH_INSTANCE_DEMO.serviceCidr : '',
     containerDiskImage: isVm ? VM_LAUNCH_INSTANCE_DEMO.containerDiskImage : '',
@@ -435,6 +456,7 @@ export function isClusterGeneralStepValid(form: LaunchInstanceWizardForm): boole
 
 export function isClusterConfigureStepValid(form: LaunchInstanceWizardForm): boolean {
   return (
+    form.clusterVersionId.trim().length > 0 &&
     form.releaseImage.trim().length > 0 &&
     form.nodeSets.length > 0 &&
     form.nodeSets.every(

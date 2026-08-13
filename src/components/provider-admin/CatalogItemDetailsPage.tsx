@@ -593,7 +593,19 @@ export function CatalogItemDetailsPage({
                         <DescriptionListTerm>{row.label}</DescriptionListTerm>
                         <DescriptionListDescription>
                           {row.label === 'Cluster version' ? (
-                            <CatalogClusterVersionValue>{row.value}</CatalogClusterVersionValue>
+                            <CatalogClusterVersionValue
+                              badge={row.badge}
+                              mode={catalog.clusterVersionMode}
+                            >
+                              {row.value}
+                            </CatalogClusterVersionValue>
+                          ) : row.badge ? (
+                            <span className="catalog-spec-row-value-with-badge">
+                              <span>{row.value}</span>
+                              <Label color={row.badge.color} isCompact>
+                                {row.badge.text}
+                              </Label>
+                            </span>
                           ) : (
                             row.value
                           )}

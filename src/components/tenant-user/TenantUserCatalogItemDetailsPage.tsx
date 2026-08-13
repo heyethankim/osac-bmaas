@@ -64,6 +64,13 @@ export function TenantUserCatalogItemDetailsPage({
       templateName: catalogItem.templateName,
       instanceTypeLabel: catalogItem.instanceTypeLabel,
       diskImageLabel: catalogItem.diskImageLabel,
+      diskImageId: catalogItem.diskImageId,
+      clusterVersionMode: catalogItem.clusterVersionMode,
+      nodeSetId: catalogItem.nodeSetId,
+      nodeSetLabel: catalogItem.nodeSetLabel,
+      hostTypeId: catalogItem.hostTypeId,
+      hostTypeLabel: catalogItem.hostTypeLabel,
+      clusterNodeTopologyMode: catalogItem.clusterNodeTopologyMode,
     },
     { includeDetails: catalogItem.serviceId !== 'baremetal' },
   )
@@ -85,10 +92,17 @@ export function TenantUserCatalogItemDetailsPage({
         templateName: catalogItem.templateName,
         instanceTypeLabel: catalogItem.instanceTypeLabel,
         diskImageLabel: catalogItem.diskImageLabel,
+        diskImageId: catalogItem.diskImageId,
+        clusterVersionMode: catalogItem.clusterVersionMode,
+        nodeSetId: catalogItem.nodeSetId,
+        nodeSetLabel: catalogItem.nodeSetLabel,
+        hostTypeId: catalogItem.hostTypeId,
+        hostTypeLabel: catalogItem.hostTypeLabel,
+        clusterNodeTopologyMode: catalogItem.clusterNodeTopologyMode,
       })
     : []
   const displaySpecRows =
-    catalogItem.instanceTypeLabel || catalogItem.diskImageLabel
+    catalogItem.instanceTypeLabel || catalogItem.diskImageLabel || catalogItem.diskImageId
       ? specRows.filter(
           (row) =>
             row.label !== 'Instance type' &&
@@ -96,6 +110,8 @@ export function TenantUserCatalogItemDetailsPage({
             row.label !== 'Disk image' &&
             row.label !== 'Platform' &&
             row.label !== 'Cluster version' &&
+            row.label !== 'Node set' &&
+            row.label !== 'Host type' &&
             row.label !== 'Size' &&
             row.label !== 'OS image',
         )
@@ -107,7 +123,13 @@ export function TenantUserCatalogItemDetailsPage({
               row.label !== 'OS image',
           )
         : isCluster
-          ? specRows.filter((row) => row.label !== 'Cluster version' && row.label !== 'Cluster size')
+          ? specRows.filter(
+              (row) =>
+                row.label !== 'Cluster version' &&
+                row.label !== 'Node set' &&
+                row.label !== 'Host type' &&
+                row.label !== 'Cluster size',
+            )
           : specRows
   const specsSectionLabel = getCatalogSpecsSectionLabel(catalogItem.serviceId)
   const description =
@@ -191,7 +213,19 @@ export function TenantUserCatalogItemDetailsPage({
                     <DescriptionListTerm>{row.label}</DescriptionListTerm>
                     <DescriptionListDescription>
                       {row.label === 'Cluster version' ? (
-                        <CatalogClusterVersionValue>{row.value}</CatalogClusterVersionValue>
+                        <CatalogClusterVersionValue
+                          badge={row.badge}
+                          mode={catalogItem.clusterVersionMode}
+                        >
+                          {row.value}
+                        </CatalogClusterVersionValue>
+                      ) : row.badge ? (
+                        <span className="catalog-spec-row-value-with-badge">
+                          <span>{row.value}</span>
+                          <Label color={row.badge.color} isCompact>
+                            {row.badge.text}
+                          </Label>
+                        </span>
                       ) : (
                         row.value
                       )}
@@ -280,7 +314,18 @@ export function TenantUserCatalogItemDetailsPage({
                 {displaySpecRows.map((row) => (
                   <DescriptionListGroup key={row.label}>
                     <DescriptionListTerm>{row.label}</DescriptionListTerm>
-                    <DescriptionListDescription>{row.value}</DescriptionListDescription>
+                    <DescriptionListDescription>
+                      {row.badge ? (
+                        <span className="catalog-spec-row-value-with-badge">
+                          <span>{row.value}</span>
+                          <Label color={row.badge.color} isCompact>
+                            {row.badge.text}
+                          </Label>
+                        </span>
+                      ) : (
+                        row.value
+                      )}
+                    </DescriptionListDescription>
                   </DescriptionListGroup>
                 ))}
               </DescriptionList>

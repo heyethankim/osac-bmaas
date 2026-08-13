@@ -146,7 +146,148 @@ export type CatalogDiskImageOption = {
 }
 
 /** Support lifecycle shown when choosing a cluster version in the publish wizard. */
-export type CatalogClusterVersionLifecycle = 'active' | 'deprecated' | 'obsolete'
+export type CatalogClusterVersionLifecycle = 'active' | 'deprecated'
+
+/**
+ * Whether tenants can change OpenShift version when provisioning from this catalog item.
+ * Defaults to locked when omitted (legacy catalog items).
+ */
+export type CatalogClusterVersionMode = 'locked' | 'editable'
+
+export function getCatalogClusterVersionModeLabel(mode: CatalogClusterVersionMode): string {
+  return mode === 'editable' ? 'Editable' : 'Locked'
+}
+
+export function resolveCatalogClusterVersionMode(
+  mode: CatalogClusterVersionMode | undefined | null,
+): CatalogClusterVersionMode {
+  return mode === 'editable' ? 'editable' : 'locked'
+}
+
+/**
+ * Whether tenants can change default node set / host type when provisioning.
+ * Defaults to locked when omitted (legacy catalog items).
+ */
+export type CatalogClusterNodeTopologyMode = 'locked' | 'editable'
+
+export function getCatalogClusterNodeTopologyModeLabel(
+  mode: CatalogClusterNodeTopologyMode,
+): string {
+  return mode === 'editable' ? 'Editable' : 'Locked'
+}
+
+export function resolveCatalogClusterNodeTopologyMode(
+  mode: CatalogClusterNodeTopologyMode | undefined | null,
+): CatalogClusterNodeTopologyMode {
+  return mode === 'editable' ? 'editable' : 'locked'
+}
+
+/** Default worker node set advertised on a Cluster catalog item. */
+export type CatalogClusterNodeSetOption = {
+  id: string
+  label: string
+  detail: string
+}
+
+/** Host type options for the default node set. */
+export type CatalogClusterHostTypeOption = {
+  id: string
+  label: string
+  detail: string
+}
+
+export const CATALOG_CLUSTER_NODE_SET_OPTIONS: ReadonlyArray<CatalogClusterNodeSetOption> = [
+  {
+    id: 'fc430-worker',
+    label: 'fc430 · worker',
+    detail: 'General-purpose workers · size 1–4',
+  },
+  {
+    id: 'fc430-infra',
+    label: 'fc430 · infra',
+    detail: 'Infrastructure workloads · routers, registry, monitoring',
+  },
+  {
+    id: 'fc430-gpu',
+    label: 'fc430 · gpu',
+    detail: 'GPU workers · AI training and inference',
+  },
+]
+
+export const CATALOG_CLUSTER_HOST_TYPE_OPTIONS: ReadonlyArray<CatalogClusterHostTypeOption> = [
+  {
+    id: 'standard-host',
+    label: 'standard-host',
+    detail: 'CPU-balanced bare metal for general cluster nodes',
+  },
+  {
+    id: 'gpu-host',
+    label: 'gpu-host',
+    detail: 'GPU-capable hosts for accelerated workloads',
+  },
+  {
+    id: 'storage-host',
+    label: 'storage-host',
+    detail: 'High-capacity storage hosts for data-intensive nodes',
+  },
+]
+
+export const DEFAULT_CLUSTER_NODE_SET_ID = 'fc430-worker'
+export const DEFAULT_CLUSTER_HOST_TYPE_ID = 'standard-host'
+
+export function getCatalogClusterNodeSetOptions(): CatalogClusterNodeSetOption[] {
+  return [...CATALOG_CLUSTER_NODE_SET_OPTIONS]
+}
+
+export function getCatalogClusterHostTypeOptions(): CatalogClusterHostTypeOption[] {
+  return [...CATALOG_CLUSTER_HOST_TYPE_OPTIONS]
+}
+
+export function getCatalogClusterNodeSetOption(
+  idOrLabel: string | undefined | null,
+): CatalogClusterNodeSetOption | undefined {
+  const needle = idOrLabel?.trim()
+  if (!needle) {
+    return undefined
+  }
+  return CATALOG_CLUSTER_NODE_SET_OPTIONS.find(
+    (option) =>
+      option.id === needle ||
+      option.label === needle ||
+      option.label.toLowerCase() === needle.toLowerCase(),
+  )
+}
+
+export function getCatalogClusterHostTypeOption(
+  idOrLabel: string | undefined | null,
+): CatalogClusterHostTypeOption | undefined {
+  const needle = idOrLabel?.trim()
+  if (!needle) {
+    return undefined
+  }
+  return CATALOG_CLUSTER_HOST_TYPE_OPTIONS.find(
+    (option) =>
+      option.id === needle ||
+      option.label === needle ||
+      option.label.toLowerCase() === needle.toLowerCase(),
+  )
+}
+
+export function formatClusterNodeSetLabel(idOrLabel: string | undefined | null): string {
+  return (
+    getCatalogClusterNodeSetOption(idOrLabel)?.label ??
+    idOrLabel?.trim() ??
+    CATALOG_CLUSTER_NODE_SET_OPTIONS[0].label
+  )
+}
+
+export function formatClusterHostTypeLabel(idOrLabel: string | undefined | null): string {
+  return (
+    getCatalogClusterHostTypeOption(idOrLabel)?.label ??
+    idOrLabel?.trim() ??
+    CATALOG_CLUSTER_HOST_TYPE_OPTIONS[0].label
+  )
+}
 
 /** OpenShift version advertised on a Cluster as a Service catalog item. */
 export type CatalogClusterVersionOption = {
@@ -161,14 +302,12 @@ export type CatalogClusterVersionOption = {
 
 export function getCatalogClusterVersionLifecycleMeta(
   lifecycle: CatalogClusterVersionLifecycle,
-): { color: 'green' | 'orange' | 'grey'; text: string } {
+): { color: 'green' | 'orange'; text: string } {
   switch (lifecycle) {
     case 'active':
       return { color: 'green', text: 'Active' }
     case 'deprecated':
       return { color: 'orange', text: 'Deprecated' }
-    case 'obsolete':
-      return { color: 'grey', text: 'Obsolete' }
   }
 }
 
@@ -403,8 +542,8 @@ export function getCatalogDiskImageOptions(): CatalogDiskImageOption[] {
 export const CATALOG_CLUSTER_VERSION_OPTIONS: ReadonlyArray<CatalogClusterVersionOption> = [
   {
     id: 'ocp-4.21',
-    label: 'Red Hat OpenShift 4.21',
-    detail: 'OpenShift Container Platform · multi-arch',
+    label: 'OpenShift 4.21',
+    detail: 'Newest stream · GPU scheduling and Node Sets defaults',
     releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.21.0-multi',
     lifecycle: 'active',
     features: [
@@ -416,8 +555,8 @@ export const CATALOG_CLUSTER_VERSION_OPTIONS: ReadonlyArray<CatalogClusterVersio
   },
   {
     id: 'ocp-4.20',
-    label: 'Red Hat OpenShift 4.20',
-    detail: 'OpenShift Container Platform · multi-arch',
+    label: 'OpenShift 4.20',
+    detail: 'Current stable · improved bare-metal installer path',
     releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.20.0-multi',
     lifecycle: 'active',
     features: [
@@ -429,8 +568,8 @@ export const CATALOG_CLUSTER_VERSION_OPTIONS: ReadonlyArray<CatalogClusterVersio
   },
   {
     id: 'ocp-4.19',
-    label: 'Red Hat OpenShift 4.19',
-    detail: 'OpenShift Container Platform · multi-arch',
+    label: 'OpenShift 4.19',
+    detail: 'Catalog default · validated Node Sets and Machine Config',
     releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.19.0-multi',
     lifecycle: 'active',
     features: [
@@ -442,8 +581,8 @@ export const CATALOG_CLUSTER_VERSION_OPTIONS: ReadonlyArray<CatalogClusterVersio
   },
   {
     id: 'ocp-4.18',
-    label: 'Red Hat OpenShift 4.18',
-    detail: 'OpenShift Container Platform · multi-arch',
+    label: 'OpenShift 4.18',
+    detail: 'Long-lived production · mature operators and tenant flows',
     releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.18.0-multi',
     lifecycle: 'active',
     features: [
@@ -455,8 +594,8 @@ export const CATALOG_CLUSTER_VERSION_OPTIONS: ReadonlyArray<CatalogClusterVersio
   },
   {
     id: 'ocp-4.17',
-    label: 'Red Hat OpenShift 4.17',
-    detail: 'OpenShift Container Platform · multi-arch',
+    label: 'OpenShift 4.17',
+    detail: 'Maintenance only · prefer upgrade to 4.18 or newer',
     releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.17.0-multi',
     lifecycle: 'deprecated',
     features: [
@@ -468,8 +607,8 @@ export const CATALOG_CLUSTER_VERSION_OPTIONS: ReadonlyArray<CatalogClusterVersio
   },
   {
     id: 'ocp-4.16',
-    label: 'Red Hat OpenShift 4.16',
-    detail: 'OpenShift Container Platform · multi-arch',
+    label: 'OpenShift 4.16',
+    detail: 'Extended life ending · not recommended for new catalogs',
     releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.16.0-multi',
     lifecycle: 'deprecated',
     features: [
@@ -479,36 +618,15 @@ export const CATALOG_CLUSTER_VERSION_OPTIONS: ReadonlyArray<CatalogClusterVersio
       'Multi-arch release image',
     ],
   },
-  {
-    id: 'ocp-4.15',
-    label: 'Red Hat OpenShift 4.15',
-    detail: 'OpenShift Container Platform · multi-arch',
-    releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.15.0-multi',
-    lifecycle: 'obsolete',
-    features: [
-      'End of standard support',
-      'Security fixes only where available',
-      'Not recommended for new catalogs',
-      'Migrate workloads to an active version',
-    ],
-  },
-  {
-    id: 'ocp-4.14',
-    label: 'Red Hat OpenShift 4.14',
-    detail: 'OpenShift Container Platform · multi-arch',
-    releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.14.0-multi',
-    lifecycle: 'obsolete',
-    features: [
-      'End of life',
-      'No new platform features',
-      'Not suitable for new production catalogs',
-      'Migrate to an active OpenShift version',
-    ],
-  },
 ]
 
 export function getCatalogClusterVersionOptions(): CatalogClusterVersionOption[] {
   return [...CATALOG_CLUSTER_VERSION_OPTIONS]
+}
+
+/** Newest cluster version in the publish wizard (options are ordered newest-first). */
+export function getLatestCatalogClusterVersionId(): string {
+  return CATALOG_CLUSTER_VERSION_OPTIONS[0]?.id ?? ''
 }
 
 /** Default cluster version for seeded Node Sets demo catalog item. */
@@ -521,12 +639,19 @@ export function getCatalogClusterVersionOption(
   if (!needle) {
     return undefined
   }
-  return CATALOG_CLUSTER_VERSION_OPTIONS.find(
-    (option) =>
+  const normalized = needle.replace(/^Red Hat\s+/i, '')
+  return CATALOG_CLUSTER_VERSION_OPTIONS.find((option) => {
+    const legacyLabel = `Red Hat ${option.label}`
+    return (
       option.id === needle ||
       option.label === needle ||
-      option.label.toLowerCase() === needle.toLowerCase(),
-  )
+      option.label === normalized ||
+      option.label.toLowerCase() === needle.toLowerCase() ||
+      option.label.toLowerCase() === normalized.toLowerCase() ||
+      legacyLabel === needle ||
+      legacyLabel.toLowerCase() === needle.toLowerCase()
+    )
+  })
 }
 
 export function getReleaseImageForClusterVersion(idOrLabel: string | undefined | null): string {
@@ -559,8 +684,8 @@ export function getReleaseImageForClusterVersion(idOrLabel: string | undefined |
 export function formatClusterPlatformLabel(idOrLabel: string | undefined | null): string {
   return (
     getCatalogClusterVersionOption(idOrLabel)?.label ??
-    idOrLabel?.trim() ??
-    'Red Hat OpenShift'
+    idOrLabel?.trim()?.replace(/^Red Hat\s+/i, '') ??
+    'OpenShift'
   )
 }
 

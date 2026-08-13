@@ -40,6 +40,12 @@ export type TenantUserCatalogCard = {
   instanceTypeLabel?: string
   diskImageId?: string
   diskImageLabel?: string
+  clusterVersionMode?: 'locked' | 'editable'
+  nodeSetId?: string
+  nodeSetLabel?: string
+  hostTypeId?: string
+  hostTypeLabel?: string
+  clusterNodeTopologyMode?: 'locked' | 'editable'
   fieldPolicies?: CatalogFieldPolicy[]
   rateCard: RateCard
 }
@@ -176,6 +182,12 @@ export function getTenantUserCatalogCardFromDraft(
     instanceTypeLabel: catalog.instanceTypeLabel,
     diskImageId: catalog.diskImageId,
     diskImageLabel: catalog.diskImageLabel,
+    clusterVersionMode: catalog.clusterVersionMode,
+    nodeSetId: catalog.nodeSetId,
+    nodeSetLabel: catalog.nodeSetLabel,
+    hostTypeId: catalog.hostTypeId,
+    hostTypeLabel: catalog.hostTypeLabel,
+    clusterNodeTopologyMode: catalog.clusterNodeTopologyMode,
     fieldPolicies: catalog.fieldPolicies,
     rateCard,
   }

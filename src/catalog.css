@@ -3,6 +3,7 @@
 .catalog-cluster-version-value {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--pf-t--global--spacer--sm);
 }
 
@@ -10,6 +11,13 @@
   flex: 0 0 auto;
   /* Brand red keeps the Red Hat mark recognizable at small size without competing with body text. */
   color: var(--pf-t--global--color--brand--default, #ee0000);
+}
+
+.catalog-spec-row-value-with-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--pf-t--global--spacer--sm);
 }
 
 .catalog-view-toggle {

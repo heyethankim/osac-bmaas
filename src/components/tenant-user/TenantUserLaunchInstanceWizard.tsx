@@ -56,7 +56,12 @@ import { addTenantProject } from '../../tenantAdmin/storage'
 import { resolveCatalogSpecRows } from '../../catalog/catalogSpecs'
 import {
   formatClusterPlatformLabel,
+  getCatalogClusterVersionLifecycleMeta,
+  getCatalogClusterVersionOptions,
+  getLatestCatalogClusterVersionId,
   getReleaseImageForClusterVersion,
+  resolveCatalogClusterNodeTopologyMode,
+  resolveCatalogClusterVersionMode,
 } from '../../catalog/catalogPublishConfig'
 import type { TenantUserCatalogCard } from '../../tenantUser/catalog'
 import { PlusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/plus-circle-icon'
@@ -342,9 +347,19 @@ export function TenantUserLaunchInstanceWizard({
       (row) => row.label === 'Cluster version' || row.label === 'Platform',
     )?.value ||
     ''
-  const catalogClusterVersionLabel = formatClusterPlatformLabel(
-    catalogClusterVersion || catalogItem.osImage,
-  )
+  const isClusterVersionEditable =
+    isClusterCatalogItem &&
+    resolveCatalogClusterVersionMode(catalogItem.clusterVersionMode) === 'editable'
+  const isClusterNodeTopologyEditable =
+    isClusterCatalogItem &&
+    resolveCatalogClusterNodeTopologyMode(catalogItem.clusterNodeTopologyMode) === 'editable'
+  const clusterVersionOptions = useMemo(() => getCatalogClusterVersionOptions(), [])
+  const latestClusterVersionId = getLatestCatalogClusterVersionId()
+  const catalogDefaultHostType =
+    catalogItem.hostTypeId?.trim() ||
+    catalogItem.hostTypeLabel?.trim() ||
+    catalogDetailSpecRows.find((row) => row.label === 'Host type')?.value ||
+    CLUSTER_LAUNCH_INSTANCE_DEMO.defaultHostType
 
   const [form, setForm] = useState<LaunchInstanceWizardForm>(() =>
     createLaunchInstanceWizardForm({
@@ -355,6 +370,7 @@ export function TenantUserLaunchInstanceWizard({
       serviceId: catalogItem.serviceId,
       instanceName: getNextLaunchInstanceName(existingInstanceNames, catalogItem.serviceId),
       clusterVersion: catalogClusterVersion || catalogItem.osImage,
+      hostType: catalogDefaultHostType,
     }),
   )
   const [activeStepId, setActiveStepId] = useState<LaunchInstanceWizardStepId>(
@@ -495,9 +511,7 @@ export function TenantUserLaunchInstanceWizard({
       serviceId: catalogItem.serviceId,
       hardwareProfile: catalogItem.hardwareProfile,
       osImage: isClusterCatalogItem
-        ? (detailSpecRows.find(
-            (row) => row.label === 'Cluster version' || row.label === 'Platform',
-          )?.value ?? catalogItem.osImage)
+        ? formatClusterPlatformLabel(form.clusterVersionId || form.releaseImage)
         : isVmCatalogItem
           ? (vmOsImage ?? catalogItem.osImage)
           : catalogItem.osImage,
@@ -550,7 +564,9 @@ export function TenantUserLaunchInstanceWizard({
               name: index === 0 ? 'workers' : `node-set-${index + 1}`,
               hostType: nodeSet.hostType,
               nodeCount: nodeSet.nodeCount,
-              version: formatClusterPlatformLabel(form.releaseImage.trim()) || undefined,
+              version: formatClusterPlatformLabel(
+                form.clusterVersionId || form.releaseImage.trim(),
+              ) || undefined,
               status: 'pending' as const,
             })),
           }
@@ -1101,23 +1117,62 @@ export function TenantUserLaunchInstanceWizard({
     </div>
   )
 
-  const renderClusterConfigureStep = () => (
+  const renderClusterConfigureStep = () => {
+    const selectedVersionLabel = formatClusterPlatformLabel(
+      form.clusterVersionId || catalogClusterVersion || form.releaseImage,
+    )
+
+    return (
     <div className="tenant-user-launch-wizard__step">
       <Form autoComplete="off" className="tenant-user-launch-wizard__form">
-        <FormGroup label="Cluster version" fieldId="launch-cluster-version">
-          <TextInput
-            id="launch-cluster-version"
-            value={catalogClusterVersionLabel}
-            isDisabled
-            aria-label="Cluster version"
-          />
+        <FormGroup
+          label="Cluster version"
+          fieldId="launch-cluster-version"
+          isRequired={isClusterVersionEditable}
+        >
+          {isClusterVersionEditable ? (
+            <FormSelect
+              id="launch-cluster-version"
+              value={form.clusterVersionId || latestClusterVersionId}
+              onChange={(_event, value) => {
+                setForm((current) => ({
+                  ...current,
+                  clusterVersionId: value,
+                  releaseImage: getReleaseImageForClusterVersion(value),
+                }))
+              }}
+              aria-label="Cluster version"
+            >
+              {clusterVersionOptions.map((option) => {
+                const lifecycleMeta = getCatalogClusterVersionLifecycleMeta(option.lifecycle)
+                const isLatest = option.id === latestClusterVersionId
+                return (
+                  <FormSelectOption
+                    key={option.id}
+                    value={option.id}
+                    label={`${option.label}${isLatest ? ' (Latest)' : ''} · ${lifecycleMeta.text}`}
+                  />
+                )
+              })}
+            </FormSelect>
+          ) : (
+            <TextInput
+              id="launch-cluster-version"
+              value={selectedVersionLabel}
+              isDisabled
+              aria-label="Cluster version"
+            />
+          )}
           <FormHelperText>
             <HelperText>
               <HelperTextItem>
-                Set by the catalog item. Release image:{' '}
-                {getReleaseImageForClusterVersion(
-                  catalogClusterVersion || form.releaseImage,
-                )}
+                {isClusterVersionEditable
+                  ? 'You can choose the OpenShift version for this launch. Release image: '
+                  : 'Locked by the catalog item. Release image: '}
+                {form.releaseImage.trim() ||
+                  getReleaseImageForClusterVersion(
+                    form.clusterVersionId || catalogClusterVersion,
+                  )}
               </HelperTextItem>
             </HelperText>
           </FormHelperText>
@@ -1142,6 +1197,7 @@ export function TenantUserLaunchInstanceWizard({
                 <FormSelect
                   id={`launch-cluster-host-type-${nodeSet.id}`}
                   value={nodeSet.hostType}
+                  isDisabled={!isClusterNodeTopologyEditable}
                   onChange={(_event, value) =>
                     setForm((current) => ({
                       ...current,
@@ -1156,6 +1212,13 @@ export function TenantUserLaunchInstanceWizard({
                     <FormSelectOption key={option} value={option} label={option} />
                   ))}
                 </FormSelect>
+                {!isClusterNodeTopologyEditable ? (
+                  <FormHelperText>
+                    <HelperText>
+                      <HelperTextItem>Set by the catalog item.</HelperTextItem>
+                    </HelperText>
+                  </FormHelperText>
+                ) : null}
               </FormGroup>
 
               <FormGroup
@@ -1192,12 +1255,16 @@ export function TenantUserLaunchInstanceWizard({
             isInline
             icon={<PlusCircleIcon />}
             className="tenant-user-launch-wizard__add-node-set"
+            isDisabled={!isClusterNodeTopologyEditable}
             onClick={() =>
               setForm((current) => ({
                 ...current,
                 nodeSets: [
                   ...current.nodeSets,
-                  createDefaultClusterNodeSet(current.nodeSets.length + 1),
+                  createDefaultClusterNodeSet(
+                    current.nodeSets.length + 1,
+                    catalogDefaultHostType,
+                  ),
                 ],
               }))
             }
@@ -1208,6 +1275,7 @@ export function TenantUserLaunchInstanceWizard({
       </Form>
     </div>
   )
+  }
 
   const renderClusterNetworkingStep = () => (
     <div className="tenant-user-launch-wizard__step">
@@ -1493,7 +1561,11 @@ export function TenantUserLaunchInstanceWizard({
             <>
               <DescriptionListGroup>
                 <DescriptionListTerm>Cluster version</DescriptionListTerm>
-                <DescriptionListDescription>{catalogClusterVersionLabel}</DescriptionListDescription>
+                <DescriptionListDescription>
+                  {formatClusterPlatformLabel(
+                    form.clusterVersionId || catalogClusterVersion || form.releaseImage,
+                  )}
+                </DescriptionListDescription>
               </DescriptionListGroup>
               <DescriptionListGroup>
                 <DescriptionListTerm>Release image</DescriptionListTerm>

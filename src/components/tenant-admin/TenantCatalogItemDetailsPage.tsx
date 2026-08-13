@@ -91,10 +91,17 @@ export function TenantCatalogItemDetailsPage({
         templateName: item.templateName,
         instanceTypeLabel: item.instanceTypeLabel,
         diskImageLabel: item.diskImageLabel,
+        diskImageId: item.diskImageId,
+        clusterVersionMode: item.clusterVersionMode,
+        nodeSetId: item.nodeSetId,
+        nodeSetLabel: item.nodeSetLabel,
+        hostTypeId: item.hostTypeId,
+        hostTypeLabel: item.hostTypeLabel,
+        clusterNodeTopologyMode: item.clusterNodeTopologyMode,
       })
     : []
   const displaySpecRows =
-    item.instanceTypeLabel || item.diskImageLabel
+    item.instanceTypeLabel || item.diskImageLabel || item.diskImageId
       ? specRows.filter(
           (row) =>
             row.label !== 'Instance type' &&
@@ -102,6 +109,8 @@ export function TenantCatalogItemDetailsPage({
             row.label !== 'Disk image' &&
             row.label !== 'Platform' &&
             row.label !== 'Cluster version' &&
+            row.label !== 'Node set' &&
+            row.label !== 'Host type' &&
             row.label !== 'Size' &&
             row.label !== 'OS image',
         )
@@ -113,7 +122,13 @@ export function TenantCatalogItemDetailsPage({
               row.label !== 'OS image',
           )
         : isCluster
-          ? specRows.filter((row) => row.label !== 'Cluster version' && row.label !== 'Cluster size')
+          ? specRows.filter(
+              (row) =>
+                row.label !== 'Cluster version' &&
+                row.label !== 'Node set' &&
+                row.label !== 'Host type' &&
+                row.label !== 'Cluster size',
+            )
           : specRows
   const specsSectionLabel = getCatalogSpecsSectionLabel(item.serviceId)
 
@@ -230,7 +245,19 @@ export function TenantCatalogItemDetailsPage({
                     <DescriptionListTerm>{row.label}</DescriptionListTerm>
                     <DescriptionListDescription>
                       {row.label === 'Cluster version' ? (
-                        <CatalogClusterVersionValue>{row.value}</CatalogClusterVersionValue>
+                        <CatalogClusterVersionValue
+                          badge={row.badge}
+                          mode={item.clusterVersionMode}
+                        >
+                          {row.value}
+                        </CatalogClusterVersionValue>
+                      ) : row.badge ? (
+                        <span className="catalog-spec-row-value-with-badge">
+                          <span>{row.value}</span>
+                          <Label color={row.badge.color} isCompact>
+                            {row.badge.text}
+                          </Label>
+                        </span>
                       ) : (
                         row.value
                       )}
@@ -317,7 +344,18 @@ export function TenantCatalogItemDetailsPage({
                 {displaySpecRows.map((row) => (
                   <DescriptionListGroup key={row.label}>
                     <DescriptionListTerm>{row.label}</DescriptionListTerm>
-                    <DescriptionListDescription>{row.value}</DescriptionListDescription>
+                    <DescriptionListDescription>
+                      {row.badge ? (
+                        <span className="catalog-spec-row-value-with-badge">
+                          <span>{row.value}</span>
+                          <Label color={row.badge.color} isCompact>
+                            {row.badge.text}
+                          </Label>
+                        </span>
+                      ) : (
+                        row.value
+                      )}
+                    </DescriptionListDescription>
                   </DescriptionListGroup>
                 ))}
               </DescriptionList>
