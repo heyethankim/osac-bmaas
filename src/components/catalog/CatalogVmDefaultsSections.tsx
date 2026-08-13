@@ -57,7 +57,7 @@ export function CatalogVmDefaultsSections({
                 <span className="catalog-vm-defaults__term">
                   <span>{field.label}</span>
                   <Label
-                    color={field.mode === 'editable' ? 'blue' : 'grey'}
+                    color={field.mode === 'editable' ? 'purple' : 'grey'}
                     isCompact
                     className="catalog-vm-defaults__mode-label"
                   >

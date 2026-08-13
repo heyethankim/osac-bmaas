@@ -24,6 +24,10 @@ import {
 } from '../catalog/catalogSpecs'
 import {
   DEFAULT_CLUSTER_CATALOG_VERSION_ID,
+  DEFAULT_CLUSTER_HOST_TYPE_ID,
+  DEFAULT_CLUSTER_NODE_SET_ID,
+  formatClusterHostTypeLabel,
+  formatClusterNodeSetLabel,
   formatClusterPlatformLabel,
 } from '../catalog/catalogPublishConfig'
 import { getDefaultMasterTemplate, getStandardClusterTemplate } from '../providerAdmin/bmaasTemplates'
@@ -170,6 +174,12 @@ function createClusterNodeSetsCatalogDraft(): ProviderCatalogDraft {
     instanceTypeLabel: 'OpenShift small',
     diskImageId: DEFAULT_CLUSTER_CATALOG_VERSION_ID,
     diskImageLabel: formatClusterPlatformLabel(DEFAULT_CLUSTER_CATALOG_VERSION_ID),
+    clusterVersionMode: 'locked',
+    nodeSetId: DEFAULT_CLUSTER_NODE_SET_ID,
+    nodeSetLabel: formatClusterNodeSetLabel(DEFAULT_CLUSTER_NODE_SET_ID),
+    hostTypeId: DEFAULT_CLUSTER_HOST_TYPE_ID,
+    hostTypeLabel: formatClusterHostTypeLabel(DEFAULT_CLUSTER_HOST_TYPE_ID),
+    clusterNodeTopologyMode: 'locked',
     networkPolicy: createCatalogNetworkPolicyForLockPattern(
       'vnet-locked',
       CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
@@ -437,7 +447,9 @@ function syncClusterNodeSetsCatalogItem(): void {
     synced.diskImageId !== DEFAULT_CLUSTER_CATALOG_VERSION_ID ||
     synced.diskImageLabel !== formatClusterPlatformLabel(DEFAULT_CLUSTER_CATALOG_VERSION_ID) ||
     synced.instanceTypeId !== 'ocp-small' ||
-    synced.instanceTypeLabel !== 'OpenShift small'
+    synced.instanceTypeLabel !== 'OpenShift small' ||
+    !synced.diskImageId ||
+    !synced.diskImageLabel
 
   if (needsVersion) {
     patchProviderCatalogItem(synced.catalogItemId, {
@@ -446,6 +458,56 @@ function syncClusterNodeSetsCatalogItem(): void {
       diskImageId: DEFAULT_CLUSTER_CATALOG_VERSION_ID,
       diskImageLabel: formatClusterPlatformLabel(DEFAULT_CLUSTER_CATALOG_VERSION_ID),
     })
+  }
+}
+
+/** Backfill cluster version + node topology fields on any Cluster catalog item missing them. */
+function syncClusterCatalogVersionLabels(): void {
+  const items = getProviderCatalogItems()
+  for (const item of items) {
+    if (item.serviceId !== 'cluster') {
+      continue
+    }
+    const versionId = item.diskImageId?.trim()
+    const versionLabel = item.diskImageLabel?.trim()
+    if (versionId && versionLabel) {
+      const normalized = formatClusterPlatformLabel(versionId)
+      if (versionLabel !== normalized) {
+        patchProviderCatalogItem(item.catalogItemId, {
+          diskImageLabel: normalized,
+        })
+      }
+    } else if (versionId && !versionLabel) {
+      patchProviderCatalogItem(item.catalogItemId, {
+        diskImageLabel: formatClusterPlatformLabel(versionId),
+      })
+    } else if (!versionId && !versionLabel) {
+      // No version stored (e.g. interim demo items) — apply catalog default.
+      patchProviderCatalogItem(item.catalogItemId, {
+        diskImageId: DEFAULT_CLUSTER_CATALOG_VERSION_ID,
+        diskImageLabel: formatClusterPlatformLabel(DEFAULT_CLUSTER_CATALOG_VERSION_ID),
+      })
+    }
+
+    const nodeSetId = item.nodeSetId?.trim() || DEFAULT_CLUSTER_NODE_SET_ID
+    const hostTypeId = item.hostTypeId?.trim() || DEFAULT_CLUSTER_HOST_TYPE_ID
+    const nodeSetLabel = formatClusterNodeSetLabel(item.nodeSetLabel?.trim() || nodeSetId)
+    const hostTypeLabel = formatClusterHostTypeLabel(item.hostTypeLabel?.trim() || hostTypeId)
+    if (
+      item.nodeSetId !== nodeSetId ||
+      item.nodeSetLabel !== nodeSetLabel ||
+      item.hostTypeId !== hostTypeId ||
+      item.hostTypeLabel !== hostTypeLabel ||
+      !item.clusterNodeTopologyMode
+    ) {
+      patchProviderCatalogItem(item.catalogItemId, {
+        nodeSetId,
+        nodeSetLabel,
+        hostTypeId,
+        hostTypeLabel,
+        clusterNodeTopologyMode: item.clusterNodeTopologyMode ?? 'locked',
+      })
+    }
   }
 }
 
@@ -537,6 +599,9 @@ export function ensureProviderCatalogDemoItems(): ProviderCatalogDraft[] {
     syncClusterNodeSetsCatalogItem()
     items = getProviderCatalogItems()
   }
+
+  syncClusterCatalogVersionLabels()
+  items = getProviderCatalogItems()
 
   if (!hasVmNetworkAttachmentsCatalogItem(items)) {
     addProviderCatalogItem(createVmNetworkAttachmentsCatalogDraft())

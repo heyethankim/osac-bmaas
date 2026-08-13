@@ -1,10 +1,26 @@
 import type { ProviderCatalogDraft } from '../providerSetup/storage'
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
+import {
+  formatClusterHostTypeLabel,
+  formatClusterNodeSetLabel,
+  formatClusterPlatformLabel,
+  getCatalogClusterNodeTopologyModeLabel,
+  getCatalogClusterVersionModeLabel,
+  resolveCatalogClusterNodeTopologyMode,
+  resolveCatalogClusterVersionMode,
+  type CatalogClusterNodeTopologyMode,
+  type CatalogClusterVersionMode,
+} from './catalogPublishConfig'
 import { resolveHardwareSpecsForCatalogItem } from './hardwareSpecs'
 
 export type CatalogSpecRow = {
   label: string
   value: string
+  /** Optional status chip (e.g. Locked / Editable for cluster version). */
+  badge?: {
+    text: string
+    color: 'blue' | 'teal' | 'grey' | 'green' | 'orange' | 'purple'
+  }
 }
 
 /** Demo offering: object-level validation on `node_sets.fc430`. */
@@ -30,14 +46,9 @@ export const CLUSTER_NODE_SETS_RATE_CARD = {
   billingUnit: 'per-instance' as const,
 }
 
-const CLUSTER_NODE_SETS_SPEC_ROWS: CatalogSpecRow[] = [
-  { label: 'Cluster version', value: 'Red Hat OpenShift 4.16' },
-  { label: 'Control plane', value: '3× master · highly available' },
-  { label: 'Node set', value: 'fc430 · worker (pinned)' },
-]
-
 /** Extra drawer-only rows for Cluster offerings. */
 const CLUSTER_NODE_SETS_DETAIL_ROWS: CatalogSpecRow[] = [
+  { label: 'Control plane', value: '3× master · highly available' },
   { label: 'Size range', value: '1–4 nodes' },
   { label: 'CNI', value: 'OVN-Kubernetes' },
   { label: 'Validation', value: 'ClusterNodeSet object schema' },
@@ -135,7 +146,91 @@ export function resolveVmCatalogHighlightRows(
   )
 }
 
-/** Cluster version for Cluster catalog drawers (shown above Control plane). */
+function getClusterVersionModeBadge(
+  mode: CatalogClusterVersionMode | undefined | null,
+): CatalogSpecRow['badge'] {
+  const resolved = resolveCatalogClusterVersionMode(mode)
+  return {
+    text: getCatalogClusterVersionModeLabel(resolved),
+    color: resolved === 'editable' ? 'purple' : 'grey',
+  }
+}
+
+/** Prefer stored label; fall back to id → platform label (avoids "—" when only id is set). */
+function resolveClusterVersionDisplayLabel(
+  item: Pick<ProviderCatalogDraft, 'diskImageLabel' | 'diskImageId'>,
+): string {
+  const fromLabel = item.diskImageLabel?.trim()
+  if (fromLabel) {
+    return formatClusterPlatformLabel(fromLabel)
+  }
+  const fromId = item.diskImageId?.trim()
+  if (fromId) {
+    return formatClusterPlatformLabel(fromId)
+  }
+  return ''
+}
+
+function getClusterNodeTopologyModeBadge(
+  mode: CatalogClusterNodeTopologyMode | undefined | null,
+): CatalogSpecRow['badge'] {
+  const resolved = resolveCatalogClusterNodeTopologyMode(mode)
+  return {
+    text: getCatalogClusterNodeTopologyModeLabel(resolved),
+    color: resolved === 'editable' ? 'purple' : 'grey',
+  }
+}
+
+function resolveClusterNodeSetDisplayLabel(
+  item: Pick<ProviderCatalogDraft, 'nodeSetLabel' | 'nodeSetId'>,
+): string {
+  return formatClusterNodeSetLabel(item.nodeSetLabel?.trim() || item.nodeSetId)
+}
+
+function resolveClusterHostTypeDisplayLabel(
+  item: Pick<ProviderCatalogDraft, 'hostTypeLabel' | 'hostTypeId'>,
+): string {
+  return formatClusterHostTypeLabel(item.hostTypeLabel?.trim() || item.hostTypeId)
+}
+
+function buildClusterCatalogSpecRows(
+  item: Pick<
+    ProviderCatalogDraft,
+    | 'diskImageLabel'
+    | 'diskImageId'
+    | 'clusterVersionMode'
+    | 'nodeSetId'
+    | 'nodeSetLabel'
+    | 'hostTypeId'
+    | 'hostTypeLabel'
+    | 'clusterNodeTopologyMode'
+  >,
+  options?: { includeDetails?: boolean },
+): CatalogSpecRow[] {
+  const versionLabel = resolveClusterVersionDisplayLabel(item)
+  const topologyBadge = getClusterNodeTopologyModeBadge(item.clusterNodeTopologyMode)
+  const rows: CatalogSpecRow[] = [
+    {
+      label: 'Cluster version',
+      value: versionLabel || '—',
+      badge: getClusterVersionModeBadge(item.clusterVersionMode),
+    },
+    {
+      label: 'Node set',
+      value: resolveClusterNodeSetDisplayLabel(item),
+      badge: topologyBadge,
+    },
+    {
+      label: 'Host type',
+      value: resolveClusterHostTypeDisplayLabel(item),
+      badge: topologyBadge,
+    },
+  ]
+
+  return options?.includeDetails ? [...rows, ...CLUSTER_NODE_SETS_DETAIL_ROWS] : rows
+}
+
+/** Cluster version + node topology for Cluster catalog drawers. */
 export function resolveClusterCatalogHighlightRows(
   item: Pick<
     ProviderCatalogDraft,
@@ -144,16 +239,20 @@ export function resolveClusterCatalogHighlightRows(
     | 'templateName'
     | 'instanceTypeLabel'
     | 'diskImageLabel'
+    | 'diskImageId'
+    | 'clusterVersionMode'
+    | 'nodeSetId'
+    | 'nodeSetLabel'
+    | 'hostTypeId'
+    | 'hostTypeLabel'
+    | 'clusterNodeTopologyMode'
   >,
 ): CatalogSpecRow[] {
   const rows = resolveCatalogSpecRows(item)
-  const clusterVersion =
-    rows.find((row) => row.label === 'Cluster version') ??
-    (item.diskImageLabel?.trim()
-      ? { label: 'Cluster version', value: item.diskImageLabel.trim() }
-      : undefined)
-
-  return clusterVersion ? [clusterVersion] : []
+  const labels = ['Cluster version', 'Node set', 'Host type'] as const
+  return labels
+    .map((label) => rows.find((row) => row.label === label))
+    .filter((row): row is CatalogSpecRow => Boolean(row))
 }
 
 export function resolveCatalogSpecRows(
@@ -164,10 +263,21 @@ export function resolveCatalogSpecRows(
     | 'templateName'
     | 'instanceTypeLabel'
     | 'diskImageLabel'
+    | 'diskImageId'
+    | 'clusterVersionMode'
+    | 'nodeSetId'
+    | 'nodeSetLabel'
+    | 'hostTypeId'
+    | 'hostTypeLabel'
+    | 'clusterNodeTopologyMode'
   >,
   options?: { includeDetails?: boolean },
 ): CatalogSpecRow[] {
   const serviceId = getDraftServiceId(item)
+
+  if (serviceId === 'cluster') {
+    return buildClusterCatalogSpecRows(item, options)
+  }
 
   if (item.instanceTypeLabel || item.diskImageLabel) {
     const rows: CatalogSpecRow[] = []
@@ -183,23 +293,6 @@ export function resolveCatalogSpecRows(
       if (item.diskImageLabel) {
         rows.push({ label: 'OS image', value: item.diskImageLabel })
       }
-    } else if (serviceId === 'cluster') {
-      if (item.diskImageLabel) {
-        rows.push({ label: 'Cluster version', value: item.diskImageLabel })
-      }
-      if (
-        item.templateRefId === CLUSTER_NODE_SETS_TEMPLATE_REF_ID ||
-        item.templateRefId === LEGACY_CLUSTER_NODE_SETS_TEMPLATE_REF_ID
-      ) {
-        for (const row of CLUSTER_NODE_SETS_SPEC_ROWS) {
-          if (row.label === 'Cluster version') {
-            continue
-          }
-          if (!rows.some((existing) => existing.label === row.label)) {
-            rows.push(row)
-          }
-        }
-      }
     } else {
       if (item.instanceTypeLabel) {
         rows.push({ label: 'Instance type', value: item.instanceTypeLabel })
@@ -209,20 +302,11 @@ export function resolveCatalogSpecRows(
       }
     }
 
-    if (serviceId === 'cluster' && options?.includeDetails) {
-      return [...rows, ...CLUSTER_NODE_SETS_DETAIL_ROWS]
-    }
     if (serviceId === 'virtual-machine' && options?.includeDetails) {
       return [...rows, ...VM_NETWORK_ATTACHMENTS_DETAIL_ROWS]
     }
 
     return rows
-  }
-
-  if (serviceId === 'cluster') {
-    return options?.includeDetails
-      ? [...CLUSTER_NODE_SETS_SPEC_ROWS, ...CLUSTER_NODE_SETS_DETAIL_ROWS]
-      : CLUSTER_NODE_SETS_SPEC_ROWS
   }
 
   if (serviceId === 'virtual-machine') {
@@ -248,10 +332,17 @@ export function formatCatalogConfigurationSummary(
     | 'templateName'
     | 'instanceTypeLabel'
     | 'diskImageLabel'
+    | 'diskImageId'
+    | 'clusterVersionMode'
+    | 'nodeSetId'
+    | 'nodeSetLabel'
+    | 'hostTypeId'
+    | 'hostTypeLabel'
+    | 'clusterNodeTopologyMode'
   >,
 ): string {
   return resolveCatalogSpecRows(item)
-    .map((row) => row.value)
+    .map((row) => (row.badge ? `${row.value} (${row.badge.text})` : row.value))
     .join(' · ')
 }
 
@@ -269,12 +360,6 @@ export function getCatalogSpecsSectionLabel(serviceId: CatalogServiceId): string
 }
 
 export function getCatalogProfileFieldLabel(serviceId: CatalogServiceId): string {
-  if (serviceId === 'cluster') {
-    return 'Cluster profile'
-  }
-  if (serviceId === 'virtual-machine') {
-    return 'VM profile'
-  }
   if (serviceId === 'models') {
     return 'Model profile'
   }

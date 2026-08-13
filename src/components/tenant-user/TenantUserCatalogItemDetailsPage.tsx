@@ -19,44 +19,22 @@ import {
 } from '../../catalog/catalogSpecs'
 import { formatCatalogFieldPolicyMode } from '../../catalog/catalogPublishConfig'
 import { CatalogClusterVersionValue } from '../catalog/CatalogClusterVersionValue'
-import { CatalogNetworkingLocksSection } from '../catalog/CatalogNetworkingLocksSection'
 import { CatalogVmDefaultsSections } from '../catalog/CatalogVmDefaultsSections'
-import type { RegisteredOrganization } from '../../providerAdmin/organizations'
-import type { ProviderCatalogDraft } from '../../providerSetup/storage'
-import {
-  getCatalogExternalIpPoolOptions,
-  getCatalogSecurityGroupOptions,
-  getCatalogSubnetOptions,
-  getCatalogVirtualNetworkOptions,
-} from '../../providerSetup/storage'
 import { formatRateCardSummary } from '../../providerSetup/templateDemo'
 import type { TenantUserCatalogCard } from '../../tenantUser/catalog'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
-import { resolveLaunchNetworkContext } from '../../tenantUser/launchNetworking'
 
 type TenantUserCatalogItemDetailsPageProps = {
   catalogItem: TenantUserCatalogCard
-  organization: RegisteredOrganization | null
-  catalogDraft: ProviderCatalogDraft | null
-  preferCatalogDraft?: boolean
   onBack: () => void
   onLaunch: () => void
 }
 
 export function TenantUserCatalogItemDetailsPage({
   catalogItem,
-  organization,
-  catalogDraft,
-  preferCatalogDraft = false,
   onBack,
   onLaunch,
 }: TenantUserCatalogItemDetailsPageProps) {
-  const networkContext = resolveLaunchNetworkContext(
-    organization,
-    catalogDraft,
-    preferCatalogDraft,
-    catalogItem.catalogItemId,
-  )
   const specRows = resolveCatalogSpecRows(
     {
       serviceId: catalogItem.serviceId,
@@ -64,6 +42,13 @@ export function TenantUserCatalogItemDetailsPage({
       templateName: catalogItem.templateName,
       instanceTypeLabel: catalogItem.instanceTypeLabel,
       diskImageLabel: catalogItem.diskImageLabel,
+      diskImageId: catalogItem.diskImageId,
+      clusterVersionMode: catalogItem.clusterVersionMode,
+      nodeSetId: catalogItem.nodeSetId,
+      nodeSetLabel: catalogItem.nodeSetLabel,
+      hostTypeId: catalogItem.hostTypeId,
+      hostTypeLabel: catalogItem.hostTypeLabel,
+      clusterNodeTopologyMode: catalogItem.clusterNodeTopologyMode,
     },
     { includeDetails: catalogItem.serviceId !== 'baremetal' },
   )
@@ -85,10 +70,17 @@ export function TenantUserCatalogItemDetailsPage({
         templateName: catalogItem.templateName,
         instanceTypeLabel: catalogItem.instanceTypeLabel,
         diskImageLabel: catalogItem.diskImageLabel,
+        diskImageId: catalogItem.diskImageId,
+        clusterVersionMode: catalogItem.clusterVersionMode,
+        nodeSetId: catalogItem.nodeSetId,
+        nodeSetLabel: catalogItem.nodeSetLabel,
+        hostTypeId: catalogItem.hostTypeId,
+        hostTypeLabel: catalogItem.hostTypeLabel,
+        clusterNodeTopologyMode: catalogItem.clusterNodeTopologyMode,
       })
     : []
   const displaySpecRows =
-    catalogItem.instanceTypeLabel || catalogItem.diskImageLabel
+    catalogItem.instanceTypeLabel || catalogItem.diskImageLabel || catalogItem.diskImageId
       ? specRows.filter(
           (row) =>
             row.label !== 'Instance type' &&
@@ -96,6 +88,8 @@ export function TenantUserCatalogItemDetailsPage({
             row.label !== 'Disk image' &&
             row.label !== 'Platform' &&
             row.label !== 'Cluster version' &&
+            row.label !== 'Node set' &&
+            row.label !== 'Host type' &&
             row.label !== 'Size' &&
             row.label !== 'OS image',
         )
@@ -107,7 +101,13 @@ export function TenantUserCatalogItemDetailsPage({
               row.label !== 'OS image',
           )
         : isCluster
-          ? specRows.filter((row) => row.label !== 'Cluster version' && row.label !== 'Cluster size')
+          ? specRows.filter(
+              (row) =>
+                row.label !== 'Cluster version' &&
+                row.label !== 'Node set' &&
+                row.label !== 'Host type' &&
+                row.label !== 'Cluster size',
+            )
           : specRows
   const specsSectionLabel = getCatalogSpecsSectionLabel(catalogItem.serviceId)
   const description =
@@ -191,7 +191,19 @@ export function TenantUserCatalogItemDetailsPage({
                     <DescriptionListTerm>{row.label}</DescriptionListTerm>
                     <DescriptionListDescription>
                       {row.label === 'Cluster version' ? (
-                        <CatalogClusterVersionValue>{row.value}</CatalogClusterVersionValue>
+                        <CatalogClusterVersionValue
+                          badge={row.badge}
+                          mode={catalogItem.clusterVersionMode}
+                        >
+                          {row.value}
+                        </CatalogClusterVersionValue>
+                      ) : row.badge ? (
+                        <span className="catalog-spec-row-value-with-badge">
+                          <span>{row.value}</span>
+                          <Label color={row.badge.color} isCompact>
+                            {row.badge.text}
+                          </Label>
+                        </span>
                       ) : (
                         row.value
                       )}
@@ -280,31 +292,24 @@ export function TenantUserCatalogItemDetailsPage({
                 {displaySpecRows.map((row) => (
                   <DescriptionListGroup key={row.label}>
                     <DescriptionListTerm>{row.label}</DescriptionListTerm>
-                    <DescriptionListDescription>{row.value}</DescriptionListDescription>
+                    <DescriptionListDescription>
+                      {row.badge ? (
+                        <span className="catalog-spec-row-value-with-badge">
+                          <span>{row.value}</span>
+                          <Label color={row.badge.color} isCompact>
+                            {row.badge.text}
+                          </Label>
+                        </span>
+                      ) : (
+                        row.value
+                      )}
+                    </DescriptionListDescription>
                   </DescriptionListGroup>
                 ))}
               </DescriptionList>
             </>
           ) : null}
         </div>
-
-        {networkContext.enabled ? (
-          <section
-            className="entity-details-page__column entity-details-page__column--span-2"
-            aria-label="Networking"
-          >
-            <CatalogNetworkingLocksSection
-              idPrefix={`tenant-user-catalog-${catalogItem.catalogItemId}`}
-              policy={networkContext.policy}
-              lede="Locked fields are fixed for launch. Unlocked fields can be chosen when you create an instance."
-              readOnly
-              virtualNetworkOptions={getCatalogVirtualNetworkOptions()}
-              subnetOptions={getCatalogSubnetOptions(networkContext.policy.virtualNetwork.id)}
-              securityGroupOptions={getCatalogSecurityGroupOptions()}
-              externalIpPoolOptions={getCatalogExternalIpPoolOptions()}
-            />
-          </section>
-        ) : null}
       </div>
     </EntityDetailsPageShell>
   )

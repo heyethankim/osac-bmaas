@@ -16,6 +16,7 @@ import {
   MastheadContent,
   MastheadLogo,
   MastheadMain,
+  MastheadToggle,
   MenuToggle,
   Nav,
   NavExpandable,
@@ -25,6 +26,7 @@ import {
   PageSection,
   PageSidebar,
   PageSidebarBody,
+  PageToggleButton,
   Spinner,
   Toolbar,
   ToolbarContent,
@@ -69,6 +71,11 @@ export function ProviderAdminShell({
   const header = (
     <Masthead>
       <MastheadMain>
+        <MastheadToggle>
+          <PageToggleButton variant="plain" aria-label="Global navigation">
+            <BarsIcon />
+          </PageToggleButton>
+        </MastheadToggle>
         <MastheadLogo className="vertexa-masthead-logo">
           <MastheadBrand>
             <VertexaCloudMastheadLogo />

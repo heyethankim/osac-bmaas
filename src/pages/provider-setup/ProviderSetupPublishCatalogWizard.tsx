@@ -41,7 +41,6 @@ import {
   WizardHeader,
   WizardStep,
 } from '@patternfly/react-core'
-import { CatalogNetworkingLocksSection } from '../../components/catalog/CatalogNetworkingLocksSection'
 import { CatalogPublishScopeIcon } from '../../components/provider-admin/CatalogPublishScopeIcon'
 import {
   formatVipEnterpriseVisibilityLabel,
@@ -54,34 +53,36 @@ import {
   buildCustomInstanceTypeOption,
   buildDefaultCatalogFieldPolicies,
   CATALOG_GPU_ACCELERATOR_OPTIONS,
+  DEFAULT_CLUSTER_HOST_TYPE_ID,
+  DEFAULT_CLUSTER_NODE_SET_ID,
+  formatClusterHostTypeLabel,
+  formatClusterNodeSetLabel,
+  formatClusterPlatformLabel,
   formatCustomInstanceTypeLabel,
+  getCatalogClusterHostTypeOptions,
+  getCatalogClusterNodeSetOptions,
+  getCatalogClusterNodeTopologyModeLabel,
   getCatalogClusterVersionLifecycleMeta,
+  getCatalogClusterVersionModeLabel,
   getCatalogClusterVersionOptions,
+  getLatestCatalogClusterVersionId,
   getCatalogDiskImageOptions,
   getCatalogInstanceTypeOptions,
   getDefaultCustomInstanceTypeConfig,
   getProvisioningTemplatePresentation,
   isCustomInstanceTypeId,
   isValidCustomInstanceTypeConfig,
+  resolveCatalogClusterNodeTopologyMode,
+  resolveCatalogClusterVersionMode,
+  type CatalogClusterNodeTopologyMode,
+  type CatalogClusterVersionMode,
   type CatalogClusterVersionOption,
   type CatalogFieldPolicy,
   type CustomInstanceTypeConfig,
 } from '../../catalog/catalogPublishConfig'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
-import {
-  DEFAULT_CATALOG_NETWORK_POLICY,
-  getCatalogNetworkLockSummary,
-  resolveCatalogNetworkPolicyField,
-  type CatalogNetworkPolicy,
-  type CatalogNetworkResourceOption,
-} from '../../providerAdmin/catalogNetworkPolicy'
+import { DEFAULT_CATALOG_NETWORK_POLICY } from '../../providerAdmin/catalogNetworkPolicy'
 import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
-import {
-  getCatalogExternalIpPoolOptions,
-  getCatalogSecurityGroupOptions,
-  getCatalogSubnetOptions,
-  getCatalogVirtualNetworkOptions,
-} from '../../providerSetup/storage'
 import {
   CATALOG_SERVICE_OFFERINGS,
   getCatalogServiceOffering,
@@ -206,26 +207,13 @@ export function ProviderSetupPublishCatalogWizard({
     () => getDefaultCustomInstanceTypeConfig('baremetal'),
   )
   const [selectedDiskImageId, setSelectedDiskImageId] = useState('')
+  const [clusterVersionMode, setClusterVersionMode] =
+    useState<CatalogClusterVersionMode>('locked')
+  const [selectedNodeSetId, setSelectedNodeSetId] = useState(DEFAULT_CLUSTER_NODE_SET_ID)
+  const [selectedHostTypeId, setSelectedHostTypeId] = useState(DEFAULT_CLUSTER_HOST_TYPE_ID)
+  const [clusterNodeTopologyMode, setClusterNodeTopologyMode] =
+    useState<CatalogClusterNodeTopologyMode>('locked')
   const [fieldPolicies, setFieldPolicies] = useState<CatalogFieldPolicy[]>([])
-  const [networkPolicy, setNetworkPolicy] = useState<CatalogNetworkPolicy>(() => ({
-    ...DEFAULT_CATALOG_NETWORK_POLICY,
-    virtualNetwork: { ...DEFAULT_CATALOG_NETWORK_POLICY.virtualNetwork },
-    subnet: { ...DEFAULT_CATALOG_NETWORK_POLICY.subnet },
-    securityGroup: { ...DEFAULT_CATALOG_NETWORK_POLICY.securityGroup },
-    externalIpPool: { ...DEFAULT_CATALOG_NETWORK_POLICY.externalIpPool },
-  }))
-  const [virtualNetworkOptions, setVirtualNetworkOptions] = useState<CatalogNetworkResourceOption[]>(
-    () => getCatalogVirtualNetworkOptions(),
-  )
-  const [subnetOptions, setSubnetOptions] = useState<CatalogNetworkResourceOption[]>(() =>
-    getCatalogSubnetOptions(DEFAULT_CATALOG_NETWORK_POLICY.virtualNetwork.id),
-  )
-  const [securityGroupOptions, setSecurityGroupOptions] = useState<CatalogNetworkResourceOption[]>(
-    () => getCatalogSecurityGroupOptions(),
-  )
-  const [externalIpPoolOptions, setExternalIpPoolOptions] = useState<CatalogNetworkResourceOption[]>(
-    () => getCatalogExternalIpPoolOptions(),
-  )
   const [expandedClusterVersionIds, setExpandedClusterVersionIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   )
@@ -286,6 +274,7 @@ export function ProviderSetupPublishCatalogWizard({
       : null
   const softwareImageStepLabel = isClusterService ? 'Cluster version' : 'Disk image'
   const hardwareOsStepLabel = isClusterService ? 'Cluster version' : 'Hardware & OS'
+  const latestClusterVersionId = isClusterService ? getLatestCatalogClusterVersionId() : ''
   const isVipEnterprise = publishScope === 'vip-enterprise'
   const selectedVipOrganizations = useMemo(
     () =>
@@ -300,14 +289,17 @@ export function ProviderSetupPublishCatalogWizard({
     Boolean(selectedTemplate) &&
     Boolean(selectedInstanceType) &&
     Boolean(selectedDiskImage) &&
+    (!isClusterService || (Boolean(selectedNodeSetId) && Boolean(selectedHostTypeId))) &&
     isValidKubernetesResourceName(displayName)
   const hasLockableParameters = fieldPolicies.length > 0
-  const networkLockSummary = getCatalogNetworkLockSummary(networkPolicy)
   const hasSingleTemplate = templates.length <= 1
   const publishSteps = useMemo(
     () =>
       PUBLISH_CATALOG_STEPS.filter((step) => {
         if (step.id === 'template' && hasSingleTemplate) {
+          return false
+        }
+        if (step.id === 'node-topology' && !isClusterService) {
           return false
         }
         if (step.id === 'field-policies' && !hasLockableParameters) {
@@ -317,7 +309,7 @@ export function ProviderSetupPublishCatalogWizard({
       }).map((step) =>
         step.id === 'hardware-os' ? { ...step, label: hardwareOsStepLabel } : step,
       ),
-    [hasLockableParameters, hasSingleTemplate, hardwareOsStepLabel],
+    [hasLockableParameters, hasSingleTemplate, hardwareOsStepLabel, isClusterService],
   )
 
   const selectVipEnterprise = () => {
@@ -339,18 +331,11 @@ export function ProviderSetupPublishCatalogWizard({
     setSelectedInstanceTypeId('')
     setCustomInstanceType(getDefaultCustomInstanceTypeConfig(null))
     setSelectedDiskImageId('')
+    setClusterVersionMode('locked')
+    setSelectedNodeSetId(DEFAULT_CLUSTER_NODE_SET_ID)
+    setSelectedHostTypeId(DEFAULT_CLUSTER_HOST_TYPE_ID)
+    setClusterNodeTopologyMode('locked')
     setFieldPolicies([])
-    setNetworkPolicy({
-      ...DEFAULT_CATALOG_NETWORK_POLICY,
-      virtualNetwork: { ...DEFAULT_CATALOG_NETWORK_POLICY.virtualNetwork },
-      subnet: { ...DEFAULT_CATALOG_NETWORK_POLICY.subnet },
-      securityGroup: { ...DEFAULT_CATALOG_NETWORK_POLICY.securityGroup },
-      externalIpPool: { ...DEFAULT_CATALOG_NETWORK_POLICY.externalIpPool },
-    })
-    setVirtualNetworkOptions(getCatalogVirtualNetworkOptions())
-    setSubnetOptions(getCatalogSubnetOptions(DEFAULT_CATALOG_NETWORK_POLICY.virtualNetwork.id))
-    setSecurityGroupOptions(getCatalogSecurityGroupOptions())
-    setExternalIpPoolOptions(getCatalogExternalIpPoolOptions())
     setExpandedClusterVersionIds(new Set())
     setDisplayName('')
     setDescription('')
@@ -425,6 +410,10 @@ export function ProviderSetupPublishCatalogWizard({
     if (!selectedServiceId) {
       setSelectedInstanceTypeId('')
       setSelectedDiskImageId('')
+      setClusterVersionMode('locked')
+      setSelectedNodeSetId(DEFAULT_CLUSTER_NODE_SET_ID)
+      setSelectedHostTypeId(DEFAULT_CLUSTER_HOST_TYPE_ID)
+      setClusterNodeTopologyMode('locked')
       setFieldPolicies([])
       return
     }
@@ -437,6 +426,10 @@ export function ProviderSetupPublishCatalogWizard({
     setSelectedInstanceTypeId(nextInstanceOptions[0]?.id ?? '')
     setCustomInstanceType(getDefaultCustomInstanceTypeConfig(selectedServiceId))
     setSelectedDiskImageId(nextSoftwareOptions[0]?.id ?? '')
+    setClusterVersionMode('locked')
+    setSelectedNodeSetId(DEFAULT_CLUSTER_NODE_SET_ID)
+    setSelectedHostTypeId(DEFAULT_CLUSTER_HOST_TYPE_ID)
+    setClusterNodeTopologyMode('locked')
   }, [selectedServiceId])
 
   useEffect(() => {
@@ -493,9 +486,29 @@ export function ProviderSetupPublishCatalogWizard({
       instanceTypeId: selectedInstanceType.id,
       instanceTypeLabel: selectedInstanceTypeLabel,
       diskImageId: selectedDiskImage.id,
-      diskImageLabel: selectedDiskImage.label,
+      diskImageLabel: isClusterService
+        ? formatClusterPlatformLabel(selectedDiskImage.id)
+        : selectedDiskImage.label,
+      ...(isClusterService
+        ? {
+            clusterVersionMode: resolveCatalogClusterVersionMode(clusterVersionMode),
+            nodeSetId: selectedNodeSetId,
+            nodeSetLabel: formatClusterNodeSetLabel(selectedNodeSetId),
+            hostTypeId: selectedHostTypeId,
+            hostTypeLabel: formatClusterHostTypeLabel(selectedHostTypeId),
+            clusterNodeTopologyMode: resolveCatalogClusterNodeTopologyMode(
+              clusterNodeTopologyMode,
+            ),
+          }
+        : {}),
       fieldPolicies,
-      networkPolicy,
+      networkPolicy: {
+        ...DEFAULT_CATALOG_NETWORK_POLICY,
+        virtualNetwork: { ...DEFAULT_CATALOG_NETWORK_POLICY.virtualNetwork },
+        subnet: { ...DEFAULT_CATALOG_NETWORK_POLICY.subnet },
+        securityGroup: { ...DEFAULT_CATALOG_NETWORK_POLICY.securityGroup },
+        externalIpPool: { ...DEFAULT_CATALOG_NETWORK_POLICY.externalIpPool },
+      },
       ...(isVipEnterprise && enterpriseTenantIds.length > 0
         ? {
             enterpriseTenantId: enterpriseTenantIds[0],
@@ -508,33 +521,6 @@ export function ProviderSetupPublishCatalogWizard({
             vipOrganizationIds,
           }
         : {}),
-    })
-  }
-
-  const updateNetworkPolicy = (next: CatalogNetworkPolicy) => {
-    setNetworkPolicy(next)
-  }
-
-  const handleVirtualNetworkChange = (value: string, nextBase: CatalogNetworkPolicy) => {
-    const nextSubnets = getCatalogSubnetOptions(value)
-    setSubnetOptions(nextSubnets)
-    const nextSubnetId =
-      nextSubnets.find((option) => option.id === nextBase.subnet.id)?.id ??
-      nextSubnets[0]?.id ??
-      nextBase.subnet.id
-
-    setNetworkPolicy({
-      ...nextBase,
-      virtualNetwork: resolveCatalogNetworkPolicyField(
-        virtualNetworkOptions,
-        value,
-        nextBase.virtualNetwork.locked,
-      ),
-      subnet: resolveCatalogNetworkPolicyField(
-        nextSubnets,
-        nextSubnetId,
-        nextBase.subnet.locked,
-      ),
     })
   }
 
@@ -753,6 +739,105 @@ export function ProviderSetupPublishCatalogWizard({
                 ? 'Choose the OpenShift version for this catalog item.'
                 : 'Choose the hardware flavor and OS image for this catalog item.'}
             </Content>
+            {isClusterService ? (
+              <FormGroup
+                label="Tenant access to cluster version"
+                fieldId="publish-catalog-cluster-version-mode"
+                className="provider-setup-template__publish-subsection"
+              >
+                <div
+                  id="publish-catalog-cluster-version-mode"
+                  className="provider-setup-template__cluster-version-mode-options"
+                  role="radiogroup"
+                  aria-label="Tenant access to cluster version"
+                >
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={clusterVersionMode === 'locked'}
+                    className={`provider-setup-template__cluster-version-mode-card${
+                      clusterVersionMode === 'locked'
+                        ? ' provider-setup-template__cluster-version-mode-card--selected'
+                        : ''
+                    }`}
+                    onClick={() => setClusterVersionMode('locked')}
+                  >
+                    {clusterVersionMode === 'locked' ? (
+                      <Label
+                        color="grey"
+                        isCompact
+                        className="provider-setup-template__select-card-selected-badge"
+                      >
+                        Selected
+                      </Label>
+                    ) : null}
+                    <span
+                      className="provider-setup-template__cluster-version-mode-icon"
+                      aria-hidden
+                    >
+                      <LockIcon />
+                    </span>
+                    <span className="provider-setup-template__cluster-version-mode-copy">
+                      <Title
+                        headingLevel="h3"
+                        size="md"
+                        className="provider-setup-template__select-card-title"
+                      >
+                        Locked
+                      </Title>
+                      <Content
+                        component="p"
+                        className="provider-setup-template__select-card-detail"
+                      >
+                        Tenants cannot change it.
+                      </Content>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={clusterVersionMode === 'editable'}
+                    className={`provider-setup-template__cluster-version-mode-card${
+                      clusterVersionMode === 'editable'
+                        ? ' provider-setup-template__cluster-version-mode-card--selected'
+                        : ''
+                    }`}
+                    onClick={() => setClusterVersionMode('editable')}
+                  >
+                    {clusterVersionMode === 'editable' ? (
+                      <Label
+                        color="grey"
+                        isCompact
+                        className="provider-setup-template__select-card-selected-badge"
+                      >
+                        Selected
+                      </Label>
+                    ) : null}
+                    <span
+                      className="provider-setup-template__cluster-version-mode-icon"
+                      aria-hidden
+                    >
+                      <UnlockIcon />
+                    </span>
+                    <span className="provider-setup-template__cluster-version-mode-copy">
+                      <Title
+                        headingLevel="h3"
+                        size="md"
+                        className="provider-setup-template__select-card-title"
+                      >
+                        Editable at provisioning
+                      </Title>
+                      <Content
+                        component="p"
+                        className="provider-setup-template__select-card-detail"
+                      >
+                        Tenants can change at launch.
+                      </Content>
+                    </span>
+                  </button>
+                </div>
+              </FormGroup>
+            ) : null}
             {!isClusterService ? (
               <>
                 <FormGroup
@@ -916,7 +1001,13 @@ export function ProviderSetupPublishCatalogWizard({
               </>
             ) : null}
             <FormGroup
-              label={softwareImageStepLabel}
+              label={
+                isClusterService
+                  ? clusterVersionMode === 'editable'
+                    ? 'Default cluster version'
+                    : 'Cluster version'
+                  : softwareImageStepLabel
+              }
               fieldId="publish-catalog-disk-image"
               isRequired
               role="radiogroup"
@@ -930,6 +1021,7 @@ export function ProviderSetupPublishCatalogWizard({
               {isClusterService
                 ? getCatalogClusterVersionOptions().map((option) => {
                     const isSelected = option.id === selectedDiskImageId
+                    const isLatest = option.id === latestClusterVersionId
                     const lifecycleMeta = getCatalogClusterVersionLifecycleMeta(option.lifecycle)
                     const isFeaturesExpanded = expandedClusterVersionIds.has(option.id)
                     const featuresToggleId = `cluster-version-features-toggle-${option.id}`
@@ -941,7 +1033,7 @@ export function ProviderSetupPublishCatalogWizard({
                         role="radio"
                         tabIndex={0}
                         aria-checked={isSelected}
-                        aria-label={option.label}
+                        aria-label={isLatest ? `${option.label}, latest` : option.label}
                         className={`provider-setup-template__select-card provider-setup-template__select-card--disk-image provider-setup-template__select-card--cluster-version${
                           isSelected ? ' provider-setup-template__select-card--selected' : ''
                         }`}
@@ -1001,6 +1093,11 @@ export function ProviderSetupPublishCatalogWizard({
                               >
                                 {option.label}
                               </Title>
+                              {isLatest ? (
+                                <Label color="blue" isCompact>
+                                  Latest
+                                </Label>
+                              ) : null}
                               <Label color={lifecycleMeta.color} isCompact>
                                 {lifecycleMeta.text}
                               </Label>
@@ -1081,23 +1178,219 @@ export function ProviderSetupPublishCatalogWizard({
             </FormGroup>
           </div>
         )
-      case 'networking':
+      case 'node-topology':
         return (
-          <div className="provider-setup-template__publish-networking-step">
-            <CatalogNetworkingLocksSection
-              idPrefix="publish-catalog-networking"
-              title=""
-              showSavedFeedback={false}
-              policy={networkPolicy}
-              lede="Locked fields cannot be changed by tenants."
-              ledeDescription="Create and edit network objects in Networking."
-              virtualNetworkOptions={virtualNetworkOptions}
-              subnetOptions={subnetOptions}
-              securityGroupOptions={securityGroupOptions}
-              externalIpPoolOptions={externalIpPoolOptions}
-              onVirtualNetworkChange={handleVirtualNetworkChange}
-              onChange={updateNetworkPolicy}
-            />
+          <div className="provider-setup-template__publish-hardware-step">
+            <Content component="p" className="provider-setup-template__publish-step-lede">
+              Choose the default node set and host type for this catalog item.
+            </Content>
+            <FormGroup
+              label="Tenant access to node topology"
+              fieldId="publish-catalog-cluster-node-topology-mode"
+              className="provider-setup-template__publish-subsection"
+            >
+              <div
+                id="publish-catalog-cluster-node-topology-mode"
+                className="provider-setup-template__cluster-version-mode-options"
+                role="radiogroup"
+                aria-label="Tenant access to node topology"
+              >
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={clusterNodeTopologyMode === 'locked'}
+                  className={`provider-setup-template__cluster-version-mode-card${
+                    clusterNodeTopologyMode === 'locked'
+                      ? ' provider-setup-template__cluster-version-mode-card--selected'
+                      : ''
+                  }`}
+                  onClick={() => setClusterNodeTopologyMode('locked')}
+                >
+                  {clusterNodeTopologyMode === 'locked' ? (
+                    <Label
+                      color="grey"
+                      isCompact
+                      className="provider-setup-template__select-card-selected-badge"
+                    >
+                      Selected
+                    </Label>
+                  ) : null}
+                  <span
+                    className="provider-setup-template__cluster-version-mode-icon"
+                    aria-hidden
+                  >
+                    <LockIcon />
+                  </span>
+                  <span className="provider-setup-template__cluster-version-mode-copy">
+                    <Title
+                      headingLevel="h3"
+                      size="md"
+                      className="provider-setup-template__select-card-title"
+                    >
+                      Locked
+                    </Title>
+                    <Content
+                      component="p"
+                      className="provider-setup-template__select-card-detail"
+                    >
+                      Tenants cannot change it.
+                    </Content>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={clusterNodeTopologyMode === 'editable'}
+                  className={`provider-setup-template__cluster-version-mode-card${
+                    clusterNodeTopologyMode === 'editable'
+                      ? ' provider-setup-template__cluster-version-mode-card--selected'
+                      : ''
+                  }`}
+                  onClick={() => setClusterNodeTopologyMode('editable')}
+                >
+                  {clusterNodeTopologyMode === 'editable' ? (
+                    <Label
+                      color="grey"
+                      isCompact
+                      className="provider-setup-template__select-card-selected-badge"
+                    >
+                      Selected
+                    </Label>
+                  ) : null}
+                  <span
+                    className="provider-setup-template__cluster-version-mode-icon"
+                    aria-hidden
+                  >
+                    <UnlockIcon />
+                  </span>
+                  <span className="provider-setup-template__cluster-version-mode-copy">
+                    <Title
+                      headingLevel="h3"
+                      size="md"
+                      className="provider-setup-template__select-card-title"
+                    >
+                      Editable at provisioning
+                    </Title>
+                    <Content
+                      component="p"
+                      className="provider-setup-template__select-card-detail"
+                    >
+                      Tenants can change at launch.
+                    </Content>
+                  </span>
+                </button>
+              </div>
+            </FormGroup>
+
+            <FormGroup
+              label={
+                clusterNodeTopologyMode === 'editable' ? 'Default node set' : 'Node set'
+              }
+              fieldId="publish-catalog-cluster-node-set"
+              isRequired
+              className="provider-setup-template__publish-subsection"
+              role="radiogroup"
+            >
+              <div
+                id="publish-catalog-cluster-node-set"
+                className="provider-setup-template__card-group provider-setup-template__card-group--disk-images"
+                role="presentation"
+              >
+                {getCatalogClusterNodeSetOptions().map((option) => {
+                  const isSelected = option.id === selectedNodeSetId
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      className={`provider-setup-template__select-card provider-setup-template__select-card--disk-image${
+                        isSelected ? ' provider-setup-template__select-card--selected' : ''
+                      }`}
+                      onClick={() => setSelectedNodeSetId(option.id)}
+                    >
+                      {isSelected ? (
+                        <Label
+                          color="grey"
+                          isCompact
+                          className="provider-setup-template__select-card-selected-badge"
+                        >
+                          Selected
+                        </Label>
+                      ) : null}
+                      <Title
+                        headingLevel="h3"
+                        size="md"
+                        className="provider-setup-template__select-card-title"
+                      >
+                        {option.label}
+                      </Title>
+                      <Content
+                        component="p"
+                        className="provider-setup-template__select-card-detail"
+                      >
+                        {option.detail}
+                      </Content>
+                    </button>
+                  )
+                })}
+              </div>
+            </FormGroup>
+
+            <FormGroup
+              label={
+                clusterNodeTopologyMode === 'editable' ? 'Default host type' : 'Host type'
+              }
+              fieldId="publish-catalog-cluster-host-type"
+              isRequired
+              className="provider-setup-template__publish-subsection"
+              role="radiogroup"
+            >
+              <div
+                id="publish-catalog-cluster-host-type"
+                className="provider-setup-template__card-group provider-setup-template__card-group--disk-images"
+                role="presentation"
+              >
+                {getCatalogClusterHostTypeOptions().map((option) => {
+                  const isSelected = option.id === selectedHostTypeId
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      className={`provider-setup-template__select-card provider-setup-template__select-card--disk-image${
+                        isSelected ? ' provider-setup-template__select-card--selected' : ''
+                      }`}
+                      onClick={() => setSelectedHostTypeId(option.id)}
+                    >
+                      {isSelected ? (
+                        <Label
+                          color="grey"
+                          isCompact
+                          className="provider-setup-template__select-card-selected-badge"
+                        >
+                          Selected
+                        </Label>
+                      ) : null}
+                      <Title
+                        headingLevel="h3"
+                        size="md"
+                        className="provider-setup-template__select-card-title"
+                      >
+                        {option.label}
+                      </Title>
+                      <Content
+                        component="p"
+                        className="provider-setup-template__select-card-detail"
+                      >
+                        {option.detail}
+                      </Content>
+                    </button>
+                  )
+                })}
+              </div>
+            </FormGroup>
           </div>
         )
       case 'field-policies':
@@ -1368,6 +1661,11 @@ export function ProviderSetupPublishCatalogWizard({
                   {selectedDiskImage ? (
                     <span className="provider-setup-template__publish-review-version">
                       {selectedDiskImage.label}
+                      {isClusterService && selectedDiskImage.id === latestClusterVersionId ? (
+                        <Label color="blue" isCompact>
+                          Latest
+                        </Label>
+                      ) : null}
                       {selectedClusterVersionLifecycleMeta ? (
                         <Label
                           color={selectedClusterVersionLifecycleMeta.color}
@@ -1376,23 +1674,55 @@ export function ProviderSetupPublishCatalogWizard({
                           {selectedClusterVersionLifecycleMeta.text}
                         </Label>
                       ) : null}
+                      {isClusterService ? (
+                        <Label
+                          color={clusterVersionMode === 'editable' ? 'purple' : 'grey'}
+                          isCompact
+                        >
+                          {getCatalogClusterVersionModeLabel(clusterVersionMode)}
+                        </Label>
+                      ) : null}
                     </span>
                   ) : (
                     '—'
                   )}
                 </DescriptionListDescription>
               </DescriptionListGroup>
-              {includesPublishStep('networking') && networkLockSummary ? (
-                <DescriptionListGroup>
-                  <DescriptionListTerm>Networking</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    {networkLockSummary.label}
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
+              {includesPublishStep('node-topology') ? (
+                <>
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Node set</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      <span className="provider-setup-template__publish-review-version">
+                        {formatClusterNodeSetLabel(selectedNodeSetId)}
+                        <Label
+                          color={clusterNodeTopologyMode === 'editable' ? 'purple' : 'grey'}
+                          isCompact
+                        >
+                          {getCatalogClusterNodeTopologyModeLabel(clusterNodeTopologyMode)}
+                        </Label>
+                      </span>
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Host type</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      <span className="provider-setup-template__publish-review-version">
+                        {formatClusterHostTypeLabel(selectedHostTypeId)}
+                        <Label
+                          color={clusterNodeTopologyMode === 'editable' ? 'purple' : 'grey'}
+                          isCompact
+                        >
+                          {getCatalogClusterNodeTopologyModeLabel(clusterNodeTopologyMode)}
+                        </Label>
+                      </span>
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                </>
               ) : null}
               {includesPublishStep('field-policies') ? (
                 <DescriptionListGroup>
-                  <DescriptionListTerm>Field policies</DescriptionListTerm>
+                  <DescriptionListTerm>Lock fields</DescriptionListTerm>
                   <DescriptionListDescription>
                     {`${fieldPolicies.filter((policy) => policy.mode === 'locked').length} locked · ${
                       fieldPolicies.filter((policy) => policy.mode === 'exposed').length
@@ -1446,8 +1776,10 @@ export function ProviderSetupPublishCatalogWizard({
       }
     }
 
-    if (stepId === 'networking') {
-      return { isNextDisabled: false }
+    if (stepId === 'node-topology') {
+      return {
+        isNextDisabled: !selectedNodeSetId || !selectedHostTypeId,
+      }
     }
 
     if (stepId === 'field-policies') {

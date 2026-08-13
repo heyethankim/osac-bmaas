@@ -348,7 +348,7 @@ export const PUBLISH_CATALOG_STEPS = [
   { id: 'template', label: 'Template' },
   { id: 'display-name', label: 'Name' },
   { id: 'hardware-os', label: 'Hardware & OS' },
-  { id: 'networking', label: 'Networking' },
+  { id: 'node-topology', label: 'Node topology' },
   { id: 'field-policies', label: 'Lock fields' },
   { id: 'publish-scope', label: 'Visibility' },
   { id: 'review', label: 'Review' },
@@ -387,6 +387,16 @@ export type PublishedTemplatePayload = {
   /** Disk / OS image shown to tenants. */
   diskImageId?: string
   diskImageLabel?: string
+  /** Cluster as a Service: locked (default) or editable at provisioning. */
+  clusterVersionMode?: 'locked' | 'editable'
+  /** Cluster default worker node set id/label. */
+  nodeSetId?: string
+  nodeSetLabel?: string
+  /** Cluster default host type for the node set. */
+  hostTypeId?: string
+  hostTypeLabel?: string
+  /** Cluster node set / host type: locked (default) or editable at provisioning. */
+  clusterNodeTopologyMode?: 'locked' | 'editable'
   /** Locked vs exposed field policies for launch. */
   fieldPolicies?: CatalogFieldPolicy[]
 }

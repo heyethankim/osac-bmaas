@@ -29,7 +29,11 @@ import {
   resolveCatalogNetworkPolicy,
   toExternalIpPoolCatalogOption,
 } from '../providerAdmin/catalogNetworkPolicy'
-import type { CatalogFieldPolicy } from '../catalog/catalogPublishConfig'
+import type {
+  CatalogClusterNodeTopologyMode,
+  CatalogClusterVersionMode,
+  CatalogFieldPolicy,
+} from '../catalog/catalogPublishConfig'
 import type {
   CatalogServiceId,
   PublishCatalogScope,
@@ -227,6 +231,22 @@ export type ProviderCatalogDraft = {
   /** Disk / OS image for BM/VM, or cluster version id/label for Cluster as a Service. */
   diskImageId?: string
   diskImageLabel?: string
+  /**
+   * Cluster as a Service only. When `editable`, tenants may change version at launch.
+   * Defaults to locked when omitted.
+   */
+  clusterVersionMode?: CatalogClusterVersionMode
+  /** Cluster default worker node set. */
+  nodeSetId?: string
+  nodeSetLabel?: string
+  /** Cluster default host type for the node set. */
+  hostTypeId?: string
+  hostTypeLabel?: string
+  /**
+   * Cluster as a Service only. When `editable`, tenants may change node set / host type at launch.
+   * Defaults to locked when omitted.
+   */
+  clusterNodeTopologyMode?: CatalogClusterNodeTopologyMode
   /** Locked vs exposed field policies for launch. */
   fieldPolicies?: CatalogFieldPolicy[]
 }
@@ -599,6 +619,14 @@ export function duplicateProviderCatalogItem(catalogItemId: string): ProviderCat
     ...(source.instanceTypeLabel ? { instanceTypeLabel: source.instanceTypeLabel } : {}),
     ...(source.diskImageId ? { diskImageId: source.diskImageId } : {}),
     ...(source.diskImageLabel ? { diskImageLabel: source.diskImageLabel } : {}),
+    ...(source.clusterVersionMode ? { clusterVersionMode: source.clusterVersionMode } : {}),
+    ...(source.nodeSetId ? { nodeSetId: source.nodeSetId } : {}),
+    ...(source.nodeSetLabel ? { nodeSetLabel: source.nodeSetLabel } : {}),
+    ...(source.hostTypeId ? { hostTypeId: source.hostTypeId } : {}),
+    ...(source.hostTypeLabel ? { hostTypeLabel: source.hostTypeLabel } : {}),
+    ...(source.clusterNodeTopologyMode
+      ? { clusterNodeTopologyMode: source.clusterNodeTopologyMode }
+      : {}),
     ...(source.fieldPolicies?.length
       ? { fieldPolicies: source.fieldPolicies.map((policy) => ({ ...policy })) }
       : {}),
@@ -748,7 +776,15 @@ export function patchProviderCatalogItem(
   patch: Partial<
     Pick<
       ProviderCatalogDraft,
-      'instanceTypeId' | 'instanceTypeLabel' | 'diskImageId' | 'diskImageLabel'
+      | 'instanceTypeId'
+      | 'instanceTypeLabel'
+      | 'diskImageId'
+      | 'diskImageLabel'
+      | 'nodeSetId'
+      | 'nodeSetLabel'
+      | 'hostTypeId'
+      | 'hostTypeLabel'
+      | 'clusterNodeTopologyMode'
     >
   >,
 ): ProviderCatalogDraft | null {
