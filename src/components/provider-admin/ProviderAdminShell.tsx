@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { useLayoutEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { BarsIcon } from '@patternfly/react-icons/dist/esm/icons/bars-icon'
 import { MoonIcon } from '@patternfly/react-icons/dist/esm/icons/moon-icon'
 import { OutlinedQuestionCircleIcon } from '@patternfly/react-icons/dist/esm/icons/outlined-question-circle-icon'
 import { SunIcon } from '@patternfly/react-icons/dist/esm/icons/sun-icon'
@@ -16,6 +17,7 @@ import {
   MastheadContent,
   MastheadLogo,
   MastheadMain,
+  MastheadToggle,
   MenuToggle,
   Nav,
   NavExpandable,
@@ -25,6 +27,7 @@ import {
   PageSection,
   PageSidebar,
   PageSidebarBody,
+  PageToggleButton,
   Spinner,
   Toolbar,
   ToolbarContent,
@@ -76,6 +79,11 @@ export function ProviderAdminShell({
   const header = (
     <Masthead>
       <MastheadMain>
+        <MastheadToggle>
+          <PageToggleButton variant="plain" aria-label="Global navigation">
+            <BarsIcon />
+          </PageToggleButton>
+        </MastheadToggle>
         <MastheadLogo className="vertexa-masthead-logo">
           <MastheadBrand>
             <VertexaCloudMastheadLogo />
