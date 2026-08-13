@@ -27,7 +27,6 @@ import {
 import { Table, ActionsColumn, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
 import { CatalogServiceFilterToggle, countCatalogServices, toggleCatalogServiceFilter } from '../components/catalog/CatalogServiceFilterToggle'
 import { CatalogViewToggle } from '../components/catalog/CatalogViewToggle'
-import { AssignCatalogToOrganizationModal } from '../components/provider-admin/AssignCatalogToOrganizationModal'
 import { CatalogItemDetailsPage } from '../components/provider-admin/CatalogItemDetailsPage'
 import { CatalogPublishScopeIcon } from '../components/provider-admin/CatalogPublishScopeIcon'
 import {
@@ -57,7 +56,6 @@ import type { RegisteredOrganization } from '../providerAdmin/organizations'
 import { sortByDemoCatalogOrder } from '../providerSetup/prototypeEntry'
 import type { CatalogItemStatus, ProviderCatalogDraft } from '../providerSetup/storage'
 import {
-  assignCatalogToRegisteredOrganization,
   consumeProviderVipCatalogResumeIntent,
   duplicateProviderCatalogItem,
   getCatalogItemStatus,
@@ -334,7 +332,6 @@ export function ProviderAdminCatalogPage({
   const [organizations, setOrganizations] = useState(() => getProviderRegisteredOrganizations())
   const [isPublishWizardOpen, setIsPublishWizardOpen] = useState(false)
   const [selectedCatalogItem, setSelectedCatalogItem] = useState<ProviderCatalogDraft | null>(null)
-  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isUnpublishModalOpen, setIsUnpublishModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -640,11 +637,6 @@ export function ProviderAdminCatalogPage({
     }
   }, [itemParam, orderedCatalogItems, isWizardOpen, publishingCatalogItemId])
 
-  const openAssign = (item: ProviderCatalogDraft) => {
-    setSelectedCatalogItem(item)
-    setIsAssignModalOpen(true)
-  }
-
   const openEdit = (item: ProviderCatalogDraft) => {
     setSelectedCatalogItem(item)
     setIsEditModalOpen(true)
@@ -733,23 +725,12 @@ export function ProviderAdminCatalogPage({
       closeDetails()
       syncWorkspaceCatalogItemParam(setSearchParams, null, { replace: true })
       setIsWizardOpen(false)
-      setIsAssignModalOpen(false)
       setIsEditModalOpen(false)
       setSelectedCatalogItem(null)
       refreshCatalogItems()
       refreshOrganizations()
     }
     setIsDeleteModalOpen(false)
-  }
-
-  const handleAssignCatalog = (organizationId: string) => {
-    if (!selectedCatalogItem) {
-      return
-    }
-
-    assignCatalogToRegisteredOrganization(organizationId, selectedCatalogItem)
-    refreshOrganizations()
-    setIsAssignModalOpen(false)
   }
 
   const handleSaveCatalogEdit = (fields: CatalogItemEditFields) => {
@@ -1230,13 +1211,6 @@ export function ProviderAdminCatalogPage({
       )}
     </div>
       )}
-
-      <AssignCatalogToOrganizationModal
-        catalog={isAssignModalOpen ? selectedCatalogItem : null}
-        organizations={organizations}
-        onClose={() => setIsAssignModalOpen(false)}
-        onAssign={handleAssignCatalog}
-      />
 
       <EditCatalogItemModal
         catalog={isEditModalOpen ? selectedCatalogItem : null}
