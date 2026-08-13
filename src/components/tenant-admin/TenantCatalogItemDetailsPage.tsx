@@ -19,7 +19,6 @@ import {
 } from '../../catalog/catalogSpecs'
 import { formatCatalogFieldPolicyMode } from '../../catalog/catalogPublishConfig'
 import { CatalogClusterVersionValue } from '../catalog/CatalogClusterVersionValue'
-import { CatalogNetworkingLocksSection } from '../catalog/CatalogNetworkingLocksSection'
 import { CatalogVmDefaultsSections } from '../catalog/CatalogVmDefaultsSections'
 import { CatalogPublishScopeIcon } from '../provider-admin/CatalogPublishScopeIcon'
 import {
@@ -28,17 +27,6 @@ import {
   getTenantCatalogProjectsLinkLabel,
   type TenantCatalogGovernanceItemWithNetworking,
 } from '../../tenantAdmin/catalogManager'
-import {
-  applyTenantLocksForUsers,
-  getTenantNetworkOverrides,
-  type TenantNetworkResourceKind,
-} from '../../tenantAdmin/networking'
-import {
-  getCatalogExternalIpPoolOptions,
-  getCatalogSecurityGroupOptions,
-  getCatalogSubnetOptions,
-  getCatalogVirtualNetworkOptions,
-} from '../../providerSetup/storage'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
 
 function getVisibilityLabel(scope: TenantCatalogGovernanceItemWithNetworking['scope']): string {
@@ -47,31 +35,19 @@ function getVisibilityLabel(scope: TenantCatalogGovernanceItemWithNetworking['sc
 
 type TenantCatalogItemDetailsPageProps = {
   item: TenantCatalogGovernanceItemWithNetworking
-  organizationSlug: string
   projectCount: number
   onBack: () => void
   onNavigateToProjectsTeams: () => void
-  onChangeLockForUsers: (kind: TenantNetworkResourceKind, locked: boolean) => void
   onLaunch?: () => void
 }
 
 export function TenantCatalogItemDetailsPage({
   item,
-  organizationSlug,
   projectCount,
   onBack,
   onNavigateToProjectsTeams,
-  onChangeLockForUsers,
   onLaunch,
 }: TenantCatalogItemDetailsPageProps) {
-  const overrides = getTenantNetworkOverrides(organizationSlug, item.catalogItemId)
-  const networkPolicy = applyTenantLocksForUsers(item.networkPolicy, overrides)
-  const providerLocked = {
-    virtualNetwork: item.networkPolicy.virtualNetwork.locked,
-    subnet: item.networkPolicy.subnet.locked,
-    securityGroup: item.networkPolicy.securityGroup.locked,
-    externalIpPool: item.networkPolicy.externalIpPool.locked,
-  }
   const specRows = getTenantCatalogItemDetailSpecRows(item)
   const isVirtualMachine = item.serviceId === 'virtual-machine'
   const isCluster = item.serviceId === 'cluster'
@@ -362,38 +338,6 @@ export function TenantCatalogItemDetailsPage({
             </>
           ) : null}
         </div>
-
-        <section
-          className="entity-details-page__column entity-details-page__column--span-2"
-          aria-label="Networking"
-        >
-          <CatalogNetworkingLocksSection
-            idPrefix={`tenant-admin-catalog-${item.catalogItemId}`}
-            policy={networkPolicy}
-            lede={TENANT_CATALOG_MANAGER_DEMO.networkingSectionLede}
-            providerLocked={providerLocked}
-            virtualNetworkOptions={getCatalogVirtualNetworkOptions()}
-            subnetOptions={getCatalogSubnetOptions(networkPolicy.virtualNetwork.id)}
-            securityGroupOptions={getCatalogSecurityGroupOptions()}
-            externalIpPoolOptions={getCatalogExternalIpPoolOptions()}
-            onChange={(next) => {
-              const fields: Array<{
-                key: 'virtualNetwork' | 'subnet' | 'securityGroup' | 'externalIpPool'
-                kind: TenantNetworkResourceKind
-              }> = [
-                { key: 'virtualNetwork', kind: 'virtual-network' },
-                { key: 'subnet', kind: 'subnet' },
-                { key: 'securityGroup', kind: 'security-group' },
-                { key: 'externalIpPool', kind: 'external-ip-pool' },
-              ]
-              for (const { key, kind } of fields) {
-                if (next[key].locked !== networkPolicy[key].locked) {
-                  onChangeLockForUsers(kind, next[key].locked)
-                }
-              }
-            }}
-          />
-        </section>
       </div>
     </EntityDetailsPageShell>
   )

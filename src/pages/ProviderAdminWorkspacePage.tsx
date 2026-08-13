@@ -426,7 +426,6 @@ export function ProviderAdminWorkspacePage() {
               setOpenTemplateLookup(template)
               handleNavChange('infrastructure-bmaas-templates')
             }}
-            onNavigateToNetworking={() => handleNavChange('networking-virtual-networks')}
             openCatalogItemKey={openCatalogItemKey}
             onOpenCatalogItemConsumed={() => setOpenCatalogItemKey(null)}
             onProvisioningStarted={handleProvisioningStarted}

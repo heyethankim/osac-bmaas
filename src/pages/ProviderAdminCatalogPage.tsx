@@ -73,7 +73,6 @@ import {
   setProviderCatalogItemStatus,
   setProviderVipCatalogResumeIntent,
   updateProviderCatalogItem,
-  updateProviderCatalogNetworkPolicy,
 } from '../providerSetup/storage'
 import {
   CATALOG_SERVICE_FILTER_LABELS,
@@ -111,7 +110,6 @@ type ProviderAdminCatalogPageProps = {
     templateRefId: string
     templateName: string
   }) => void
-  onNavigateToNetworking?: () => void
   /** When set, open this catalog item's detail page (id or display name). */
   openCatalogItemKey?: string | null
   onOpenCatalogItemConsumed?: () => void
@@ -380,7 +378,6 @@ export function ProviderAdminCatalogPage({
   isPublishing = false,
   onRegisterOrganization,
   onNavigateToLinkedTemplate,
-  onNavigateToNetworking,
   openCatalogItemKey = null,
   onOpenCatalogItemConsumed,
   onProvisioningStarted,
@@ -913,17 +910,6 @@ export function ProviderAdminCatalogPage({
           onDuplicate={() => handleDuplicate(drawerCatalog)}
           onDelete={() => openDelete(drawerCatalog)}
           onNavigateToLinkedTemplate={onNavigateToLinkedTemplate}
-          onNavigateToNetworking={onNavigateToNetworking}
-          onNetworkPolicyChange={(networkPolicy) => {
-            const updated = updateProviderCatalogNetworkPolicy(
-              drawerCatalog.catalogItemId,
-              networkPolicy,
-            )
-            if (updated) {
-              setSelectedCatalogItem(updated)
-              refreshCatalogItems()
-            }
-          }}
         />
       ) : (
     <div

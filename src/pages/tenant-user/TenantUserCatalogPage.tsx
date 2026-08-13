@@ -349,9 +349,6 @@ export function TenantUserCatalogPage({
       {detailsItem ? (
         <TenantUserCatalogItemDetailsPage
           catalogItem={detailsItem}
-          organization={organization}
-          catalogDraft={catalogDraft}
-          preferCatalogDraft={preferCatalogDraft}
           onBack={closeDetails}
           onLaunch={() => openLaunchWizard(detailsItem)}
         />

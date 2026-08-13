@@ -19,44 +19,22 @@ import {
 } from '../../catalog/catalogSpecs'
 import { formatCatalogFieldPolicyMode } from '../../catalog/catalogPublishConfig'
 import { CatalogClusterVersionValue } from '../catalog/CatalogClusterVersionValue'
-import { CatalogNetworkingLocksSection } from '../catalog/CatalogNetworkingLocksSection'
 import { CatalogVmDefaultsSections } from '../catalog/CatalogVmDefaultsSections'
-import type { RegisteredOrganization } from '../../providerAdmin/organizations'
-import type { ProviderCatalogDraft } from '../../providerSetup/storage'
-import {
-  getCatalogExternalIpPoolOptions,
-  getCatalogSecurityGroupOptions,
-  getCatalogSubnetOptions,
-  getCatalogVirtualNetworkOptions,
-} from '../../providerSetup/storage'
 import { formatRateCardSummary } from '../../providerSetup/templateDemo'
 import type { TenantUserCatalogCard } from '../../tenantUser/catalog'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
-import { resolveLaunchNetworkContext } from '../../tenantUser/launchNetworking'
 
 type TenantUserCatalogItemDetailsPageProps = {
   catalogItem: TenantUserCatalogCard
-  organization: RegisteredOrganization | null
-  catalogDraft: ProviderCatalogDraft | null
-  preferCatalogDraft?: boolean
   onBack: () => void
   onLaunch: () => void
 }
 
 export function TenantUserCatalogItemDetailsPage({
   catalogItem,
-  organization,
-  catalogDraft,
-  preferCatalogDraft = false,
   onBack,
   onLaunch,
 }: TenantUserCatalogItemDetailsPageProps) {
-  const networkContext = resolveLaunchNetworkContext(
-    organization,
-    catalogDraft,
-    preferCatalogDraft,
-    catalogItem.catalogItemId,
-  )
   const specRows = resolveCatalogSpecRows(
     {
       serviceId: catalogItem.serviceId,
@@ -332,24 +310,6 @@ export function TenantUserCatalogItemDetailsPage({
             </>
           ) : null}
         </div>
-
-        {networkContext.enabled ? (
-          <section
-            className="entity-details-page__column entity-details-page__column--span-2"
-            aria-label="Networking"
-          >
-            <CatalogNetworkingLocksSection
-              idPrefix={`tenant-user-catalog-${catalogItem.catalogItemId}`}
-              policy={networkContext.policy}
-              lede="Locked fields are fixed for launch. Unlocked fields can be chosen when you create an instance."
-              readOnly
-              virtualNetworkOptions={getCatalogVirtualNetworkOptions()}
-              subnetOptions={getCatalogSubnetOptions(networkContext.policy.virtualNetwork.id)}
-              securityGroupOptions={getCatalogSecurityGroupOptions()}
-              externalIpPoolOptions={getCatalogExternalIpPoolOptions()}
-            />
-          </section>
-        ) : null}
       </div>
     </EntityDetailsPageShell>
   )

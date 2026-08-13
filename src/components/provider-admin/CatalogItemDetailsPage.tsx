@@ -22,7 +22,6 @@ import {
   Title,
 } from '@patternfly/react-core'
 import { CatalogClusterVersionValue } from '../catalog/CatalogClusterVersionValue'
-import { CatalogNetworkingLocksSection } from '../catalog/CatalogNetworkingLocksSection'
 import { CatalogVmDefaultsSections } from '../catalog/CatalogVmDefaultsSections'
 import { CatalogPublishScopeIcon } from './CatalogPublishScopeIcon'
 import {
@@ -31,12 +30,7 @@ import {
 } from './VipEnterpriseOrganizationField'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import {
-  getCatalogExternalIpPoolOptions,
-  getCatalogItemNetworkPolicy,
   getCatalogItemStatus,
-  getCatalogSecurityGroupOptions,
-  getCatalogSubnetOptions,
-  getCatalogVirtualNetworkOptions,
   getProviderRegisteredOrganizations,
 } from '../../providerSetup/storage'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
@@ -45,11 +39,6 @@ import {
   formatRateCardSummary,
   type CatalogServiceId,
 } from '../../providerSetup/templateDemo'
-import {
-  resolveCatalogNetworkPolicyField,
-  type CatalogNetworkPolicy,
-  type CatalogNetworkResourceOption,
-} from '../../providerAdmin/catalogNetworkPolicy'
 import {
   getCatalogSpecsSectionLabel,
   getDraftServiceId,
@@ -81,8 +70,6 @@ type CatalogItemDetailsPageProps = {
   onEdit: () => void
   onDuplicate: () => void
   onDelete: () => void
-  onNetworkPolicyChange?: (networkPolicy: CatalogNetworkPolicy) => void
-  onNavigateToNetworking?: () => void
   onNavigateToLinkedTemplate?: (template: {
     templateRefId: string
     templateName: string
@@ -113,8 +100,6 @@ export function CatalogItemDetailsPage({
   onEdit,
   onDuplicate,
   onDelete,
-  onNetworkPolicyChange,
-  onNavigateToNetworking,
   onNavigateToLinkedTemplate,
 }: CatalogItemDetailsPageProps) {
   const organizations = getProviderRegisteredOrganizations()
@@ -174,33 +159,6 @@ export function CatalogItemDetailsPage({
     getInitialPublishCtaPhase(catalog),
   )
   const publishCtaTimerRef = useRef<number | null>(null)
-  const [networkPolicy, setNetworkPolicy] = useState<CatalogNetworkPolicy | null>(null)
-  const [virtualNetworkOptions, setVirtualNetworkOptions] = useState<CatalogNetworkResourceOption[]>(
-    () => getCatalogVirtualNetworkOptions(),
-  )
-  const [subnetOptions, setSubnetOptions] = useState<CatalogNetworkResourceOption[]>(() =>
-    getCatalogSubnetOptions(),
-  )
-  const [securityGroupOptions, setSecurityGroupOptions] = useState<CatalogNetworkResourceOption[]>(
-    () => getCatalogSecurityGroupOptions(),
-  )
-  const [externalIpPoolOptions, setExternalIpPoolOptions] = useState<CatalogNetworkResourceOption[]>(
-    () => getCatalogExternalIpPoolOptions(),
-  )
-
-  useEffect(() => {
-    setNetworkPolicy(getCatalogItemNetworkPolicy(catalog))
-    setVirtualNetworkOptions(getCatalogVirtualNetworkOptions())
-    setSecurityGroupOptions(getCatalogSecurityGroupOptions())
-    setExternalIpPoolOptions(getCatalogExternalIpPoolOptions())
-  }, [catalog])
-
-  useEffect(() => {
-    if (!networkPolicy?.enabled) {
-      return
-    }
-    setSubnetOptions(getCatalogSubnetOptions(networkPolicy.virtualNetwork.id))
-  }, [networkPolicy?.enabled, networkPolicy?.virtualNetwork.id])
 
   useEffect(() => {
     if (publishCtaTimerRef.current !== null) {
@@ -225,34 +183,6 @@ export function CatalogItemDetailsPage({
       }
     }
   }, [])
-
-  const updateNetworkPolicy = (next: CatalogNetworkPolicy) => {
-    setNetworkPolicy(next)
-    onNetworkPolicyChange?.(next)
-  }
-
-  const handleVirtualNetworkChange = (value: string, nextBase: CatalogNetworkPolicy) => {
-    const nextSubnets = getCatalogSubnetOptions(value)
-    setSubnetOptions(nextSubnets)
-    const nextSubnetId =
-      nextSubnets.find((option) => option.id === nextBase.subnet.id)?.id ??
-      nextSubnets[0]?.id ??
-      nextBase.subnet.id
-
-    updateNetworkPolicy({
-      ...nextBase,
-      virtualNetwork: resolveCatalogNetworkPolicyField(
-        virtualNetworkOptions,
-        value,
-        nextBase.virtualNetwork.locked,
-      ),
-      subnet: resolveCatalogNetworkPolicyField(
-        nextSubnets,
-        nextSubnetId,
-        nextBase.subnet.locked,
-      ),
-    })
-  }
 
   const handlePublishClick = () => {
     if (publishCtaPhase !== 'publish') {
@@ -541,13 +471,7 @@ export function CatalogItemDetailsPage({
               ) : null}
             </div>
 
-            <div
-              className={`provider-admin-catalog-item-details__column provider-admin-catalog-item-details__column--config${
-                networkPolicy
-                  ? ' provider-admin-catalog-item-details__column--span-rows'
-                  : ''
-              }`}
-            >
+            <div className="provider-admin-catalog-item-details__column provider-admin-catalog-item-details__column--config">
               {isVirtualMachine && vmHighlightRows.length > 0 ? (
                 <>
                   <Title
@@ -654,43 +578,6 @@ export function CatalogItemDetailsPage({
                 </>
               ) : null}
             </div>
-
-            {networkPolicy ? (
-              <section
-                className="provider-admin-catalog-item-details__column provider-admin-catalog-item-details__column--span-2"
-                aria-label="Networking"
-              >
-                <CatalogNetworkingLocksSection
-                  idPrefix={`catalog-detail-${catalog.catalogItemId}`}
-                  policy={networkPolicy}
-                  lede="Locked fields cannot be changed by tenants."
-                  ledeDescription={
-                    <>
-                      Create and edit network objects in{' '}
-                      {onNavigateToNetworking ? (
-                        <Button
-                          variant="link"
-                          isInline
-                          className="provider-admin-catalog-items__inline-link"
-                          onClick={onNavigateToNetworking}
-                        >
-                          Networking
-                        </Button>
-                      ) : (
-                        'Networking'
-                      )}
-                      .
-                    </>
-                  }
-                  virtualNetworkOptions={virtualNetworkOptions}
-                  subnetOptions={subnetOptions}
-                  securityGroupOptions={securityGroupOptions}
-                  externalIpPoolOptions={externalIpPoolOptions}
-                  onVirtualNetworkChange={handleVirtualNetworkChange}
-                  onChange={updateNetworkPolicy}
-                />
-              </section>
-            ) : null}
           </div>
         </section>
       </div>

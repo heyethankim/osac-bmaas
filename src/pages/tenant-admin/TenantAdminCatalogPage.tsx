@@ -59,8 +59,6 @@ import {
   applyTenantLocksForUsers,
   getTenantNetworkLockSummary,
   getTenantNetworkOverrides,
-  setTenantNetworkOverrides,
-  type TenantNetworkResourceKind,
 } from '../../tenantAdmin/networking'
 import { ensureTenantDemoProjects } from '../../tenantAdmin/storage'
 import type { TenantProject } from '../../tenantAdmin/projects'
@@ -478,42 +476,6 @@ export function TenantAdminCatalogPage({
     syncWorkspaceCatalogItemParam(setSearchParams, null)
   }
 
-  const handleChangeLockForUsers = (kind: TenantNetworkResourceKind, locked: boolean) => {
-    if (!selectedCatalogItem) {
-      return
-    }
-
-    const catalogItemId = selectedCatalogItem.catalogItemId
-    if (!catalogItemId) {
-      return
-    }
-  const lockKey =
-      kind === 'virtual-network'
-        ? 'virtualNetwork'
-        : kind === 'subnet'
-          ? 'subnet'
-          : kind === 'security-group'
-            ? 'securityGroup'
-            : 'externalIpPool'
-    const currentOverrides = getTenantNetworkOverrides(organization.slug, catalogItemId)
-    setTenantNetworkOverrides(organization.slug, catalogItemId, {
-      ...currentOverrides,
-      lockForUsers: {
-        ...currentOverrides.lockForUsers,
-        [lockKey]: locked,
-      },
-    })
-
-    const refreshed = getTenantCatalogGovernanceItems(organization, catalogDraft)
-    setCatalogItems(refreshed)
-    setSelectedCatalogItem((selected) => {
-      if (!selected) {
-        return selected
-      }
-      return refreshed.find((item) => item.id === selected.id) ?? selected
-    })
-  }
-
   const updateCatalogItem = (
     itemId: string,
     updater: (
@@ -627,11 +589,9 @@ export function TenantAdminCatalogPage({
       {isDetailsDrawerOpen && detailsItem ? (
         <TenantCatalogItemDetailsPage
           item={detailsItem}
-          organizationSlug={organization.slug}
           projectCount={projectCount}
           onBack={closeDetails}
           onNavigateToProjectsTeams={onNavigateToProjectsTeams}
-          onChangeLockForUsers={handleChangeLockForUsers}
           onLaunch={() => openLaunchWizard(detailsItem)}
         />
       ) : (
