@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react'
-import { useLayoutEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MoonIcon } from '@patternfly/react-icons/dist/esm/icons/moon-icon'
+import { CogIcon } from '@patternfly/react-icons/dist/esm/icons/cog-icon'
 import { OutlinedQuestionCircleIcon } from '@patternfly/react-icons/dist/esm/icons/outlined-question-circle-icon'
-import { SunIcon } from '@patternfly/react-icons/dist/esm/icons/sun-icon'
 import { UserIcon } from '@patternfly/react-icons/dist/esm/icons/user-icon'
 import {
   Button,
+  Divider,
   Dropdown,
   DropdownItem,
   DropdownList,
@@ -44,6 +44,7 @@ import {
 } from '../../providerAdmin/constants'
 import { clearProviderOnboardingState } from '../../providerSetup/storage'
 import type { WorkspaceTransition } from '../../providerAdmin/workspace'
+import { UserPreferencesModal } from '../shared/UserPreferencesModal'
 import { VertexaCloudMastheadLogo } from './VertexaCloudMastheadLogo'
 
 type ProviderAdminShellProps = {
@@ -63,15 +64,7 @@ export function ProviderAdminShell({
 }: ProviderAdminShellProps) {
   const navigate = useNavigate()
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
-  const [isDarkTheme, setIsDarkTheme] = useState(false)
-
-  useLayoutEffect(() => {
-    const root = document.documentElement
-    root.classList.toggle('pf-v6-theme-dark', isDarkTheme)
-    return () => {
-      root.classList.remove('pf-v6-theme-dark')
-    }
-  }, [isDarkTheme])
+  const [isPreferencesModalOpen, setIsPreferencesModalOpen] = useState(false)
 
   const header = (
     <Masthead>
@@ -93,15 +86,6 @@ export function ProviderAdminShell({
               variant="action-group-plain"
               gap={{ default: 'gapSm' }}
             >
-              <ToolbarItem>
-                <Button
-                  variant="plain"
-                  aria-label={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
-                  onClick={() => setIsDarkTheme((dark) => !dark)}
-                >
-                  {isDarkTheme ? <SunIcon /> : <MoonIcon />}
-                </Button>
-              </ToolbarItem>
               <ToolbarItem>
                 <Button variant="plain" aria-label="Help">
                   <OutlinedQuestionCircleIcon />
@@ -132,6 +116,17 @@ export function ProviderAdminShell({
                   )}
                 >
                   <DropdownList>
+                    <DropdownItem
+                      value="user-preferences"
+                      icon={<CogIcon />}
+                      onClick={() => {
+                        setIsUserMenuOpen(false)
+                        setIsPreferencesModalOpen(true)
+                      }}
+                    >
+                      User preferences
+                    </DropdownItem>
+                    <Divider />
                     <DropdownItem
                       value="logout"
                       onClick={() => {
@@ -268,33 +263,39 @@ export function ProviderAdminShell({
   ) : undefined
 
   return (
-    <Page
-      masthead={header}
-      sidebar={sidebar}
-      isManagedSidebar={showNavigation}
-      className={[
-        showNavigation ? 'provider-admin-shell-page' : undefined,
-        workspaceTransition === 'entering' ? 'provider-admin-shell-page--entering' : undefined,
-      ]
-        .filter(Boolean)
-        .join(' ')}
-    >
-      <PageSection
-        isWidthLimited={!showNavigation}
-        isCenterAligned={!showNavigation}
-        className="provider-admin-shell__main"
+    <>
+      <Page
+        masthead={header}
+        sidebar={sidebar}
+        isManagedSidebar={showNavigation}
+        className={[
+          showNavigation ? 'provider-admin-shell-page' : undefined,
+          workspaceTransition === 'entering' ? 'provider-admin-shell-page--entering' : undefined,
+        ]
+          .filter(Boolean)
+          .join(' ')}
       >
-        {workspaceTransition !== 'idle' ? (
-          <div
-            className={`provider-admin-publishing-overlay provider-admin-publishing-overlay--${workspaceTransition}`}
-            aria-live="polite"
-            aria-busy="true"
-          >
-            <Spinner size="xl" aria-label="Publishing catalog item" />
-          </div>
-        ) : null}
-        <div className="provider-admin-shell__content">{children}</div>
-      </PageSection>
-    </Page>
+        <PageSection
+          isWidthLimited={!showNavigation}
+          isCenterAligned={!showNavigation}
+          className="provider-admin-shell__main"
+        >
+          {workspaceTransition !== 'idle' ? (
+            <div
+              className={`provider-admin-publishing-overlay provider-admin-publishing-overlay--${workspaceTransition}`}
+              aria-live="polite"
+              aria-busy="true"
+            >
+              <Spinner size="xl" aria-label="Publishing catalog item" />
+            </div>
+          ) : null}
+          <div className="provider-admin-shell__content">{children}</div>
+        </PageSection>
+      </Page>
+      <UserPreferencesModal
+        isOpen={isPreferencesModalOpen}
+        onClose={() => setIsPreferencesModalOpen(false)}
+      />
+    </>
   )
 }

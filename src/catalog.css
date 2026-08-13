@@ -118,7 +118,7 @@
   --pf-v6-c-table--cell--PaddingBlock: var(--pf-t--global--spacer--md);
   --pf-v6-c-table--cell--PaddingInline: var(--pf-t--global--spacer--md);
   --pf-v6-c-table--BorderColor: var(--pf-t--global--border--color--default);
-  background-color: var(--pf-t--global--background--color--primary--default);
+  background-color: transparent;
 }
 
 .catalog-data-table .pf-v6-c-table__thead .pf-v6-c-table__th {
@@ -156,6 +156,39 @@
 
 .catalog-data-table .pf-v6-c-label {
   max-width: none;
+}
+
+/*
+ * Catalog table views sit directly on the page surface, which can be a glass
+ * (translucent) surface. Drop the opaque primary background there so the
+ * glass background image and blur remain visible through the table.
+ */
+.catalog-data-table:is(
+    .provider-admin-catalog-items__table,
+    .tenant-admin-catalog-manager__table,
+    .tenant-user-catalog__table
+  ) {
+  background-color: transparent;
+}
+
+.catalog-data-table:is(
+    .provider-admin-catalog-items__table,
+    .tenant-admin-catalog-manager__table,
+    .tenant-user-catalog__table
+  )
+  .pf-v6-c-table__thead
+  .pf-v6-c-table__th {
+  background-color: transparent;
+}
+
+.catalog-data-table:is(
+    .provider-admin-catalog-items__table,
+    .tenant-admin-catalog-manager__table,
+    .tenant-user-catalog__table
+  )
+  .pf-v6-c-table__tbody
+  .pf-v6-c-table__tr {
+  background-color: transparent;
 }
 
 .catalog-table-panel {
