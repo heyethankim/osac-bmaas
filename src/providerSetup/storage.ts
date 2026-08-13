@@ -2,7 +2,10 @@ import type { ProviderServiceId } from './constants'
 import type { ProviderAdminNavId } from '../providerAdmin/constants'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
 import {
+  createDemoHarborlineCapitalOrganization,
   createDemoNorthSummitBankOrganization,
+  DEMO_HARBORLINE_CAPITAL_ORG_ID,
+  DEMO_HARBORLINE_CAPITAL_SLUG,
   DEMO_NORTH_SUMMIT_BANK_ORG_ID,
   DEFAULT_REGISTER_ORGANIZATION_FORM,
   hasPendingIdpInvite,
@@ -1402,8 +1405,8 @@ function removeRegisteredOrganizationsRaw(): void {
 }
 
 /**
- * Seeds North Summit Bank as the Organizations page baseline:
- * Active, IdP connected, roles defined with multiple admins and users.
+ * Seeds North Summit Bank + Harborline Capital as Organizations page baselines:
+ * Active, IdP connected, roles defined — two enterprises for VIP multi-select demos.
  */
 export function ensureProviderDemoOrganizations(): RegisteredOrganization[] {
   try {
@@ -1417,35 +1420,53 @@ export function ensureProviderDemoOrganizations(): RegisteredOrganization[] {
       null
     const catalogDraft = denseGpu ?? getProviderCatalogDraft()
     const pools = getProviderExternalIpPools()
-    const pool =
+    const northSummitPool =
       getExternalIpPoolById(pools, DEFAULT_REGISTER_ORGANIZATION_FORM.externalIpPoolId) ??
       pools.find((item) => item.assignedOrganizationId === DEMO_NORTH_SUMMIT_BANK_ORG_ID) ??
       pools[0] ??
       null
+    const harborlinePool =
+      getExternalIpPoolById(pools, 'eipool-standby-a') ??
+      pools.find((item) => item.assignedOrganizationId === DEMO_HARBORLINE_CAPITAL_ORG_ID) ??
+      null
 
-    const demoBase = createDemoNorthSummitBankOrganization({
+    const northSummitBase = createDemoNorthSummitBankOrganization({
       catalogItemId: catalogDraft?.catalogItemId ?? null,
       catalogDisplayName: catalogDraft?.displayName ?? null,
-      externalIpPoolId: pool?.id ?? DEFAULT_REGISTER_ORGANIZATION_FORM.externalIpPoolId,
-      externalIpPoolName: pool?.name ?? null,
-      externalIpPoolCidr: pool?.cidr ?? null,
+      externalIpPoolId:
+        northSummitPool?.id ?? DEFAULT_REGISTER_ORGANIZATION_FORM.externalIpPoolId,
+      externalIpPoolName: northSummitPool?.name ?? null,
+      externalIpPoolCidr: northSummitPool?.cidr ?? null,
+    })
+
+    const harborlineBase = createDemoHarborlineCapitalOrganization({
+      catalogItemId: null,
+      catalogDisplayName: null,
+      externalIpPoolId: harborlinePool?.id ?? 'eipool-standby-a',
+      externalIpPoolName: harborlinePool?.name ?? null,
+      externalIpPoolCidr: harborlinePool?.cidr ?? null,
     })
 
     const replacedOrganizations = current.filter(
       (organization) =>
-        organization.id === demoBase.id || organization.slug === demoBase.slug,
+        organization.id === northSummitBase.id ||
+        organization.slug === northSummitBase.slug ||
+        organization.id === harborlineBase.id ||
+        organization.slug === DEMO_HARBORLINE_CAPITAL_SLUG,
     )
     const replacedIds = new Set(replacedOrganizations.map((organization) => organization.id))
-    const withoutNorthSummit = current.filter(
+    const remainingOrganizations = current.filter(
       (organization) => !replacedIds.has(organization.id),
     )
 
-    const pendingInviteSource = replacedOrganizations.find((organization) =>
-      hasPendingIdpInvite(organization),
+    const pendingInviteSource = replacedOrganizations.find(
+      (organization) =>
+        (organization.id === northSummitBase.id || organization.slug === northSummitBase.slug) &&
+        hasPendingIdpInvite(organization),
     )
-    const demo = pendingInviteSource
+    const northSummit = pendingInviteSource
       ? {
-          ...demoBase,
+          ...northSummitBase,
           idpManagerEmail: pendingInviteSource.idpManagerEmail,
           idpInviteToken: pendingInviteSource.idpInviteToken,
           idpInviteStatus: pendingInviteSource.idpInviteStatus,
@@ -1458,7 +1479,7 @@ export function ensureProviderDemoOrganizations(): RegisteredOrganization[] {
           identityProviderIssuerUrl: pendingInviteSource.identityProviderIssuerUrl,
           identityProviderClientId: pendingInviteSource.identityProviderClientId,
         }
-      : demoBase
+      : northSummitBase
 
     if (replacedIds.size > 0) {
       setProviderExternalIpPools(
@@ -1474,10 +1495,17 @@ export function ensureProviderDemoOrganizations(): RegisteredOrganization[] {
       )
     }
 
-    setProviderRegisteredOrganizations([demo, ...withoutNorthSummit])
+    setProviderRegisteredOrganizations([
+      northSummit,
+      harborlineBase,
+      ...remainingOrganizations,
+    ])
 
-    if (pool) {
-      assignExternalIpPoolToRegisteredOrganization(pool.id, demo.id)
+    if (northSummitPool) {
+      assignExternalIpPoolToRegisteredOrganization(northSummitPool.id, northSummit.id)
+    }
+    if (harborlinePool) {
+      assignExternalIpPoolToRegisteredOrganization(harborlinePool.id, harborlineBase.id)
     }
 
     return getProviderRegisteredOrganizations()

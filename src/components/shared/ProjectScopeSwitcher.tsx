@@ -113,6 +113,7 @@ export function ProjectScopeSwitcher({
       </Dropdown>
 
       <CreateTenantProjectWizard
+        presentation="modal"
         isOpen={isCreateWizardOpen}
         organization={resolvedOrganization}
         onClose={() => setIsCreateWizardOpen(false)}

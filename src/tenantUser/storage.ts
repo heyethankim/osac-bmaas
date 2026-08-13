@@ -7,9 +7,6 @@ import {
   createDemoTenantClusterInstance02,
   createDemoTenantClusterInstance03,
   createDemoTenantClusterInstance04,
-  createDemoTenantVirtualMachineInstance,
-  createDemoTenantVirtualMachineInstance02,
-  createDemoTenantVirtualMachineInstance03,
   DEMO_TENANT_BARE_METAL_INSTANCE_ID,
   DEMO_TENANT_BARE_METAL_INSTANCE_ID_02,
   DEMO_TENANT_BARE_METAL_INSTANCE_ID_03,
@@ -122,6 +119,7 @@ function isTenantInstance(value: unknown): value is TenantInstance {
   return (
     typeof instance.id === 'string' &&
     typeof instance.name === 'string' &&
+    (instance.description === undefined || typeof instance.description === 'string') &&
     typeof instance.catalogItemDisplayName === 'string' &&
     validServiceId &&
     typeof instance.hardwareProfile === 'string' &&
@@ -234,30 +232,34 @@ function getDemoOrganizationName(slug: string): string {
 }
 
 /**
- * Ensures Tenant Admin / Tenant User Services lists include demo Bare metal,
- * Virtual machine, and Cluster instances. Stable IDs avoid duplicates across reloads.
+ * Ensures Tenant Admin / Tenant User Services lists include demo Bare metal
+ * and Cluster instances. Virtual machines and Models stay empty (catalog-launch only).
+ * Stable IDs avoid duplicates across reloads.
  */
 export function ensureTenantDemoInstances(
   slug: string,
   organizationName: string = getDemoOrganizationName(slug),
 ): TenantInstance[] {
   const existing = getTenantUserInstances(slug)
-  const next = [...existing]
+  let next = [...existing]
   let changed = false
+
+  // Drop legacy seeded VMs so Virtual machines matches Models (empty until launch).
+  const retiredDemoVmIds = new Set([
+    DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID,
+    DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_02,
+    DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_03,
+  ])
+  const withoutRetiredVms = next.filter((instance) => !retiredDemoVmIds.has(instance.id))
+  if (withoutRetiredVms.length !== next.length) {
+    next = withoutRetiredVms
+    changed = true
+  }
 
   const demos: Array<{ id: string; create: (org: string) => TenantInstance }> = [
     { id: DEMO_TENANT_BARE_METAL_INSTANCE_ID, create: createDemoTenantBareMetalInstance },
     { id: DEMO_TENANT_BARE_METAL_INSTANCE_ID_02, create: createDemoTenantBareMetalInstance02 },
     { id: DEMO_TENANT_BARE_METAL_INSTANCE_ID_03, create: createDemoTenantBareMetalInstance03 },
-    { id: DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID, create: createDemoTenantVirtualMachineInstance },
-    {
-      id: DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_02,
-      create: createDemoTenantVirtualMachineInstance02,
-    },
-    {
-      id: DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_03,
-      create: createDemoTenantVirtualMachineInstance03,
-    },
     { id: DEMO_TENANT_CLUSTER_INSTANCE_ID, create: createDemoTenantClusterInstance },
     { id: DEMO_TENANT_CLUSTER_INSTANCE_ID_02, create: createDemoTenantClusterInstance02 },
     { id: DEMO_TENANT_CLUSTER_INSTANCE_ID_03, create: createDemoTenantClusterInstance03 },
@@ -360,7 +362,7 @@ export function ensureTenantDemoInstances(
   return next
 }
 
-/** Read instances and seed Bare metal / VM demos when missing (shared by Admin + User). */
+/** Read instances and seed Bare metal / Cluster demos when missing (shared by Admin + User). */
 export function getOrEnsureTenantUserInstances(
   slug: string,
   organizationName?: string,

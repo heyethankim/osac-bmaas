@@ -1,10 +1,18 @@
 import type { CatalogSpecRow } from '../catalog/catalogSpecs'
-import { resolveCatalogSpecRows } from '../catalog/catalogSpecs'
 import {
+  resolveCatalogSpecRows,
+  resolveClusterCatalogHighlightRows,
+} from '../catalog/catalogSpecs'
+import {
+  formatClusterHostTypeLabel,
+  formatClusterNodeSetLabel,
   formatClusterPlatformLabel,
+  getCatalogClusterNodeTopologyModeLabel,
+  getCatalogClusterVersionModeLabel,
   getReleaseImageForClusterVersion,
 } from '../catalog/catalogPublishConfig'
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
+import { getProviderCatalogItems } from '../providerSetup/storage'
 import {
   DEMO_TENANT_PROJECT_ID,
   DEMO_TENANT_PROJECT_ID_02,
@@ -104,6 +112,8 @@ export type TenantVmConfig = {
 export type TenantInstance = {
   id: string
   name: string
+  /** Optional free-text description captured at launch. */
+  description?: string
   catalogItemDisplayName: string
   /** Catalog service that produced this instance (drives icon and specs). */
   serviceId?: CatalogServiceId
@@ -996,9 +1006,6 @@ export const DEMO_TENANT_PROJECT_INSTANCE_IDS = [
   DEMO_TENANT_BARE_METAL_INSTANCE_ID,
   DEMO_TENANT_BARE_METAL_INSTANCE_ID_02,
   DEMO_TENANT_BARE_METAL_INSTANCE_ID_03,
-  DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID,
-  DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_02,
-  DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_03,
   DEMO_TENANT_CLUSTER_INSTANCE_ID,
   DEMO_TENANT_CLUSTER_INSTANCE_ID_02,
   DEMO_TENANT_CLUSTER_INSTANCE_ID_03,
@@ -1009,7 +1016,6 @@ export const DEMO_TENANT_PROJECT_INSTANCE_IDS = [
 export const DEMO_TENANT_SECONDARY_PROJECT_INSTANCE_IDS = [
   DEMO_TENANT_BARE_METAL_INSTANCE_ID,
   DEMO_TENANT_BARE_METAL_INSTANCE_ID_02,
-  DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID,
   DEMO_TENANT_CLUSTER_INSTANCE_ID,
   DEMO_TENANT_CLUSTER_INSTANCE_ID_04,
 ] as const
@@ -1047,12 +1053,12 @@ export function getClusterPlatformLabel(instance: TenantInstance): string {
       (row) => row.label === 'Cluster version' || row.label === 'Platform',
     )?.value.trim() || ''
   if (fromSpec) {
-    return fromSpec
+    return formatClusterPlatformLabel(fromSpec)
   }
 
   const fromOsImage = instance.osImage.trim()
   if (fromOsImage && !fromOsImage.includes('/')) {
-    return fromOsImage
+    return formatClusterPlatformLabel(fromOsImage)
   }
 
   const fromRelease = formatClusterPlatformLabel(resolveClusterConfig(instance).releaseImage)
@@ -1155,7 +1161,90 @@ export function getTenantInstanceCardSpecRows(instance: TenantInstance): Catalog
     return [instanceType, size, osImage]
   }
 
+  if (serviceId === 'cluster') {
+    return getClusterInstanceCardSpecRows(instance)
+  }
+
   return allSpecRows.slice(0, 3)
+}
+
+function findCatalogDraftForInstance(instance: TenantInstance) {
+  const needle = instance.catalogItemDisplayName.trim().toLowerCase()
+  if (!needle) {
+    return null
+  }
+
+  return (
+    getProviderCatalogItems().find(
+      (item) =>
+        item.displayName.trim().toLowerCase() === needle ||
+        item.catalogItemId.trim().toLowerCase() === needle,
+    ) ?? null
+  )
+}
+
+/** Same Cluster version / Node set / Host type rows as cluster catalog cards. */
+function getClusterInstanceCardSpecRows(instance: TenantInstance): CatalogSpecRow[] {
+  const catalog = findCatalogDraftForInstance(instance)
+  const catalogRows =
+    catalog?.serviceId === 'cluster' ? resolveClusterCatalogHighlightRows(catalog) : null
+
+  const platform =
+    getClusterPlatformLabel(instance) ||
+    catalogRows?.find((row) => row.label === 'Cluster version')?.value ||
+    '—'
+
+  const fromSpecNodeSet = instance.specRows?.find((row) => row.label === 'Node set')?.value.trim()
+  const fromSpecHostType = instance.specRows?.find((row) => row.label === 'Host type')?.value.trim()
+  const firstNodeSet = resolveClusterConfig(instance).nodeSets[0]
+  const nodeSetValue =
+    catalogRows?.find((row) => row.label === 'Node set')?.value ||
+    (fromSpecNodeSet && !/·\s*\d+\s+nodes?/i.test(fromSpecNodeSet)
+      ? formatClusterNodeSetLabel(fromSpecNodeSet)
+      : formatClusterNodeSetLabel(
+          firstNodeSet?.name === 'gpu-workers' || firstNodeSet?.hostType === 'gpu-host'
+            ? 'fc430-gpu'
+            : firstNodeSet?.name === 'infra' || firstNodeSet?.name === 'infra-workers'
+              ? 'fc430-infra'
+              : 'fc430-worker',
+        ))
+  const hostTypeValue =
+    catalogRows?.find((row) => row.label === 'Host type')?.value ||
+    formatClusterHostTypeLabel(
+      fromSpecHostType || firstNodeSet?.hostType || getClusterNodeSetTypeLabel(instance),
+    )
+
+  // Demo variety: version mode and node-topology mode vary per instance.
+  // Node set + Host type always share the same topology badge.
+  const modeHash = hashDemoSeed(`${instance.id}:cluster-card-modes`)
+  const versionMode = modeHash & 1 ? 'editable' : 'locked'
+  const topologyMode = modeHash & 2 ? 'editable' : 'locked'
+  const versionBadge = {
+    text: getCatalogClusterVersionModeLabel(versionMode),
+    color: (versionMode === 'editable' ? 'purple' : 'grey') as 'purple' | 'grey',
+  }
+  const topologyBadge = {
+    text: getCatalogClusterNodeTopologyModeLabel(topologyMode),
+    color: (topologyMode === 'editable' ? 'purple' : 'grey') as 'purple' | 'grey',
+  }
+
+  return [
+    {
+      label: 'Cluster version',
+      value: platform,
+      badge: versionBadge,
+    },
+    {
+      label: 'Node set',
+      value: nodeSetValue,
+      badge: topologyBadge,
+    },
+    {
+      label: 'Host type',
+      value: hostTypeValue,
+      badge: topologyBadge,
+    },
+  ]
 }
 
 function resolveDemoInstanceProjectFields(options: {
@@ -1330,20 +1419,30 @@ function createDemoTenantClusterInstanceVariant(
     },
   ]
   const nodeSets = options.nodeSets ?? defaultNodeSets
-  const nodeSetValue = nodeSets
-    .map(
-      (nodeSet) =>
-        `${nodeSet.name ?? nodeSet.hostType} · ${nodeSet.nodeCount} node${
-          nodeSet.nodeCount === 1 ? '' : 's'
-        }`,
-    )
-    .join(' · ')
+  const nodeSetId =
+    options.hostType === 'gpu-host'
+      ? 'fc430-gpu'
+      : nodeSets[0]?.name === 'infra' || nodeSets[0]?.name === 'infra-workers'
+        ? 'fc430-infra'
+        : 'fc430-worker'
+  const nodeSetLabel = formatClusterNodeSetLabel(nodeSetId)
+  const hostTypeLabel = formatClusterHostTypeLabel(options.hostType)
   const specRows = baseSpecRows.map((row) => {
     if (row.label === 'Cluster version' || row.label === 'Platform') {
-      return { label: 'Cluster version', value: options.platform }
+      return {
+        label: 'Cluster version',
+        value: options.platform,
+        badge: row.badge ?? {
+          text: getCatalogClusterVersionModeLabel('locked'),
+          color: 'grey' as const,
+        },
+      }
     }
     if (row.label === 'Node set') {
-      return { ...row, value: nodeSetValue }
+      return { ...row, value: nodeSetLabel }
+    }
+    if (row.label === 'Host type') {
+      return { ...row, value: hostTypeLabel }
     }
     return row
   })

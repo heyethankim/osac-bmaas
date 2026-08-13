@@ -123,7 +123,7 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   osImage: 'RHEL 9.4',
   networkingTitle: 'Networking',
   networkingLede:
-    'Choose the virtual network, subnet, and security group for this instance.',
+    'Choose the virtual network, subnet, security group, and external IP pool for this instance.',
   networkingAssignedHelper: 'Set by your organization',
   reviewTitle: 'Review',
   reviewHardware: 'Dell PowerEdge R750',
@@ -191,6 +191,7 @@ export const CLUSTER_LAUNCH_INSTANCE_DEMO = {
   serviceCidr: '10.1.0.0/24',
   serviceCidrHelper: 'Use CIDR notation (for example 172.30.0.0/16 or fd02::/112).',
   addNodeSetLabel: 'Add node set',
+  removeNodeSetLabel: 'Remove',
 } as const
 
 export const VM_LAUNCH_INSTANCE_DEMO = {
@@ -267,12 +268,16 @@ export const LAUNCH_INSTANCE_BOOT_LOG_STEP_MS = Math.floor(
 
 export type ClusterNodeSetForm = {
   id: string
+  /** Catalog node-set kind (e.g. fc430-worker). */
+  nodeSetId: string
   hostType: string
   nodeCount: number
 }
 
 export type LaunchInstanceWizardForm = {
   instanceName: string
+  /** Optional free-text description (same pattern as catalog item creation). */
+  description: string
   sshPublicKey: string
   pullSecret: string
   /** Selected OpenShift version id when provisioning a cluster. */
@@ -343,9 +348,11 @@ export function getNextLaunchInstanceName(
 export function createDefaultClusterNodeSet(
   index = 1,
   hostType: string = CLUSTER_LAUNCH_INSTANCE_DEMO.defaultHostType,
+  nodeSetId: string = 'fc430-worker',
 ): ClusterNodeSetForm {
   return {
     id: `node-set-${index}`,
+    nodeSetId,
     hostType,
     nodeCount: CLUSTER_LAUNCH_INSTANCE_DEMO.defaultNodeCount,
   }
@@ -353,6 +360,7 @@ export function createDefaultClusterNodeSet(
 
 export const DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM: LaunchInstanceWizardForm = {
   instanceName: LAUNCH_INSTANCE_WIZARD_DEMO.defaultInstanceName,
+  description: '',
   sshPublicKey: LAUNCH_INSTANCE_WIZARD_DEMO.defaultSshPublicKey,
   pullSecret: '',
   clusterVersionId: '',
@@ -383,6 +391,8 @@ export function createLaunchInstanceWizardForm(options: {
   clusterVersion?: string
   /** Catalog default host type for the first node set. */
   hostType?: string
+  /** Catalog default node-set kind for the first node set. */
+  nodeSetId?: string
 }): LaunchInstanceWizardForm {
   const serviceId = options.serviceId ?? 'baremetal'
   const isCluster = serviceId === 'cluster'
@@ -396,6 +406,7 @@ export function createLaunchInstanceWizardForm(options: {
     : ''
   const defaultHostType =
     options.hostType?.trim() || CLUSTER_LAUNCH_INSTANCE_DEMO.defaultHostType
+  const defaultNodeSetId = options.nodeSetId?.trim() || 'fc430-worker'
 
   return {
     ...DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM,
@@ -415,7 +426,7 @@ export function createLaunchInstanceWizardForm(options: {
           clusterVersionId || options.clusterVersion || CLUSTER_LAUNCH_INSTANCE_DEMO.releaseImage,
         )
       : '',
-    nodeSets: [createDefaultClusterNodeSet(1, defaultHostType)],
+    nodeSets: [createDefaultClusterNodeSet(1, defaultHostType, defaultNodeSetId)],
     podCidr: isCluster ? CLUSTER_LAUNCH_INSTANCE_DEMO.podCidr : '',
     serviceCidr: isCluster ? CLUSTER_LAUNCH_INSTANCE_DEMO.serviceCidr : '',
     containerDiskImage: isVm ? VM_LAUNCH_INSTANCE_DEMO.containerDiskImage : '',
@@ -460,7 +471,10 @@ export function isClusterConfigureStepValid(form: LaunchInstanceWizardForm): boo
     form.releaseImage.trim().length > 0 &&
     form.nodeSets.length > 0 &&
     form.nodeSets.every(
-      (nodeSet) => nodeSet.hostType.trim().length > 0 && nodeSet.nodeCount >= 1,
+      (nodeSet) =>
+        nodeSet.nodeSetId.trim().length > 0 &&
+        nodeSet.hostType.trim().length > 0 &&
+        nodeSet.nodeCount >= 1,
     )
   )
 }

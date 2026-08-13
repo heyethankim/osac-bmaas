@@ -682,11 +682,18 @@ export function getReleaseImageForClusterVersion(idOrLabel: string | undefined |
 }
 
 export function formatClusterPlatformLabel(idOrLabel: string | undefined | null): string {
-  return (
-    getCatalogClusterVersionOption(idOrLabel)?.label ??
-    idOrLabel?.trim()?.replace(/^Red Hat\s+/i, '') ??
-    'OpenShift'
-  )
+  const matched = getCatalogClusterVersionOption(idOrLabel)
+  if (matched) {
+    return matched.label
+  }
+
+  const trimmed = idOrLabel?.trim()
+  if (!trimmed) {
+    return 'OpenShift'
+  }
+
+  // Strip legacy "Red Hat OpenShift …" / "Red Hat …" prefixes from stored labels.
+  return trimmed.replace(/^Red Hat\s+/i, '') || 'OpenShift'
 }
 
 function formatTemplateParamLabel(key: string): string {

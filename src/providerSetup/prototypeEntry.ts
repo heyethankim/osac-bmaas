@@ -132,10 +132,7 @@ function createDefaultCatalogDraft(): ProviderCatalogDraft {
     scope: 'global-public',
     rateCard: DEFAULT_RATE_CARD,
     serviceId: 'baremetal',
-    networkPolicy: createCatalogNetworkPolicyForLockPattern(
-      'all-locked',
-      BARE_METAL_GPU_CATALOG_ITEM_ID,
-    ),
+    networkPolicy: createAllEditableCatalogNetworkPolicy(),
     status: 'live',
     createdAt: new Date().toISOString(),
   }
@@ -179,11 +176,8 @@ function createClusterNodeSetsCatalogDraft(): ProviderCatalogDraft {
     nodeSetLabel: formatClusterNodeSetLabel(DEFAULT_CLUSTER_NODE_SET_ID),
     hostTypeId: DEFAULT_CLUSTER_HOST_TYPE_ID,
     hostTypeLabel: formatClusterHostTypeLabel(DEFAULT_CLUSTER_HOST_TYPE_ID),
-    clusterNodeTopologyMode: 'locked',
-    networkPolicy: createCatalogNetworkPolicyForLockPattern(
-      'vnet-locked',
-      CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
-    ),
+    clusterNodeTopologyMode: 'editable',
+    networkPolicy: createAllEditableCatalogNetworkPolicy(),
     status: 'live',
     createdAt: new Date().toISOString(),
   }
@@ -199,10 +193,7 @@ function createVmNetworkAttachmentsCatalogDraft(): ProviderCatalogDraft {
     scope: 'global-public',
     rateCard: VM_NETWORK_ATTACHMENTS_RATE_CARD,
     serviceId: 'virtual-machine',
-    networkPolicy: createCatalogNetworkPolicyForLockPattern(
-      'all-editable',
-      VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID,
-    ),
+    networkPolicy: createAllEditableCatalogNetworkPolicy(),
     status: 'live',
     createdAt: new Date().toISOString(),
   }
@@ -268,14 +259,6 @@ function syncBareMetalAiInferenceCatalogItem(): void {
 
   // Preserve publish state so detail-page Publish → Launch instance stays user-driven.
 
-  const networkPolicy = getCatalogItemNetworkPolicy(synced)
-  if (networkPolicy.enabled) {
-    updateProviderCatalogNetworkPolicy(synced.catalogItemId, {
-      ...networkPolicy,
-      enabled: false,
-    })
-  }
-
   // Keep North Summit Bank pointed at this VIP offering so tenant personas resolve it.
   const denseGpu = synced
   const northstar = getProviderRegisteredOrganizations().find(
@@ -328,16 +311,16 @@ function syncBareMetalGpuTrainingCatalogItem(): void {
 }
 
 /**
- * Demo catalog items default to all networking fields unlocked.
- * Provider admins can lock individual fields from the catalog detail drawer.
+ * Demo catalog items keep all networking fields unlocked.
+ * Catalog creation no longer configures networking — launch chooses freely.
  */
 const DEMO_CATALOG_NETWORK_LOCK_PATTERNS: ReadonlyArray<{
   catalogItemId: string
   pattern: CatalogNetworkLockPattern
 }> = [
-  { catalogItemId: BARE_METAL_GPU_CATALOG_ITEM_ID, pattern: 'all-locked' },
+  { catalogItemId: BARE_METAL_GPU_CATALOG_ITEM_ID, pattern: 'all-editable' },
   { catalogItemId: BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID, pattern: 'all-editable' },
-  { catalogItemId: CLUSTER_NODE_SETS_CATALOG_ITEM_ID, pattern: 'vnet-locked' },
+  { catalogItemId: CLUSTER_NODE_SETS_CATALOG_ITEM_ID, pattern: 'all-editable' },
   { catalogItemId: VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID, pattern: 'all-editable' },
 ]
 
@@ -361,7 +344,10 @@ function applyLockPatternToPolicy(
       ...current.securityGroup,
       locked: patterned.securityGroup.locked,
     },
-    externalIpPool: current.externalIpPool ?? patterned.externalIpPool,
+    externalIpPool: {
+      ...(current.externalIpPool ?? patterned.externalIpPool),
+      locked: patterned.externalIpPool.locked,
+    },
   }
 }
 
@@ -477,6 +463,10 @@ function syncClusterCatalogVersionLabels(): void {
           diskImageLabel: normalized,
         })
       }
+    } else if (versionLabel && /^Red Hat\s+/i.test(versionLabel)) {
+      patchProviderCatalogItem(item.catalogItemId, {
+        diskImageLabel: formatClusterPlatformLabel(versionLabel),
+      })
     } else if (versionId && !versionLabel) {
       patchProviderCatalogItem(item.catalogItemId, {
         diskImageLabel: formatClusterPlatformLabel(versionId),
@@ -493,19 +483,25 @@ function syncClusterCatalogVersionLabels(): void {
     const hostTypeId = item.hostTypeId?.trim() || DEFAULT_CLUSTER_HOST_TYPE_ID
     const nodeSetLabel = formatClusterNodeSetLabel(item.nodeSetLabel?.trim() || nodeSetId)
     const hostTypeLabel = formatClusterHostTypeLabel(item.hostTypeLabel?.trim() || hostTypeId)
+    // Demo Node Sets offering: topology stays editable so launch can add node sets.
+    const desiredTopologyMode =
+      item.catalogItemId === CLUSTER_NODE_SETS_CATALOG_ITEM_ID ||
+      item.catalogItemId === LEGACY_CLUSTER_NODE_SETS_CATALOG_ITEM_ID
+        ? 'editable'
+        : (item.clusterNodeTopologyMode ?? 'locked')
     if (
       item.nodeSetId !== nodeSetId ||
       item.nodeSetLabel !== nodeSetLabel ||
       item.hostTypeId !== hostTypeId ||
       item.hostTypeLabel !== hostTypeLabel ||
-      !item.clusterNodeTopologyMode
+      item.clusterNodeTopologyMode !== desiredTopologyMode
     ) {
       patchProviderCatalogItem(item.catalogItemId, {
         nodeSetId,
         nodeSetLabel,
         hostTypeId,
         hostTypeLabel,
-        clusterNodeTopologyMode: item.clusterNodeTopologyMode ?? 'locked',
+        clusterNodeTopologyMode: desiredTopologyMode,
       })
     }
   }

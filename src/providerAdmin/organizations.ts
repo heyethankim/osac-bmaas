@@ -259,6 +259,13 @@ export function buildDemoIdentityProviderName(
 export const DEMO_NORTH_SUMMIT_BANK_ORG_ID = 'org-northstar-bank'
 export const DEMO_NORTH_SUMMIT_BANK_TENANT_ID = 'tenant-northstar'
 
+/** Second demo enterprise for VIP visibility multi-select (not BlueSolace). */
+export const DEMO_HARBORLINE_CAPITAL_ORG_ID = 'org-harborline-capital'
+export const DEMO_HARBORLINE_CAPITAL_TENANT_ID = 'tenant-harborline'
+export const DEMO_HARBORLINE_CAPITAL_SLUG = 'harborline'
+export const DEMO_HARBORLINE_CAPITAL_NAME = 'harborline-capital'
+export const DEMO_HARBORLINE_CAPITAL_DOMAIN = 'harborlinecapital.com'
+
 export const REGISTER_ORGANIZATION_STEPS = [
   { id: 'organization', label: 'Organization' },
   { id: 'review', label: 'Review' },
@@ -338,6 +345,62 @@ export function createDemoNorthSummitBankOrganization(
     rbacConfigured: true,
     status: 'Active',
     createdAt: '2026-06-12T14:30:00.000Z',
+  }
+}
+
+/** Fully activated Harborline Capital — IdP connected, roles defined, Active. */
+export function createDemoHarborlineCapitalOrganization(
+  options: {
+    catalogItemId?: string | null
+    catalogDisplayName?: string | null
+    externalIpPoolId?: string | null
+    externalIpPoolName?: string | null
+    externalIpPoolCidr?: string | null
+  } = {},
+): RegisteredOrganization {
+  const primaryDomain = DEMO_HARBORLINE_CAPITAL_DOMAIN
+
+  return {
+    id: DEMO_HARBORLINE_CAPITAL_ORG_ID,
+    name: DEMO_HARBORLINE_CAPITAL_NAME,
+    tenantId: DEMO_HARBORLINE_CAPITAL_TENANT_ID,
+    slug: DEMO_HARBORLINE_CAPITAL_SLUG,
+    primaryDomain,
+    billingAccountId: 'ACCT-HLC-3910',
+    billingAccountName: 'harborline-capital-enterprise-billing',
+    catalogItemId: options.catalogItemId ?? null,
+    catalogDisplayName: options.catalogDisplayName ?? null,
+    externalIpPoolId: options.externalIpPoolId ?? 'eipool-standby-a',
+    externalIpPoolName: options.externalIpPoolName ?? null,
+    externalIpPoolCidr: options.externalIpPoolCidr ?? null,
+    maxInstances: 16,
+    tenantAdminName: 'Avery Quinn',
+    tenantAdminEmail: `aquinn@${primaryDomain}`,
+    additionalTenantAdmins: [
+      { name: 'Noah Patel', email: `npatel@${primaryDomain}` },
+      { name: 'Riley Soto', email: `rsoto@${primaryDomain}` },
+    ],
+    invitedTenantUserEmails: [
+      `mlee@${primaryDomain}`,
+      `kdavis@${primaryDomain}`,
+      `jwu@${primaryDomain}`,
+    ],
+    identityProviderConnected: true,
+    identityProviderName: buildDemoIdentityProviderName('SAML', primaryDomain),
+    identityProviderDisplayName: 'harborline-capital-idp',
+    identityProviderProtocol: 'SAML',
+    identityProviderIssuerUrl: `https://idp.${primaryDomain}/saml`,
+    identityProviderClientId: 'bmaas-harborline',
+    idpManagerEmail: null,
+    idpInviteToken: null,
+    idpInviteStatus: 'none',
+    idpInviteSentAt: null,
+    idpInviteExpiresAt: null,
+    breakGlassName: 'Break-glass admin',
+    breakGlassEmail: `breakglass@${primaryDomain}`,
+    rbacConfigured: true,
+    status: 'Active',
+    createdAt: '2026-06-18T11:00:00.000Z',
   }
 }
 

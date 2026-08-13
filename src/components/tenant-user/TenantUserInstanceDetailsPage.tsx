@@ -831,7 +831,7 @@ export function BareMetalConnectSshModal({
         </DescriptionList>
       </ModalBody>
       <ModalFooter>
-        <Button variant="primary" onClick={onClose}>
+        <Button variant="secondary" onClick={onClose}>
           Close
         </Button>
       </ModalFooter>
@@ -1155,6 +1155,14 @@ function ClusterInstancePageBody({
                     />
                   </DescriptionListDescription>
                 </DescriptionListGroup>
+                {instance.description?.trim() ? (
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Description</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      {instance.description.trim()}
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                ) : null}
                 <DescriptionListGroup>
                   <DescriptionListTerm>API URL</DescriptionListTerm>
                   <DescriptionListDescription>
@@ -1428,6 +1436,14 @@ function VmInstancePageBody({
                     />
                   </DescriptionListDescription>
                 </DescriptionListGroup>
+                {instance.description?.trim() ? (
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Description</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      {instance.description.trim()}
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                ) : null}
                 <DescriptionListGroup>
                   <DescriptionListTerm>Instance type</DescriptionListTerm>
                   <DescriptionListDescription>{vmInstanceType}</DescriptionListDescription>
@@ -1607,6 +1623,14 @@ function DefaultInstancePageBody({
                     />
                   </DescriptionListDescription>
                 </DescriptionListGroup>
+                {instance.description?.trim() ? (
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Description</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      {instance.description.trim()}
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                ) : null}
                 <DescriptionListGroup>
                   <DescriptionListTerm>Instance ID</DescriptionListTerm>
                   <DescriptionListDescription>

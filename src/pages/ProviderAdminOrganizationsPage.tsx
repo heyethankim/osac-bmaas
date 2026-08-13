@@ -317,7 +317,24 @@ export function ProviderAdminOrganizationsPage({
 
   return (
     <>
-      {isDetailsOpen && selectedOrganization ? (
+      {isWizardOpen ? (
+        <RegisterOrganizationWizard
+          presentation="page"
+          isOpen={isWizardOpen}
+          catalogDraft={catalogDraft}
+          onClose={() => setIsWizardOpen(false)}
+          onRegister={handleRegister}
+        />
+      ) : idpDelegationOrganization !== null ? (
+        <SetupIdentityProviderWizard
+          presentation="page"
+          isOpen
+          organization={idpDelegationOrganization}
+          onClose={handleIdpModalClose}
+          onUpdated={handleIdpSetupUpdated}
+          onConnected={handleIdentityProviderConnected}
+        />
+      ) : isDetailsOpen && selectedOrganization ? (
         <OrganizationDetailsPage
           organization={selectedOrganization}
           onBack={closeDetails}
@@ -511,19 +528,6 @@ export function ProviderAdminOrganizationsPage({
       </div>
       )}
 
-      <RegisterOrganizationWizard
-        isOpen={isWizardOpen}
-        catalogDraft={catalogDraft}
-        onClose={() => setIsWizardOpen(false)}
-        onRegister={handleRegister}
-      />
-      <SetupIdentityProviderWizard
-        isOpen={idpDelegationOrganization !== null}
-        organization={idpDelegationOrganization}
-        onClose={handleIdpModalClose}
-        onUpdated={handleIdpSetupUpdated}
-        onConnected={handleIdentityProviderConnected}
-      />
       <ConnectOrganizationIdentityProviderModal
         isOpen={idpOrganization !== null}
         organization={idpOrganization}

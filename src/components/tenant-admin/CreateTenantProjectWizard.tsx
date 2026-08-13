@@ -37,6 +37,7 @@ import {
   WizardStep,
 } from '@patternfly/react-core'
 import { KubernetesResourceNameField } from '../shared/KubernetesResourceNameHelper'
+import { ResourceCreatePageShell } from '../shared/ResourceCreatePageShell'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import {
   CREATE_PROJECT_WIZARD_DEMO,
@@ -62,6 +63,8 @@ import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceNa
 
 type CreateTenantProjectWizardProps = {
   isOpen: boolean
+  /** `page` replaces the projects landing (breadcrumb back). Default `modal`. */
+  presentation?: 'modal' | 'page'
   organization: RegisteredOrganization
   onClose: () => void
   onCreate: (project: TenantProject) => void
@@ -76,6 +79,7 @@ const ENVIRONMENT_ICONS: Record<TenantProjectEnvironment, ReactNode> = {
 
 export function CreateTenantProjectWizard({
   isOpen,
+  presentation = 'modal',
   organization,
   onClose,
   onCreate,
@@ -476,6 +480,61 @@ export function CreateTenantProjectWizard({
     }
   }
 
+  const wizardTitle = 'New project'
+  const isPage = presentation === 'page'
+
+  const wizard = isOpen ? (
+    <Wizard
+      key="create-tenant-project-wizard"
+      className={[
+        'tenant-admin-projects-teams__wizard',
+        isPage ? 'catalog-wizard-page__wizard' : undefined,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      height={isPage ? '100%' : '40rem'}
+      isPlain={isPage}
+      onClose={isPage ? undefined : handleClose}
+      header={
+        isPage ? undefined : (
+          <WizardHeader
+            title={wizardTitle}
+            titleId="create-tenant-project-wizard-title"
+            onClose={handleClose}
+            closeButtonAriaLabel="Close new project wizard"
+          />
+        )
+      }
+    >
+      {CREATE_PROJECT_WIZARD_STEPS.map((step) => (
+        <WizardStep
+          key={step.id}
+          name={step.label}
+          id={`create-project-step-${step.id}`}
+          footer={getStepFooter(step.id)}
+        >
+          {renderStepContent(step.id)}
+        </WizardStep>
+      ))}
+    </Wizard>
+  ) : null
+
+  if (isPage) {
+    if (!isOpen) {
+      return null
+    }
+    return (
+      <ResourceCreatePageShell
+        parentLabel="Projects & teams"
+        title={wizardTitle}
+        titleId="create-tenant-project-wizard-title"
+        onBack={handleClose}
+      >
+        {wizard}
+      </ResourceCreatePageShell>
+    )
+  }
+
   return (
     <Modal
       variant={ModalVariant.medium}
@@ -486,33 +545,7 @@ export function CreateTenantProjectWizard({
       aria-labelledby="create-tenant-project-wizard-title"
       className="tenant-admin-projects-teams__wizard-modal"
     >
-      {isOpen ? (
-        <Wizard
-          key="create-tenant-project-wizard"
-          className="tenant-admin-projects-teams__wizard"
-          height="40rem"
-          onClose={handleClose}
-          header={
-            <WizardHeader
-              title="New project"
-              titleId="create-tenant-project-wizard-title"
-              onClose={handleClose}
-              closeButtonAriaLabel="Close new project wizard"
-            />
-          }
-        >
-          {CREATE_PROJECT_WIZARD_STEPS.map((step) => (
-            <WizardStep
-              key={step.id}
-              name={step.label}
-              id={`create-project-step-${step.id}`}
-              footer={getStepFooter(step.id)}
-            >
-              {renderStepContent(step.id)}
-            </WizardStep>
-          ))}
-        </Wizard>
-      ) : null}
+      {wizard}
     </Modal>
   )
 }

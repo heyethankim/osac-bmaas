@@ -23,6 +23,7 @@ import {
   type SavedMasterTemplate,
 } from '../../providerSetup/templateDemo'
 import { resolveHardwareSpecsFromTemplate } from '../../catalog/hardwareSpecs'
+import { formatClusterPlatformLabel } from '../../catalog/catalogPublishConfig'
 import { getProviderCatalogItems, getProviderSavedTemplates } from '../../providerSetup/storage'
 
 type BmaasTemplateDetailsPageProps = {
@@ -141,7 +142,9 @@ export function BmaasTemplateDetailsPage({
               <DescriptionListGroup>
                 <DescriptionListTerm>Cluster version</DescriptionListTerm>
                 <DescriptionListDescription>
-                  {linkedCatalog?.diskImageLabel ?? 'OpenShift 4.19'}
+                  {formatClusterPlatformLabel(
+                    linkedCatalog?.diskImageLabel ?? linkedCatalog?.diskImageId ?? 'OpenShift 4.19',
+                  )}
                 </DescriptionListDescription>
               </DescriptionListGroup>
               <DescriptionListGroup>

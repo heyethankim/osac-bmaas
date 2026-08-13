@@ -56,6 +56,17 @@ export function ProviderAdminComputeImagesPage() {
     [detailsImage, images],
   )
 
+  if (isCreateModalOpen) {
+    return (
+      <CreateComputeImageModal
+        presentation="page"
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreated={() => refreshImages()}
+      />
+    )
+  }
+
   return (
     <div className="provider-admin-workspace-page provider-admin-compute-images">
       <ProviderAdminWorkspacePageHeader
@@ -148,12 +159,6 @@ export function ProviderAdminComputeImagesPage() {
           </Table>
         </div>
       )}
-
-      <CreateComputeImageModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onCreated={() => refreshImages()}
-      />
 
       <ComputeImageDetailsModal
         image={detailsImage}

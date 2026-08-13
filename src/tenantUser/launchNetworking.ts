@@ -15,12 +15,22 @@ import {
   getProviderCatalogItems,
 } from '../providerSetup/storage'
 import {
-  applyTenantLocksForUsers,
   applyTenantNetworkOverrides,
   getNetworkOptionDetail,
   getTenantNetworkOverrides,
   resolveEffectiveNetworkPolicyForUsers,
 } from '../tenantAdmin/networking'
+
+/** Catalog no longer configures networking locks — launchers always pick freely. */
+function unlockPolicyForLaunch(policy: CatalogNetworkPolicy): CatalogNetworkPolicy {
+  return {
+    enabled: true,
+    virtualNetwork: { ...policy.virtualNetwork, locked: false },
+    subnet: { ...policy.subnet, locked: false },
+    securityGroup: { ...policy.securityGroup, locked: false },
+    externalIpPool: { ...policy.externalIpPool, locked: false },
+  }
+}
 
 export type LaunchNetworkFieldKind =
   | 'virtual-network'
@@ -71,25 +81,30 @@ function resolvePolicyForLaunch(
         organization.slug,
         specificItem.catalogItemId,
       )
-      return applyTenantLocksForUsers(applyTenantNetworkOverrides(base, overrides), overrides)
+      // Keep tenant default values; ignore lock overlays so launch stays free-choice.
+      return unlockPolicyForLaunch(applyTenantNetworkOverrides(base, overrides))
     }
-    return base
+    return unlockPolicyForLaunch(base)
   }
 
   if (preferCatalogDraft && catalogDraft) {
-    return getCatalogItemNetworkPolicy(catalogDraft)
+    return unlockPolicyForLaunch(getCatalogItemNetworkPolicy(catalogDraft))
   }
 
   if (organization) {
-    return resolveEffectiveNetworkPolicyForUsers(organization, catalogDraft)
+    return unlockPolicyForLaunch(
+      resolveEffectiveNetworkPolicyForUsers(organization, catalogDraft),
+    )
   }
 
   if (catalogDraft) {
-    return getCatalogItemNetworkPolicy(catalogDraft)
+    return unlockPolicyForLaunch(getCatalogItemNetworkPolicy(catalogDraft))
   }
 
   const latest = getProviderCatalogItems()[0]
-  return latest ? getCatalogItemNetworkPolicy(latest) : DEFAULT_CATALOG_NETWORK_POLICY
+  return unlockPolicyForLaunch(
+    latest ? getCatalogItemNetworkPolicy(latest) : DEFAULT_CATALOG_NETWORK_POLICY,
+  )
 }
 
 export function resolveLaunchNetworkContext(
@@ -104,16 +119,6 @@ export function resolveLaunchNetworkContext(
     preferCatalogDraft,
     catalogItemId,
   )
-
-  if (!basePolicy.enabled) {
-    return {
-      enabled: false,
-      policy: basePolicy,
-      fields: [],
-      hasEditableFields: false,
-      assignedNetworkSummary: '',
-    }
-  }
 
   const virtualNetworkOptions = getCatalogVirtualNetworkOptions()
   const preferredVirtualNetworkId =
@@ -153,22 +158,22 @@ export function resolveLaunchNetworkContext(
     virtualNetwork: {
       id: preferredVirtualNetworkId,
       name: virtualNetworkName,
-      locked: basePolicy.virtualNetwork.locked,
+      locked: false,
     },
     subnet: {
       id: preferredSubnetId,
       name: subnetName,
-      locked: basePolicy.subnet.locked,
+      locked: false,
     },
     securityGroup: {
       id: preferredSecurityGroupId,
       name: securityGroupName,
-      locked: basePolicy.securityGroup.locked,
+      locked: false,
     },
     externalIpPool: {
       id: preferredExternalIpPoolId,
       name: externalIpPoolName,
-      locked: basePolicy.externalIpPool?.locked ?? false,
+      locked: false,
     },
   }
 
@@ -178,7 +183,7 @@ export function resolveLaunchNetworkContext(
       label: 'Virtual network',
       value: getNetworkOptionDetail(virtualNetworkOptions, policy.virtualNetwork.id),
       selectedId: policy.virtualNetwork.id,
-      locked: policy.virtualNetwork.locked,
+      locked: false,
       options: virtualNetworkOptions,
     },
     {
@@ -186,7 +191,7 @@ export function resolveLaunchNetworkContext(
       label: 'Subnet',
       value: getNetworkOptionDetail(subnetOptions, policy.subnet.id),
       selectedId: policy.subnet.id,
-      locked: policy.subnet.locked,
+      locked: false,
       options: subnetOptions,
     },
     {
@@ -194,7 +199,7 @@ export function resolveLaunchNetworkContext(
       label: 'Security group',
       value: getNetworkOptionDetail(securityGroupOptions, policy.securityGroup.id),
       selectedId: policy.securityGroup.id,
-      locked: policy.securityGroup.locked,
+      locked: false,
       options: securityGroupOptions,
     },
     {
@@ -202,7 +207,7 @@ export function resolveLaunchNetworkContext(
       label: 'External IP pool',
       value: getNetworkOptionDetail(externalIpPoolOptions, policy.externalIpPool.id),
       selectedId: policy.externalIpPool.id,
-      locked: policy.externalIpPool.locked,
+      locked: false,
       options: externalIpPoolOptions,
     },
   ]
@@ -211,7 +216,7 @@ export function resolveLaunchNetworkContext(
     enabled: true,
     policy,
     fields,
-    hasEditableFields: fields.some((field) => !field.locked),
+    hasEditableFields: true,
     assignedNetworkSummary: `${policy.virtualNetwork.name} / ${policy.subnet.name}`,
   }
 }

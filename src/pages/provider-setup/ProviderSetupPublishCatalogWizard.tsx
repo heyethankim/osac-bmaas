@@ -1186,7 +1186,8 @@ export function ProviderSetupPublishCatalogWizard({
         return (
           <div className="provider-setup-template__publish-hardware-step">
             <Content component="p" className="provider-setup-template__publish-step-lede">
-              Choose the default node set and host type for this catalog item.
+              Choose the default node set and host type for this catalog item. When topology is
+              editable, tenants can change these and add more node sets at launch.
             </Content>
             <FormGroup
               label="Tenant access to node topology"
@@ -1562,47 +1563,51 @@ export function ProviderSetupPublishCatalogWizard({
                   <span className="provider-admin-catalog__scope-detail">Visible to all tenants.</span>
                 </span>
               </button>
-              <button
-                type="button"
-                className={`provider-admin-catalog__scope-card${
-                  publishScope === 'vip-enterprise' ? ' provider-admin-catalog__scope-card--selected' : ''
-                }`}
-                onClick={selectVipEnterprise}
-                role="radio"
-                aria-checked={publishScope === 'vip-enterprise'}
-              >
-                {publishScope === 'vip-enterprise' ? (
-                  <Label
-                    color="grey"
-                    isCompact
-                    className="provider-admin-catalog__scope-selected-badge"
-                  >
-                    Selected
-                  </Label>
-                ) : null}
-                <CatalogPublishScopeIcon
-                  scope="vip-enterprise"
-                  className="provider-admin-catalog__scope-icon"
-                />
-                <span className="provider-admin-catalog__scope-copy">
-                  <span className="provider-admin-catalog__scope-title">VIP enterprise</span>
-                  <span className="provider-admin-catalog__scope-detail">
-                    Visible only to selected enterprise tenants.
+              <div className="provider-admin-catalog__scope-vip-group">
+                <button
+                  type="button"
+                  className={`provider-admin-catalog__scope-card${
+                    publishScope === 'vip-enterprise'
+                      ? ' provider-admin-catalog__scope-card--selected'
+                      : ''
+                  }`}
+                  onClick={selectVipEnterprise}
+                  role="radio"
+                  aria-checked={publishScope === 'vip-enterprise'}
+                >
+                  {publishScope === 'vip-enterprise' ? (
+                    <Label
+                      color="grey"
+                      isCompact
+                      className="provider-admin-catalog__scope-selected-badge"
+                    >
+                      Selected
+                    </Label>
+                  ) : null}
+                  <CatalogPublishScopeIcon
+                    scope="vip-enterprise"
+                    className="provider-admin-catalog__scope-icon"
+                  />
+                  <span className="provider-admin-catalog__scope-copy">
+                    <span className="provider-admin-catalog__scope-title">VIP enterprise</span>
+                    <span className="provider-admin-catalog__scope-detail">
+                      Visible only to selected enterprise tenants.
+                    </span>
                   </span>
-                </span>
-              </button>
-            </div>
-            {isVipEnterprise ? (
-              <div className="provider-setup-template__publish-enterprise-form">
-                <VipEnterpriseOrganizationField
-                  organizations={organizations}
-                  selectedTenantIds={enterpriseTenantIds}
-                  onSelectedTenantIdsChange={setEnterpriseTenantIds}
-                  onRegisterOrganization={onRegisterOrganization}
-                  fieldIdPrefix="publish-catalog"
-                />
+                </button>
+                {isVipEnterprise ? (
+                  <div className="provider-admin-catalog__scope-vip-nested">
+                    <VipEnterpriseOrganizationField
+                      organizations={organizations}
+                      selectedTenantIds={enterpriseTenantIds}
+                      onSelectedTenantIdsChange={setEnterpriseTenantIds}
+                      onRegisterOrganization={onRegisterOrganization}
+                      fieldIdPrefix="publish-catalog"
+                    />
+                  </div>
+                ) : null}
               </div>
-            ) : null}
+            </div>
           </div>
         )
       case 'review': {

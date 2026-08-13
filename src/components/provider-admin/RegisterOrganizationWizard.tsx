@@ -20,6 +20,7 @@ import {
   WizardStep,
 } from '@patternfly/react-core'
 import { KubernetesResourceNameField } from '../shared/KubernetesResourceNameHelper'
+import { ResourceCreatePageShell } from '../shared/ResourceCreatePageShell'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import {
   getAssignableExternalIpPools,
@@ -53,6 +54,8 @@ import {
 
 type RegisterOrganizationWizardProps = {
   isOpen: boolean
+  /** `page` replaces the organizations landing (breadcrumb back). Default `modal`. */
+  presentation?: 'modal' | 'page'
   catalogDraft: ProviderCatalogDraft | null
   onClose: () => void
   onRegister: (organization: RegisteredOrganization) => void
@@ -60,6 +63,7 @@ type RegisterOrganizationWizardProps = {
 
 export function RegisterOrganizationWizard({
   isOpen,
+  presentation = 'modal',
   catalogDraft,
   onClose,
   onRegister,
@@ -333,6 +337,61 @@ export function RegisterOrganizationWizard({
     return undefined
   }
 
+  const wizardTitle = 'Register organization'
+  const isPage = presentation === 'page'
+
+  const wizard = isOpen ? (
+    <Wizard
+      key="register-organization-wizard"
+      className={[
+        'provider-admin-organizations__wizard',
+        isPage ? 'catalog-wizard-page__wizard' : undefined,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      height={isPage ? '100%' : '40rem'}
+      isPlain={isPage}
+      onClose={isPage ? undefined : handleClose}
+      header={
+        isPage ? undefined : (
+          <WizardHeader
+            title={wizardTitle}
+            titleId="register-organization-wizard-title"
+            onClose={handleClose}
+            closeButtonAriaLabel="Close register organization wizard"
+          />
+        )
+      }
+    >
+      {REGISTER_ORGANIZATION_STEPS.map((step) => (
+        <WizardStep
+          key={step.id}
+          name={step.label}
+          id={`register-org-step-${step.id}`}
+          footer={getStepFooter(step.id)}
+        >
+          {renderStepContent(step.id)}
+        </WizardStep>
+      ))}
+    </Wizard>
+  ) : null
+
+  if (isPage) {
+    if (!isOpen) {
+      return null
+    }
+    return (
+      <ResourceCreatePageShell
+        parentLabel="Organizations"
+        title={wizardTitle}
+        titleId="register-organization-wizard-title"
+        onBack={handleClose}
+      >
+        {wizard}
+      </ResourceCreatePageShell>
+    )
+  }
+
   return (
     <Modal
       variant={ModalVariant.medium}
@@ -343,33 +402,7 @@ export function RegisterOrganizationWizard({
       aria-labelledby="register-organization-wizard-title"
       className="provider-admin-organizations__wizard-modal"
     >
-      {isOpen ? (
-        <Wizard
-          key="register-organization-wizard"
-          className="provider-admin-organizations__wizard"
-          height="40rem"
-          onClose={handleClose}
-          header={
-            <WizardHeader
-              title="Register organization"
-              titleId="register-organization-wizard-title"
-              onClose={handleClose}
-              closeButtonAriaLabel="Close register organization wizard"
-            />
-          }
-        >
-          {REGISTER_ORGANIZATION_STEPS.map((step) => (
-            <WizardStep
-              key={step.id}
-              name={step.label}
-              id={`register-org-step-${step.id}`}
-              footer={getStepFooter(step.id)}
-            >
-              {renderStepContent(step.id)}
-            </WizardStep>
-          ))}
-        </Wizard>
-      ) : null}
+      {wizard}
     </Modal>
   )
 }

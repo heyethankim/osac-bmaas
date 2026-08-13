@@ -246,47 +246,50 @@ export function EditCatalogItemModal({
                       aria-label="Global public"
                     />
                   </button>
-                  <button
-                    type="button"
-                    className={`provider-admin-catalog__scope-card${
-                      publishScope === 'vip-enterprise'
-                        ? ' provider-admin-catalog__scope-card--selected'
-                        : ''
-                    }`}
-                    onClick={selectVipEnterprise}
-                    role="radio"
-                    aria-checked={publishScope === 'vip-enterprise'}
-                  >
-                    <CatalogPublishScopeIcon
-                      scope="vip-enterprise"
-                      className="provider-admin-catalog__scope-icon"
-                    />
-                    <span className="provider-admin-catalog__scope-copy">
-                      <span className="provider-admin-catalog__scope-title">VIP enterprise</span>
-                      <span className="provider-admin-catalog__scope-detail">
-                        Visible only to selected enterprise tenants.
+                  <div className="provider-admin-catalog__scope-vip-group">
+                    <button
+                      type="button"
+                      className={`provider-admin-catalog__scope-card${
+                        publishScope === 'vip-enterprise'
+                          ? ' provider-admin-catalog__scope-card--selected'
+                          : ''
+                      }`}
+                      onClick={selectVipEnterprise}
+                      role="radio"
+                      aria-checked={publishScope === 'vip-enterprise'}
+                    >
+                      <CatalogPublishScopeIcon
+                        scope="vip-enterprise"
+                        className="provider-admin-catalog__scope-icon"
+                      />
+                      <span className="provider-admin-catalog__scope-copy">
+                        <span className="provider-admin-catalog__scope-title">VIP enterprise</span>
+                        <span className="provider-admin-catalog__scope-detail">
+                          Visible only to selected enterprise tenants.
+                        </span>
                       </span>
-                    </span>
-                    <Radio
-                      id="edit-scope-vip-enterprise"
-                      name="edit-catalog-scope"
-                      isChecked={publishScope === 'vip-enterprise'}
-                      onChange={selectVipEnterprise}
-                      aria-label="VIP enterprise"
-                    />
-                  </button>
+                      <Radio
+                        id="edit-scope-vip-enterprise"
+                        name="edit-catalog-scope"
+                        isChecked={publishScope === 'vip-enterprise'}
+                        onChange={selectVipEnterprise}
+                        aria-label="VIP enterprise"
+                      />
+                    </button>
+                    {isVipEnterprise ? (
+                      <div className="provider-admin-catalog__scope-vip-nested">
+                        <VipEnterpriseOrganizationField
+                          organizations={organizations}
+                          selectedTenantIds={enterpriseTenantIds}
+                          onSelectedTenantIdsChange={setEnterpriseTenantIds}
+                          onRegisterOrganization={onRegisterOrganization}
+                          fieldIdPrefix="edit-catalog"
+                        />
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </FormGroup>
-
-              {isVipEnterprise ? (
-                <VipEnterpriseOrganizationField
-                  organizations={organizations}
-                  selectedTenantIds={enterpriseTenantIds}
-                  onSelectedTenantIdsChange={setEnterpriseTenantIds}
-                  onRegisterOrganization={onRegisterOrganization}
-                  fieldIdPrefix="edit-catalog"
-                />
-              ) : null}
             </Form>
           </>
         ) : null}

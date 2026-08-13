@@ -1,10 +1,5 @@
 import type { ReactNode } from 'react'
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  Content,
-  Title,
-} from '@patternfly/react-core'
+import { ResourceCreatePageShell } from '../shared/ResourceCreatePageShell'
 
 type CatalogWizardPageShellProps = {
   /** Current wizard title shown as the page H1 and active breadcrumb crumb. */
@@ -17,44 +12,27 @@ type CatalogWizardPageShellProps = {
 }
 
 /**
- * Full-page chrome for catalog create / launch wizards (PatternFly in-page wizard).
- * Title lives in the page header; breadcrumb Catalog returns to the landing list.
+ * Catalog-scoped wrapper around the shared full-page create shell.
+ * Breadcrumb Catalog returns to the catalog landing list.
  */
 export function CatalogWizardPageShell({
   title,
-  titleId = 'catalog-wizard-page-title',
+  titleId,
   description,
   onBackToCatalog,
   children,
   className,
 }: CatalogWizardPageShellProps) {
   return (
-    <div className={['catalog-wizard-page', className].filter(Boolean).join(' ')}>
-      <Breadcrumb aria-label={`${title} breadcrumb`}>
-        <BreadcrumbItem
-          to="#"
-          onClick={(event) => {
-            event.preventDefault()
-            onBackToCatalog()
-          }}
-        >
-          Catalog
-        </BreadcrumbItem>
-        <BreadcrumbItem isActive>{title}</BreadcrumbItem>
-      </Breadcrumb>
-
-      <div className="catalog-wizard-page__header">
-        <Title headingLevel="h1" size="3xl" id={titleId} className="catalog-wizard-page__title">
-          {title}
-        </Title>
-        {description ? (
-          <Content component="p" className="catalog-wizard-page__lede">
-            {description}
-          </Content>
-        ) : null}
-      </div>
-
-      <div className="catalog-wizard-page__body">{children}</div>
-    </div>
+    <ResourceCreatePageShell
+      parentLabel="Catalog"
+      title={title}
+      titleId={titleId}
+      description={description}
+      onBack={onBackToCatalog}
+      className={className}
+    >
+      {children}
+    </ResourceCreatePageShell>
   )
 }

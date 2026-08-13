@@ -186,6 +186,21 @@ export function TenantAdminProjectsTeamsPage({
     onProjectsChange(removeTenantProjectMember(tenantSlug, projectId, memberId))
   }
 
+  if (isCreateModalOpen) {
+    return (
+      <>
+        <CreateTenantProjectWizard
+          presentation="page"
+          isOpen={isCreateModalOpen}
+          organization={organization}
+          onClose={() => setIsCreateModalOpen(false)}
+          onCreate={handleCreateProject}
+        />
+        {deleteConfirmModal}
+      </>
+    )
+  }
+
   if (isDetailsOpen && selectedProject) {
     return (
       <>
@@ -320,13 +335,6 @@ export function TenantAdminProjectsTeamsPage({
           </EmptyStateFooter>
         </EmptyState>
       )}
-
-      <CreateTenantProjectWizard
-        isOpen={isCreateModalOpen}
-        organization={organization}
-        onClose={() => setIsCreateModalOpen(false)}
-        onCreate={handleCreateProject}
-      />
 
       {deleteConfirmModal}
     </div>

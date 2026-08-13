@@ -303,6 +303,34 @@ export function ProviderAdminBmaasTemplatesPage({
     setIsDetailsPageOpen(false)
   }
 
+  if (isPublishWizardOpen) {
+    return (
+      <ProviderSetupPublishCatalogWizard
+        presentation="page"
+        isOpen={isPublishWizardOpen}
+        templates={
+          publishTemplateRefId
+            ? availableTemplates.filter(
+                (template) => template.templateRefId === publishTemplateRefId,
+              )
+            : availableTemplates.slice(0, 1)
+        }
+        organizations={getProviderRegisteredOrganizations()}
+        defaultTemplateRefId={publishTemplateRefId ?? availableTemplates[0]?.templateRefId}
+        onClose={() => {
+          setIsPublishWizardOpen(false)
+          setPublishTemplateRefId(null)
+        }}
+        onCreateCatalogItem={(payload) => {
+          setIsPublishWizardOpen(false)
+          setPublishTemplateRefId(null)
+          onCreateCatalogItem(payload)
+        }}
+        isPublishing={isPublishing}
+      />
+    )
+  }
+
   return (
     <>
       {isDetailsPageOpen && selectedTemplate ? (
@@ -513,29 +541,6 @@ export function ProviderAdminBmaasTemplatesPage({
           setEditingTemplate(null)
         }}
         onTemplateSaved={handleTemplateSaved}
-      />
-
-      <ProviderSetupPublishCatalogWizard
-        isOpen={isPublishWizardOpen}
-        templates={
-          publishTemplateRefId
-            ? availableTemplates.filter(
-                (template) => template.templateRefId === publishTemplateRefId,
-              )
-            : availableTemplates.slice(0, 1)
-        }
-        organizations={getProviderRegisteredOrganizations()}
-        defaultTemplateRefId={publishTemplateRefId ?? availableTemplates[0]?.templateRefId}
-        onClose={() => {
-          setIsPublishWizardOpen(false)
-          setPublishTemplateRefId(null)
-        }}
-        onCreateCatalogItem={(payload) => {
-          setIsPublishWizardOpen(false)
-          setPublishTemplateRefId(null)
-          onCreateCatalogItem(payload)
-        }}
-        isPublishing={isPublishing}
       />
     </>
   )

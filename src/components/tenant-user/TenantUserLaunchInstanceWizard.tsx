@@ -53,10 +53,16 @@ import {
   type TenantProject,
 } from '../../tenantAdmin/projects'
 import { addTenantProject } from '../../tenantAdmin/storage'
-import { resolveCatalogSpecRows } from '../../catalog/catalogSpecs'
+import { resolveCatalogSpecRows, resolveClusterCatalogHighlightRows } from '../../catalog/catalogSpecs'
 import {
+  formatClusterHostTypeLabel,
+  formatClusterNodeSetLabel,
   formatClusterPlatformLabel,
+  getCatalogClusterHostTypeOptions,
+  getCatalogClusterNodeSetOptions,
+  getCatalogClusterNodeTopologyModeLabel,
   getCatalogClusterVersionLifecycleMeta,
+  getCatalogClusterVersionModeLabel,
   getCatalogClusterVersionOptions,
   getLatestCatalogClusterVersionId,
   getReleaseImageForClusterVersion,
@@ -65,6 +71,7 @@ import {
 } from '../../catalog/catalogPublishConfig'
 import type { TenantUserCatalogCard } from '../../tenantUser/catalog'
 import { PlusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/plus-circle-icon'
+import { MinusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/minus-circle-icon'
 import {
   createDefaultClusterNodeSet,
   createLaunchInstanceWizardForm,
@@ -155,20 +162,8 @@ function getBootLogStatus(
   return 'pending'
 }
 
-function AssignedNetworkField({ field }: { field: LaunchNetworkFieldView }) {
-  return (
-    <div className="tenant-user-launch-wizard__assigned-field">
-      <Content component="p" className="tenant-user-launch-wizard__assigned-label">
-        {field.label}
-      </Content>
-      <Content component="p" className="tenant-user-launch-wizard__assigned-value">
-        {field.value}
-      </Content>
-      <Content component="p" className="tenant-user-launch-wizard__assigned-helper">
-        {LAUNCH_INSTANCE_WIZARD_DEMO.networkingAssignedHelper}
-      </Content>
-    </div>
-  )
+function getCatalogOptionLabel(name: string, detail: string): string {
+  return `${name} · ${detail}`
 }
 
 export function TenantUserLaunchInstanceWizard({
@@ -283,6 +278,13 @@ export function TenantUserLaunchInstanceWizard({
               templateName: catalogItem.templateName,
               instanceTypeLabel: catalogItem.instanceTypeLabel,
               diskImageLabel: catalogItem.diskImageLabel,
+              diskImageId: catalogItem.diskImageId,
+              clusterVersionMode: catalogItem.clusterVersionMode,
+              nodeSetId: catalogItem.nodeSetId,
+              nodeSetLabel: catalogItem.nodeSetLabel,
+              hostTypeId: catalogItem.hostTypeId,
+              hostTypeLabel: catalogItem.hostTypeLabel,
+              clusterNodeTopologyMode: catalogItem.clusterNodeTopologyMode,
             },
             { includeDetails: true },
           )
@@ -294,6 +296,13 @@ export function TenantUserLaunchInstanceWizard({
       catalogItem.templateName,
       catalogItem.instanceTypeLabel,
       catalogItem.diskImageLabel,
+      catalogItem.diskImageId,
+      catalogItem.clusterVersionMode,
+      catalogItem.nodeSetId,
+      catalogItem.nodeSetLabel,
+      catalogItem.hostTypeId,
+      catalogItem.hostTypeLabel,
+      catalogItem.clusterNodeTopologyMode,
       catalogItem.specRows,
     ],
   )
@@ -364,6 +373,19 @@ export function TenantUserLaunchInstanceWizard({
     catalogItem.hostTypeLabel?.trim() ||
     catalogDetailSpecRows.find((row) => row.label === 'Host type')?.value ||
     CLUSTER_LAUNCH_INSTANCE_DEMO.defaultHostType
+  const catalogDefaultNodeSetId =
+    catalogItem.nodeSetId?.trim() ||
+    catalogItem.nodeSetLabel?.trim() ||
+    catalogDetailSpecRows.find((row) => row.label === 'Node set')?.value ||
+    'fc430-worker'
+  const clusterNodeSetOptions = useMemo(() => getCatalogClusterNodeSetOptions(), [])
+  const clusterHostTypeOptions = useMemo(() => getCatalogClusterHostTypeOptions(), [])
+  const clusterTopologyModeLabel = getCatalogClusterNodeTopologyModeLabel(
+    resolveCatalogClusterNodeTopologyMode(catalogItem.clusterNodeTopologyMode),
+  )
+  const clusterVersionModeLabel = getCatalogClusterVersionModeLabel(
+    resolveCatalogClusterVersionMode(catalogItem.clusterVersionMode),
+  )
 
   const [form, setForm] = useState<LaunchInstanceWizardForm>(() =>
     createLaunchInstanceWizardForm({
@@ -375,6 +397,7 @@ export function TenantUserLaunchInstanceWizard({
       instanceName: getNextLaunchInstanceName(existingInstanceNames, catalogItem.serviceId),
       clusterVersion: catalogClusterVersion || catalogItem.osImage,
       hostType: catalogDefaultHostType,
+      nodeSetId: catalogDefaultNodeSetId,
     }),
   )
   const [activeStepId, setActiveStepId] = useState<LaunchInstanceWizardStepId>(
@@ -426,6 +449,8 @@ export function TenantUserLaunchInstanceWizard({
           catalogItem.serviceId,
         ),
         clusterVersion: catalogClusterVersion || catalogItem.osImage,
+        hostType: catalogDefaultHostType,
+        nodeSetId: catalogDefaultNodeSetId,
       }),
     )
     setSelectedProjectId(resolveInitialLaunchProjectId(projects, initialProjectId))
@@ -475,6 +500,8 @@ export function TenantUserLaunchInstanceWizard({
           catalogItem.serviceId,
         ),
         clusterVersion: catalogClusterVersion || catalogItem.osImage,
+        hostType: catalogDefaultHostType,
+        nodeSetId: catalogDefaultNodeSetId,
       }),
     )
     setSelectedProjectId(resolveInitialLaunchProjectId(projects, initialProjectId))
@@ -490,6 +517,10 @@ export function TenantUserLaunchInstanceWizard({
     usesGeneralFirstStep,
     projects,
     initialProjectId,
+    catalogClusterVersion,
+    catalogItem.osImage,
+    catalogDefaultHostType,
+    catalogDefaultNodeSetId,
   ])
 
   useEffect(() => {
@@ -511,6 +542,7 @@ export function TenantUserLaunchInstanceWizard({
         isClusterCatalogItem || isVmCatalogItem || isBareMetalCatalogItem
           ? form.instanceName.trim()
           : formatTenantInstanceName(form.instanceName.trim()),
+      ...(form.description.trim() ? { description: form.description.trim() } : {}),
       catalogItemDisplayName: catalogItem.displayName,
       serviceId: catalogItem.serviceId,
       hardwareProfile: catalogItem.hardwareProfile,
@@ -544,10 +576,33 @@ export function TenantUserLaunchInstanceWizard({
                 : []),
             ]
           : [
+              ...resolveClusterCatalogHighlightRows({
+                serviceId: 'cluster',
+                templateRefId: catalogItem.templateRefId,
+                templateName: catalogItem.templateName,
+                diskImageId: form.clusterVersionId || catalogItem.diskImageId,
+                diskImageLabel: formatClusterPlatformLabel(
+                  form.clusterVersionId || form.releaseImage || catalogItem.diskImageLabel,
+                ),
+                clusterVersionMode: catalogItem.clusterVersionMode,
+                nodeSetId: form.nodeSets[0]?.nodeSetId || catalogItem.nodeSetId,
+                nodeSetLabel: formatClusterNodeSetLabel(
+                  form.nodeSets[0]?.nodeSetId ||
+                    catalogItem.nodeSetLabel ||
+                    catalogItem.nodeSetId,
+                ),
+                hostTypeId: form.nodeSets[0]?.hostType || catalogItem.hostTypeId,
+                hostTypeLabel: formatClusterHostTypeLabel(
+                  form.nodeSets[0]?.hostType ||
+                    catalogItem.hostTypeLabel ||
+                    catalogItem.hostTypeId,
+                ),
+                clusterNodeTopologyMode: catalogItem.clusterNodeTopologyMode,
+              }),
               { label: 'Release image', value: form.releaseImage.trim() },
               ...form.nodeSets.map((nodeSet, index) => ({
                 label: `Node set ${index + 1}`,
-                value: `${nodeSet.hostType} · ${nodeSet.nodeCount} ${
+                value: `${formatClusterNodeSetLabel(nodeSet.nodeSetId)} · ${nodeSet.hostType} · ${nodeSet.nodeCount} ${
                   nodeSet.nodeCount === 1 ? 'node' : 'nodes'
                 }`,
               })),
@@ -842,6 +897,19 @@ export function TenantUserLaunchInstanceWizard({
             />
           </FormGroup>
 
+          <FormGroup label="Description" fieldId={`${nameFieldId}-description`}>
+            <TextArea
+              id={`${nameFieldId}-description`}
+              value={form.description}
+              onChange={(_event, value) =>
+                setForm((current) => ({ ...current, description: value }))
+              }
+              aria-label="Description"
+              rows={3}
+              resizeOrientation="vertical"
+            />
+          </FormGroup>
+
           <FormGroup label="SSH public key" fieldId={sshFieldId} isRequired>
             <TextArea
               id={sshFieldId}
@@ -1019,84 +1087,68 @@ export function TenantUserLaunchInstanceWizard({
           <FormSelect
             id={`${idPrefix}-virtual-network`}
             value={networkSelections.virtualNetworkId}
-            isDisabled={Boolean(virtualNetworkField?.locked)}
             onChange={(_event, value) => updateNetworkSelection('virtual-network', value)}
             aria-label="Virtual network"
           >
             {virtualNetworkOptions.map((option) => (
-              <FormSelectOption key={option.id} value={option.id} label={option.name} />
+              <FormSelectOption
+                key={option.id}
+                value={option.id}
+                label={getCatalogOptionLabel(option.name, option.detail)}
+              />
             ))}
           </FormSelect>
-          {virtualNetworkField?.locked ? (
-            <FormHelperText>
-              <HelperText>
-                <HelperTextItem>Fixed for this offering.</HelperTextItem>
-              </HelperText>
-            </FormHelperText>
-          ) : null}
         </FormGroup>
 
         <FormGroup label="Subnet" fieldId={`${idPrefix}-subnet`} isRequired>
           <FormSelect
             id={`${idPrefix}-subnet`}
             value={networkSelections.subnetId}
-            isDisabled={Boolean(subnetField?.locked)}
             onChange={(_event, value) => updateNetworkSelection('subnet', value)}
             aria-label="Subnet"
           >
             {subnetOptions.map((option) => (
-              <FormSelectOption key={option.id} value={option.id} label={option.name} />
+              <FormSelectOption
+                key={option.id}
+                value={option.id}
+                label={getCatalogOptionLabel(option.name, option.detail)}
+              />
             ))}
           </FormSelect>
-          {subnetField?.locked ? (
-            <FormHelperText>
-              <HelperText>
-                <HelperTextItem>Fixed for this offering.</HelperTextItem>
-              </HelperText>
-            </FormHelperText>
-          ) : null}
         </FormGroup>
 
         <FormGroup label="Security group" fieldId={`${idPrefix}-security-group`} isRequired>
           <FormSelect
             id={`${idPrefix}-security-group`}
             value={networkSelections.securityGroupId}
-            isDisabled={Boolean(securityGroupField?.locked)}
             onChange={(_event, value) => updateNetworkSelection('security-group', value)}
             aria-label="Security group"
           >
             {securityGroupOptions.map((option) => (
-              <FormSelectOption key={option.id} value={option.id} label={option.name} />
+              <FormSelectOption
+                key={option.id}
+                value={option.id}
+                label={getCatalogOptionLabel(option.name, option.detail)}
+              />
             ))}
           </FormSelect>
-          {securityGroupField?.locked ? (
-            <FormHelperText>
-              <HelperText>
-                <HelperTextItem>Fixed for this offering.</HelperTextItem>
-              </HelperText>
-            </FormHelperText>
-          ) : null}
         </FormGroup>
 
         <FormGroup label="External IP pool" fieldId={`${idPrefix}-external-ip-pool`} isRequired>
           <FormSelect
             id={`${idPrefix}-external-ip-pool`}
             value={networkSelections.externalIpPoolId}
-            isDisabled={Boolean(externalIpPoolField?.locked)}
             onChange={(_event, value) => updateNetworkSelection('external-ip-pool', value)}
             aria-label="External IP pool"
           >
             {externalIpPoolOptions.map((option) => (
-              <FormSelectOption key={option.id} value={option.id} label={option.name} />
+              <FormSelectOption
+                key={option.id}
+                value={option.id}
+                label={getCatalogOptionLabel(option.name, option.detail)}
+              />
             ))}
           </FormSelect>
-          {externalIpPoolField?.locked ? (
-            <FormHelperText>
-              <HelperText>
-                <HelperTextItem>Fixed for this offering.</HelperTextItem>
-              </HelperText>
-            </FormHelperText>
-          ) : null}
         </FormGroup>
       </>
     )
@@ -1171,8 +1223,8 @@ export function TenantUserLaunchInstanceWizard({
             <HelperText>
               <HelperTextItem>
                 {isClusterVersionEditable
-                  ? 'You can choose the OpenShift version for this launch. Release image: '
-                  : 'Locked by the catalog item. Release image: '}
+                  ? `Editable on this catalog item (${clusterVersionModeLabel}). Release image: `
+                  : `Locked by the catalog item (${clusterVersionModeLabel}). Release image: `}
                 {form.releaseImage.trim() ||
                   getReleaseImageForClusterVersion(
                     form.clusterVersionId || catalogClusterVersion,
@@ -1184,45 +1236,119 @@ export function TenantUserLaunchInstanceWizard({
 
         <div className="tenant-user-launch-wizard__node-sets">
           <Content component="h3" className="tenant-user-launch-wizard__node-sets-title">
-            Node Sets
+            Node topology
+          </Content>
+          <Content component="p" className="tenant-user-launch-wizard__step-lede">
+            {isClusterNodeTopologyEditable
+              ? `Node set and host type are editable on this catalog item (${clusterTopologyModeLabel}). Add more node sets if this cluster needs additional worker pools.`
+              : `Node set and host type are locked by the catalog item (${clusterTopologyModeLabel}).`}
           </Content>
 
           {form.nodeSets.map((nodeSet, index) => (
             <div key={nodeSet.id} className="tenant-user-launch-wizard__node-set">
-              <Content component="p" className="tenant-user-launch-wizard__node-set-heading">
-                Node set {index + 1}
-              </Content>
+              <Flex
+                justifyContent={{ default: 'justifyContentSpaceBetween' }}
+                alignItems={{ default: 'alignItemsCenter' }}
+                className="tenant-user-launch-wizard__node-set-header"
+              >
+                <FlexItem>
+                  <Content component="p" className="tenant-user-launch-wizard__node-set-heading">
+                    Node set {index + 1}
+                  </Content>
+                </FlexItem>
+                {isClusterNodeTopologyEditable && form.nodeSets.length > 1 ? (
+                  <FlexItem>
+                    <Button
+                      variant="link"
+                      isInline
+                      isDanger
+                      icon={<MinusCircleIcon />}
+                      aria-label={`Remove node set ${index + 1}`}
+                      onClick={() =>
+                        setForm((current) => ({
+                          ...current,
+                          nodeSets: current.nodeSets.filter((entry) => entry.id !== nodeSet.id),
+                        }))
+                      }
+                    >
+                      {CLUSTER_LAUNCH_INSTANCE_DEMO.removeNodeSetLabel}
+                    </Button>
+                  </FlexItem>
+                ) : null}
+              </Flex>
+
+              <FormGroup
+                label="Node set"
+                fieldId={`launch-cluster-node-set-${nodeSet.id}`}
+                isRequired
+              >
+                {isClusterNodeTopologyEditable ? (
+                  <FormSelect
+                    id={`launch-cluster-node-set-${nodeSet.id}`}
+                    value={nodeSet.nodeSetId}
+                    onChange={(_event, value) =>
+                      setForm((current) => ({
+                        ...current,
+                        nodeSets: current.nodeSets.map((entry) =>
+                          entry.id === nodeSet.id ? { ...entry, nodeSetId: value } : entry,
+                        ),
+                      }))
+                    }
+                    aria-label={`Node set ${index + 1}`}
+                  >
+                    {clusterNodeSetOptions.map((option) => (
+                      <FormSelectOption
+                        key={option.id}
+                        value={option.id}
+                        label={`${option.label} · ${option.detail}`}
+                      />
+                    ))}
+                  </FormSelect>
+                ) : (
+                  <TextInput
+                    id={`launch-cluster-node-set-${nodeSet.id}`}
+                    value={formatClusterNodeSetLabel(nodeSet.nodeSetId)}
+                    isDisabled
+                    aria-label={`Node set ${index + 1}`}
+                  />
+                )}
+              </FormGroup>
 
               <FormGroup
                 label="Host type"
                 fieldId={`launch-cluster-host-type-${nodeSet.id}`}
                 isRequired
               >
-                <FormSelect
-                  id={`launch-cluster-host-type-${nodeSet.id}`}
-                  value={nodeSet.hostType}
-                  isDisabled={!isClusterNodeTopologyEditable}
-                  onChange={(_event, value) =>
-                    setForm((current) => ({
-                      ...current,
-                      nodeSets: current.nodeSets.map((entry) =>
-                        entry.id === nodeSet.id ? { ...entry, hostType: value } : entry,
-                      ),
-                    }))
-                  }
-                  aria-label={`Host type for node set ${index + 1}`}
-                >
-                  {CLUSTER_LAUNCH_INSTANCE_DEMO.hostTypeOptions.map((option) => (
-                    <FormSelectOption key={option} value={option} label={option} />
-                  ))}
-                </FormSelect>
-                {!isClusterNodeTopologyEditable ? (
-                  <FormHelperText>
-                    <HelperText>
-                      <HelperTextItem>Set by the catalog item.</HelperTextItem>
-                    </HelperText>
-                  </FormHelperText>
-                ) : null}
+                {isClusterNodeTopologyEditable ? (
+                  <FormSelect
+                    id={`launch-cluster-host-type-${nodeSet.id}`}
+                    value={nodeSet.hostType}
+                    onChange={(_event, value) =>
+                      setForm((current) => ({
+                        ...current,
+                        nodeSets: current.nodeSets.map((entry) =>
+                          entry.id === nodeSet.id ? { ...entry, hostType: value } : entry,
+                        ),
+                      }))
+                    }
+                    aria-label={`Host type for node set ${index + 1}`}
+                  >
+                    {clusterHostTypeOptions.map((option) => (
+                      <FormSelectOption
+                        key={option.id}
+                        value={option.id}
+                        label={option.label}
+                      />
+                    ))}
+                  </FormSelect>
+                ) : (
+                  <TextInput
+                    id={`launch-cluster-host-type-${nodeSet.id}`}
+                    value={formatClusterHostTypeLabel(nodeSet.hostType)}
+                    isDisabled
+                    aria-label={`Host type for node set ${index + 1}`}
+                  />
+                )}
               </FormGroup>
 
               <FormGroup
@@ -1235,6 +1361,7 @@ export function TenantUserLaunchInstanceWizard({
                   type="number"
                   min={1}
                   value={String(nodeSet.nodeCount)}
+                  isDisabled={!isClusterNodeTopologyEditable}
                   onChange={(_event, value) => {
                     const parsed = Number.parseInt(value, 10)
                     setForm((current) => ({
@@ -1254,27 +1381,35 @@ export function TenantUserLaunchInstanceWizard({
             </div>
           ))}
 
-          <Button
-            variant="link"
-            isInline
-            icon={<PlusCircleIcon />}
-            className="tenant-user-launch-wizard__add-node-set"
-            isDisabled={!isClusterNodeTopologyEditable}
-            onClick={() =>
-              setForm((current) => ({
-                ...current,
-                nodeSets: [
-                  ...current.nodeSets,
-                  createDefaultClusterNodeSet(
-                    current.nodeSets.length + 1,
-                    catalogDefaultHostType,
-                  ),
-                ],
-              }))
-            }
-          >
-            {CLUSTER_LAUNCH_INSTANCE_DEMO.addNodeSetLabel}
-          </Button>
+          {isClusterNodeTopologyEditable ? (
+            <Button
+              variant="link"
+              isInline
+              icon={<PlusCircleIcon />}
+              className="tenant-user-launch-wizard__add-node-set"
+              onClick={() =>
+                setForm((current) => {
+                  const nextIndex = current.nodeSets.length + 1
+                  return {
+                    ...current,
+                    nodeSets: [
+                      ...current.nodeSets,
+                      {
+                        ...createDefaultClusterNodeSet(
+                          nextIndex,
+                          catalogDefaultHostType,
+                          catalogDefaultNodeSetId,
+                        ),
+                        id: `node-set-${nextIndex}-${Date.now()}`,
+                      },
+                    ],
+                  }
+                })
+              }
+            >
+              {CLUSTER_LAUNCH_INSTANCE_DEMO.addNodeSetLabel}
+            </Button>
+          ) : null}
         </div>
       </Form>
     </div>
@@ -1355,6 +1490,19 @@ export function TenantUserLaunchInstanceWizard({
           />
         </FormGroup>
 
+        <FormGroup label="Description" fieldId="launch-instance-description">
+          <TextArea
+            id="launch-instance-description"
+            value={form.description}
+            onChange={(_event, value) =>
+              setForm((current) => ({ ...current, description: value }))
+            }
+            aria-label="Description"
+            rows={3}
+            resizeOrientation="vertical"
+          />
+        </FormGroup>
+
         <FormGroup label="SSH public key" fieldId="launch-instance-ssh-key" isRequired>
           <TextArea
             id="launch-instance-ssh-key"
@@ -1370,62 +1518,49 @@ export function TenantUserLaunchInstanceWizard({
     </div>
   )
 
-  const renderNetworkingStep = () => {
-    const assignedFields = networkContext.fields.filter((field) => field.locked)
-    const editableFields = networkContext.fields.filter((field) => !field.locked)
+  const renderNetworkingStep = () => (
+    <div className="tenant-user-launch-wizard__step">
+      <Content component="h2" className="tenant-user-launch-wizard__step-title">
+        {LAUNCH_INSTANCE_WIZARD_DEMO.networkingTitle}
+      </Content>
+      <Content component="p" className="tenant-user-launch-wizard__step-lede">
+        {LAUNCH_INSTANCE_WIZARD_DEMO.networkingLede}
+      </Content>
 
-    return (
-      <div className="tenant-user-launch-wizard__step">
-        <Content component="h2" className="tenant-user-launch-wizard__step-title">
-          {LAUNCH_INSTANCE_WIZARD_DEMO.networkingTitle}
-        </Content>
-        <Content component="p" className="tenant-user-launch-wizard__step-lede">
-          {LAUNCH_INSTANCE_WIZARD_DEMO.networkingLede}
-        </Content>
+      <Form autoComplete="off" className="tenant-user-launch-wizard__form">
+        {networkContext.fields.map((field) => {
+          const fieldId = `launch-instance-${field.kind}`
+          const selectedId = getSelectedIdForField(field)
 
-        {assignedFields.length > 0 ? (
-          <div className="tenant-user-launch-wizard__assigned-grid">
-            {assignedFields.map((field) => (
-              <AssignedNetworkField key={field.kind} field={field} />
-            ))}
-          </div>
-        ) : null}
-
-        <Form autoComplete="off" className="tenant-user-launch-wizard__form">
-          {editableFields.map((field) => {
-            const fieldId = `launch-instance-${field.kind}`
-            const selectedId = getSelectedIdForField(field)
-
-            return (
-              <FormGroup key={field.kind} label={field.label} fieldId={fieldId} isRequired>
-                <FormSelect
-                  id={fieldId}
-                  value={selectedId}
-                  onChange={(_event, value) => updateNetworkSelection(field.kind, value)}
-                  aria-label={field.label}
-                >
-                  {field.options.map((option) => (
-                    <FormSelectOption
-                      key={option.id}
-                      value={option.id}
-                      label={getCatalogOptionLabel(option.name, option.detail)}
-                    />
-                  ))}
-                </FormSelect>
-                <FormHelperText>
-                  <HelperText>
-                    <HelperTextItem>
-                      Choose the {field.label.toLowerCase()} for this instance.
-                    </HelperTextItem>
-                  </HelperText>
-                </FormHelperText>
-              </FormGroup>
-            )
-          })}
-        </Form>
-      </div>
-    )
-  }
+          return (
+            <FormGroup key={field.kind} label={field.label} fieldId={fieldId} isRequired>
+              <FormSelect
+                id={fieldId}
+                value={selectedId}
+                onChange={(_event, value) => updateNetworkSelection(field.kind, value)}
+                aria-label={field.label}
+              >
+                {field.options.map((option) => (
+                  <FormSelectOption
+                    key={option.id}
+                    value={option.id}
+                    label={getCatalogOptionLabel(option.name, option.detail)}
+                  />
+                ))}
+              </FormSelect>
+              <FormHelperText>
+                <HelperText>
+                  <HelperTextItem>
+                    Choose the {field.label.toLowerCase()} for this instance.
+                  </HelperTextItem>
+                </HelperText>
+              </FormHelperText>
+            </FormGroup>
+          )
+        })}
+      </Form>
+    </div>
+  )
 
   const renderReviewStep = () => {
     const reviewInstanceName =
@@ -1478,6 +1613,12 @@ export function TenantUserLaunchInstanceWizard({
           <DescriptionListGroup>
             <DescriptionListTerm>Instance name</DescriptionListTerm>
             <DescriptionListDescription>{reviewInstanceName}</DescriptionListDescription>
+          </DescriptionListGroup>
+          <DescriptionListGroup>
+            <DescriptionListTerm>Description</DescriptionListTerm>
+            <DescriptionListDescription>
+              {form.description.trim() || '—'}
+            </DescriptionListDescription>
           </DescriptionListGroup>
           {isBareMetalCatalogItem ? (
             <>
@@ -1579,7 +1720,8 @@ export function TenantUserLaunchInstanceWizard({
                 <DescriptionListGroup key={nodeSet.id}>
                   <DescriptionListTerm>Node set {index + 1}</DescriptionListTerm>
                   <DescriptionListDescription>
-                    {nodeSet.hostType} · {nodeSet.nodeCount}{' '}
+                    {formatClusterNodeSetLabel(nodeSet.nodeSetId)} ·{' '}
+                    {formatClusterHostTypeLabel(nodeSet.hostType)} · {nodeSet.nodeCount}{' '}
                     {nodeSet.nodeCount === 1 ? 'node' : 'nodes'}
                   </DescriptionListDescription>
                 </DescriptionListGroup>
@@ -2064,10 +2206,6 @@ export function TenantUserLaunchInstanceWizard({
       {wizard}
     </Modal>
   )
-}
-
-function getCatalogOptionLabel(name: string, detail: string): string {
-  return `${name} · ${detail}`
 }
 
 function getNextQuickCreateProjectName(projects: readonly TenantProject[]): string {
