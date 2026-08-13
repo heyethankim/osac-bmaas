@@ -1,7 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
-import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
   Alert,
@@ -57,14 +56,12 @@ import {
   syncWorkspaceCatalogItemParam,
 } from '../shared/workspaceNavUrl'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
-import { getCatalogNetworkLockSummary } from '../providerAdmin/catalogNetworkPolicy'
 import { sortByDemoCatalogOrder } from '../providerSetup/prototypeEntry'
 import type { CatalogItemStatus, ProviderCatalogDraft } from '../providerSetup/storage'
 import {
   assignCatalogToRegisteredOrganization,
   consumeProviderVipCatalogResumeIntent,
   duplicateProviderCatalogItem,
-  getCatalogItemNetworkPolicy,
   getCatalogItemStatus,
   getProviderCatalogItems,
   getProviderRegisteredOrganizations,
@@ -233,68 +230,6 @@ function ScopeCell({ scope }: { scope: ProviderCatalogDraft['scope'] }) {
         <span>{label}</span>
       </span>
     </Tooltip>
-  )
-}
-
-function NetworkingSummary({
-  item,
-  compact = false,
-  onViewDetails,
-}: {
-  item: ProviderCatalogDraft
-  compact?: boolean
-  onViewDetails?: () => void
-}) {
-  const policy = getCatalogItemNetworkPolicy(item)
-  const lockSummary = getCatalogNetworkLockSummary(policy)
-
-  const statusContent = lockSummary ? (
-    <span className="provider-admin-catalog-items__networking-status">
-      <Label
-        color={
-          lockSummary.kind === 'all-locked'
-            ? 'grey'
-            : lockSummary.kind === 'all-editable'
-              ? 'blue'
-              : 'orange'
-        }
-        isCompact
-        icon={lockSummary.kind === 'all-locked' ? <LockIcon /> : undefined}
-        className="provider-admin-catalog-items__networking-status-label"
-      >
-        {lockSummary.label}
-      </Label>
-      {onViewDetails ? (
-        <Button
-          variant="link"
-          isInline
-          className="provider-admin-catalog-items__inline-link"
-          onClick={onViewDetails}
-        >
-          Details
-        </Button>
-      ) : null}
-    </span>
-  ) : (
-    <Content
-      component="p"
-      className={
-        compact ? 'provider-admin-catalog-items__networking-table-summary' : undefined
-      }
-    >
-      Not configured
-    </Content>
-  )
-
-  if (compact) {
-    return statusContent
-  }
-
-  return (
-    <div className="provider-admin-catalog-items__card-spec">
-      <dt>Networking</dt>
-      <dd>{statusContent}</dd>
-    </div>
   )
 }
 
@@ -1136,7 +1071,6 @@ export function ProviderAdminCatalogPage({
                       <dt>Rate</dt>
                       <dd>{formatRateCardSummary(item.rateCard)}</dd>
                     </div>
-                    <NetworkingSummary item={item} onViewDetails={() => openDetails(item)} />
                   </dl>
                   <div
                     className="provider-admin-catalog-items__card-footer"
@@ -1178,7 +1112,6 @@ export function ProviderAdminCatalogPage({
               <Th>Profile / template</Th>
               <Th>Configuration</Th>
               <Th>Rate</Th>
-              <Th>Networking</Th>
               <Th>Visibility</Th>
               <Th>Created</Th>
               <Th screenReaderText="Actions" />
@@ -1230,13 +1163,6 @@ export function ProviderAdminCatalogPage({
                     <Content component="p" className="provider-admin-catalog-items__primary-cell">
                       {formatRateCardSummary(item.rateCard)}
                     </Content>
-                  </Td>
-                  <Td dataLabel="Networking">
-                    <NetworkingSummary
-                      item={item}
-                      compact
-                      onViewDetails={() => openDetails(item)}
-                    />
                   </Td>
                   <Td dataLabel="Visibility">
                     <ScopeCell scope={item.scope} />

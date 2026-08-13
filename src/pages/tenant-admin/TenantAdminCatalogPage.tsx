@@ -24,7 +24,6 @@ import {
   Tooltip,
 } from '@patternfly/react-core'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
-import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
 import {
   CatalogServiceFilterToggle,
@@ -55,11 +54,6 @@ import {
   TENANT_CATALOG_MANAGER_DEMO,
   type TenantCatalogGovernanceItemWithNetworking,
 } from '../../tenantAdmin/catalogManager'
-import {
-  applyTenantLocksForUsers,
-  getTenantNetworkLockSummary,
-  getTenantNetworkOverrides,
-} from '../../tenantAdmin/networking'
 import { ensureTenantDemoProjects } from '../../tenantAdmin/storage'
 import type { TenantProject } from '../../tenantAdmin/projects'
 import { getTenantUserCatalogCardFromDraft, TENANT_USER_CATALOG_FALLBACK } from '../../tenantUser/catalog'
@@ -121,76 +115,6 @@ function toLaunchCatalogCard(
     templateRefId: item.templateRefId,
     templateName: item.templateName,
   }
-}
-
-function NetworkingSummary({
-  item,
-  organizationSlug,
-  compact = false,
-  onViewDetails,
-}: {
-  item: TenantCatalogGovernanceItemWithNetworking
-  organizationSlug: string
-  compact?: boolean
-  onViewDetails?: () => void
-}) {
-  const overrides = getTenantNetworkOverrides(organizationSlug, item.catalogItemId)
-  const lockSummary = getTenantNetworkLockSummary(
-    applyTenantLocksForUsers(item.networkPolicy, overrides),
-  )
-
-  const statusContent = lockSummary ? (
-    <span className="tenant-admin-catalog-manager__networking-status">
-      <Label
-        color={
-          lockSummary.kind === 'all-locked'
-            ? 'grey'
-            : lockSummary.kind === 'all-editable'
-              ? 'blue'
-              : 'orange'
-        }
-        isCompact
-        icon={lockSummary.kind === 'all-locked' ? <LockIcon /> : undefined}
-        className="tenant-admin-catalog-manager__networking-status-label"
-      >
-        {lockSummary.label}
-      </Label>
-      {onViewDetails ? (
-        <Button
-          variant="link"
-          isInline
-          className="tenant-admin-catalog-manager__inline-link"
-          onClick={onViewDetails}
-        >
-          {TENANT_CATALOG_MANAGER_DEMO.networkingViewDetailsLabel}
-        </Button>
-      ) : null}
-    </span>
-  ) : (
-    <Content
-      component="p"
-      className={
-        compact ? 'tenant-admin-catalog-manager__networking-table-summary' : undefined
-      }
-    >
-      {compact
-        ? TENANT_CATALOG_MANAGER_DEMO.networkingNotConfiguredTableLabel
-        : TENANT_CATALOG_MANAGER_DEMO.networkingNotConfiguredSummary}
-    </Content>
-  )
-
-  if (compact) {
-    return statusContent
-  }
-
-  return (
-    <div className="tenant-admin-catalog-manager__spec-row">
-      <dt className="tenant-admin-catalog-manager__spec-label">
-        {TENANT_CATALOG_MANAGER_DEMO.networkingLabel}
-      </dt>
-      <dd className="tenant-admin-catalog-manager__spec-value">{statusContent}</dd>
-    </div>
-  )
 }
 
 function AccessSummary({
@@ -719,14 +643,6 @@ export function TenantAdminCatalogPage({
                       valueClassName="tenant-admin-catalog-manager__spec-value"
                     />
 
-                    <dl className="tenant-admin-catalog-manager__networking-list">
-                      <NetworkingSummary
-                        item={item}
-                        organizationSlug={organization.slug}
-                        onViewDetails={() => openDetails(item)}
-                      />
-                    </dl>
-
                     <div className="tenant-admin-catalog-manager__card-footer">
                       <div
                         className="tenant-admin-catalog-manager__card-footer-visibility"
@@ -766,7 +682,6 @@ export function TenantAdminCatalogPage({
                   <Th>Name</Th>
                   <Th>Status</Th>
                   <Th>Configuration</Th>
-                  <Th>Networking</Th>
                   <Th>Access</Th>
                   <Th screenReaderText="Actions" />
                 </Tr>
@@ -806,14 +721,6 @@ export function TenantAdminCatalogPage({
                             clusterVersionMode: item.clusterVersionMode,
                           })}
                         </Content>
-                      </Td>
-                      <Td dataLabel="Networking">
-                        <NetworkingSummary
-                          item={item}
-                          organizationSlug={organization.slug}
-                          compact
-                          onViewDetails={() => openDetails(item)}
-                        />
                       </Td>
                       <Td dataLabel="Access">
                         <AccessSummary compact onViewDetails={() => openDetails(item)} />

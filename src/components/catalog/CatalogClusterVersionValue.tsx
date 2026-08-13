@@ -25,7 +25,7 @@ export function CatalogClusterVersionValue({
   const resolvedMode = resolveCatalogClusterVersionMode(mode)
   const resolvedBadge = badge ?? {
     text: getCatalogClusterVersionModeLabel(resolvedMode),
-    color: resolvedMode === 'editable' ? 'blue' : 'grey',
+    color: resolvedMode === 'editable' ? 'purple' : 'grey',
   }
 
   return (

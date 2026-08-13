@@ -1676,7 +1676,7 @@ export function ProviderSetupPublishCatalogWizard({
                       ) : null}
                       {isClusterService ? (
                         <Label
-                          color={clusterVersionMode === 'editable' ? 'blue' : 'grey'}
+                          color={clusterVersionMode === 'editable' ? 'purple' : 'grey'}
                           isCompact
                         >
                           {getCatalogClusterVersionModeLabel(clusterVersionMode)}
@@ -1696,7 +1696,7 @@ export function ProviderSetupPublishCatalogWizard({
                       <span className="provider-setup-template__publish-review-version">
                         {formatClusterNodeSetLabel(selectedNodeSetId)}
                         <Label
-                          color={clusterNodeTopologyMode === 'editable' ? 'blue' : 'grey'}
+                          color={clusterNodeTopologyMode === 'editable' ? 'purple' : 'grey'}
                           isCompact
                         >
                           {getCatalogClusterNodeTopologyModeLabel(clusterNodeTopologyMode)}
@@ -1710,7 +1710,7 @@ export function ProviderSetupPublishCatalogWizard({
                       <span className="provider-setup-template__publish-review-version">
                         {formatClusterHostTypeLabel(selectedHostTypeId)}
                         <Label
-                          color={clusterNodeTopologyMode === 'editable' ? 'blue' : 'grey'}
+                          color={clusterNodeTopologyMode === 'editable' ? 'purple' : 'grey'}
                           isCompact
                         >
                           {getCatalogClusterNodeTopologyModeLabel(clusterNodeTopologyMode)}

@@ -350,7 +350,7 @@ export function CatalogItemDetailsPage({
                   </DescriptionListDescription>
                 </DescriptionListGroup>
                 <DescriptionListGroup>
-                  <DescriptionListTerm>Template</DescriptionListTerm>
+                  <DescriptionListTerm>Linked template</DescriptionListTerm>
                   <DescriptionListDescription>
                     {canLinkToTemplate && onNavigateToLinkedTemplate ? (
                       <Button

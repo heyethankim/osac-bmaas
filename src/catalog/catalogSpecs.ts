@@ -19,7 +19,7 @@ export type CatalogSpecRow = {
   /** Optional status chip (e.g. Locked / Editable for cluster version). */
   badge?: {
     text: string
-    color: 'blue' | 'grey' | 'green' | 'orange'
+    color: 'blue' | 'teal' | 'grey' | 'green' | 'orange' | 'purple'
   }
 }
 
@@ -152,7 +152,7 @@ function getClusterVersionModeBadge(
   const resolved = resolveCatalogClusterVersionMode(mode)
   return {
     text: getCatalogClusterVersionModeLabel(resolved),
-    color: resolved === 'editable' ? 'blue' : 'grey',
+    color: resolved === 'editable' ? 'purple' : 'grey',
   }
 }
 
@@ -177,7 +177,7 @@ function getClusterNodeTopologyModeBadge(
   const resolved = resolveCatalogClusterNodeTopologyMode(mode)
   return {
     text: getCatalogClusterNodeTopologyModeLabel(resolved),
-    color: resolved === 'editable' ? 'blue' : 'grey',
+    color: resolved === 'editable' ? 'purple' : 'grey',
   }
 }
 
@@ -360,12 +360,6 @@ export function getCatalogSpecsSectionLabel(serviceId: CatalogServiceId): string
 }
 
 export function getCatalogProfileFieldLabel(serviceId: CatalogServiceId): string {
-  if (serviceId === 'cluster') {
-    return 'Cluster profile'
-  }
-  if (serviceId === 'virtual-machine') {
-    return 'VM profile'
-  }
   if (serviceId === 'models') {
     return 'Model profile'
   }
