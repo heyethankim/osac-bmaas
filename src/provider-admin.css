@@ -3815,8 +3815,7 @@
   color: var(--pf-t--global--icon--color--regular);
 }
 
-.provider-admin-catalog-items__assign-summary,
-.provider-admin-catalog-items__assign-alert {
+.provider-admin-catalog-items__assign-summary {
   margin-block-end: var(--pf-t--global--spacer--md);
 }
 

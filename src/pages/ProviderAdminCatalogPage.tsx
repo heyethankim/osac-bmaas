@@ -3,8 +3,6 @@ import { flushSync } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
-  Alert,
-  AlertActionLink,
   Button,
   Card,
   CardBody,
@@ -515,13 +513,6 @@ export function ProviderAdminCatalogPage({
     setCreatingCardHeightPx(Math.round(referenceCard.getBoundingClientRect().height))
   }, [creatingCatalogItemId, filteredCatalogItems, viewMode])
 
-  const unassignedOrganizations = useMemo(
-    () => organizations.filter((organization) => !organization.catalogItemId),
-    [organizations],
-  )
-  const hasRegisteredOrganizations = organizations.length > 0
-  const hasUnassignedOrganizations = unassignedOrganizations.length > 0
-
   const linkedTemplate = useMemo(() => getTemplateRowData(), [])
   const availableTemplates = useMemo(() => {
     // Demo currently has one real template; don't invent a second picker option.
@@ -1022,35 +1013,6 @@ export function ProviderAdminCatalogPage({
         </div>
         <CatalogViewToggle viewMode={viewMode} onChange={handleViewModeChange} />
       </div>
-
-      {filteredCatalogItems.length > 0 &&
-      hasRegisteredOrganizations &&
-      hasUnassignedOrganizations ? (
-        <Alert
-          variant="info"
-          isInline
-          title="Organizations are waiting for catalog access"
-          className="provider-admin-catalog-items__assign-alert"
-          actionLinks={
-            <AlertActionLink
-              component="button"
-              onClick={() => {
-                if (newestCatalogItem) {
-                  openAssign(newestCatalogItem)
-                }
-              }}
-            >
-              Assign to organization
-            </AlertActionLink>
-          }
-        >
-          <Content component="p">
-            {unassignedOrganizations.length} registered{' '}
-            {unassignedOrganizations.length === 1 ? 'organization does' : 'organizations do'} not
-            have a catalog item attached yet.
-          </Content>
-        </Alert>
-      ) : null}
 
       {filteredCatalogItems.length === 0 ? (
         <EmptyState className="provider-admin-catalog-items__empty">
