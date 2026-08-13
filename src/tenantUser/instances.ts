@@ -7,8 +7,6 @@ import {
   formatClusterHostTypeLabel,
   formatClusterNodeSetLabel,
   formatClusterPlatformLabel,
-  getCatalogClusterNodeTopologyModeLabel,
-  getCatalogClusterVersionModeLabel,
   getReleaseImageForClusterVersion,
 } from '../catalog/catalogPublishConfig'
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
@@ -1214,35 +1212,18 @@ function getClusterInstanceCardSpecRows(instance: TenantInstance): CatalogSpecRo
       fromSpecHostType || firstNodeSet?.hostType || getClusterNodeSetTypeLabel(instance),
     )
 
-  // Demo variety: version mode and node-topology mode vary per instance.
-  // Node set + Host type always share the same topology badge.
-  const modeHash = hashDemoSeed(`${instance.id}:cluster-card-modes`)
-  const versionMode = modeHash & 1 ? 'editable' : 'locked'
-  const topologyMode = modeHash & 2 ? 'editable' : 'locked'
-  const versionBadge = {
-    text: getCatalogClusterVersionModeLabel(versionMode),
-    color: (versionMode === 'editable' ? 'purple' : 'grey') as 'purple' | 'grey',
-  }
-  const topologyBadge = {
-    text: getCatalogClusterNodeTopologyModeLabel(topologyMode),
-    color: (topologyMode === 'editable' ? 'purple' : 'grey') as 'purple' | 'grey',
-  }
-
   return [
     {
       label: 'Cluster version',
       value: platform,
-      badge: versionBadge,
     },
     {
       label: 'Node set',
       value: nodeSetValue,
-      badge: topologyBadge,
     },
     {
       label: 'Host type',
       value: hostTypeValue,
-      badge: topologyBadge,
     },
   ]
 }
@@ -1432,17 +1413,13 @@ function createDemoTenantClusterInstanceVariant(
       return {
         label: 'Cluster version',
         value: options.platform,
-        badge: row.badge ?? {
-          text: getCatalogClusterVersionModeLabel('locked'),
-          color: 'grey' as const,
-        },
       }
     }
     if (row.label === 'Node set') {
-      return { ...row, value: nodeSetLabel }
+      return { ...row, value: nodeSetLabel, badge: undefined }
     }
     if (row.label === 'Host type') {
-      return { ...row, value: hostTypeLabel }
+      return { ...row, value: hostTypeLabel, badge: undefined }
     }
     return row
   })

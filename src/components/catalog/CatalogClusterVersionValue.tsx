@@ -12,21 +12,25 @@ type CatalogClusterVersionValueProps = {
   children: ReactNode
   /** Optional Locked / Editable chip from catalog policy. */
   badge?: CatalogSpecRow['badge']
-  /** Alternate to `badge` when only the mode is known. Defaults to locked. */
+  /** Alternate to `badge` when only the mode is known. */
   mode?: CatalogClusterVersionMode
 }
 
-/** Cluster version value with a small Red Hat mark and Locked / Editable chip. */
+/** Cluster version value with a small Red Hat mark; Locked / Editable chip only when policy is set. */
 export function CatalogClusterVersionValue({
   children,
   badge,
   mode,
 }: CatalogClusterVersionValueProps) {
-  const resolvedMode = resolveCatalogClusterVersionMode(mode)
-  const resolvedBadge = badge ?? {
-    text: getCatalogClusterVersionModeLabel(resolvedMode),
-    color: resolvedMode === 'editable' ? 'purple' : 'grey',
-  }
+  const resolvedMode = mode === undefined ? undefined : resolveCatalogClusterVersionMode(mode)
+  const resolvedBadge =
+    badge ??
+    (resolvedMode === undefined
+      ? undefined
+      : {
+          text: getCatalogClusterVersionModeLabel(resolvedMode),
+          color: (resolvedMode === 'editable' ? 'purple' : 'grey') as 'purple' | 'grey',
+        })
 
   return (
     <span className="catalog-cluster-version-value">
@@ -34,9 +38,11 @@ export function CatalogClusterVersionValue({
         <RedhatIcon aria-hidden />
       </Icon>
       <span>{children}</span>
-      <Label color={resolvedBadge.color} isCompact>
-        {resolvedBadge.text}
-      </Label>
+      {resolvedBadge ? (
+        <Label color={resolvedBadge.color} isCompact>
+          {resolvedBadge.text}
+        </Label>
+      ) : null}
     </span>
   )
 }
