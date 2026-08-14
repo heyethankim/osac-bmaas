@@ -199,17 +199,17 @@ export type CatalogClusterHostTypeOption = {
 export const CATALOG_CLUSTER_NODE_SET_OPTIONS: ReadonlyArray<CatalogClusterNodeSetOption> = [
   {
     id: 'fc430-worker',
-    label: 'fc430 · worker',
+    label: 'Worker pool',
     detail: 'General-purpose workers · size 1–4',
   },
   {
     id: 'fc430-infra',
-    label: 'fc430 · infra',
+    label: 'Infra pool',
     detail: 'Infrastructure workloads · routers, registry, monitoring',
   },
   {
     id: 'fc430-gpu',
-    label: 'fc430 · gpu',
+    label: 'GPU pool',
     detail: 'GPU workers · AI training and inference',
   },
 ]

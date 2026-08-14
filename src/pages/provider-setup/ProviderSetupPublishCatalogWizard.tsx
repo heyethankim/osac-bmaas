@@ -1562,8 +1562,8 @@ export function ProviderSetupPublishCatalogWizard({
         return (
           <div className="provider-setup-template__publish-hardware-step">
             <Content component="p" className="provider-setup-template__publish-step-lede">
-              Choose the default node set and host type for this catalog item. When topology is
-              editable, tenants can change these and add more node sets at launch.
+              Set default node sets and host types. Tenants can adjust them at launch when topology
+              is editable.
             </Content>
             <FormGroup
               label="Tenant access to node topology"
@@ -1859,8 +1859,7 @@ export function ProviderSetupPublishCatalogWizard({
         return (
           <div className="provider-setup-template__publish-display-step">
             <Content component="p" className="provider-setup-template__publish-step-lede">
-              Name this product for the tenant storefront. Pricing is inherited from the linked
-              blueprint and cannot be changed here.
+              Set the name and description tenants see in the catalog.
             </Content>
             {selectedTemplate ? (
               <Alert
