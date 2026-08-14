@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { MinusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/minus-circle-icon'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
   Button,
@@ -115,7 +114,7 @@ export function TenantAdminAdministratorsPage({
       </ModalBody>
       <ModalFooter>
         <Button variant="danger" onClick={handleConfirmRemoveAdministrator}>
-          Remove administrator
+          Remove
         </Button>
         <Button variant="link" onClick={closeRemoveAdministrator}>
           Cancel
@@ -254,8 +253,8 @@ function AdministratorRow({ admin, onRequestRemove }: AdministratorRowProps) {
           <ActionsColumn
             items={[
               {
-                title: 'Remove administrator',
-                icon: <MinusCircleIcon aria-hidden />,
+                title: 'Remove',
+                isDanger: true,
                 onClick: () => onRequestRemove(admin),
               },
             ]}
