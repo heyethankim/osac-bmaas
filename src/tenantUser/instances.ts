@@ -4,10 +4,12 @@ import {
   resolveClusterCatalogHighlightRows,
 } from '../catalog/catalogSpecs'
 import {
+  DEFAULT_CLUSTER_NODE_SET_ID,
   formatClusterHostTypeLabel,
   formatClusterNodeSetLabel,
   formatClusterPlatformLabel,
   formatCatalogDiskImageLabel,
+  getCatalogClusterNodeSetOption,
   getReleaseImageForClusterVersion,
   resolveBaremetalInstanceTypeHardware,
   resolveBaremetalInstanceTypeHardwareFromSizeLabel,
@@ -1355,36 +1357,56 @@ export function getTenantInstanceCardSpecRows(instance: TenantInstance): Catalog
   return allSpecRows.slice(0, 3)
 }
 
+function resolveClusterNodeSetIdFromNodeSet(
+  nodeSet: TenantClusterNodeSet | undefined,
+): string {
+  if (!nodeSet) {
+    return DEFAULT_CLUSTER_NODE_SET_ID
+  }
+
+  if (nodeSet.hostType === 'gpu-host' || nodeSet.name === 'gpu-workers') {
+    return 'fc430-gpu'
+  }
+
+  if (nodeSet.name === 'infra' || nodeSet.name === 'infra-workers') {
+    return 'fc430-infra'
+  }
+
+  return DEFAULT_CLUSTER_NODE_SET_ID
+}
+
+function resolveClusterInstanceNodeSetId(instance: TenantInstance): string {
+  const fromSpecNodeSet = instance.specRows?.find((row) => row.label === 'Node set')?.value.trim()
+  if (fromSpecNodeSet && !/·\s*\d+\s+nodes?/i.test(fromSpecNodeSet)) {
+    return getCatalogClusterNodeSetOption(fromSpecNodeSet)?.id ?? fromSpecNodeSet
+  }
+
+  return resolveClusterNodeSetIdFromNodeSet(resolveClusterConfig(instance).nodeSets[0])
+}
+
 /** Same Cluster version / Node set / Host type rows as cluster catalog cards. */
 function getClusterInstanceCardSpecRows(instance: TenantInstance): CatalogSpecRow[] {
   const catalog = findCatalogDraftForInstance(instance)
   const catalogRows =
     catalog?.serviceId === 'cluster' ? resolveClusterCatalogHighlightRows(catalog) : null
+  const primaryNodeSet = resolveClusterConfig(instance).nodeSets[0]
+  const fromSpecHostType = instance.specRows?.find((row) => row.label === 'Host type')?.value.trim()
 
   const platform =
     getClusterPlatformLabel(instance) ||
+    instance.specRows
+      ?.find((row) => row.label === 'Cluster version' || row.label === 'Platform')
+      ?.value?.trim() ||
     catalogRows?.find((row) => row.label === 'Cluster version')?.value ||
     '—'
 
-  const fromSpecNodeSet = instance.specRows?.find((row) => row.label === 'Node set')?.value.trim()
-  const fromSpecHostType = instance.specRows?.find((row) => row.label === 'Host type')?.value.trim()
-  const firstNodeSet = resolveClusterConfig(instance).nodeSets[0]
-  const nodeSetValue =
-    catalogRows?.find((row) => row.label === 'Node set')?.value ||
-    (fromSpecNodeSet && !/·\s*\d+\s+nodes?/i.test(fromSpecNodeSet)
-      ? formatClusterNodeSetLabel(fromSpecNodeSet)
-      : formatClusterNodeSetLabel(
-          firstNodeSet?.name === 'gpu-workers' || firstNodeSet?.hostType === 'gpu-host'
-            ? 'fc430-gpu'
-            : firstNodeSet?.name === 'infra' || firstNodeSet?.name === 'infra-workers'
-              ? 'fc430-infra'
-              : 'fc430-worker',
-        ))
-  const hostTypeValue =
-    catalogRows?.find((row) => row.label === 'Host type')?.value ||
-    formatClusterHostTypeLabel(
-      fromSpecHostType || firstNodeSet?.hostType || getClusterNodeSetTypeLabel(instance),
-    )
+  const nodeSetValue = formatClusterNodeSetLabel(resolveClusterInstanceNodeSetId(instance))
+  const hostTypeValue = formatClusterHostTypeLabel(
+    fromSpecHostType ||
+      primaryNodeSet?.hostType ||
+      getClusterNodeSetTypeLabel(instance) ||
+      catalogRows?.find((row) => row.label === 'Host type')?.value,
+  )
 
   return [
     {
