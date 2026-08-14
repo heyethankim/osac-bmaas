@@ -46,11 +46,7 @@ import {
   resolveCatalogSpecRows,
   resolveVmCatalogHighlightRows,
 } from '../../catalog/catalogSpecs'
-import {
-  formatCatalogFieldPolicyMode,
-  getProvisioningTemplatePresentation,
-} from '../../catalog/catalogPublishConfig'
-import { findCatalogLinkedTemplate } from '../../catalog/hardwareSpecs'
+import { formatCatalogFieldPolicyMode } from '../../catalog/catalogPublishConfig'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
 
 /** Demo delay for Publish → Publishing ... → Launch instance. */
@@ -70,10 +66,6 @@ type CatalogItemDetailsPageProps = {
   onEdit: () => void
   onDuplicate: () => void
   onDelete: () => void
-  onNavigateToLinkedTemplate?: (template: {
-    templateRefId: string
-    templateName: string
-  }) => void
 }
 
 function formatCreatedAt(iso: string): string {
@@ -100,7 +92,6 @@ export function CatalogItemDetailsPage({
   onEdit,
   onDuplicate,
   onDelete,
-  onNavigateToLinkedTemplate,
 }: CatalogItemDetailsPageProps) {
   const organizations = getProviderRegisteredOrganizations()
   const serviceId: CatalogServiceId = getDraftServiceId(catalog)
@@ -144,14 +135,6 @@ export function CatalogItemDetailsPage({
           )
         : specRows
   const specsSectionLabel = getCatalogSpecsSectionLabel(serviceId)
-  const canLinkToTemplate =
-    Boolean(onNavigateToLinkedTemplate) &&
-    (serviceId === 'baremetal' || serviceId === 'cluster')
-  const templatePresentation = getProvisioningTemplatePresentation(
-    findCatalogLinkedTemplate(catalog.templateRefId, catalog.templateName),
-    serviceId,
-  )
-
   const [isActionsOpen, setIsActionsOpen] = useState(false)
   // Detail page owns the CTA so Publish → Publishing ... → Launch cannot be stolen by
   // lagging list props. Parent still persists status for cards / navigation.
@@ -285,7 +268,11 @@ export function CatalogItemDetailsPage({
               )}
             >
               <DropdownList>
-                <DropdownItem value="edit" onClick={onEdit}>
+                <DropdownItem
+                  value="edit"
+                  onClick={onEdit}
+                  isDisabled={showPublishing}
+                >
                   Edit
                 </DropdownItem>
                 <DropdownItem value="duplicate" onClick={onDuplicate}>
@@ -347,28 +334,6 @@ export function CatalogItemDetailsPage({
                   <DescriptionListTerm>Catalog item ID</DescriptionListTerm>
                   <DescriptionListDescription>
                     <code>{catalog.catalogItemId}</code>
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
-                <DescriptionListGroup>
-                  <DescriptionListTerm>Linked template</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    {canLinkToTemplate && onNavigateToLinkedTemplate ? (
-                      <Button
-                        variant="link"
-                        isInline
-                        className="provider-admin-catalog-items__inline-link"
-                        onClick={() =>
-                          onNavigateToLinkedTemplate({
-                            templateRefId: catalog.templateRefId,
-                            templateName: catalog.templateName,
-                          })
-                        }
-                      >
-                        {templatePresentation.title}
-                      </Button>
-                    ) : (
-                      templatePresentation.title
-                    )}
                   </DescriptionListDescription>
                 </DescriptionListGroup>
                 <DescriptionListGroup>

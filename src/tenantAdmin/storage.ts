@@ -181,6 +181,19 @@ function isTenantProjectMember(value: unknown): value is TenantProject['members'
   )
 }
 
+const REMOVED_VM_CATALOG_ITEM_IDS = new Set(['cat-vm-net-attach', 'cat_VM_NET_ATTACH'])
+
+function withoutRemovedVmCatalogItems(
+  items: TenantProject['catalogItems'],
+): TenantProject['catalogItems'] {
+  return items.filter(
+    (item) =>
+      !REMOVED_VM_CATALOG_ITEM_IDS.has(item.id) &&
+      item.displayName !== 'vm-configurable-network-attachments' &&
+      item.displayName !== 'VM with Configurable Network Attachments',
+  )
+}
+
 function isTenantProjectCatalogItem(value: unknown): value is TenantProject['catalogItems'][number] {
   if (!value || typeof value !== 'object') {
     return false
@@ -227,11 +240,13 @@ function normalizeTenantProject(value: TenantProject): TenantProject {
     catalogDisplayName?: string | null
   }
 
-  const catalogItems = Array.isArray(project.catalogItems)
-    ? project.catalogItems.filter(isTenantProjectCatalogItem)
-    : project.catalogItemId && project.catalogDisplayName
-      ? [{ id: project.catalogItemId, displayName: project.catalogDisplayName }]
-      : []
+  const catalogItems = withoutRemovedVmCatalogItems(
+    Array.isArray(project.catalogItems)
+      ? project.catalogItems.filter(isTenantProjectCatalogItem)
+      : project.catalogItemId && project.catalogDisplayName
+        ? [{ id: project.catalogItemId, displayName: project.catalogDisplayName }]
+        : [],
+  )
 
   const members = Array.isArray(project.members) ? project.members.filter(isTenantProjectMember) : []
 
@@ -343,10 +358,6 @@ function createDemoTenantProject(): TenantProject {
         id: 'cat-node-sets-fc430',
         displayName: 'cluster-node-sets-object',
       },
-      {
-        id: 'cat-vm-net-attach',
-        displayName: 'vm-configurable-network-attachments',
-      },
     ],
     members: DEMO_TENANT_PROJECT_MEMBERS,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 12).toISOString(),
@@ -367,10 +378,6 @@ function createDemoTenantProject02(): TenantProject {
       {
         id: 'cat-bm-gpu-training',
         displayName: 'bare-metal-gpu-training-server',
-      },
-      {
-        id: 'cat-vm-net-attach',
-        displayName: 'vm-configurable-network-attachments',
       },
     ],
     members: DEMO_TENANT_PROJECT_MEMBERS.slice(0, 4),

@@ -255,6 +255,65 @@ export function resolveClusterCatalogHighlightRows(
     .filter((row): row is CatalogSpecRow => Boolean(row))
 }
 
+function parseBaremetalHardwareFromInstanceTypeLabel(instanceTypeLabel: string): {
+  cpu: string
+  ram: string
+  gpu: string
+} {
+  const { size } = parseCatalogInstanceTypeParts(instanceTypeLabel)
+  if (!size) {
+    return { cpu: '—', ram: '—', gpu: 'None' }
+  }
+
+  const parts = size
+    .split(' · ')
+    .map((part) => part.trim())
+    .filter(Boolean)
+
+  let cpu = '—'
+  let ram = '—'
+  let gpu = 'None'
+
+  for (const part of parts) {
+    if (/vCPU/i.test(part)) {
+      cpu = part
+      continue
+    }
+
+    if (/\d+\s*GB\b/i.test(part)) {
+      ram = part
+      continue
+    }
+
+    if (/NIC/i.test(part)) {
+      continue
+    }
+
+    gpu = part
+  }
+
+  return { cpu, ram, gpu }
+}
+
+function buildBaremetalCatalogSpecRows(
+  item: Pick<
+    ProviderCatalogDraft,
+    'templateRefId' | 'templateName' | 'instanceTypeLabel' | 'diskImageLabel'
+  >,
+): CatalogSpecRow[] {
+  const hardware = resolveHardwareSpecsForCatalogItem(item)
+  const parsed = item.instanceTypeLabel
+    ? parseBaremetalHardwareFromInstanceTypeLabel(item.instanceTypeLabel)
+    : null
+
+  return [
+    { label: 'CPU', value: parsed?.cpu ?? hardware.cpu },
+    { label: 'RAM', value: parsed?.ram ?? hardware.ram },
+    { label: 'GPU', value: parsed?.gpu ?? hardware.gpu },
+    { label: 'Disk image', value: item.diskImageLabel?.trim() || hardware.osImage },
+  ]
+}
+
 export function resolveCatalogSpecRows(
   item: Pick<
     ProviderCatalogDraft,
@@ -277,6 +336,10 @@ export function resolveCatalogSpecRows(
 
   if (serviceId === 'cluster') {
     return buildClusterCatalogSpecRows(item, options)
+  }
+
+  if (serviceId === 'baremetal') {
+    return buildBaremetalCatalogSpecRows(item)
   }
 
   if (item.instanceTypeLabel || item.diskImageLabel) {
@@ -320,7 +383,7 @@ export function resolveCatalogSpecRows(
     { label: 'CPU', value: hardware.cpu },
     { label: 'RAM', value: hardware.ram },
     { label: 'GPU', value: hardware.gpu },
-    { label: 'OS image', value: hardware.osImage },
+    { label: 'Disk image', value: hardware.osImage },
   ]
 }
 

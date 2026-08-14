@@ -16,11 +16,7 @@ import {
   LEGACY_VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID,
   LEGACY_VM_NETWORK_ATTACHMENTS_DISPLAY_NAME,
   VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID,
-  VM_NETWORK_ATTACHMENTS_DESCRIPTION,
   VM_NETWORK_ATTACHMENTS_DISPLAY_NAME,
-  VM_NETWORK_ATTACHMENTS_RATE_CARD,
-  VM_NETWORK_ATTACHMENTS_TEMPLATE_NAME,
-  VM_NETWORK_ATTACHMENTS_TEMPLATE_REF_ID,
 } from '../catalog/catalogSpecs'
 import {
   DEFAULT_CLUSTER_CATALOG_VERSION_ID,
@@ -33,6 +29,7 @@ import {
 import { getDefaultMasterTemplate, getStandardClusterTemplate } from '../providerAdmin/bmaasTemplates'
 import {
   addProviderCatalogItem,
+  deleteProviderCatalogItem,
   getCatalogItemNetworkPolicy,
   getProviderCatalogDraft,
   getProviderCatalogItems,
@@ -85,7 +82,6 @@ export const DEMO_CATALOG_ITEM_ORDER = [
   BARE_METAL_GPU_CATALOG_ITEM_ID,
   BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID,
   CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
-  VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID,
 ] as const
 
 function demoCatalogItemOrderIndex(catalogItemId: string): number {
@@ -177,22 +173,6 @@ function createClusterNodeSetsCatalogDraft(): ProviderCatalogDraft {
     hostTypeId: DEFAULT_CLUSTER_HOST_TYPE_ID,
     hostTypeLabel: formatClusterHostTypeLabel(DEFAULT_CLUSTER_HOST_TYPE_ID),
     clusterNodeTopologyMode: 'editable',
-    networkPolicy: createAllEditableCatalogNetworkPolicy(),
-    status: 'live',
-    createdAt: new Date().toISOString(),
-  }
-}
-
-function createVmNetworkAttachmentsCatalogDraft(): ProviderCatalogDraft {
-  return {
-    catalogItemId: VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID,
-    templateRefId: VM_NETWORK_ATTACHMENTS_TEMPLATE_REF_ID,
-    templateName: VM_NETWORK_ATTACHMENTS_TEMPLATE_NAME,
-    displayName: VM_NETWORK_ATTACHMENTS_DISPLAY_NAME,
-    description: VM_NETWORK_ATTACHMENTS_DESCRIPTION,
-    scope: 'global-public',
-    rateCard: VM_NETWORK_ATTACHMENTS_RATE_CARD,
-    serviceId: 'virtual-machine',
     networkPolicy: createAllEditableCatalogNetworkPolicy(),
     status: 'live',
     createdAt: new Date().toISOString(),
@@ -321,7 +301,6 @@ const DEMO_CATALOG_NETWORK_LOCK_PATTERNS: ReadonlyArray<{
   { catalogItemId: BARE_METAL_GPU_CATALOG_ITEM_ID, pattern: 'all-editable' },
   { catalogItemId: BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID, pattern: 'all-editable' },
   { catalogItemId: CLUSTER_NODE_SETS_CATALOG_ITEM_ID, pattern: 'all-editable' },
-  { catalogItemId: VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID, pattern: 'all-editable' },
 ]
 
 function applyLockPatternToPolicy(
@@ -356,7 +335,6 @@ function syncDemoCatalogNetworkLockPatterns(): void {
     [BARE_METAL_GPU_CATALOG_ITEM_ID]: LEGACY_BARE_METAL_GPU_CATALOG_ITEM_ID,
     [BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID]: LEGACY_BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID,
     [CLUSTER_NODE_SETS_CATALOG_ITEM_ID]: LEGACY_CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
-    [VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID]: LEGACY_VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID,
   }
 
   for (const assignment of DEMO_CATALOG_NETWORK_LOCK_PATTERNS) {
@@ -507,39 +485,21 @@ function syncClusterCatalogVersionLabels(): void {
   }
 }
 
-function hasVmNetworkAttachmentsCatalogItem(items: ProviderCatalogDraft[]): boolean {
-  return items.some(
-    (item) =>
-      item.catalogItemId === VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID ||
-      item.catalogItemId === LEGACY_VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID ||
-      item.displayName === VM_NETWORK_ATTACHMENTS_DISPLAY_NAME ||
-      item.displayName === LEGACY_VM_NETWORK_ATTACHMENTS_DISPLAY_NAME,
+function isVirtualMachineCatalogItem(item: ProviderCatalogDraft): boolean {
+  return (
+    item.serviceId === 'virtual-machine' ||
+    item.catalogItemId === VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID ||
+    item.catalogItemId === LEGACY_VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID ||
+    item.displayName === VM_NETWORK_ATTACHMENTS_DISPLAY_NAME ||
+    item.displayName === LEGACY_VM_NETWORK_ATTACHMENTS_DISPLAY_NAME
   )
 }
 
-function syncVmNetworkAttachmentsCatalogItem(): void {
-  const current = getProviderCatalogItems().find(
-    (item) =>
-      item.catalogItemId === VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID ||
-      item.catalogItemId === LEGACY_VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID ||
-      item.displayName === VM_NETWORK_ATTACHMENTS_DISPLAY_NAME ||
-      item.displayName === LEGACY_VM_NETWORK_ATTACHMENTS_DISPLAY_NAME,
-  )
-  if (!current) {
-    return
-  }
-
-  if (
-    current.catalogItemId !== VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID ||
-    current.templateRefId !== VM_NETWORK_ATTACHMENTS_TEMPLATE_REF_ID ||
-    current.displayName !== VM_NETWORK_ATTACHMENTS_DISPLAY_NAME
-  ) {
-    rewriteProviderCatalogItemIdentity(current.catalogItemId, {
-      catalogItemId: VM_NETWORK_ATTACHMENTS_CATALOG_ITEM_ID,
-      templateRefId: VM_NETWORK_ATTACHMENTS_TEMPLATE_REF_ID,
-      displayName: VM_NETWORK_ATTACHMENTS_DISPLAY_NAME,
-      description: current.description ?? VM_NETWORK_ATTACHMENTS_DESCRIPTION,
-    })
+function purgeVirtualMachineCatalogItems(): void {
+  for (const item of getProviderCatalogItems()) {
+    if (isVirtualMachineCatalogItem(item)) {
+      deleteProviderCatalogItem(item.catalogItemId)
+    }
   }
 }
 
@@ -599,13 +559,8 @@ export function ensureProviderCatalogDemoItems(): ProviderCatalogDraft[] {
   syncClusterCatalogVersionLabels()
   items = getProviderCatalogItems()
 
-  if (!hasVmNetworkAttachmentsCatalogItem(items)) {
-    addProviderCatalogItem(createVmNetworkAttachmentsCatalogDraft())
-    items = getProviderCatalogItems()
-  } else {
-    syncVmNetworkAttachmentsCatalogItem()
-    items = getProviderCatalogItems()
-  }
+  purgeVirtualMachineCatalogItems()
+  items = getProviderCatalogItems()
 
   syncDemoCatalogNetworkLockPatterns()
 
@@ -615,7 +570,6 @@ export function ensureProviderCatalogDemoItems(): ProviderCatalogDraft[] {
       ...(selectedServices.length > 0 ? selectedServices : DEFAULT_PROVIDER_SERVICE_SELECTION),
       'baremetal',
       'cluster',
-      'virtual-machine',
     ]),
   ]
   const servicesChanged =

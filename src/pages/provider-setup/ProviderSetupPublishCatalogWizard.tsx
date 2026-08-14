@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowRightIcon } from '@patternfly/react-icons/dist/esm/icons/arrow-right-icon'
 import { CatalogIcon } from '@patternfly/react-icons/dist/esm/icons/catalog-icon'
 import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
@@ -31,6 +31,9 @@ import {
   ListComponent,
   ListItem,
   Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
   ModalVariant,
   Spinner,
   TextArea,
@@ -42,9 +45,12 @@ import {
   WizardStep,
 } from '@patternfly/react-core'
 import { CatalogPublishScopeIcon } from '../../components/provider-admin/CatalogPublishScopeIcon'
+import { CatalogEditChangesSummary } from '../../components/provider-admin/CatalogEditChangesSummary'
+import { CatalogEditPreviousValue } from '../../components/provider-admin/CatalogEditPreviousValue'
 import { CatalogWizardPageShell } from '../../components/catalog/CatalogWizardPageShell'
 import {
   formatVipEnterpriseVisibilityLabel,
+  getCatalogEnterpriseTenantIds,
   normalizeEnterpriseTenantIds,
   VipEnterpriseOrganizationField,
 } from '../../components/provider-admin/VipEnterpriseOrganizationField'
@@ -81,6 +87,14 @@ import {
   type CatalogFieldPolicy,
   type CustomInstanceTypeConfig,
 } from '../../catalog/catalogPublishConfig'
+import {
+  buildCatalogEditSnapshotFromCatalog,
+  buildCatalogEditSnapshotFromWizardState,
+  getCatalogEditChanges,
+  getCatalogEditModifiedStepIds,
+  getCatalogEditPreviousValue,
+  type CatalogEditSnapshot,
+} from '../../catalog/catalogEditDiff'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import { DEFAULT_CATALOG_NETWORK_POLICY } from '../../providerAdmin/catalogNetworkPolicy'
 import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
@@ -97,9 +111,14 @@ import {
   type PublishedTemplatePayload,
   type SavedMasterTemplate,
 } from '../../providerSetup/templateDemo'
+import type { ProviderCatalogDraft } from '../../providerSetup/storage'
+import { getCatalogItemStatus } from '../../providerSetup/storage'
 
 type ProviderSetupPublishCatalogWizardProps = {
   isOpen: boolean
+  mode?: 'create' | 'edit'
+  /** Required when `mode` is `edit`. */
+  editingCatalog?: ProviderCatalogDraft | null
   /** `page` replaces the catalog landing (breadcrumb back to Catalog). Default `modal`. */
   presentation?: 'modal' | 'page'
   templates: SavedMasterTemplate[]
@@ -113,10 +132,14 @@ type ProviderSetupPublishCatalogWizardProps = {
   /** Resume VIP after registering an organization. */
   initialPublishScope?: PublishCatalogScope
   initialEnterpriseTenantId?: string
+  /** Primary action label for the leave-without-saving confirm modal. */
+  leaveConfirmActionLabel?: string
   onClose: () => void
   onCreateCatalogItem: (payload: PublishedTemplatePayload) => void
+  onSaveCatalogItem?: (catalogItemId: string, payload: PublishedTemplatePayload) => void
   onRegisterOrganization?: () => void
   isPublishing?: boolean
+  isSaving?: boolean
 }
 
 function CustomHardwareUnitNumberInput({
@@ -192,6 +215,8 @@ function CustomHardwareUnitNumberInput({
 
 export function ProviderSetupPublishCatalogWizard({
   isOpen,
+  mode = 'create',
+  editingCatalog = null,
   presentation = 'modal',
   templates,
   organizations,
@@ -199,11 +224,17 @@ export function ProviderSetupPublishCatalogWizard({
   defaultDisplayName,
   initialPublishScope = 'global-public',
   initialEnterpriseTenantId = '',
+  leaveConfirmActionLabel,
   onClose,
   onCreateCatalogItem,
+  onSaveCatalogItem,
   onRegisterOrganization,
   isPublishing = false,
+  isSaving = false,
 }: ProviderSetupPublishCatalogWizardProps) {
+  const isEditMode = mode === 'edit'
+  const isSubmitting = isPublishing || isSaving
+  const skipNextServiceHardwareResetRef = useRef(false)
   const [selectedServiceId, setSelectedServiceId] = useState<CatalogServiceId | null>('baremetal')
   const [selectedTemplateRefId, setSelectedTemplateRefId] = useState('')
   const [selectedInstanceTypeId, setSelectedInstanceTypeId] = useState('')
@@ -225,6 +256,8 @@ export function ProviderSetupPublishCatalogWizard({
   const [description, setDescription] = useState('')
   const [publishScope, setPublishScope] = useState<PublishCatalogScope>('global-public')
   const [enterpriseTenantIds, setEnterpriseTenantIds] = useState<string[]>([])
+  const [isLeaveConfirmOpen, setIsLeaveConfirmOpen] = useState(false)
+  const [editBaseline, setEditBaseline] = useState<CatalogEditSnapshot | null>(null)
 
   const selectedTemplate =
     templates.find((template) => template.templateRefId === selectedTemplateRefId) ?? null
@@ -288,6 +321,74 @@ export function ProviderSetupPublishCatalogWizard({
     [organizations, enterpriseTenantIds],
   )
   const isVipUnassigned = isVipEnterprise && enterpriseTenantIds.length === 0
+  const currentDiskImageLabel = selectedDiskImage
+    ? isClusterService
+      ? formatClusterPlatformLabel(selectedDiskImage.id)
+      : selectedDiskImage.label
+    : ''
+  const currentEditSnapshot = useMemo(() => {
+    if (!isEditMode) {
+      return null
+    }
+
+    return buildCatalogEditSnapshotFromWizardState(
+      {
+        serviceId: selectedServiceId,
+        templateRefId: selectedTemplateRefId,
+        displayName: displayName.trim(),
+        description: description.trim(),
+        instanceTypeId: selectedInstanceTypeId,
+        instanceTypeLabel: selectedInstanceTypeLabel,
+        diskImageId: selectedDiskImageId,
+        diskImageLabel: currentDiskImageLabel,
+        clusterVersionMode,
+        nodeSetId: selectedNodeSetId,
+        hostTypeId: selectedHostTypeId,
+        clusterNodeTopologyMode,
+        fieldPolicies,
+        publishScope,
+        enterpriseTenantIds,
+      },
+      templates,
+      organizations,
+    )
+  }, [
+    clusterNodeTopologyMode,
+    clusterVersionMode,
+    currentDiskImageLabel,
+    description,
+    displayName,
+    enterpriseTenantIds,
+    fieldPolicies,
+    isEditMode,
+    organizations,
+    publishScope,
+    selectedDiskImageId,
+    selectedHostTypeId,
+    selectedInstanceTypeId,
+    selectedInstanceTypeLabel,
+    selectedNodeSetId,
+    selectedServiceId,
+    selectedTemplateRefId,
+    templates,
+  ])
+  const editChanges = useMemo(() => {
+    if (!isEditMode || !editBaseline || !currentEditSnapshot) {
+      return []
+    }
+
+    return getCatalogEditChanges(editBaseline, currentEditSnapshot).filter(
+      (change) => !isEditMode || change.id !== 'service',
+    )
+  }, [currentEditSnapshot, editBaseline, isEditMode])
+  const modifiedStepIds = useMemo(
+    () => getCatalogEditModifiedStepIds(editChanges),
+    [editChanges],
+  )
+  const editPrevious = (fieldId: keyof CatalogEditSnapshot) =>
+    getCatalogEditPreviousValue(editBaseline, fieldId, currentEditSnapshot)
+  const isEditingLiveCatalog =
+    isEditMode && editingCatalog ? getCatalogItemStatus(editingCatalog) === 'live' : false
   const canCreateCatalogItem =
     Boolean(selectedServiceId) &&
     Boolean(selectedTemplate) &&
@@ -295,6 +396,7 @@ export function ProviderSetupPublishCatalogWizard({
     Boolean(selectedDiskImage) &&
     (!isClusterService || (Boolean(selectedNodeSetId) && Boolean(selectedHostTypeId))) &&
     isValidKubernetesResourceName(displayName)
+  const canSaveCatalogEdit = canCreateCatalogItem && (!isEditMode || editChanges.length > 0)
   const hasLockableParameters = fieldPolicies.length > 0
   const hasSingleTemplate = templates.length <= 1
   const publishSteps = useMemo(
@@ -352,11 +454,131 @@ export function ProviderSetupPublishCatalogWizard({
     onClose()
   }
 
+  const requestClose = () => {
+    if (isSubmitting) {
+      return
+    }
+    setIsLeaveConfirmOpen(true)
+  }
+
+  const closeLeaveConfirm = () => {
+    setIsLeaveConfirmOpen(false)
+  }
+
+  const confirmLeave = () => {
+    setIsLeaveConfirmOpen(false)
+    handleClose()
+  }
+
+  const leaveConfirmPrimaryLabel =
+    leaveConfirmActionLabel ?? (isEditMode ? 'Leave without saving' : 'Go to Catalog')
+
+  const leaveConfirmModal = (
+    <Modal
+      variant={ModalVariant.small}
+      isOpen={isLeaveConfirmOpen}
+      onClose={closeLeaveConfirm}
+      aria-labelledby="publish-catalog-leave-title"
+      aria-describedby="publish-catalog-leave-description"
+    >
+      <ModalHeader
+        title="Are you sure?"
+        titleIconVariant="warning"
+        labelId="publish-catalog-leave-title"
+      />
+      <ModalBody>
+        <Content component="p" id="publish-catalog-leave-description">
+          Your progress will not be saved.
+        </Content>
+      </ModalBody>
+      <ModalFooter>
+        <Button variant="primary" onClick={confirmLeave}>
+          {leaveConfirmPrimaryLabel}
+        </Button>
+        <Button variant="link" onClick={closeLeaveConfirm}>
+          Cancel
+        </Button>
+      </ModalFooter>
+    </Modal>
+  )
+
+  const hydrateWizardStateFromCatalog = (catalog: ProviderCatalogDraft) => {
+    const serviceId = catalog.serviceId ?? 'baremetal'
+    const preferredTemplate =
+      templates.find((template) => template.templateRefId === catalog.templateRefId) ??
+      templates[0] ??
+      null
+
+    setSelectedServiceId(serviceId)
+    setSelectedTemplateRefId(preferredTemplate?.templateRefId ?? catalog.templateRefId)
+    setDisplayName(catalog.displayName)
+    setDescription(catalog.description ?? '')
+    setPublishScope(catalog.scope)
+
+    const preferredTenantIds = getCatalogEnterpriseTenantIds(catalog).filter((tenantId) =>
+      organizations.some((organization) => organization.tenantId === tenantId),
+    )
+    if (catalog.scope === 'vip-enterprise') {
+      const resumeTenantIds = normalizeEnterpriseTenantIds(initialEnterpriseTenantId).filter(
+        (tenantId) => organizations.some((organization) => organization.tenantId === tenantId),
+      )
+      setEnterpriseTenantIds(
+        resumeTenantIds.length > 0
+          ? resumeTenantIds
+          : preferredTenantIds.length > 0
+            ? preferredTenantIds
+            : organizations[0]?.tenantId
+              ? [organizations[0].tenantId]
+              : [],
+      )
+    } else {
+      setEnterpriseTenantIds([])
+    }
+
+    if (catalog.instanceTypeId) {
+      setSelectedInstanceTypeId(catalog.instanceTypeId)
+      if (isCustomInstanceTypeId(catalog.instanceTypeId)) {
+        setCustomInstanceType(getDefaultCustomInstanceTypeConfig(serviceId))
+      }
+    } else {
+      const nextInstanceOptions = getCatalogInstanceTypeOptions(serviceId)
+      setSelectedInstanceTypeId(nextInstanceOptions[0]?.id ?? '')
+    }
+
+    if (catalog.diskImageId) {
+      setSelectedDiskImageId(catalog.diskImageId)
+    } else {
+      const nextSoftwareOptions =
+        serviceId === 'cluster'
+          ? getCatalogClusterVersionOptions()
+          : getCatalogDiskImageOptions()
+      setSelectedDiskImageId(nextSoftwareOptions[0]?.id ?? '')
+    }
+    setClusterVersionMode(catalog.clusterVersionMode ?? 'locked')
+    setSelectedNodeSetId(catalog.nodeSetId ?? DEFAULT_CLUSTER_NODE_SET_ID)
+    setSelectedHostTypeId(catalog.hostTypeId ?? DEFAULT_CLUSTER_HOST_TYPE_ID)
+    setClusterNodeTopologyMode(catalog.clusterNodeTopologyMode ?? 'locked')
+    setFieldPolicies(catalog.fieldPolicies ?? [])
+    setExpandedClusterVersionIds(new Set())
+  }
+
   useEffect(() => {
     if (!isOpen) {
       resetWizard()
+      setEditBaseline(null)
       return
     }
+
+    if (isEditMode && editingCatalog) {
+      setEditBaseline(
+        buildCatalogEditSnapshotFromCatalog(editingCatalog, templates, organizations),
+      )
+      skipNextServiceHardwareResetRef.current = true
+      hydrateWizardStateFromCatalog(editingCatalog)
+      return
+    }
+
+    setEditBaseline(null)
 
     const preferredTemplate =
       templates.find((template) => template.templateRefId === defaultTemplateRefId) ??
@@ -401,14 +623,14 @@ export function ProviderSetupPublishCatalogWizard({
   }, [isOpen, organizations, publishScope, enterpriseTenantIds])
 
   useEffect(() => {
-    if (!selectedServiceId) {
+    if (!selectedServiceId || isEditMode) {
       return
     }
 
     // Keep Name and Description aligned with the chosen service.
     setDisplayName(getPublishCatalogSuggestedDisplayName(selectedServiceId))
     setDescription(getPublishCatalogSuggestedDescription(selectedServiceId))
-  }, [selectedServiceId])
+  }, [isEditMode, selectedServiceId])
 
   useEffect(() => {
     if (!selectedServiceId) {
@@ -419,6 +641,11 @@ export function ProviderSetupPublishCatalogWizard({
       setSelectedHostTypeId(DEFAULT_CLUSTER_HOST_TYPE_ID)
       setClusterNodeTopologyMode('locked')
       setFieldPolicies([])
+      return
+    }
+
+    if (skipNextServiceHardwareResetRef.current) {
+      skipNextServiceHardwareResetRef.current = false
       return
     }
 
@@ -465,7 +692,7 @@ export function ProviderSetupPublishCatalogWizard({
     })
   }, [selectedServiceId, selectedTemplate?.templateRefId])
 
-  const handleCreateCatalogItem = () => {
+  const buildCatalogItemPayload = (): PublishedTemplatePayload | null => {
     if (
       !canCreateCatalogItem ||
       !selectedServiceId ||
@@ -473,12 +700,12 @@ export function ProviderSetupPublishCatalogWizard({
       !selectedInstanceType ||
       !selectedDiskImage
     ) {
-      return
+      return null
     }
 
     const vipOrganizationIds = selectedVipOrganizations.map((organization) => organization.id)
 
-    onCreateCatalogItem({
+    return {
       serviceId: selectedServiceId,
       templateRefId: selectedTemplate.templateRefId,
       templateName: selectedTemplate.templateName,
@@ -486,7 +713,6 @@ export function ProviderSetupPublishCatalogWizard({
       description: description.trim(),
       scope: publishScope,
       rateCard: resolveRateCard(selectedTemplate),
-      status: 'unpublished',
       instanceTypeId: selectedInstanceType.id,
       instanceTypeLabel: selectedInstanceTypeLabel,
       diskImageId: selectedDiskImage.id,
@@ -525,7 +751,32 @@ export function ProviderSetupPublishCatalogWizard({
             vipOrganizationIds,
           }
         : {}),
+    }
+  }
+
+  const handleCreateCatalogItem = () => {
+    const payload = buildCatalogItemPayload()
+    if (!payload) {
+      return
+    }
+
+    onCreateCatalogItem({
+      ...payload,
+      status: 'unpublished',
     })
+  }
+
+  const handleSaveCatalogItem = () => {
+    if (!editingCatalog || !onSaveCatalogItem || !canSaveCatalogEdit) {
+      return
+    }
+
+    const payload = buildCatalogItemPayload()
+    if (!payload) {
+      return
+    }
+
+    onSaveCatalogItem(editingCatalog.catalogItemId, payload)
   }
 
   const toggleFieldPolicyMode = (policyId: string) => {
@@ -548,70 +799,114 @@ export function ProviderSetupPublishCatalogWizard({
 
   function renderStepContent(stepId: (typeof PUBLISH_CATALOG_STEPS)[number]['id']) {
     switch (stepId) {
-      case 'service':
+      case 'service': {
+        const selectedService = selectedServiceId
+          ? getCatalogServiceOffering(selectedServiceId)
+          : null
+
         return (
           <div className="provider-setup-template__publish-service-step">
             <Content component="p" className="provider-setup-template__publish-step-lede">
-              Choose the service this catalog item belongs to.
+              {isEditMode
+                ? 'Service is fixed for this catalog item and cannot be changed.'
+                : 'Choose the service this catalog item belongs to.'}
             </Content>
-            <div
-              className="provider-setup-template__service-cards"
-              role="radiogroup"
-              aria-label="Catalog service"
-            >
-              {CATALOG_SERVICE_OFFERINGS.map((service) => {
-                const isSelected = selectedServiceId === service.id
-                const titleId = `publish-catalog-service-${service.id}-title`
-
-                return (
-                  <Card
-                    key={service.id}
-                    isSelectable
-                    isSelected={isSelected}
-                    className="provider-setup-template__service-card"
-                    aria-labelledby={titleId}
-                    onClick={() => setSelectedServiceId(service.id)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault()
-                        setSelectedServiceId(service.id)
-                      }
-                    }}
+            {isEditMode && selectedService ? (
+              <Card
+                className="provider-setup-template__service-card provider-setup-template__service-card--readonly"
+                aria-labelledby={`publish-catalog-service-${selectedService.id}-title`}
+              >
+                <CardBody className="provider-setup-template__service-card-body">
+                  <Label
+                    color="grey"
+                    isCompact
+                    className="provider-setup-template__service-card-badge"
                   >
-                    <CardBody className="provider-setup-template__service-card-body">
-                      {isSelected ? (
-                        <Label
-                          color="grey"
-                          isCompact
-                          className="provider-setup-template__service-card-badge"
-                        >
-                          Selected
-                        </Label>
-                      ) : null}
-                      <div className="provider-setup-template__service-card-icon-wrap">
-                        <Icon size="lg">{getCatalogServiceIcon(service.id)}</Icon>
-                      </div>
-                      <Title
-                        id={titleId}
-                        headingLevel="h3"
-                        size="md"
-                        className="provider-setup-template__service-card-title"
+                    In use
+                  </Label>
+                  <div className="provider-setup-template__service-card-icon-wrap">
+                    <Icon size="lg">{getCatalogServiceIcon(selectedService.id)}</Icon>
+                  </div>
+                  <Title
+                    id={`publish-catalog-service-${selectedService.id}-title`}
+                    headingLevel="h3"
+                    size="md"
+                    className="provider-setup-template__service-card-title"
+                  >
+                    {selectedService.title}
+                  </Title>
+                  <Content
+                    component="p"
+                    className="provider-setup-template__service-card-description"
+                  >
+                    {selectedService.description}
+                  </Content>
+                </CardBody>
+              </Card>
+            ) : (
+              <>
+                <CatalogEditPreviousValue previous={editPrevious('service')} />
+                <div
+                  className="provider-setup-template__service-cards"
+                  role="radiogroup"
+                  aria-label="Catalog service"
+                >
+                  {CATALOG_SERVICE_OFFERINGS.map((service) => {
+                    const isSelected = selectedServiceId === service.id
+                    const titleId = `publish-catalog-service-${service.id}-title`
+
+                    return (
+                      <Card
+                        key={service.id}
+                        isSelectable
+                        isSelected={isSelected}
+                        className="provider-setup-template__service-card"
+                        aria-labelledby={titleId}
+                        onClick={() => setSelectedServiceId(service.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            setSelectedServiceId(service.id)
+                          }
+                        }}
                       >
-                        {service.title}
-                      </Title>
-                      <Content
-                        component="p"
-                        className="provider-setup-template__service-card-description"
-                      >
-                        {service.description}
-                      </Content>
-                    </CardBody>
-                  </Card>
-                )
-              })}
-            </div>
+                        <CardBody className="provider-setup-template__service-card-body">
+                          {isSelected ? (
+                            <Label
+                              color="grey"
+                              isCompact
+                              className="provider-setup-template__service-card-badge"
+                            >
+                              Selected
+                            </Label>
+                          ) : null}
+                          <div className="provider-setup-template__service-card-icon-wrap">
+                            <Icon size="lg">{getCatalogServiceIcon(service.id)}</Icon>
+                          </div>
+                          <Title
+                            id={titleId}
+                            headingLevel="h3"
+                            size="md"
+                            className="provider-setup-template__service-card-title"
+                          >
+                            {service.title}
+                          </Title>
+                          <Content
+                            component="p"
+                            className="provider-setup-template__service-card-description"
+                          >
+                            {service.description}
+                          </Content>
+                        </CardBody>
+                      </Card>
+                    )
+                  })}
+                </div>
+              </>
+            )}
           </div>
         )
+      }
       case 'template':
         return (
           <div className="provider-setup-template__publish-template-step">
@@ -620,6 +915,7 @@ export function ProviderSetupPublishCatalogWizard({
                 ? 'This offering uses your saved template.'
                 : 'Choose the template that defines how this offering is provisioned.'}
             </Content>
+            <CatalogEditPreviousValue previous={editPrevious('template')} />
             <div
               className="provider-setup-template__card-group"
               role={hasSingleTemplate ? undefined : 'radiogroup'}
@@ -749,6 +1045,7 @@ export function ProviderSetupPublishCatalogWizard({
                 fieldId="publish-catalog-cluster-version-mode"
                 className="provider-setup-template__publish-subsection"
               >
+                <CatalogEditPreviousValue previous={editPrevious('clusterVersionMode')} />
                 <div
                   id="publish-catalog-cluster-version-mode"
                   className="provider-setup-template__cluster-version-mode-options"
@@ -851,6 +1148,7 @@ export function ProviderSetupPublishCatalogWizard({
                   role="radiogroup"
                   className="provider-setup-template__publish-subsection"
                 >
+                  <CatalogEditPreviousValue previous={editPrevious('instanceType')} />
                   <div
                     id="publish-catalog-instance-type"
                     className={`provider-setup-template__card-group provider-setup-template__card-group--instance-types${
@@ -1017,6 +1315,7 @@ export function ProviderSetupPublishCatalogWizard({
               role="radiogroup"
               className="provider-setup-template__publish-subsection"
             >
+              <CatalogEditPreviousValue previous={editPrevious('diskImage')} />
             <div
               id="publish-catalog-disk-image"
               className="provider-setup-template__card-group provider-setup-template__card-group--disk-images"
@@ -1194,6 +1493,7 @@ export function ProviderSetupPublishCatalogWizard({
               fieldId="publish-catalog-cluster-node-topology-mode"
               className="provider-setup-template__publish-subsection"
             >
+              <CatalogEditPreviousValue previous={editPrevious('clusterNodeTopologyMode')} />
               <div
                 id="publish-catalog-cluster-node-topology-mode"
                 className="provider-setup-template__cluster-version-mode-options"
@@ -1296,6 +1596,7 @@ export function ProviderSetupPublishCatalogWizard({
               className="provider-setup-template__publish-subsection"
               role="radiogroup"
             >
+              <CatalogEditPreviousValue previous={editPrevious('nodeSet')} />
               <div
                 id="publish-catalog-cluster-node-set"
                 className="provider-setup-template__card-group provider-setup-template__card-group--disk-images"
@@ -1351,6 +1652,7 @@ export function ProviderSetupPublishCatalogWizard({
               className="provider-setup-template__publish-subsection"
               role="radiogroup"
             >
+              <CatalogEditPreviousValue previous={editPrevious('hostType')} />
               <div
                 id="publish-catalog-cluster-host-type"
                 className="provider-setup-template__card-group provider-setup-template__card-group--disk-images"
@@ -1404,6 +1706,7 @@ export function ProviderSetupPublishCatalogWizard({
             <Content component="p" className="provider-setup-template__publish-step-lede">
               Choose Unlocked or Locked for each template parameter.
             </Content>
+            <CatalogEditPreviousValue previous={editPrevious('fieldPolicies')} />
             {fieldPolicies.length > 0 ? (
               <Alert
                 variant="info"
@@ -1497,6 +1800,7 @@ export function ProviderSetupPublishCatalogWizard({
             ) : null}
             <Form autoComplete="off" className="provider-setup-template__publish-display-form">
               <FormGroup label="Name" fieldId="publish-catalog-display-name" isRequired>
+                <CatalogEditPreviousValue previous={editPrevious('displayName')} />
                 <KubernetesResourceNameField
                   id="publish-catalog-display-name"
                   value={displayName}
@@ -1511,6 +1815,7 @@ export function ProviderSetupPublishCatalogWizard({
                 />
               </FormGroup>
               <FormGroup label="Description" fieldId="publish-catalog-description">
+                <CatalogEditPreviousValue previous={editPrevious('description')} />
                 <TextArea
                   id="publish-catalog-description"
                   value={description}
@@ -1528,6 +1833,7 @@ export function ProviderSetupPublishCatalogWizard({
             <Content component="p" className="provider-setup-template__publish-step-lede">
               Control which tenants can discover and order this catalog item.
             </Content>
+            <CatalogEditPreviousValue previous={editPrevious('visibility')} />
             <div
               className="provider-admin-catalog__scope-options"
               role="radiogroup"
@@ -1621,8 +1927,41 @@ export function ProviderSetupPublishCatalogWizard({
         return (
           <div className="provider-setup-template__publish-review-step">
             <Content component="p" className="provider-setup-template__publish-step-lede">
-              Confirm the catalog item details before creating.
+              {isEditMode
+                ? 'Review your changes before saving.'
+                : 'Confirm the catalog item details before creating.'}
             </Content>
+            {isEditMode ? (
+              <>
+                {isEditingLiveCatalog ? (
+                  <Alert
+                    variant="warning"
+                    isInline
+                    title="This catalog item is live"
+                    className="provider-setup-template__publish-review-alert"
+                  >
+                    <Content component="p">
+                      Tenants can still order this offering while you edit. Saved changes apply
+                      immediately.
+                    </Content>
+                  </Alert>
+                ) : null}
+                <CatalogEditChangesSummary changes={editChanges} />
+                {!isEditingLiveCatalog ? (
+                  <Alert
+                    variant="info"
+                    isInline
+                    title="Changes apply immediately"
+                    className="provider-setup-template__publish-review-alert"
+                  >
+                    <Content component="p">
+                      Saving updates this catalog item right away.
+                    </Content>
+                  </Alert>
+                ) : null}
+              </>
+            ) : (
+              <>
             <DescriptionList
               isCompact
               className="provider-setup-template__publish-review-list"
@@ -1760,6 +2099,8 @@ export function ProviderSetupPublishCatalogWizard({
                   : 'New catalog items are saved as unpublished. Publish from the catalog when you are ready for tenants to use this offering.'}
               </Content>
             </Alert>
+              </>
+            )}
           </div>
         )
       }
@@ -1769,48 +2110,62 @@ export function ProviderSetupPublishCatalogWizard({
   }
 
   function getStepFooter(stepId: (typeof PUBLISH_CATALOG_STEPS)[number]['id']) {
+    const withLeaveConfirm = (footer: Record<string, unknown> = {}) => ({
+      ...footer,
+      onClose: isSubmitting ? undefined : requestClose,
+      isCancelDisabled: isSubmitting,
+    })
+
     if (stepId === 'service') {
-      return { isNextDisabled: !selectedServiceId }
+      return withLeaveConfirm({ isNextDisabled: !selectedServiceId })
     }
 
     if (stepId === 'template') {
-      return { isNextDisabled: !selectedTemplateRefId }
+      return withLeaveConfirm({ isNextDisabled: !selectedTemplateRefId })
     }
 
     if (stepId === 'hardware-os') {
-      return {
+      return withLeaveConfirm({
         isNextDisabled: isClusterService
           ? !selectedDiskImageId
           : !selectedInstanceType || !selectedDiskImageId,
-      }
+      })
     }
 
     if (stepId === 'node-topology') {
-      return {
+      return withLeaveConfirm({
         isNextDisabled: !selectedNodeSetId || !selectedHostTypeId,
-      }
+      })
     }
 
     if (stepId === 'field-policies') {
-      return { isNextDisabled: fieldPolicies.length === 0 }
+      return withLeaveConfirm({ isNextDisabled: fieldPolicies.length === 0 })
     }
 
     if (stepId === 'display-name') {
-      return { isNextDisabled: !isValidKubernetesResourceName(displayName) }
+      return withLeaveConfirm({ isNextDisabled: !isValidKubernetesResourceName(displayName) })
     }
 
     if (stepId === 'publish-scope') {
-      return {
+      return withLeaveConfirm({
         isNextDisabled: false,
-      }
+      })
     }
 
     if (stepId === 'review') {
-      return {
-        nextButtonText: isPublishing ? (
+      return withLeaveConfirm({
+        nextButtonText: isSubmitting ? (
           <span className="provider-admin-catalog__submit-label">
-            <Spinner size="sm" aria-label="Creating catalog item" />
-            <span>Creating…</span>
+            <Spinner
+              size="sm"
+              aria-label={isEditMode ? 'Saving catalog item' : 'Creating catalog item'}
+            />
+            <span>{isEditMode ? 'Saving…' : 'Creating…'}</span>
+          </span>
+        ) : isEditMode ? (
+          <span className="provider-admin-catalog__submit-label">
+            <span>Save changes</span>
+            <ArrowRightIcon aria-hidden />
           </span>
         ) : (
           <span className="provider-admin-catalog__submit-label">
@@ -1819,21 +2174,21 @@ export function ProviderSetupPublishCatalogWizard({
             <ArrowRightIcon aria-hidden />
           </span>
         ),
-        onNext: handleCreateCatalogItem,
-        isNextDisabled: isPublishing || !canCreateCatalogItem,
-        isBackDisabled: isPublishing,
-      }
+        onNext: isEditMode ? handleSaveCatalogItem : handleCreateCatalogItem,
+        isNextDisabled: isSubmitting || (isEditMode ? !canSaveCatalogEdit : !canCreateCatalogItem),
+        isBackDisabled: isSubmitting,
+      })
     }
 
     return undefined
   }
 
-  const wizardTitle = 'Create catalog item'
+  const wizardTitle = isEditMode ? 'Edit catalog item' : 'Create catalog item'
   const isPage = presentation === 'page'
 
   const wizard = isOpen ? (
     <Wizard
-      key="publish-catalog-wizard"
+      key={isEditMode ? 'edit-catalog-wizard' : 'publish-catalog-wizard'}
       className={[
         'provider-setup-template__designer-wizard',
         isPage ? 'catalog-wizard-page__wizard' : undefined,
@@ -1842,15 +2197,17 @@ export function ProviderSetupPublishCatalogWizard({
         .join(' ')}
       height={isPage ? '100%' : '40rem'}
       isPlain={isPage}
-      onClose={isPage || isPublishing ? undefined : handleClose}
+      onClose={isPage || isSubmitting ? undefined : requestClose}
       header={
         isPage ? undefined : (
           <WizardHeader
             title={wizardTitle}
             titleId="publish-catalog-wizard-title"
             className="provider-setup-template__designer-header"
-            onClose={isPublishing ? undefined : handleClose}
-            closeButtonAriaLabel="Close create catalog item wizard"
+            onClose={isSubmitting ? undefined : requestClose}
+            closeButtonAriaLabel={
+              isEditMode ? 'Close edit catalog item wizard' : 'Close create catalog item wizard'
+            }
           />
         )
       }
@@ -1858,7 +2215,9 @@ export function ProviderSetupPublishCatalogWizard({
       {publishSteps.map((step) => (
         <WizardStep
           key={step.id}
-          name={step.label}
+          name={
+            isEditMode && modifiedStepIds.has(step.id) ? `${step.label} (modified)` : step.label
+          }
           id={`publish-catalog-step-${step.id}`}
           footer={getStepFooter(step.id)}
         >
@@ -1873,23 +2232,29 @@ export function ProviderSetupPublishCatalogWizard({
       return null
     }
     return (
-      <CatalogWizardPageShell title={wizardTitle} onBackToCatalog={handleClose}>
-        {wizard}
-      </CatalogWizardPageShell>
+      <>
+        <CatalogWizardPageShell title={wizardTitle} onBackToCatalog={requestClose}>
+          {wizard}
+        </CatalogWizardPageShell>
+        {leaveConfirmModal}
+      </>
     )
   }
 
   return (
-    <Modal
-      variant={ModalVariant.medium}
-      width="64rem"
-      maxWidth="64rem"
-      isOpen={isOpen}
-      onEscapePress={isPublishing ? undefined : handleClose}
-      aria-labelledby="publish-catalog-wizard-title"
-      className="provider-setup-template__designer-modal provider-setup-template__publish-modal"
-    >
-      {wizard}
-    </Modal>
+    <>
+      <Modal
+        variant={ModalVariant.medium}
+        width="64rem"
+        maxWidth="64rem"
+        isOpen={isOpen}
+        onEscapePress={isSubmitting ? undefined : requestClose}
+        aria-labelledby="publish-catalog-wizard-title"
+        className="provider-setup-template__designer-modal provider-setup-template__publish-modal"
+      >
+        {wizard}
+      </Modal>
+      {leaveConfirmModal}
+    </>
   )
 }

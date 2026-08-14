@@ -33,15 +33,10 @@ import {
   formatVipEnterpriseVisibilityLabel,
   getCatalogEnterpriseTenantIds,
 } from '../components/provider-admin/VipEnterpriseOrganizationField'
-import {
-  EditCatalogItemModal,
-  type CatalogItemEditFields,
-} from '../components/provider-admin/EditCatalogItemModal'
 import { getCatalogServiceIcon } from '../catalog/serviceIcons'
 import { formatCatalogTableResultCount } from '../catalog/tableResultCount'
 import {
   formatCatalogConfigurationSummary,
-  getCatalogProfileFieldLabel,
   resolveCatalogSpecRows,
 } from '../catalog/catalogSpecs'
 import { CatalogSpecRowsList } from '../components/catalog/CatalogSpecRowsList'
@@ -65,7 +60,7 @@ import {
   deleteProviderCatalogItem,
   setProviderCatalogItemStatus,
   setProviderVipCatalogResumeIntent,
-  updateProviderCatalogItem,
+  updateProviderCatalogItemFromPayload,
 } from '../providerSetup/storage'
 import {
   CATALOG_SERVICE_FILTER_LABELS,
@@ -99,10 +94,6 @@ type ProviderAdminCatalogPageProps = {
   onCatalogItemsChange?: (items?: ProviderCatalogDraft[]) => void
   isPublishing?: boolean
   onRegisterOrganization?: () => void
-  onNavigateToLinkedTemplate?: (template: {
-    templateRefId: string
-    templateName: string
-  }) => void
   /** When set, open this catalog item's detail page (id or display name). */
   openCatalogItemKey?: string | null
   onOpenCatalogItemConsumed?: () => void
@@ -308,7 +299,6 @@ export function ProviderAdminCatalogPage({
   onCatalogItemsChange,
   isPublishing = false,
   onRegisterOrganization,
-  onNavigateToLinkedTemplate,
   openCatalogItemKey = null,
   onOpenCatalogItemConsumed,
   onProvisioningStarted,
@@ -332,7 +322,8 @@ export function ProviderAdminCatalogPage({
   const [organizations, setOrganizations] = useState(() => getProviderRegisteredOrganizations())
   const [isPublishWizardOpen, setIsPublishWizardOpen] = useState(false)
   const [selectedCatalogItem, setSelectedCatalogItem] = useState<ProviderCatalogDraft | null>(null)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isEditWizardOpen, setIsEditWizardOpen] = useState(false)
+  const [editReturnToDetails, setEditReturnToDetails] = useState(false)
   const [isUnpublishModalOpen, setIsUnpublishModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isViewingDetails, setIsViewingDetails] = useState(false)
@@ -547,7 +538,8 @@ export function ProviderAdminCatalogPage({
 
     setSelectedCatalogItem(catalogItem)
     setEditResumeTenantId(preferredTenantId)
-    setIsEditModalOpen(true)
+    setEditReturnToDetails(true)
+    setIsEditWizardOpen(true)
     // Resume once when returning from organization registration.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only resume
   }, [])
@@ -560,7 +552,7 @@ export function ProviderAdminCatalogPage({
   }) => {
     setProviderVipCatalogResumeIntent(intent)
     setIsPublishWizardOpen(false)
-    setIsEditModalOpen(false)
+    setIsEditWizardOpen(false)
     onRegisterOrganization?.()
   }
 
@@ -586,6 +578,16 @@ export function ProviderAdminCatalogPage({
 
   const closeLaunchWizard = () => {
     setIsWizardOpen(false)
+  }
+
+  const closeEditWizard = () => {
+    setIsEditWizardOpen(false)
+    setEditResumeTenantId(undefined)
+    if (editReturnToDetails && selectedCatalogItem) {
+      setIsViewingDetails(true)
+      syncWorkspaceCatalogItemParam(setSearchParams, selectedCatalogItem.catalogItemId)
+    }
+    setEditReturnToDetails(false)
   }
 
   const openCreateWizard = () => {
@@ -637,9 +639,18 @@ export function ProviderAdminCatalogPage({
     }
   }, [itemParam, orderedCatalogItems, isWizardOpen, publishingCatalogItemId])
 
-  const openEdit = (item: ProviderCatalogDraft) => {
+  const openEdit = (
+    item: ProviderCatalogDraft,
+    options?: {
+      returnToDetails?: boolean
+    },
+  ) => {
     setSelectedCatalogItem(item)
-    setIsEditModalOpen(true)
+    setEditReturnToDetails(options?.returnToDetails ?? isViewingDetails)
+    setIsViewingDetails(false)
+    setIsPublishWizardOpen(false)
+    setIsWizardOpen(false)
+    setIsEditWizardOpen(true)
   }
 
   const handleDuplicate = (item: ProviderCatalogDraft) => {
@@ -725,7 +736,7 @@ export function ProviderAdminCatalogPage({
       closeDetails()
       syncWorkspaceCatalogItemParam(setSearchParams, null, { replace: true })
       setIsWizardOpen(false)
-      setIsEditModalOpen(false)
+      setIsEditWizardOpen(false)
       setSelectedCatalogItem(null)
       refreshCatalogItems()
       refreshOrganizations()
@@ -733,16 +744,26 @@ export function ProviderAdminCatalogPage({
     setIsDeleteModalOpen(false)
   }
 
-  const handleSaveCatalogEdit = (fields: CatalogItemEditFields) => {
-    if (!selectedCatalogItem) {
+  const handleUpdateCatalogItemFromWizard = (
+    catalogItemId: string,
+    payload: PublishedTemplatePayload,
+  ) => {
+    const updated = updateProviderCatalogItemFromPayload(catalogItemId, payload)
+    if (!updated) {
       return
     }
 
-    const updated = updateProviderCatalogItem(selectedCatalogItem.catalogItemId, fields)
-    if (updated) {
-      setSelectedCatalogItem(updated)
-      refreshCatalogItems()
-      refreshOrganizations()
+    const returnToDetails = editReturnToDetails
+    setSelectedCatalogItem(updated)
+    refreshCatalogItems()
+    refreshOrganizations()
+    setIsEditWizardOpen(false)
+    setEditResumeTenantId(undefined)
+    setEditReturnToDetails(false)
+
+    if (returnToDetails) {
+      setIsViewingDetails(true)
+      syncWorkspaceCatalogItemParam(setSearchParams, updated.catalogItemId)
     }
   }
 
@@ -852,6 +873,29 @@ export function ProviderAdminCatalogPage({
           onRegisterOrganization={() => handleRegisterOrganizationFromVip({ kind: 'publish' })}
           isPublishing={isPublishing}
         />
+      ) : isEditWizardOpen && selectedCatalogItem ? (
+        <ProviderSetupPublishCatalogWizard
+          mode="edit"
+          presentation="page"
+          isOpen={isEditWizardOpen}
+          editingCatalog={selectedCatalogItem}
+          templates={availableTemplates}
+          organizations={organizations}
+          initialPublishScope={selectedCatalogItem.scope}
+          initialEnterpriseTenantId={editResumeTenantId}
+          leaveConfirmActionLabel={
+            editReturnToDetails ? 'Back to catalog item' : 'Go to Catalog'
+          }
+          onClose={closeEditWizard}
+          onCreateCatalogItem={() => undefined}
+          onSaveCatalogItem={handleUpdateCatalogItemFromWizard}
+          onRegisterOrganization={() =>
+            handleRegisterOrganizationFromVip({
+              kind: 'edit',
+              catalogItemId: selectedCatalogItem.catalogItemId,
+            })
+          }
+        />
       ) : isWizardOpen && launchCatalogCard ? (
         <TenantUserLaunchInstanceWizard
           presentation="page"
@@ -905,10 +949,9 @@ export function ProviderAdminCatalogPage({
           onUnpublish={() => openTogglePublish(drawerCatalog)}
           isPublishing={publishingCatalogItemId === drawerCatalog.catalogItemId}
           onLaunch={() => openLaunchWizard(drawerCatalog)}
-          onEdit={() => openEdit(drawerCatalog)}
+          onEdit={() => openEdit(drawerCatalog, { returnToDetails: true })}
           onDuplicate={() => handleDuplicate(drawerCatalog)}
           onDelete={() => openDelete(drawerCatalog)}
-          onNavigateToLinkedTemplate={onNavigateToLinkedTemplate}
         />
       ) : (
     <div
@@ -1095,10 +1138,6 @@ export function ProviderAdminCatalogPage({
                   />
                   <dl className="provider-admin-catalog-items__card-specs">
                     <div className="provider-admin-catalog-items__card-spec">
-                      <dt>{getCatalogProfileFieldLabel(serviceId)}</dt>
-                      <dd>{item.templateName}</dd>
-                    </div>
-                    <div className="provider-admin-catalog-items__card-spec">
                       <dt>Rate</dt>
                       <dd>{formatRateCardSummary(item.rateCard)}</dd>
                     </div>
@@ -1140,7 +1179,6 @@ export function ProviderAdminCatalogPage({
             <Tr>
               <Th>Name</Th>
               <Th>Status</Th>
-              <Th>Profile / template</Th>
               <Th>Configuration</Th>
               <Th>Rate</Th>
               <Th>Visibility</Th>
@@ -1184,7 +1222,6 @@ export function ProviderAdminCatalogPage({
                       isPublishing={publishingCatalogItemId === item.catalogItemId}
                     />
                   </Td>
-                  <Td dataLabel="Profile / template">{item.templateName}</Td>
                   <Td dataLabel="Configuration">
                     <Content component="p" className="provider-admin-catalog-items__primary-cell">
                       {formatCatalogConfigurationSummary(item)}
@@ -1211,29 +1248,6 @@ export function ProviderAdminCatalogPage({
       )}
     </div>
       )}
-
-      <EditCatalogItemModal
-        catalog={isEditModalOpen ? selectedCatalogItem : null}
-        serviceId={
-          selectedCatalogItem ? getDraftServiceId(selectedCatalogItem) : 'baremetal'
-        }
-        organizations={organizations}
-        initialEnterpriseTenantId={editResumeTenantId}
-        onClose={() => {
-          setIsEditModalOpen(false)
-          setEditResumeTenantId(undefined)
-        }}
-        onSave={handleSaveCatalogEdit}
-        onRegisterOrganization={
-          selectedCatalogItem
-            ? () =>
-                handleRegisterOrganizationFromVip({
-                  kind: 'edit',
-                  catalogItemId: selectedCatalogItem.catalogItemId,
-                })
-            : onRegisterOrganization
-        }
-      />
 
       <Modal
         variant={ModalVariant.small}

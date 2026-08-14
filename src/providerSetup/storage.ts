@@ -40,6 +40,7 @@ import type {
 import type {
   CatalogServiceId,
   PublishCatalogScope,
+  PublishedTemplatePayload,
   RateCard,
   SavedMasterTemplate,
 } from './templateDemo'
@@ -725,6 +726,102 @@ export function updateProviderCatalogItem(
             : org,
         ),
       )
+    }
+  } catch {
+    /* demo storage unavailable */
+  }
+
+  return updated
+}
+
+/** Applies a full publish wizard payload to an existing catalog item. */
+export function updateProviderCatalogItemFromPayload(
+  catalogItemId: string,
+  payload: PublishedTemplatePayload,
+): ProviderCatalogDraft | null {
+  const items = getProviderCatalogItems()
+  const index = items.findIndex((item) => item.catalogItemId === catalogItemId)
+  if (index < 0) {
+    return null
+  }
+
+  const current = items[index]!
+  const enterpriseTenantIds = [
+    ...new Set(
+      (payload.enterpriseTenantIds?.length
+        ? payload.enterpriseTenantIds
+        : payload.enterpriseTenantId
+          ? [payload.enterpriseTenantId]
+          : []
+      )
+        .map((id) => id.trim())
+        .filter(Boolean),
+    ),
+  ]
+
+  const updated: ProviderCatalogDraft = {
+    ...current,
+    templateRefId: payload.templateRefId,
+    templateName: payload.templateName,
+    displayName: payload.displayName.trim(),
+    description: payload.description.trim(),
+    scope: payload.scope,
+    rateCard: payload.rateCard,
+    serviceId: payload.serviceId,
+    networkPolicy: payload.networkPolicy
+      ? normalizeCatalogNetworkPolicy(payload.networkPolicy)
+      : current.networkPolicy,
+    ...(payload.instanceTypeId ? { instanceTypeId: payload.instanceTypeId } : {}),
+    ...(payload.instanceTypeLabel ? { instanceTypeLabel: payload.instanceTypeLabel } : {}),
+    ...(payload.diskImageId ? { diskImageId: payload.diskImageId } : {}),
+    ...(payload.diskImageLabel ? { diskImageLabel: payload.diskImageLabel } : {}),
+    ...(payload.clusterVersionMode
+      ? { clusterVersionMode: payload.clusterVersionMode }
+      : {}),
+    ...(payload.nodeSetId ? { nodeSetId: payload.nodeSetId } : {}),
+    ...(payload.nodeSetLabel ? { nodeSetLabel: payload.nodeSetLabel } : {}),
+    ...(payload.hostTypeId ? { hostTypeId: payload.hostTypeId } : {}),
+    ...(payload.hostTypeLabel ? { hostTypeLabel: payload.hostTypeLabel } : {}),
+    ...(payload.clusterNodeTopologyMode
+      ? { clusterNodeTopologyMode: payload.clusterNodeTopologyMode }
+      : {}),
+    ...(payload.fieldPolicies?.length ? { fieldPolicies: payload.fieldPolicies } : {}),
+  }
+
+  if (payload.scope === 'vip-enterprise' && enterpriseTenantIds.length > 0) {
+    updated.enterpriseTenantId = enterpriseTenantIds[0]
+    updated.enterpriseTenantIds = enterpriseTenantIds
+  } else {
+    delete updated.enterpriseTenantId
+    delete updated.enterpriseTenantIds
+  }
+
+  const next = [...items]
+  next[index] = updated
+  persistProviderCatalogItems(next)
+
+  try {
+    const organizations = getProviderRegisteredOrganizations()
+    const hasAssigned = organizations.some((org) => org.catalogItemId === catalogItemId)
+    if (hasAssigned) {
+      setProviderRegisteredOrganizations(
+        organizations.map((org) =>
+          org.catalogItemId === catalogItemId
+            ? { ...org, catalogDisplayName: updated.displayName }
+            : org,
+        ),
+      )
+    }
+
+    const vipOrganizationIds =
+      payload.vipOrganizationIds?.length
+        ? payload.vipOrganizationIds
+        : payload.vipOrganizationId
+          ? [payload.vipOrganizationId]
+          : []
+
+    for (const organizationId of vipOrganizationIds) {
+      assignCatalogToRegisteredOrganization(organizationId, updated)
     }
   } catch {
     /* demo storage unavailable */

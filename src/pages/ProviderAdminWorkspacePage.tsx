@@ -422,10 +422,6 @@ export function ProviderAdminWorkspacePage() {
             onCatalogItemsChange={(items) => setCatalogItems(items ?? getProviderCatalogItems())}
             isPublishing={workspaceTransition !== 'idle'}
             onRegisterOrganization={handleRegisterOrganization}
-            onNavigateToLinkedTemplate={(template) => {
-              setOpenTemplateLookup(template)
-              handleNavChange('infrastructure-bmaas-templates')
-            }}
             openCatalogItemKey={openCatalogItemKey}
             onOpenCatalogItemConsumed={() => setOpenCatalogItemKey(null)}
             onProvisioningStarted={handleProvisioningStarted}
