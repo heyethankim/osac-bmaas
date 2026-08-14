@@ -7,6 +7,9 @@ import {
   formatClusterPlatformLabel,
   getCatalogClusterNodeTopologyModeLabel,
   getCatalogClusterVersionModeLabel,
+  normalizeCatalogDiskImageDisplayLabel,
+  formatCatalogDiskImageLabel,
+  resolveBaremetalInstanceTypeHardware,
   resolveCatalogClusterNodeTopologyMode,
   resolveCatalogClusterVersionMode,
   type CatalogClusterNodeTopologyMode,
@@ -139,15 +142,26 @@ export function resolveCatalogOsImage(
     | 'templateName'
     | 'instanceTypeLabel'
     | 'diskImageLabel'
+    | 'diskImageId'
+    | 'instanceTypeId'
   >,
 ): string {
-  const fromRows = resolveCatalogSpecRows(item).find((row) => row.label === 'OS image')?.value
-  if (fromRows) {
-    return fromRows
+  const rows = resolveCatalogSpecRows(item)
+  const fromDiskImage = rows.find((row) => row.label === 'Disk image')?.value?.trim()
+  if (fromDiskImage) {
+    return fromDiskImage
   }
-  if (item.diskImageLabel?.trim()) {
-    return item.diskImageLabel.trim()
+
+  const fromOsImage = rows.find((row) => row.label === 'OS image')?.value?.trim()
+  if (fromOsImage) {
+    return normalizeCatalogDiskImageDisplayLabel(fromOsImage)
   }
+
+  const fromCatalog = formatCatalogDiskImageLabel(item.diskImageId, item.diskImageLabel)
+  if (fromCatalog) {
+    return fromCatalog
+  }
+
   return '—'
 }
 
@@ -279,58 +293,48 @@ export function resolveClusterCatalogHighlightRows(
     .filter((row): row is CatalogSpecRow => Boolean(row))
 }
 
-function parseBaremetalHardwareFromInstanceTypeLabel(instanceTypeLabel: string): {
-  cpu: string
-  ram: string
-  gpu: string
-} {
-  const { size } = parseCatalogInstanceTypeParts(instanceTypeLabel)
-  if (!size) {
-    return { cpu: '—', ram: '—', gpu: 'None' }
-  }
-
-  const parts = size
-    .split(' · ')
-    .map((part) => part.trim())
-    .filter(Boolean)
-
-  let cpu = '—'
-  let ram = '—'
-  let gpu = 'None'
-
-  for (const part of parts) {
-    if (/vCPU/i.test(part)) {
-      cpu = part
-      continue
-    }
-
-    if (/\d+\s*GB\b/i.test(part)) {
-      ram = part
-      continue
-    }
-
-    if (/NIC/i.test(part)) {
-      continue
-    }
-
-    gpu = part
-  }
-
-  return { cpu, ram, gpu }
+function resolveBaremetalDiskImageLabel(
+  item: Pick<
+    ProviderCatalogDraft,
+    'templateRefId' | 'templateName' | 'diskImageId' | 'diskImageLabel'
+  >,
+  hardwareOsImage: string,
+): string {
+  return (
+    formatCatalogDiskImageLabel(item.diskImageId, item.diskImageLabel) ??
+    normalizeCatalogDiskImageDisplayLabel(hardwareOsImage)
+  )
 }
 
 function buildBaremetalCatalogSpecRows(
   item: Pick<
     ProviderCatalogDraft,
-    'templateRefId' | 'templateName' | 'instanceTypeId' | 'instanceTypeLabel' | 'diskImageLabel'
+    | 'templateRefId'
+    | 'templateName'
+    | 'instanceTypeId'
+    | 'instanceTypeLabel'
+    | 'diskImageId'
+    | 'diskImageLabel'
   >,
 ): CatalogSpecRow[] {
   const hardware = resolveHardwareSpecsForCatalogItem(item)
-  const parsed = item.instanceTypeLabel
-    ? parseBaremetalHardwareFromInstanceTypeLabel(item.instanceTypeLabel)
-    : null
-  const sizeLabel = resolveBaremetalSizeLabel(item.instanceTypeId, item.instanceTypeLabel)
+  const diskImage = resolveBaremetalDiskImageLabel(item, hardware.osImage)
+  const typeHardware = resolveBaremetalInstanceTypeHardware(
+    item.instanceTypeId,
+    item.instanceTypeLabel,
+  )
 
+  if (typeHardware) {
+    return [
+      { label: 'Size', value: typeHardware.sizeLabel },
+      { label: 'CPU', value: typeHardware.cpu },
+      { label: 'RAM', value: typeHardware.ram },
+      { label: 'GPU', value: typeHardware.gpu },
+      { label: 'Disk image', value: diskImage },
+    ]
+  }
+
+  const sizeLabel = resolveBaremetalSizeLabel(item.instanceTypeId, item.instanceTypeLabel)
   const rows: CatalogSpecRow[] = []
 
   if (sizeLabel) {
@@ -338,10 +342,10 @@ function buildBaremetalCatalogSpecRows(
   }
 
   rows.push(
-    { label: 'CPU', value: parsed?.cpu ?? hardware.cpu },
-    { label: 'RAM', value: parsed?.ram ?? hardware.ram },
-    { label: 'GPU', value: parsed?.gpu ?? hardware.gpu },
-    { label: 'Disk image', value: item.diskImageLabel?.trim() || hardware.osImage },
+    { label: 'CPU', value: hardware.cpu },
+    { label: 'RAM', value: hardware.ram },
+    { label: 'GPU', value: hardware.gpu },
+    { label: 'Disk image', value: diskImage },
   )
 
   return rows

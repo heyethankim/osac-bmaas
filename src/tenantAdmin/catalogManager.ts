@@ -1,4 +1,5 @@
 import type { CatalogFieldPolicy } from '../catalog/catalogPublishConfig'
+import { formatBaremetalInstanceTypeLabel } from '../catalog/catalogPublishConfig'
 import type { CatalogServiceId, PublishCatalogScope, RateCard } from '../providerSetup/templateDemo'
 import { CATALOG_SERVICE_LABELS, DEFAULT_RATE_CARD, resolveRateCard } from '../providerSetup/templateDemo'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
@@ -35,6 +36,7 @@ export type TenantCatalogGovernanceItem = {
   description?: string
   templateRefId: string
   templateName: string
+  instanceTypeId?: string
   instanceTypeLabel?: string
   diskImageLabel?: string
   diskImageId?: string
@@ -146,6 +148,7 @@ function mapProviderCatalogToGovernanceItem(
     description: draft.description,
     templateRefId: draft.templateRefId,
     templateName: draft.templateName,
+    instanceTypeId: draft.instanceTypeId,
     instanceTypeLabel: draft.instanceTypeLabel,
     diskImageLabel: draft.diskImageLabel,
     diskImageId: draft.diskImageId,
@@ -182,17 +185,20 @@ export const TENANT_CATALOG_GOVERNANCE_ITEMS: TenantCatalogGovernanceItem[] = [
     description: undefined,
     templateRefId: 'bm-dell-r750',
     templateName: 'gpu-a100-training-standard',
+    instanceTypeId: 'large',
+    instanceTypeLabel: formatBaremetalInstanceTypeLabel('large'),
     specRows: [
-      { label: 'CPU', value: 'Intel Xeon Gold 6338 × 2' },
-      { label: 'RAM', value: '512 GB DDR4-3200' },
-      { label: 'GPU', value: 'CPU-only' },
-      { label: 'OS image', value: 'Red Hat Enterprise Linux 9.4' },
+      { label: 'Size', value: 'Large' },
+      { label: 'CPU', value: '64 vCPU' },
+      { label: 'RAM', value: '512 GB' },
+      { label: 'GPU', value: 'NVIDIA A100 80 GB' },
+      { label: 'OS image', value: 'RHEL 9.4' },
     ],
     categoryLabel: 'Compute · Standard',
-    cpu: 'Intel Xeon Gold 6338 × 2',
-    ram: '512 GB DDR4-3200',
-    gpu: 'CPU-only',
-    osImage: 'Red Hat Enterprise Linux 9.4',
+    cpu: '64 vCPU',
+    ram: '512 GB',
+    gpu: 'NVIDIA A100 80 GB',
+    osImage: 'RHEL 9.4',
     restricted: false,
     approved: true,
     scope: 'global-public',
@@ -244,6 +250,7 @@ export function getTenantCatalogItemDetailSpecRows(
       serviceId: item.serviceId,
       templateRefId: item.templateRefId,
       templateName: item.templateName,
+      instanceTypeId: item.instanceTypeId,
       instanceTypeLabel: item.instanceTypeLabel,
       diskImageLabel: item.diskImageLabel,
       diskImageId: item.diskImageId,

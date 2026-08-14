@@ -155,6 +155,7 @@ export function TenantCatalogItemDetailsPage({
               serviceId: item.serviceId,
               templateRefId: item.templateRefId,
               templateName: item.templateName,
+              instanceTypeId: item.instanceTypeId,
               instanceTypeLabel: item.instanceTypeLabel,
               diskImageLabel: item.diskImageLabel,
               diskImageId: item.diskImageId,

@@ -1,6 +1,7 @@
 import type { CatalogSpecRow } from '../catalog/catalogSpecs'
 import { resolveCatalogOsImage, resolveCatalogSpecRows, getCatalogSpecRowValue } from '../catalog/catalogSpecs'
 import type { CatalogFieldPolicy } from '../catalog/catalogPublishConfig'
+import { formatBaremetalInstanceTypeLabel } from '../catalog/catalogPublishConfig'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../providerSetup/storage'
 import {
@@ -39,6 +40,7 @@ export type TenantUserCatalogCard = {
   templateRefId: string
   templateName: string
   instanceTypeLabel?: string
+  instanceTypeId?: string
   diskImageId?: string
   diskImageLabel?: string
   clusterVersionMode?: 'locked' | 'editable'
@@ -56,9 +58,9 @@ export type TenantUserCatalogCard = {
 export const TENANT_USER_CATALOG_SPECS = {
   categoryLabel: 'Compute · Standard',
   hardwareProfile: 'Dell PowerEdge R750',
-  cpu: 'Intel Xeon Gold 6338 × 2',
-  ram: '512 GB DDR4',
-  gpu: 'CPU-only',
+  cpu: '64 vCPU',
+  ram: '512 GB',
+  gpu: 'NVIDIA A100 80 GB',
   osImage: 'RHEL 9.4',
   footerNote: 'Hardware pre-configured · Admin-managed',
 } as const
@@ -115,6 +117,8 @@ export const TENANT_USER_CATALOG_FALLBACK: TenantUserCatalogCard = {
   catalogItemId: 'cat-bm-gpu-training',
   templateRefId: 'bm-dell-r750',
   templateName: 'gpu-a100-training-standard',
+  instanceTypeId: 'large',
+  instanceTypeLabel: formatBaremetalInstanceTypeLabel('large'),
   scope: 'global-public',
   createdAt: new Date().toISOString(),
   rateCard: {
@@ -186,6 +190,7 @@ export function getTenantUserCatalogCardFromDraft(
     templateRefId: catalog.templateRefId,
     templateName: catalog.templateName,
     instanceTypeLabel: catalog.instanceTypeLabel,
+    instanceTypeId: catalog.instanceTypeId,
     diskImageId: catalog.diskImageId,
     diskImageLabel: catalog.diskImageLabel,
     clusterVersionMode: catalog.clusterVersionMode,

@@ -151,17 +151,15 @@ export function TenantUserCatalogItemDetailsPage({
             visibilityLabel:
               catalogItem.scope === 'vip-enterprise' ? 'VIP enterprise' : 'Global public',
             createdAtLabel: formatCatalogItemCreatedAt(catalogItem.createdAt),
-            hardwareSpecRows: resolveCatalogSpecRows(
-              {
-                serviceId: catalogItem.serviceId,
-                templateRefId: catalogItem.templateRefId,
-                templateName: catalogItem.templateName,
-                instanceTypeLabel: catalogItem.instanceTypeLabel,
-                diskImageLabel: catalogItem.diskImageLabel,
-                diskImageId: catalogItem.diskImageId,
-              },
-              { includeDetails: false },
-            ),
+            hardwareSpecRows: resolveCatalogSpecRows({
+              serviceId: catalogItem.serviceId,
+              templateRefId: catalogItem.templateRefId,
+              templateName: catalogItem.templateName,
+              instanceTypeId: catalogItem.instanceTypeId,
+              instanceTypeLabel: catalogItem.instanceTypeLabel,
+              diskImageLabel: catalogItem.diskImageLabel,
+              diskImageId: catalogItem.diskImageId,
+            }),
           }}
         />
       ) : isCluster ? (

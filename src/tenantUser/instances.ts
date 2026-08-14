@@ -1,6 +1,5 @@
 import type { CatalogSpecRow } from '../catalog/catalogSpecs'
 import {
-  resolveBaremetalSizeLabel,
   resolveCatalogSpecRows,
   resolveClusterCatalogHighlightRows,
 } from '../catalog/catalogSpecs'
@@ -9,6 +8,9 @@ import {
   formatClusterNodeSetLabel,
   formatClusterPlatformLabel,
   getReleaseImageForClusterVersion,
+  resolveBaremetalInstanceTypeHardware,
+  resolveBaremetalInstanceTypeHardwareFromSizeLabel,
+  normalizeCatalogDiskImageDisplayLabel,
 } from '../catalog/catalogPublishConfig'
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
 import { getProviderCatalogItems } from '../providerSetup/storage'
@@ -1193,20 +1195,34 @@ function ensureBaremetalInstanceSpecRows(
   rows: CatalogSpecRow[],
 ): CatalogSpecRow[] {
   const normalized = normalizeBareMetalCardSpecRows(rows)
-  if (normalized.some((row) => row.label === 'Size')) {
-    return normalized
-  }
-
   const catalog = findCatalogDraftForInstance(instance)
-  const sizeLabel = catalog
-    ? resolveBaremetalSizeLabel(catalog.instanceTypeId, catalog.instanceTypeLabel)
-    : undefined
+  const sizeFromRow = normalized.find((row) => row.label === 'Size')?.value
 
-  if (!sizeLabel) {
+  const typeHardware =
+    resolveBaremetalInstanceTypeHardware(catalog?.instanceTypeId, catalog?.instanceTypeLabel) ??
+    (sizeFromRow
+      ? resolveBaremetalInstanceTypeHardwareFromSizeLabel(sizeFromRow)
+      : undefined)
+
+  if (!typeHardware) {
     return normalized
   }
 
-  return [{ label: 'Size', value: sizeLabel }, ...normalized]
+  const trailingRows = normalized
+    .filter((row) => !['Size', 'CPU', 'RAM', 'GPU'].includes(row.label))
+    .map((row) =>
+      row.label === 'Disk image'
+        ? { ...row, value: normalizeCatalogDiskImageDisplayLabel(row.value) }
+        : row,
+    )
+
+  return [
+    { label: 'Size', value: typeHardware.sizeLabel },
+    { label: 'CPU', value: typeHardware.cpu },
+    { label: 'RAM', value: typeHardware.ram },
+    { label: 'GPU', value: typeHardware.gpu },
+    ...trailingRows,
+  ]
 }
 
 /** Card highlights for Virtual machines — include OS so OS filters are scannable. */
@@ -1375,15 +1391,24 @@ function createDemoTenantBareMetalInstanceVariant(
   const catalog = getProviderCatalogItems().find(
     (item) => item.displayName.trim().toLowerCase() === catalogItemDisplayName.trim().toLowerCase(),
   )
-  const sizeLabel = catalog
-    ? resolveBaremetalSizeLabel(catalog.instanceTypeId, catalog.instanceTypeLabel)
-    : undefined
-  const baseSpecRows: CatalogSpecRow[] = [
-    { label: 'CPU', value: options.cpu },
-    { label: 'RAM', value: options.ram },
-    { label: 'GPU', value: options.gpuLabel },
-    { label: 'Disk image', value: options.osImage },
-  ]
+  const typeHardware = resolveBaremetalInstanceTypeHardware(
+    catalog?.instanceTypeId,
+    catalog?.instanceTypeLabel,
+  )
+  const specRows: CatalogSpecRow[] = typeHardware
+    ? [
+        { label: 'Size', value: typeHardware.sizeLabel },
+        { label: 'CPU', value: typeHardware.cpu },
+        { label: 'RAM', value: typeHardware.ram },
+        { label: 'GPU', value: typeHardware.gpu },
+        { label: 'Disk image', value: options.osImage },
+      ]
+    : [
+        { label: 'CPU', value: options.cpu },
+        { label: 'RAM', value: options.ram },
+        { label: 'GPU', value: options.gpuLabel },
+        { label: 'Disk image', value: options.osImage },
+      ]
 
   return {
     id: options.id,
@@ -1399,10 +1424,8 @@ function createDemoTenantBareMetalInstanceVariant(
       subnet: 'bm-compute-a',
       securityGroup: 'allow-ssh-https',
     },
-    gpuLabel: options.gpuLabel,
-    specRows: sizeLabel
-      ? [{ label: 'Size', value: sizeLabel }, ...baseSpecRows]
-      : baseSpecRows,
+    gpuLabel: typeHardware?.gpu ?? options.gpuLabel,
+    specRows,
     inventory:
       options.status === 'provisioning'
         ? undefined

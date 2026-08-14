@@ -478,6 +478,83 @@ export function formatBaremetalInstanceTypeLabel(instanceTypeId: string): string
     : `${option.label} (${option.detail})`
 }
 
+export type BaremetalInstanceTypeHardware = {
+  sizeLabel: string
+  cpu: string
+  ram: string
+  gpu: string
+}
+
+function parseBaremetalDetailParts(detail: string): { cpu: string; ram: string } {
+  const parts = detail
+    .split(' · ')
+    .map((part) => part.trim())
+    .filter(Boolean)
+  const cpu = parts.find((part) => /vCPU/i.test(part)) ?? '—'
+  const ram =
+    parts.find((part) => /\d+\s*GB\b/i.test(part) && !/vCPU/i.test(part)) ?? '—'
+
+  return { cpu, ram }
+}
+
+export function resolveBaremetalInstanceTypeId(
+  instanceTypeId?: string,
+  instanceTypeLabel?: string,
+): string | undefined {
+  if (instanceTypeId?.trim()) {
+    const id = instanceTypeId.trim().toLowerCase()
+    if (CATALOG_INSTANCE_TYPE_OPTIONS.some((option) => option.id === id)) {
+      return id
+    }
+  }
+
+  if (instanceTypeLabel?.trim()) {
+    const prefix = instanceTypeLabel.trim().match(/^([^(]+)/)?.[1]?.trim() ?? ''
+    const byLabel = CATALOG_INSTANCE_TYPE_OPTIONS.find((option) => option.label === prefix)
+    if (byLabel) {
+      return byLabel.id
+    }
+  }
+
+  return undefined
+}
+
+export function resolveBaremetalInstanceTypeHardware(
+  instanceTypeId?: string,
+  instanceTypeLabel?: string,
+): BaremetalInstanceTypeHardware | undefined {
+  const resolvedId = resolveBaremetalInstanceTypeId(instanceTypeId, instanceTypeLabel)
+  if (!resolvedId) {
+    return undefined
+  }
+
+  const option = CATALOG_INSTANCE_TYPE_OPTIONS.find((item) => item.id === resolvedId)
+  if (!option) {
+    return undefined
+  }
+
+  const { cpu, ram } = parseBaremetalDetailParts(option.detail)
+  return {
+    sizeLabel: option.label,
+    cpu,
+    ram,
+    gpu: option.accelerator ?? 'None',
+  }
+}
+
+export function resolveBaremetalInstanceTypeHardwareFromSizeLabel(
+  sizeLabel: string,
+): BaremetalInstanceTypeHardware | undefined {
+  const option = CATALOG_INSTANCE_TYPE_OPTIONS.find(
+    (item) => item.label === sizeLabel.trim(),
+  )
+  if (!option) {
+    return undefined
+  }
+
+  return resolveBaremetalInstanceTypeHardware(option.id)
+}
+
 /** CPU/memory-only presets for virtual machine catalog items. */
 export const CATALOG_VM_INSTANCE_TYPE_OPTIONS: ReadonlyArray<CatalogInstanceTypeOption> = [
   { id: 'small', label: 'Small', detail: '4 vCPU · 16 GB', hourlyRate: '$0.48/hr' },
@@ -548,6 +625,53 @@ export function getCatalogInstanceTypeOptions(
 
 export function getCatalogDiskImageOptions(): CatalogDiskImageOption[] {
   return [...CATALOG_DISK_IMAGE_OPTIONS]
+}
+
+/** Tenant-facing disk image label (e.g. RHEL 9.4, not Red Hat Enterprise Linux 9.4). */
+export function normalizeCatalogDiskImageDisplayLabel(label: string): string {
+  const trimmed = label.trim()
+  if (!trimmed) {
+    return trimmed
+  }
+
+  const byOptionLabel = CATALOG_DISK_IMAGE_OPTIONS.find((option) => option.label === trimmed)
+  if (byOptionLabel) {
+    return byOptionLabel.label
+  }
+
+  const byOptionId = CATALOG_DISK_IMAGE_OPTIONS.find((option) => option.id === trimmed)
+  if (byOptionId) {
+    return byOptionId.label
+  }
+
+  const rhelMatch = trimmed.match(/^Red Hat Enterprise Linux\s+(.+)$/i)
+  if (rhelMatch) {
+    const version = rhelMatch[1].trim()
+    const byVersion = CATALOG_DISK_IMAGE_OPTIONS.find(
+      (option) => option.id === `rhel-${version}` || option.label === `RHEL ${version}`,
+    )
+    return byVersion?.label ?? `RHEL ${version}`
+  }
+
+  return trimmed
+}
+
+export function formatCatalogDiskImageLabel(
+  diskImageId?: string,
+  diskImageLabel?: string,
+): string | undefined {
+  if (diskImageId?.trim()) {
+    const byId = CATALOG_DISK_IMAGE_OPTIONS.find((option) => option.id === diskImageId.trim())
+    if (byId) {
+      return byId.label
+    }
+  }
+
+  if (diskImageLabel?.trim()) {
+    return normalizeCatalogDiskImageDisplayLabel(diskImageLabel)
+  }
+
+  return undefined
 }
 
 /** RHEL and other Red Hat OS images show the brand mark on catalog detail pages. */

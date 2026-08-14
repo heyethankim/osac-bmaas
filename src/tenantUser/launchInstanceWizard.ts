@@ -127,7 +127,7 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   networkingAssignedHelper: 'Set by your organization',
   reviewTitle: 'Review',
   reviewHardware: 'Dell PowerEdge R750',
-  reviewGpu: 'CPU-only',
+  reviewGpu: 'NVIDIA A100 80 GB',
   reviewOsImage: 'RHEL 9.4',
   reviewProvisioningNote:
     'Provisioning takes 10–20 minutes — live progress tracks setup in your environment.',
