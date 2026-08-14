@@ -1142,6 +1142,15 @@
   padding: 0;
 }
 
+.provider-setup-template__publish-subsection .pf-v6-c-form__label,
+.provider-setup-template__publish-subsection .pf-v6-c-form__label-text {
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+  color: var(--pf-t--global--text--color--regular);
+  font-size: var(--pf-t--global--font--size--body--default);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
 .provider-setup-template__publish-subsection .pf-v6-c-form__label-required {
   color: var(--pf-t--global--color--status--danger--default);
 }
@@ -3027,6 +3036,24 @@
   min-height: 0;
   margin-block-start: var(--pf-t--global--spacer--sm);
   overflow: hidden;
+}
+
+/* Wizard field labels — match bold "Name" style on every step. */
+.catalog-wizard-page__wizard .pf-v6-c-form__label,
+.catalog-wizard-page__wizard .pf-v6-c-form__label-text,
+.provider-setup-template__designer-wizard .pf-v6-c-form__label,
+.provider-setup-template__designer-wizard .pf-v6-c-form__label-text,
+.tenant-user-launch-wizard .pf-v6-c-form__label,
+.tenant-user-launch-wizard .pf-v6-c-form__label-text,
+.tenant-admin-projects-teams__wizard .pf-v6-c-form__label,
+.tenant-admin-projects-teams__wizard .pf-v6-c-form__label-text,
+.provider-admin-organizations__wizard-modal .pf-v6-c-form__label,
+.provider-admin-organizations__wizard-modal .pf-v6-c-form__label-text {
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+  color: var(--pf-t--global--text--color--regular);
+  font-size: var(--pf-t--global--font--size--body--default);
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 /* Wizard panel fills space under the page title; footer stays on the bottom edge */

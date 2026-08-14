@@ -876,6 +876,7 @@ export function patchProviderCatalogItem(
   patch: Partial<
     Pick<
       ProviderCatalogDraft,
+      | 'description'
       | 'instanceTypeId'
       | 'instanceTypeLabel'
       | 'diskImageId'

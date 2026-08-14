@@ -16,6 +16,7 @@ import {
   CATALOG_SERVICE_LABELS,
   resolveRateCard,
   type CatalogServiceId,
+  type PublishCatalogScope,
   type RateCard,
 } from '../providerSetup/templateDemo'
 
@@ -48,6 +49,8 @@ export type TenantUserCatalogCard = {
   clusterNodeTopologyMode?: 'locked' | 'editable'
   fieldPolicies?: CatalogFieldPolicy[]
   rateCard: RateCard
+  scope: PublishCatalogScope
+  createdAt: string
 }
 
 export const TENANT_USER_CATALOG_SPECS = {
@@ -60,7 +63,7 @@ export const TENANT_USER_CATALOG_SPECS = {
   footerNote: 'Hardware pre-configured · Admin-managed',
 } as const
 
-const CLUSTER_FOOTER_NOTE = 'Cluster profile pre-configured · Admin-managed'
+const CLUSTER_FOOTER_NOTE = 'Cluster pre-configured · Admin-managed'
 const VM_FOOTER_NOTE = 'Instance profile pre-configured · Admin-managed'
 
 function getFooterNote(serviceId: CatalogServiceId): string {
@@ -111,6 +114,8 @@ export const TENANT_USER_CATALOG_FALLBACK: TenantUserCatalogCard = {
   catalogItemId: 'cat-bm-gpu-training',
   templateRefId: 'bm-dell-r750',
   templateName: 'gpu-a100-training-standard',
+  scope: 'global-public',
+  createdAt: new Date().toISOString(),
   rateCard: {
     hourlyRate: 4.25,
     monthlyRate: 2850,
@@ -190,6 +195,8 @@ export function getTenantUserCatalogCardFromDraft(
     clusterNodeTopologyMode: catalog.clusterNodeTopologyMode,
     fieldPolicies: catalog.fieldPolicies,
     rateCard,
+    scope: catalog.scope,
+    createdAt: catalog.createdAt,
   }
 }
 

@@ -861,26 +861,12 @@ export function getTenantInstanceScopeFieldLabel(
 
 /** Normalized project membership ids (supports legacy single-project instances). */
 export function getTenantInstanceProjectIds(instance: TenantInstance): string[] {
-  if (Array.isArray(instance.projectIds) && instance.projectIds.length > 0) {
-    return [...new Set(instance.projectIds.filter(Boolean))]
+  const resolved = resolveStoredTenantInstanceProjectIds(instance)
+  if (!isDemoMultiProjectShowcaseInstance(instance)) {
+    return resolved
   }
 
-  // Demo instances always resolve to seeded project memberships, even when session
-  // storage still has legacy org-scoped rows with an empty/missing projectIds field.
-  const demoProjectIds = getDemoInstanceProjectIds(instance.id)
-  if (demoProjectIds.length > 0) {
-    return demoProjectIds
-  }
-
-  if (instance.scopeKind === 'project' && instance.projectName === DEMO_TENANT_PROJECT_NAME) {
-    return [DEMO_TENANT_PROJECT_ID]
-  }
-
-  if (instance.scopeKind === 'project' && instance.projectName === DEMO_TENANT_PROJECT_NAME_02) {
-    return [DEMO_TENANT_PROJECT_ID_02]
-  }
-
-  return []
+  return [...new Set([...resolved, ...getDemoMultiProjectShowcaseProjectIds()])]
 }
 
 export function instanceBelongsToProject(
@@ -968,6 +954,13 @@ export function withInstanceProjectIds(
 export const DEMO_TENANT_BARE_METAL_INSTANCE_ID = 'instance-demo-bm-01'
 export const DEMO_TENANT_BARE_METAL_INSTANCE_ID_02 = 'instance-demo-bm-02'
 export const DEMO_TENANT_BARE_METAL_INSTANCE_ID_03 = 'instance-demo-bm-03'
+
+/** Services detail demo: two projects shown side by side. */
+export const DEMO_MULTI_PROJECT_SHOWCASE_INSTANCE_NAME = 'bm-server-06'
+
+export const DEMO_MULTI_PROJECT_SHOWCASE_INSTANCE_IDS = [
+  DEMO_TENANT_BARE_METAL_INSTANCE_ID_03,
+] as const
 export const DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID = 'instance-demo-vm-01'
 export const DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_02 = 'instance-demo-vm-02'
 export const DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_03 = 'instance-demo-vm-03'
@@ -1014,6 +1007,7 @@ export const DEMO_TENANT_PROJECT_INSTANCE_IDS = [
 export const DEMO_TENANT_SECONDARY_PROJECT_INSTANCE_IDS = [
   DEMO_TENANT_BARE_METAL_INSTANCE_ID,
   DEMO_TENANT_BARE_METAL_INSTANCE_ID_02,
+  DEMO_TENANT_BARE_METAL_INSTANCE_ID_03,
   DEMO_TENANT_CLUSTER_INSTANCE_ID,
   DEMO_TENANT_CLUSTER_INSTANCE_ID_04,
 ] as const
@@ -1031,8 +1025,70 @@ export function getDemoInstanceProjectIds(instanceId: string): string[] {
   )
 
   return belongsToSecondary
-    ? [DEMO_TENANT_PROJECT_ID, DEMO_TENANT_PROJECT_ID_02]
+    ? getDemoMultiProjectShowcaseProjectIds()
     : [DEMO_TENANT_PROJECT_ID]
+}
+
+export function getDemoMultiProjectShowcaseProjectIds(): string[] {
+  return [DEMO_TENANT_PROJECT_ID, DEMO_TENANT_PROJECT_ID_02]
+}
+
+export function isDemoMultiProjectShowcaseInstance(
+  instance: Pick<TenantInstance, 'id' | 'name'>,
+): boolean {
+  return (
+    instance.name === DEMO_MULTI_PROJECT_SHOWCASE_INSTANCE_NAME ||
+    DEMO_MULTI_PROJECT_SHOWCASE_INSTANCE_IDS.includes(
+      instance.id as (typeof DEMO_MULTI_PROJECT_SHOWCASE_INSTANCE_IDS)[number],
+    )
+  )
+}
+
+function resolveStoredTenantInstanceProjectIds(instance: TenantInstance): string[] {
+  if (Array.isArray(instance.projectIds)) {
+    return [...new Set(instance.projectIds.filter(Boolean))]
+  }
+
+  const demoProjectIds = getDemoInstanceProjectIds(instance.id)
+  if (demoProjectIds.length > 0) {
+    return demoProjectIds
+  }
+
+  if (instance.scopeKind === 'project' && instance.projectName === DEMO_TENANT_PROJECT_NAME) {
+    return [DEMO_TENANT_PROJECT_ID]
+  }
+
+  if (instance.scopeKind === 'project' && instance.projectName === DEMO_TENANT_PROJECT_NAME_02) {
+    return [DEMO_TENANT_PROJECT_ID_02]
+  }
+
+  return []
+}
+
+export function syncDemoMultiProjectShowcaseInstance(instance: TenantInstance): TenantInstance | null {
+  if (!isDemoMultiProjectShowcaseInstance(instance)) {
+    return null
+  }
+
+  const expectedName = DEMO_MULTI_PROJECT_SHOWCASE_INSTANCE_NAME
+  const expectedProjectIds = getDemoMultiProjectShowcaseProjectIds()
+  const currentProjectIds = resolveStoredTenantInstanceProjectIds(instance)
+  const mergedProjectIds = [...new Set([...currentProjectIds, ...expectedProjectIds])]
+  const hasExpectedMembership = expectedProjectIds.every((projectId) =>
+    mergedProjectIds.includes(projectId),
+  )
+
+  if (instance.name === expectedName && hasExpectedMembership) {
+    return null
+  }
+
+  return {
+    ...instance,
+    name: expectedName,
+    projectIds: mergedProjectIds,
+    scopeKind: 'project',
+    projectName: DEMO_TENANT_PROJECT_NAME,
+  }
 }
 
 export function getTenantInstanceGpuLabel(instance: TenantInstance): string {
@@ -1354,7 +1410,7 @@ export function createDemoTenantBareMetalInstance02(organizationName: string): T
 export function createDemoTenantBareMetalInstance03(organizationName: string): TenantInstance {
   return createDemoTenantBareMetalInstanceVariant(organizationName, {
     id: DEMO_TENANT_BARE_METAL_INSTANCE_ID_03,
-    name: 'bm-server-03',
+    name: DEMO_MULTI_PROJECT_SHOWCASE_INSTANCE_NAME,
     status: 'running',
     osImage: 'Fedora',
     gpuLabel: 'NVIDIA H100 × 4',

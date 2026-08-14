@@ -5,8 +5,11 @@ import {
   type CatalogNetworkLockPattern,
 } from '../providerAdmin/catalogNetworkPolicy'
 import {
+  CATALOG_ITEM_DESCRIPTIONS_BY_ID,
+  DEMO_CATALOG_ITEM_IDS,
+} from '../catalog/catalogItemDescriptions'
+import {
   CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
-  CLUSTER_NODE_SETS_DESCRIPTION,
   CLUSTER_NODE_SETS_DISPLAY_NAME,
   CLUSTER_NODE_SETS_RATE_CARD,
   CLUSTER_NODE_SETS_TEMPLATE_NAME,
@@ -124,7 +127,7 @@ function createDefaultCatalogDraft(): ProviderCatalogDraft {
     templateRefId: BARE_METAL_GPU_TEMPLATE_REF_ID,
     templateName: DEFAULT_BLUEPRINT_FORM.templateName,
     displayName: DEFAULT_CATALOG_ITEM_DISPLAY_NAME,
-    description: DEFAULT_BLUEPRINT_FORM.description,
+    description: CATALOG_ITEM_DESCRIPTIONS_BY_ID[DEMO_CATALOG_ITEM_IDS.bareMetalGpuTraining],
     scope: 'global-public',
     rateCard: DEFAULT_RATE_CARD,
     serviceId: 'baremetal',
@@ -142,7 +145,7 @@ function createBareMetalAiInferenceCatalogDraft(): ProviderCatalogDraft {
     templateRefId: BARE_METAL_AI_INFERENCE_TEMPLATE_REF_ID,
     templateName: GPU_BLUEPRINT_FORM.templateName,
     displayName: SECOND_CATALOG_ITEM_DISPLAY_NAME,
-    description: GPU_BLUEPRINT_FORM.description,
+    description: CATALOG_ITEM_DESCRIPTIONS_BY_ID[DEMO_CATALOG_ITEM_IDS.bareMetalDenseGpu],
     scope: 'vip-enterprise',
     enterpriseTenantId: DEMO_NORTH_SUMMIT_BANK_TENANT_ID,
     rateCard,
@@ -159,7 +162,7 @@ function createClusterNodeSetsCatalogDraft(): ProviderCatalogDraft {
     templateRefId: CLUSTER_NODE_SETS_TEMPLATE_REF_ID,
     templateName: CLUSTER_NODE_SETS_TEMPLATE_NAME,
     displayName: CLUSTER_NODE_SETS_DISPLAY_NAME,
-    description: CLUSTER_NODE_SETS_DESCRIPTION,
+    description: CATALOG_ITEM_DESCRIPTIONS_BY_ID[DEMO_CATALOG_ITEM_IDS.clusterNodeSets],
     scope: 'global-public',
     rateCard: CLUSTER_NODE_SETS_RATE_CARD,
     serviceId: 'cluster',
@@ -395,7 +398,7 @@ function syncClusterNodeSetsCatalogItem(): void {
       templateRefId: CLUSTER_NODE_SETS_TEMPLATE_REF_ID,
       templateName: CLUSTER_NODE_SETS_TEMPLATE_NAME,
       displayName: CLUSTER_NODE_SETS_DISPLAY_NAME,
-      description: current.description ?? CLUSTER_NODE_SETS_DESCRIPTION,
+      description: CATALOG_ITEM_DESCRIPTIONS_BY_ID[DEMO_CATALOG_ITEM_IDS.clusterNodeSets],
     })
   }
 
@@ -526,6 +529,16 @@ function ensureDemoBareMetalTemplates(): void {
   })
 }
 
+function syncDemoCatalogItemDescriptions(): void {
+  for (const catalogItemId of Object.values(DEMO_CATALOG_ITEM_IDS)) {
+    const description = CATALOG_ITEM_DESCRIPTIONS_BY_ID[catalogItemId]
+    const item = getProviderCatalogItems().find((entry) => entry.catalogItemId === catalogItemId)
+    if (item && item.description !== description) {
+      patchProviderCatalogItem(catalogItemId, { description })
+    }
+  }
+}
+
 /** Ensures demo catalog offerings exist for finished Provider Admin screens. */
 export function ensureProviderCatalogDemoItems(): ProviderCatalogDraft[] {
   ensureDemoBareMetalTemplates()
@@ -563,6 +576,7 @@ export function ensureProviderCatalogDemoItems(): ProviderCatalogDraft[] {
   items = getProviderCatalogItems()
 
   syncDemoCatalogNetworkLockPatterns()
+  syncDemoCatalogItemDescriptions()
 
   const selectedServices = getProviderSelectedServices()
   const nextServices: ProviderServiceId[] = [

@@ -1,6 +1,6 @@
 import type { CatalogFieldPolicy } from '../catalog/catalogPublishConfig'
-import type { CatalogServiceId, PublishCatalogScope } from '../providerSetup/templateDemo'
-import { CATALOG_SERVICE_LABELS } from '../providerSetup/templateDemo'
+import type { CatalogServiceId, PublishCatalogScope, RateCard } from '../providerSetup/templateDemo'
+import { CATALOG_SERVICE_LABELS, DEFAULT_RATE_CARD, resolveRateCard } from '../providerSetup/templateDemo'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../providerSetup/storage'
 import {
@@ -55,6 +55,8 @@ export type TenantCatalogGovernanceItem = {
   restricted: boolean
   approved: boolean
   scope: PublishCatalogScope
+  rateCard: RateCard
+  createdAt: string
 }
 
 export type TenantCatalogGovernanceItemWithNetworking = TenantCatalogGovernanceItem & {
@@ -161,6 +163,8 @@ function mapProviderCatalogToGovernanceItem(
     restricted: draft.scope === 'vip-enterprise',
     approved: true,
     scope: draft.scope,
+    rateCard: resolveRateCard(draft),
+    createdAt: draft.createdAt,
     networkPolicy,
   }
 }
@@ -190,6 +194,8 @@ export const TENANT_CATALOG_GOVERNANCE_ITEMS: TenantCatalogGovernanceItem[] = [
     restricted: false,
     approved: true,
     scope: 'global-public',
+    rateCard: DEFAULT_RATE_CARD,
+    createdAt: new Date().toISOString(),
   },
 ]
 

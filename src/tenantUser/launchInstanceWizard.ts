@@ -146,6 +146,17 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
     'Your instance stays in Provisioning on Services until setup finishes.',
 } as const
 
+export const LAUNCH_INSTANCE_DEFAULT_DESCRIPTIONS: Record<CatalogServiceId, string> = {
+  baremetal: 'Development server for the payments team.',
+  cluster: 'Staging environment for our application team.',
+  'virtual-machine': 'Test machine for QA checks.',
+  models: 'Demo deployment for the data science team.',
+}
+
+export function getLaunchInstanceDefaultDescription(serviceId: CatalogServiceId): string {
+  return LAUNCH_INSTANCE_DEFAULT_DESCRIPTIONS[serviceId]
+}
+
 export const CLUSTER_LAUNCH_INSTANCE_DEMO = {
   defaultName: 'ocp-cluster-01',
   nameHelper: KUBERNETES_RESOURCE_NAME_HELPER,
@@ -410,6 +421,7 @@ export function createLaunchInstanceWizardForm(options: {
 
   return {
     ...DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM,
+    description: getLaunchInstanceDefaultDescription(serviceId),
     instanceName:
       options.instanceName ??
       (isCluster || isVm || isBaremetal

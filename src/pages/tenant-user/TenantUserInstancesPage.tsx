@@ -68,7 +68,11 @@ import {
   withInstanceProjectIds,
 } from '../../tenantUser/instances'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
-import { removeTenantUserInstance, updateTenantUserInstance } from '../../tenantUser/storage'
+import {
+  ensureTenantDemoInstances,
+  removeTenantUserInstance,
+  updateTenantUserInstance,
+} from '../../tenantUser/storage'
 import type { TenantProject } from '../../tenantAdmin/projects'
 import {
   generateTenantProjectId,
@@ -107,6 +111,8 @@ type TenantUserInstancesPageProps = {
   /** Opens this instance's detail page when navigating from another workspace view. */
   openInstanceId?: string | null
   onOpenInstanceConsumed?: () => void
+  /** Provider admin Services detail shows assigned networking objects without lock controls. */
+  instanceNetworkingVariant?: 'interactive' | 'summary'
 }
 
 function getStatusColor(status: TenantInstance['status']): 'green' | 'blue' | 'orange' | 'red' | 'grey' {
@@ -182,7 +188,23 @@ export function TenantUserInstancesPage({
   onNavigateToProject,
   openInstanceId = null,
   onOpenInstanceConsumed,
+  instanceNetworkingVariant = 'summary',
 }: TenantUserInstancesPageProps) {
+  useEffect(() => {
+    const normalized = ensureTenantDemoInstances(tenantSlug, organization?.name ?? tenantSlug)
+    onInstancesChange((current) => {
+      if (
+        current.length === normalized.length &&
+        current.every((instance, index) => instance === normalized[index])
+      ) {
+        return current
+      }
+      return normalized
+    })
+    // Normalize demo showcase rows (e.g. bm-server-06 multi-project) on workspace entry.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount sync per tenant
+  }, [tenantSlug])
+
   const [viewMode, setViewMode] = useState<ViewMode>(() => getInstancesViewMode('grid'))
   const [searchValue, setSearchValue] = useState('')
   const [powerStateFilter, setPowerStateFilter] = useState<'all' | TenantInstanceStatus>('all')
@@ -720,23 +742,6 @@ export function TenantUserInstancesPage({
     })
   }
 
-  const handleRemoveInstanceProject = (instanceId: string, projectId: string) => {
-    onInstancesChange((current) => {
-      const target = current.find((instance) => instance.id === instanceId)
-      if (!target) {
-        return current
-      }
-
-      const nextIds = getTenantInstanceProjectIds(target).filter((id) => id !== projectId)
-      return updateTenantUserInstance(
-        tenantSlug,
-        instanceId,
-        withInstanceProjectIds(target, nextIds, projects, organizationName),
-        current,
-      )
-    })
-  }
-
   const closeAttachPublicIp = () => {
     setInstancePendingPublicIp(null)
     setPublicIpFamily('IPv4')
@@ -830,12 +835,12 @@ export function TenantUserInstancesPage({
           onUpdateNetworking={handleUpdateNetworking}
           onAddProject={handleAddInstanceProject}
           onCreateProject={handleCreateInstanceProject}
-          onRemoveProject={handleRemoveInstanceProject}
           onNavigateToCatalogItem={onNavigateToCatalogItem}
           onNavigateToProject={onNavigateToProject}
           onViewPassword={(instance) => {
             setInstancePendingPassword(instance)
           }}
+          instanceNetworkingVariant={instanceNetworkingVariant}
         />
 
         <Modal

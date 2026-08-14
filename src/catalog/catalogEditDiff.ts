@@ -1,4 +1,7 @@
 import {
+  buildDefaultCatalogFieldPolicies,
+  DEFAULT_CLUSTER_HOST_TYPE_ID,
+  DEFAULT_CLUSTER_NODE_SET_ID,
   formatClusterHostTypeLabel,
   formatClusterNodeSetLabel,
   getCatalogClusterHostTypeOptions,
@@ -189,6 +192,56 @@ function resolveHostTypeLabel(hostTypeId: string, hostTypeLabel?: string): strin
   )
 }
 
+/** Match edit-wizard hydration when catalog omits hardware selections. */
+function resolveHydratedInstanceTypeId(
+  serviceId: CatalogServiceId,
+  instanceTypeId?: string,
+): string {
+  if (instanceTypeId?.trim()) {
+    return instanceTypeId.trim()
+  }
+
+  return getCatalogInstanceTypeOptions(serviceId)[0]?.id ?? ''
+}
+
+/** Match edit-wizard hydration when catalog omits disk image / cluster version. */
+function resolveHydratedDiskImageId(serviceId: CatalogServiceId, diskImageId?: string): string {
+  if (diskImageId?.trim()) {
+    return diskImageId.trim()
+  }
+
+  const options =
+    serviceId === 'cluster' ? getCatalogClusterVersionOptions() : getCatalogDiskImageOptions()
+  return options[0]?.id ?? ''
+}
+
+/** Match edit-wizard field-policy merge when catalog has no stored policies. */
+function resolveHydratedFieldPolicies(
+  catalog: ProviderCatalogDraft,
+  serviceId: CatalogServiceId,
+  templates: SavedMasterTemplate[],
+): CatalogFieldPolicy[] {
+  const template = templates.find((item) => item.templateRefId === catalog.templateRefId)
+  const provisionerParameters = template
+    ? getProvisioningTemplatePresentation(template, serviceId).parameters
+    : []
+  const defaults = buildDefaultCatalogFieldPolicies({ provisionerParameters })
+  const stored = catalog.fieldPolicies ?? []
+
+  if (stored.length === 0) {
+    return defaults
+  }
+
+  return defaults.map((policy) => {
+    const existing = stored.find((entry) => entry.id === policy.id)
+    if (!existing) {
+      return policy
+    }
+
+    return { ...policy, mode: existing.mode, defaultValue: existing.defaultValue }
+  })
+}
+
 export function buildCatalogEditSnapshotFromCatalog(
   catalog: ProviderCatalogDraft,
   templates: SavedMasterTemplate[],
@@ -197,11 +250,11 @@ export function buildCatalogEditSnapshotFromCatalog(
   const serviceId = catalog.serviceId ?? 'baremetal'
   const isClusterService = serviceId === 'cluster'
   const enterpriseTenantIds = getCatalogEnterpriseTenantIds(catalog)
-  const fieldPolicies = catalog.fieldPolicies ?? []
-  const instanceTypeId = catalog.instanceTypeId ?? ''
-  const diskImageId = catalog.diskImageId ?? ''
-  const nodeSetId = catalog.nodeSetId ?? ''
-  const hostTypeId = catalog.hostTypeId ?? ''
+  const fieldPolicies = resolveHydratedFieldPolicies(catalog, serviceId, templates)
+  const instanceTypeId = resolveHydratedInstanceTypeId(serviceId, catalog.instanceTypeId)
+  const diskImageId = resolveHydratedDiskImageId(serviceId, catalog.diskImageId)
+  const nodeSetId = catalog.nodeSetId ?? DEFAULT_CLUSTER_NODE_SET_ID
+  const hostTypeId = catalog.hostTypeId ?? DEFAULT_CLUSTER_HOST_TYPE_ID
   const clusterVersionMode = catalog.clusterVersionMode ?? 'locked'
   const clusterNodeTopologyMode = catalog.clusterNodeTopologyMode ?? 'locked'
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ArrowLeftIcon } from '@patternfly/react-icons/dist/esm/icons/arrow-left-icon'
 import { ArrowRightIcon } from '@patternfly/react-icons/dist/esm/icons/arrow-right-icon'
 import { CheckIcon } from '@patternfly/react-icons/dist/esm/icons/check-icon'
@@ -1585,6 +1585,92 @@ export function TenantUserLaunchInstanceWizard({
         (option) => option.id === networkSelections.externalIpPoolId,
       )?.name ?? networking.externalIpPool
 
+    const renderReviewRow = (term: string, description: ReactNode) => (
+      <DescriptionListGroup key={term}>
+        <DescriptionListTerm>{term}</DescriptionListTerm>
+        <DescriptionListDescription>{description}</DescriptionListDescription>
+      </DescriptionListGroup>
+    )
+
+    const renderGeneralStepRows = () => [
+      renderReviewRow(launchScopeFieldLabel, launchScopeLabel),
+      renderReviewRow('Instance name', reviewInstanceName),
+      renderReviewRow('Description', form.description.trim() || '—'),
+      renderReviewRow('SSH public key', form.sshPublicKey.trim() || '—'),
+      ...(isClusterCatalogItem
+        ? [
+            renderReviewRow(
+              'Pull secret',
+              form.pullSecret.trim() ? 'Provided' : '—',
+            ),
+          ]
+        : []),
+    ]
+
+    const renderPlacementNetworkingRows = () => [
+      renderReviewRow('Virtual network', virtualNetworkLabel),
+      renderReviewRow('Subnet', subnetLabel),
+      renderReviewRow('Security group', securityGroupReviewLabel),
+      renderReviewRow('External IP pool', externalIpPoolReviewLabel),
+    ]
+
+    const renderServiceSpecificRows = () => {
+      if (isBareMetalCatalogItem) {
+        return renderPlacementNetworkingRows()
+      }
+
+      if (isVmCatalogItem) {
+        return [
+          renderReviewRow('OS image', resolvedVmOsImage),
+          renderReviewRow('Container disk image', form.containerDiskImage.trim() || '—'),
+          renderReviewRow('Instance type', form.instanceType.trim() || '—'),
+          renderReviewRow('Boot disk size', `${form.bootDiskSizeGiB} GiB`),
+          renderReviewRow('Image source type', form.imageSourceType.trim() || '—'),
+          renderReviewRow('Run strategy', form.runStrategy.trim() || '—'),
+          ...(form.cloudInitUserData.trim()
+            ? [renderReviewRow('Cloud-init user data', form.cloudInitUserData.trim())]
+            : []),
+          ...renderPlacementNetworkingRows(),
+        ]
+      }
+
+      if (isClusterCatalogItem) {
+        return [
+          renderReviewRow(
+            'Cluster version',
+            formatClusterPlatformLabel(
+              form.clusterVersionId || catalogClusterVersion || form.releaseImage,
+            ),
+          ),
+          renderReviewRow('Release image', form.releaseImage.trim() || '—'),
+          ...form.nodeSets.map((nodeSet, index) =>
+            renderReviewRow(
+              `Node set ${index + 1}`,
+              `${formatClusterNodeSetLabel(nodeSet.nodeSetId)} · ${formatClusterHostTypeLabel(nodeSet.hostType)} · ${nodeSet.nodeCount} ${nodeSet.nodeCount === 1 ? 'node' : 'nodes'}`,
+            ),
+          ),
+          ...renderPlacementNetworkingRows(),
+          renderReviewRow('Pod CIDR', form.podCidr.trim() || '—'),
+          renderReviewRow('Service CIDR', form.serviceCidr.trim() || '—'),
+        ]
+      }
+
+      return [
+        renderReviewRow('Catalog item', catalogItem.displayName),
+        renderReviewRow('Hardware', catalogItem.hardwareProfile),
+        renderReviewRow('GPU', catalogItem.gpu),
+        renderReviewRow('OS image', catalogItem.osImage),
+        ...(!networkContext.enabled
+          ? []
+          : [
+              renderReviewRow('Network', assignedNetworkSummary),
+              renderReviewRow('Security group', securityGroupLabel),
+            ]),
+      ]
+    }
+
+    const reviewRows = [...renderGeneralStepRows(), ...renderServiceSpecificRows()]
+
     return (
       <div className="tenant-user-launch-wizard__step">
         <Content component="h2" className="tenant-user-launch-wizard__step-title">
@@ -1606,190 +1692,7 @@ export function TenantUserLaunchInstanceWizard({
         {usesGeneralFirstStep ? renderCatalogOfferingSummary() : null}
 
         <DescriptionList isCompact className="tenant-user-launch-wizard__review-list">
-          <DescriptionListGroup>
-            <DescriptionListTerm>Catalog item</DescriptionListTerm>
-            <DescriptionListDescription>{catalogItem.displayName}</DescriptionListDescription>
-          </DescriptionListGroup>
-          <DescriptionListGroup>
-            <DescriptionListTerm>Instance name</DescriptionListTerm>
-            <DescriptionListDescription>{reviewInstanceName}</DescriptionListDescription>
-          </DescriptionListGroup>
-          <DescriptionListGroup>
-            <DescriptionListTerm>Description</DescriptionListTerm>
-            <DescriptionListDescription>
-              {form.description.trim() || '—'}
-            </DescriptionListDescription>
-          </DescriptionListGroup>
-          {isBareMetalCatalogItem ? (
-            <>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Virtual network</DescriptionListTerm>
-                <DescriptionListDescription>{virtualNetworkLabel}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Subnet</DescriptionListTerm>
-                <DescriptionListDescription>{subnetLabel}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Security group</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {securityGroupReviewLabel}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>External IP pool</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {externalIpPoolReviewLabel}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-            </>
-          ) : isVmCatalogItem ? (
-            <>
-              <DescriptionListGroup>
-                <DescriptionListTerm>OS image</DescriptionListTerm>
-                <DescriptionListDescription>{resolvedVmOsImage}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Container disk image</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {form.containerDiskImage.trim()}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Instance type</DescriptionListTerm>
-                <DescriptionListDescription>{form.instanceType.trim()}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Boot disk size</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {form.bootDiskSizeGiB} GiB
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Image source type</DescriptionListTerm>
-                <DescriptionListDescription>{form.imageSourceType.trim()}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Run strategy</DescriptionListTerm>
-                <DescriptionListDescription>{form.runStrategy.trim()}</DescriptionListDescription>
-              </DescriptionListGroup>
-              {form.cloudInitUserData.trim() ? (
-                <DescriptionListGroup>
-                  <DescriptionListTerm>Cloud-init user data</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    {form.cloudInitUserData.trim()}
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
-              ) : null}
-              <DescriptionListGroup>
-                <DescriptionListTerm>Virtual network</DescriptionListTerm>
-                <DescriptionListDescription>{virtualNetworkLabel}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Subnet</DescriptionListTerm>
-                <DescriptionListDescription>{subnetLabel}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Security groups</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {securityGroupReviewLabel}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>External IP pool</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {externalIpPoolReviewLabel}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-            </>
-          ) : isClusterCatalogItem ? (
-            <>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Cluster version</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {formatClusterPlatformLabel(
-                    form.clusterVersionId || catalogClusterVersion || form.releaseImage,
-                  )}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Release image</DescriptionListTerm>
-                <DescriptionListDescription>{form.releaseImage.trim()}</DescriptionListDescription>
-              </DescriptionListGroup>
-              {form.nodeSets.map((nodeSet, index) => (
-                <DescriptionListGroup key={nodeSet.id}>
-                  <DescriptionListTerm>Node set {index + 1}</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    {formatClusterNodeSetLabel(nodeSet.nodeSetId)} ·{' '}
-                    {formatClusterHostTypeLabel(nodeSet.hostType)} · {nodeSet.nodeCount}{' '}
-                    {nodeSet.nodeCount === 1 ? 'node' : 'nodes'}
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
-              ))}
-              <DescriptionListGroup>
-                <DescriptionListTerm>Virtual network</DescriptionListTerm>
-                <DescriptionListDescription>{virtualNetworkLabel}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Subnet</DescriptionListTerm>
-                <DescriptionListDescription>{subnetLabel}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Security group</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {securityGroupReviewLabel}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>External IP pool</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {externalIpPoolReviewLabel}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Pod CIDR</DescriptionListTerm>
-                <DescriptionListDescription>{form.podCidr.trim()}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Service CIDR</DescriptionListTerm>
-                <DescriptionListDescription>{form.serviceCidr.trim()}</DescriptionListDescription>
-              </DescriptionListGroup>
-            </>
-          ) : (
-            <>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Hardware</DescriptionListTerm>
-                <DescriptionListDescription>{catalogItem.hardwareProfile}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>GPU</DescriptionListTerm>
-                <DescriptionListDescription>{catalogItem.gpu}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>OS image</DescriptionListTerm>
-                <DescriptionListDescription>{catalogItem.osImage}</DescriptionListDescription>
-              </DescriptionListGroup>
-            </>
-          )}
-          {!isVmCatalogItem &&
-          !isClusterCatalogItem &&
-          !isBareMetalCatalogItem &&
-          networkContext.enabled ? (
-            <>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Network</DescriptionListTerm>
-                <DescriptionListDescription>{assignedNetworkSummary}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Security group</DescriptionListTerm>
-                <DescriptionListDescription>{securityGroupLabel}</DescriptionListDescription>
-              </DescriptionListGroup>
-            </>
-          ) : null}
-          <DescriptionListGroup>
-            <DescriptionListTerm>{launchScopeFieldLabel}</DescriptionListTerm>
-            <DescriptionListDescription>{launchScopeLabel}</DescriptionListDescription>
-          </DescriptionListGroup>
+          {reviewRows}
         </DescriptionList>
       </div>
     )

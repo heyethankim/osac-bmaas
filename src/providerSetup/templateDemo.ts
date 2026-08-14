@@ -1,4 +1,5 @@
 import type { CatalogFieldPolicy } from '../catalog/catalogPublishConfig'
+import { CATALOG_ITEM_DESCRIPTIONS_BY_SERVICE } from '../catalog/catalogItemDescriptions'
 import type { CatalogNetworkPolicy } from '../providerAdmin/catalogNetworkPolicy'
 
 export type { CatalogNetworkPolicy }
@@ -232,10 +233,10 @@ export function getPublishCatalogSuggestedDisplayName(serviceId: CatalogServiceI
 
 /** Service-specific Description step prefills for Create catalog item. */
 export const PUBLISH_CATALOG_SUGGESTED_DESCRIPTIONS = {
-  baremetal: 'General-purpose bare metal server for compute and GPU workloads.',
-  cluster: 'OpenShift cluster for application and platform workloads.',
-  'virtual-machine': 'General-purpose virtual machine for application workloads.',
-  models: 'Model serving endpoint for AI inference workloads.',
+  baremetal: CATALOG_ITEM_DESCRIPTIONS_BY_SERVICE.baremetal,
+  cluster: CATALOG_ITEM_DESCRIPTIONS_BY_SERVICE.cluster,
+  'virtual-machine': CATALOG_ITEM_DESCRIPTIONS_BY_SERVICE['virtual-machine'],
+  models: CATALOG_ITEM_DESCRIPTIONS_BY_SERVICE.models,
 } as const satisfies Record<CatalogServiceId, string>
 
 export function getPublishCatalogSuggestedDescription(serviceId: CatalogServiceId): string {

@@ -88,7 +88,6 @@ import {
   type CustomInstanceTypeConfig,
 } from '../../catalog/catalogPublishConfig'
 import {
-  buildCatalogEditSnapshotFromCatalog,
   buildCatalogEditSnapshotFromWizardState,
   getCatalogEditChanges,
   getCatalogEditModifiedStepIds,
@@ -235,6 +234,8 @@ export function ProviderSetupPublishCatalogWizard({
   const isEditMode = mode === 'edit'
   const isSubmitting = isPublishing || isSaving
   const skipNextServiceHardwareResetRef = useRef(false)
+  const hydratedEditServiceIdRef = useRef<CatalogServiceId | null>(null)
+  const editBaselineCapturedRef = useRef(false)
   const [selectedServiceId, setSelectedServiceId] = useState<CatalogServiceId | null>('baremetal')
   const [selectedTemplateRefId, setSelectedTemplateRefId] = useState('')
   const [selectedInstanceTypeId, setSelectedInstanceTypeId] = useState('')
@@ -504,6 +505,7 @@ export function ProviderSetupPublishCatalogWizard({
 
   const hydrateWizardStateFromCatalog = (catalog: ProviderCatalogDraft) => {
     const serviceId = catalog.serviceId ?? 'baremetal'
+    hydratedEditServiceIdRef.current = serviceId
     const preferredTemplate =
       templates.find((template) => template.templateRefId === catalog.templateRefId) ??
       templates[0] ??
@@ -566,13 +568,12 @@ export function ProviderSetupPublishCatalogWizard({
     if (!isOpen) {
       resetWizard()
       setEditBaseline(null)
+      editBaselineCapturedRef.current = false
+      hydratedEditServiceIdRef.current = null
       return
     }
 
     if (isEditMode && editingCatalog) {
-      setEditBaseline(
-        buildCatalogEditSnapshotFromCatalog(editingCatalog, templates, organizations),
-      )
       skipNextServiceHardwareResetRef.current = true
       hydrateWizardStateFromCatalog(editingCatalog)
       return
@@ -645,7 +646,16 @@ export function ProviderSetupPublishCatalogWizard({
     }
 
     if (skipNextServiceHardwareResetRef.current) {
+      if (
+        isEditMode &&
+        hydratedEditServiceIdRef.current &&
+        selectedServiceId !== hydratedEditServiceIdRef.current
+      ) {
+        return
+      }
+
       skipNextServiceHardwareResetRef.current = false
+      hydratedEditServiceIdRef.current = null
       return
     }
 
@@ -661,7 +671,7 @@ export function ProviderSetupPublishCatalogWizard({
     setSelectedNodeSetId(DEFAULT_CLUSTER_NODE_SET_ID)
     setSelectedHostTypeId(DEFAULT_CLUSTER_HOST_TYPE_ID)
     setClusterNodeTopologyMode('locked')
-  }, [selectedServiceId])
+  }, [isEditMode, selectedServiceId])
 
   useEffect(() => {
     if (!selectedServiceId || !selectedTemplate) {
@@ -691,6 +701,53 @@ export function ProviderSetupPublishCatalogWizard({
       })
     })
   }, [selectedServiceId, selectedTemplate?.templateRefId])
+
+  useEffect(() => {
+    if (!isOpen || !isEditMode || !editingCatalog || editBaselineCapturedRef.current) {
+      return
+    }
+
+    if (!selectedServiceId || !selectedTemplateRefId || !currentEditSnapshot) {
+      return
+    }
+
+    if (selectedServiceId === 'cluster') {
+      if (!selectedDiskImageId || !selectedNodeSetId || !selectedHostTypeId) {
+        return
+      }
+    } else if (!selectedInstanceTypeId || !selectedDiskImageId) {
+      return
+    }
+
+    const storedPolicies = editingCatalog.fieldPolicies ?? []
+    const provisionerParameters = selectedTemplate
+      ? getProvisioningTemplatePresentation(selectedTemplate, selectedServiceId).parameters
+      : []
+    const expectedDefaultPolicies = buildDefaultCatalogFieldPolicies({ provisionerParameters })
+    if (
+      expectedDefaultPolicies.length > 0 &&
+      fieldPolicies.length === 0 &&
+      storedPolicies.length === 0
+    ) {
+      return
+    }
+
+    setEditBaseline(currentEditSnapshot)
+    editBaselineCapturedRef.current = true
+  }, [
+    currentEditSnapshot,
+    editingCatalog,
+    fieldPolicies,
+    isEditMode,
+    isOpen,
+    selectedDiskImageId,
+    selectedHostTypeId,
+    selectedInstanceTypeId,
+    selectedNodeSetId,
+    selectedServiceId,
+    selectedTemplate,
+    selectedTemplateRefId,
+  ])
 
   const buildCatalogItemPayload = (): PublishedTemplatePayload | null => {
     if (

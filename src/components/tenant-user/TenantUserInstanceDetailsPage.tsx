@@ -19,11 +19,11 @@ import {
 } from '@patternfly/react-core'
 import { PlusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/plus-circle-icon'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
-import { TrashIcon } from '@patternfly/react-icons/dist/esm/icons/trash-icon'
 import { EntityDetailsPageShell } from '../shared/EntityDetailsPageShell'
 import { AddInstanceProjectModal } from './AddInstanceProjectModal'
 import { CatalogClusterVersionValue } from '../catalog/CatalogClusterVersionValue'
 import { CatalogNetworkingLocksSection } from '../catalog/CatalogNetworkingLocksSection'
+import { CatalogNetworkingSummarySection } from '../catalog/CatalogNetworkingSummarySection'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import {
   getCatalogNetworkOptionLabel,
@@ -100,12 +100,13 @@ type TenantUserInstanceDetailsPageProps = {
   ) => void
   onAddProject: (instanceId: string, projectId: string) => void
   onCreateProject: (instanceId: string, projectName: string) => void
-  onRemoveProject: (instanceId: string, projectId: string) => void
   onNavigateToProject?: (project: TenantProject) => void
   /** Opens the matching catalog item detail page in Catalog. */
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
   /** Opens the cluster demo password modal. */
   onViewPassword?: (instance: TenantInstance) => void
+  /** Provider admin Services detail shows assigned objects only; tenant views keep lock controls. */
+  instanceNetworkingVariant?: 'interactive' | 'summary'
 }
 
 function CatalogItemDisplayLink({
@@ -450,6 +451,7 @@ function InstanceInheritedNetworkingSection({
   onUpdateNetworking,
   conditions,
   conditionsAriaLabel,
+  networkingVariant = 'summary',
 }: {
   instance: TenantInstance
   onUpdateNetworking?: (
@@ -459,6 +461,7 @@ function InstanceInheritedNetworkingSection({
   ) => void
   conditions?: TenantInstanceCondition[]
   conditionsAriaLabel?: string
+  networkingVariant?: 'interactive' | 'summary'
 }) {
   const catalogDraft = findCatalogDraftForInstance(instance)
   const networkContext = resolveLaunchNetworkContext(null, catalogDraft, true, catalogDraft?.catalogItemId)
@@ -485,6 +488,25 @@ function InstanceInheritedNetworkingSection({
     return conditions && conditions.length > 0 && conditionsAriaLabel ? (
       <InstanceConditionsSection conditions={conditions} ariaLabel={conditionsAriaLabel} />
     ) : null
+  }
+
+  if (networkingVariant === 'summary') {
+    return (
+      <>
+        <CatalogNetworkingSummarySection
+          policy={policy}
+          virtualNetworkOptions={getCatalogVirtualNetworkOptions()}
+          subnetOptions={subnetOptions}
+          securityGroupOptions={getCatalogSecurityGroupOptions()}
+          externalIpPoolOptions={getCatalogExternalIpPoolOptions()}
+        />
+        {conditions && conditions.length > 0 && conditionsAriaLabel ? (
+          <div className="entity-details-page__conditions-band">
+            <InstanceConditionsSection conditions={conditions} ariaLabel={conditionsAriaLabel} />
+          </div>
+        ) : null}
+      </>
+    )
   }
 
   const persistFromPolicy = (next: CatalogNetworkPolicy) => {
@@ -1100,9 +1122,9 @@ function ClusterInstancePageBody({
   onUpdateNetworking,
   onAddProject,
   onCreateProject,
-  onRemoveProject,
   onNavigateToProject,
   onNavigateToCatalogItem,
+  instanceNetworkingVariant,
 }: {
   instance: TenantInstance
   projects: readonly TenantProject[]
@@ -1113,9 +1135,9 @@ function ClusterInstancePageBody({
   ) => void
   onAddProject: (instanceId: string, projectId: string) => void
   onCreateProject: (instanceId: string, projectName: string) => void
-  onRemoveProject: (instanceId: string, projectId: string) => void
   onNavigateToProject?: (project: TenantProject) => void
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
+  instanceNetworkingVariant?: 'interactive' | 'summary'
 }) {
   const clusterConfig = resolveClusterConfig(instance)
   const apiUrl = getClusterApiUrl(instance)
@@ -1218,7 +1240,6 @@ function ClusterInstancePageBody({
             projects={projects}
             onAddProject={onAddProject}
             onCreateProject={onCreateProject}
-            onRemoveProject={onRemoveProject}
             onNavigateToProject={onNavigateToProject}
           />
 
@@ -1227,6 +1248,7 @@ function ClusterInstancePageBody({
             onUpdateNetworking={onUpdateNetworking}
             conditions={getClusterInstanceConditions(instance)}
             conditionsAriaLabel="Cluster conditions"
+            networkingVariant={instanceNetworkingVariant}
           />
         </div>
 
@@ -1375,9 +1397,9 @@ function VmInstancePageBody({
   onUpdateNetworking,
   onAddProject,
   onCreateProject,
-  onRemoveProject,
   onNavigateToProject,
   onNavigateToCatalogItem,
+  instanceNetworkingVariant,
 }: {
   instance: TenantInstance
   projects: readonly TenantProject[]
@@ -1389,9 +1411,9 @@ function VmInstancePageBody({
   ) => void
   onAddProject: (instanceId: string, projectId: string) => void
   onCreateProject: (instanceId: string, projectName: string) => void
-  onRemoveProject: (instanceId: string, projectId: string) => void
   onNavigateToProject?: (project: TenantProject) => void
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
+  instanceNetworkingVariant?: 'interactive' | 'summary'
 }) {
   const isBusy = instance.status === 'provisioning' || instance.status === 'restarting'
   const vmConfig = resolveVmConfig(instance)
@@ -1493,7 +1515,6 @@ function VmInstancePageBody({
             projects={projects}
             onAddProject={onAddProject}
             onCreateProject={onCreateProject}
-            onRemoveProject={onRemoveProject}
             onNavigateToProject={onNavigateToProject}
           />
 
@@ -1502,6 +1523,7 @@ function VmInstancePageBody({
             onUpdateNetworking={onUpdateNetworking}
             conditions={conditions}
             conditionsAriaLabel="Virtual machine conditions"
+            networkingVariant={instanceNetworkingVariant}
           />
         </div>
 
@@ -1572,9 +1594,9 @@ function DefaultInstancePageBody({
   onUpdateNetworking,
   onAddProject,
   onCreateProject,
-  onRemoveProject,
   onNavigateToProject,
   onNavigateToCatalogItem,
+  instanceNetworkingVariant,
 }: {
   instance: TenantInstance
   projects: readonly TenantProject[]
@@ -1585,9 +1607,9 @@ function DefaultInstancePageBody({
   ) => void
   onAddProject: (instanceId: string, projectId: string) => void
   onCreateProject: (instanceId: string, projectName: string) => void
-  onRemoveProject: (instanceId: string, projectId: string) => void
   onNavigateToProject?: (project: TenantProject) => void
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
+  instanceNetworkingVariant?: 'interactive' | 'summary'
 }) {
   const isBareMetal = getTenantInstanceServiceId(instance) === 'baremetal'
   const specRows = getTenantInstanceSpecRows(instance)
@@ -1750,7 +1772,6 @@ function DefaultInstancePageBody({
             projects={projects}
             onAddProject={onAddProject}
             onCreateProject={onCreateProject}
-            onRemoveProject={onRemoveProject}
             onNavigateToProject={onNavigateToProject}
           />
 
@@ -1763,6 +1784,7 @@ function DefaultInstancePageBody({
             conditionsAriaLabel={
               isBareMetal && bareMetalConditions.length > 0 ? 'Bare metal conditions' : undefined
             }
+            networkingVariant={instanceNetworkingVariant}
           />
         </div>
 
@@ -1815,18 +1837,15 @@ function InstanceProjectsSection({
   projects,
   onAddProject,
   onCreateProject,
-  onRemoveProject,
   onNavigateToProject,
 }: {
   instance: TenantInstance
   projects: readonly TenantProject[]
   onAddProject: (instanceId: string, projectId: string) => void
   onCreateProject: (instanceId: string, projectName: string) => void
-  onRemoveProject: (instanceId: string, projectId: string) => void
   onNavigateToProject?: (project: TenantProject) => void
 }) {
   const [isAddOpen, setIsAddOpen] = useState(false)
-  const [projectPendingRemove, setProjectPendingRemove] = useState<TenantProject | null>(null)
   const attachedProjectIds = useMemo(() => getTenantInstanceProjectIds(instance), [instance])
   const attachedProjects = useMemo(
     () =>
@@ -1835,18 +1854,6 @@ function InstanceProjectsSection({
         .filter((project): project is TenantProject => Boolean(project)),
     [attachedProjectIds, projects],
   )
-
-  const closeRemoveProject = () => {
-    setProjectPendingRemove(null)
-  }
-
-  const handleConfirmRemoveProject = () => {
-    if (!projectPendingRemove) {
-      return
-    }
-    onRemoveProject(instance.id, projectPendingRemove.id)
-    setProjectPendingRemove(null)
-  }
 
   return (
     <>
@@ -1892,12 +1899,6 @@ function InstanceProjectsSection({
                       {getTenantProjectEnvironmentLabel(project.environmentType)}
                     </Content>
                   </div>
-                  <Button
-                    variant="plain"
-                    icon={<TrashIcon />}
-                    aria-label={`Remove ${project.name}`}
-                    onClick={() => setProjectPendingRemove(project)}
-                  />
                 </div>
               </li>
             ))}
@@ -1913,40 +1914,6 @@ function InstanceProjectsSection({
         onAdd={(projectId) => onAddProject(instance.id, projectId)}
         onCreateProject={(projectName) => onCreateProject(instance.id, projectName)}
       />
-
-      <Modal
-        variant={ModalVariant.small}
-        isOpen={projectPendingRemove !== null}
-        onClose={closeRemoveProject}
-        aria-labelledby="remove-instance-project-title"
-        aria-describedby="remove-instance-project-description"
-      >
-        <ModalHeader
-          title="Remove project?"
-          titleIconVariant="warning"
-          labelId="remove-instance-project-title"
-        />
-        <ModalBody>
-          <Content component="p" id="remove-instance-project-description">
-            {projectPendingRemove ? (
-              <>
-                <strong>{projectPendingRemove.name}</strong> will no longer be associated with{' '}
-                <strong>{formatTenantInstanceName(instance.name)}</strong>.
-              </>
-            ) : (
-              'This project will no longer be associated with this service.'
-            )}
-          </Content>
-        </ModalBody>
-        <ModalFooter>
-          <Button variant="danger" onClick={handleConfirmRemoveProject}>
-            Remove
-          </Button>
-          <Button variant="link" onClick={closeRemoveProject}>
-            Cancel
-          </Button>
-        </ModalFooter>
-      </Modal>
     </>
   )
 }
@@ -1963,10 +1930,10 @@ export function TenantUserInstanceDetailsPage({
   onUpdateNetworking,
   onAddProject,
   onCreateProject,
-  onRemoveProject,
   onNavigateToProject,
   onNavigateToCatalogItem,
   onViewPassword,
+  instanceNetworkingVariant = 'summary',
 }: TenantUserInstanceDetailsPageProps) {
   const serviceId = getTenantInstanceServiceId(instance)
   const isCluster = serviceId === 'cluster'
@@ -2028,9 +1995,9 @@ export function TenantUserInstanceDetailsPage({
           onUpdateNetworking={onUpdateNetworking}
           onAddProject={onAddProject}
           onCreateProject={onCreateProject}
-          onRemoveProject={onRemoveProject}
           onNavigateToProject={onNavigateToProject}
           onNavigateToCatalogItem={onNavigateToCatalogItem}
+          instanceNetworkingVariant={instanceNetworkingVariant}
         />
       ) : isVm ? (
         <VmInstancePageBody
@@ -2040,9 +2007,9 @@ export function TenantUserInstanceDetailsPage({
           onUpdateNetworking={onUpdateNetworking}
           onAddProject={onAddProject}
           onCreateProject={onCreateProject}
-          onRemoveProject={onRemoveProject}
           onNavigateToProject={onNavigateToProject}
           onNavigateToCatalogItem={onNavigateToCatalogItem}
+          instanceNetworkingVariant={instanceNetworkingVariant}
         />
       ) : (
         <DefaultInstancePageBody
@@ -2051,9 +2018,9 @@ export function TenantUserInstanceDetailsPage({
           onUpdateNetworking={onUpdateNetworking}
           onAddProject={onAddProject}
           onCreateProject={onCreateProject}
-          onRemoveProject={onRemoveProject}
           onNavigateToProject={onNavigateToProject}
           onNavigateToCatalogItem={onNavigateToCatalogItem}
+          instanceNetworkingVariant={instanceNetworkingVariant}
         />
       )}
     </EntityDetailsPageShell>

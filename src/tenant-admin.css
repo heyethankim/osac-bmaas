@@ -331,6 +331,18 @@
   min-width: 0;
 }
 
+.tenant-user-instance-details__projects .tenant-admin-project-details__list {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--pf-t--global--spacer--2xl);
+}
+
+.tenant-user-instance-details__projects .tenant-admin-project-details__list-item {
+  flex: 0 1 auto;
+  padding-block: 0;
+  border-block-end: 0;
+}
+
 .tenant-admin-project-details__list-item {
   margin: 0;
   padding-block: var(--pf-t--global--spacer--md);
@@ -1078,8 +1090,7 @@
   gap: var(--pf-t--global--spacer--sm);
   margin: 0;
   padding-block-start: var(--pf-t--global--spacer--sm);
-  padding-block-end: var(--pf-t--global--spacer--md);
-  border-block-end: 1px solid var(--pf-t--global--border--color--default);
+  padding-block-end: 0;
 }
 
 .tenant-admin-catalog-manager__spec-row {
@@ -1562,8 +1573,7 @@
   gap: var(--pf-t--global--spacer--sm);
   margin: 0;
   padding-block-start: var(--pf-t--global--spacer--sm);
-  padding-block-end: var(--pf-t--global--spacer--md);
-  border-block-end: 1px solid var(--pf-t--global--border--color--default);
+  padding-block-end: 0;
 }
 
 .tenant-user-catalog__networking-list {
@@ -2138,9 +2148,11 @@
 
 .tenant-user-launch-wizard__preconfigured-label.pf-v6-c-content--p {
   margin-block-end: var(--pf-t--global--spacer--xs);
-  font-size: var(--pf-t--global--font--size--body--sm);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: var(--pf-t--global--font--size--body--default);
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+  color: var(--pf-t--global--text--color--regular);
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 .tenant-user-launch-wizard__assigned-grid {
@@ -2158,10 +2170,11 @@
 
 .tenant-user-launch-wizard__assigned-label.pf-v6-c-content--p {
   margin: 0 0 var(--pf-t--global--spacer--xs);
-  font-size: var(--pf-t--global--font--size--body--sm);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--default);
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+  color: var(--pf-t--global--text--color--regular);
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 .tenant-user-launch-wizard__assigned-value.pf-v6-c-content--p {

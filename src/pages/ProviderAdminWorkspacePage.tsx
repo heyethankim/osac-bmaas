@@ -381,6 +381,7 @@ export function ProviderAdminWorkspacePage() {
             organization={getWorkspaceOrganization(PROVIDER_SERVICES_DEMO_TENANT)}
             lockedServiceId={lockedServiceId ?? 'baremetal'}
             activeNavId={activeNavId}
+            instanceNetworkingVariant="summary"
             onNavigateToCatalogItem={(catalogItemDisplayName) => {
               handleNavChange('catalog')
               syncWorkspaceCatalogItemParam(setSearchParams, catalogItemDisplayName)

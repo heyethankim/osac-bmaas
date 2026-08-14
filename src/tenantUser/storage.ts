@@ -20,6 +20,7 @@ import {
   DEMO_TENANT_VIRTUAL_MACHINE_INSTANCE_ID_03,
   getDemoInstanceProjectIds,
   getTenantInstanceProjectIds,
+  syncDemoMultiProjectShowcaseInstance,
   type TenantInstance,
 } from './instances'
 import {
@@ -276,12 +277,14 @@ export function ensureTenantDemoInstances(
 
     const current = next[existingIndex]!
     const desiredProjectIds = getDemoInstanceProjectIds(demo.id)
-    const currentProjectIds = Array.isArray(current.projectIds)
+    const hasStoredProjectIds = Array.isArray(current.projectIds)
+    const currentProjectIds = hasStoredProjectIds
       ? [...new Set(current.projectIds.filter(Boolean))]
       : []
     const desiredKey = desiredProjectIds.slice().sort().join(',')
     const currentKey = currentProjectIds.slice().sort().join(',')
     const needsProjectSync =
+      !hasStoredProjectIds &&
       desiredProjectIds.length > 0 &&
       (desiredKey !== currentKey ||
         current.scopeKind !== 'project' ||
@@ -297,7 +300,11 @@ export function ensureTenantDemoInstances(
         projectIds: desiredProjectIds,
       }
       changed = true
-    } else if (current.scopeKind === 'project' && current.projectName === 'ml-platform') {
+    } else if (
+      !hasStoredProjectIds &&
+      current.scopeKind === 'project' &&
+      current.projectName === 'ml-platform'
+    ) {
       next[existingIndex] = {
         ...current,
         projectName: DEMO_TENANT_PROJECT_NAME,
@@ -307,12 +314,20 @@ export function ensureTenantDemoInstances(
             : [...new Set([...currentProjectIds, DEMO_TENANT_PROJECT_ID])],
       }
       changed = true
-    } else if (!Array.isArray(current.projectIds)) {
+    } else if (!hasStoredProjectIds) {
       next[existingIndex] = {
         ...current,
         projectIds: getTenantInstanceProjectIds(current),
       }
       changed = true
+    }
+
+    if (demo.id === DEMO_TENANT_BARE_METAL_INSTANCE_ID_03) {
+      const synced = syncDemoMultiProjectShowcaseInstance(next[existingIndex]!)
+      if (synced) {
+        next[existingIndex] = synced
+        changed = true
+      }
     }
 
     const clusterState = DEMO_TENANT_CLUSTER_STATES.find((entry) => entry.id === demo.id)
@@ -342,6 +357,9 @@ export function ensureTenantDemoInstances(
     ) {
       next[existingIndex] = {
         ...fresh,
+        projectIds: refreshed.projectIds,
+        projectName: refreshed.projectName,
+        scopeKind: refreshed.scopeKind,
         // Keep user-driven lifecycle timestamps when only refreshing config shape.
         createdAt: refreshed.createdAt,
         provisionedAt:
@@ -351,6 +369,14 @@ export function ensureTenantDemoInstances(
         name: clusterState.name,
         status: clusterState.status,
       }
+      changed = true
+    }
+  }
+
+  for (let index = 0; index < next.length; index += 1) {
+    const synced = syncDemoMultiProjectShowcaseInstance(next[index]!)
+    if (synced) {
+      next[index] = synced
       changed = true
     }
   }

@@ -23,6 +23,8 @@ import {
 } from '@patternfly/react-core'
 import { CatalogClusterVersionValue } from '../catalog/CatalogClusterVersionValue'
 import { CatalogVmDefaultsSections } from '../catalog/CatalogVmDefaultsSections'
+import { BareMetalCatalogItemDetailsBody } from '../catalog/BareMetalCatalogItemDetailsBody'
+import { ClusterCatalogItemDetailsBody } from '../catalog/ClusterCatalogItemDetailsBody'
 import { CatalogPublishScopeIcon } from './CatalogPublishScopeIcon'
 import {
   formatVipEnterpriseVisibilityLabel,
@@ -39,6 +41,8 @@ import {
   formatRateCardSummary,
   type CatalogServiceId,
 } from '../../providerSetup/templateDemo'
+import { formatCatalogItemCreatedAt } from '../../catalog/catalogDetails'
+import { getCatalogItemUserDescription } from '../../catalog/catalogItemDescriptions'
 import {
   getCatalogSpecsSectionLabel,
   getDraftServiceId,
@@ -68,18 +72,42 @@ type CatalogItemDetailsPageProps = {
   onDelete: () => void
 }
 
-function formatCreatedAt(iso: string): string {
-  return new Date(iso).toLocaleString([], {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
-}
-
 function getInitialPublishCtaPhase(catalog: ProviderCatalogDraft): DetailPublishCtaPhase {
   return getCatalogItemStatus(catalog) === 'live' ? 'launch' : 'publish'
+}
+
+function getCatalogPublishingExtras(
+  catalog: ProviderCatalogDraft,
+  organizations: ReturnType<typeof getProviderRegisteredOrganizations>,
+) {
+  if (catalog.scope !== 'vip-enterprise') {
+    return null
+  }
+
+  const enterpriseTenantIds = getCatalogEnterpriseTenantIds(catalog)
+
+  if (enterpriseTenantIds.length > 0) {
+    return (
+      <DescriptionListGroup>
+        <DescriptionListTerm>
+          {enterpriseTenantIds.length > 1 ? 'Enterprise organizations' : 'Enterprise organization'}
+        </DescriptionListTerm>
+        <DescriptionListDescription>
+          {formatVipEnterpriseVisibilityLabel(organizations, enterpriseTenantIds).replace(
+            /^VIP enterprise · /,
+            '',
+          )}
+        </DescriptionListDescription>
+      </DescriptionListGroup>
+    )
+  }
+
+  return (
+    <DescriptionListGroup>
+      <DescriptionListTerm>Enterprise organizations</DescriptionListTerm>
+      <DescriptionListDescription>Restricted — unassigned</DescriptionListDescription>
+    </DescriptionListGroup>
+  )
 }
 
 export function CatalogItemDetailsPage({
@@ -95,6 +123,7 @@ export function CatalogItemDetailsPage({
 }: CatalogItemDetailsPageProps) {
   const organizations = getProviderRegisteredOrganizations()
   const serviceId: CatalogServiceId = getDraftServiceId(catalog)
+  const isBareMetal = serviceId === 'baremetal'
   const scopeLabel = catalog.scope === 'vip-enterprise' ? 'VIP enterprise' : 'Global public'
   const isLive = getCatalogItemStatus(catalog) === 'live'
   const isVirtualMachine = serviceId === 'virtual-machine'
@@ -223,7 +252,7 @@ export function CatalogItemDetailsPage({
                 {catalog.displayName}
               </Title>
               <Content component="p" className="provider-admin-catalog-item-details__lede">
-                {catalog.description?.trim() || templateDescription}
+                {getCatalogItemUserDescription(catalog, { templateDescription })}
               </Content>
             </div>
           </div>
@@ -299,6 +328,40 @@ export function CatalogItemDetailsPage({
           className="provider-admin-catalog-item-details__details-band"
           aria-label="Catalog item details"
         >
+          {isBareMetal ? (
+            <BareMetalCatalogItemDetailsBody
+              variant="provider"
+              content={{
+                service: CATALOG_SERVICE_FILTER_LABELS[serviceId],
+                statusLabel: showLaunch ? 'Live' : showPublishing ? 'Publishing' : 'Unpublished',
+                statusColor: showLaunch ? 'green' : showPublishing ? 'blue' : 'grey',
+                catalogItemId: catalog.catalogItemId,
+                rateSummary: formatRateCardSummary(catalog.rateCard),
+                scope: catalog.scope,
+                visibilityLabel: scopeLabel,
+                createdAtLabel: formatCatalogItemCreatedAt(catalog.createdAt),
+                hardwareSpecRows: resolveCatalogSpecRows(catalog),
+              }}
+              publishingExtras={getCatalogPublishingExtras(catalog, organizations)}
+            />
+          ) : isCluster ? (
+            <ClusterCatalogItemDetailsBody
+              variant="provider"
+              content={{
+                service: CATALOG_SERVICE_FILTER_LABELS[serviceId],
+                statusLabel: showLaunch ? 'Live' : showPublishing ? 'Publishing' : 'Unpublished',
+                statusColor: showLaunch ? 'green' : showPublishing ? 'blue' : 'grey',
+                catalogItemId: catalog.catalogItemId,
+                rateSummary: formatRateCardSummary(catalog.rateCard),
+                scope: catalog.scope,
+                visibilityLabel: scopeLabel,
+                createdAtLabel: formatCatalogItemCreatedAt(catalog.createdAt),
+                clusterVersionMode: catalog.clusterVersionMode,
+                configurationRows: resolveCatalogSpecRows(catalog, { includeDetails: true }),
+              }}
+              publishingExtras={getCatalogPublishingExtras(catalog, organizations)}
+            />
+          ) : (
           <div className="provider-admin-catalog-item-details__columns">
             <div className="provider-admin-catalog-item-details__column">
               <Title
@@ -394,7 +457,7 @@ export function CatalogItemDetailsPage({
                 <DescriptionListGroup>
                   <DescriptionListTerm>Created</DescriptionListTerm>
                   <DescriptionListDescription>
-                    {formatCreatedAt(catalog.createdAt)}
+                    {formatCatalogItemCreatedAt(catalog.createdAt)}
                   </DescriptionListDescription>
                 </DescriptionListGroup>
               </DescriptionList>
@@ -544,6 +607,7 @@ export function CatalogItemDetailsPage({
               ) : null}
             </div>
           </div>
+          )}
         </section>
       </div>
     </div>

@@ -11,12 +11,18 @@ import {
   Title,
 } from '@patternfly/react-core'
 import { EntityDetailsPageShell } from '../shared/EntityDetailsPageShell'
+import { BareMetalCatalogItemDetailsBody } from '../catalog/BareMetalCatalogItemDetailsBody'
+import { ClusterCatalogItemDetailsBody } from '../catalog/ClusterCatalogItemDetailsBody'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
+import { formatCatalogItemCreatedAt } from '../../catalog/catalogDetails'
+import { getCatalogItemUserDescription } from '../../catalog/catalogItemDescriptions'
 import {
   getCatalogSpecsSectionLabel,
+  resolveCatalogSpecRows,
   resolveClusterCatalogHighlightRows,
   resolveVmCatalogHighlightRows,
 } from '../../catalog/catalogSpecs'
+import { formatRateCardSummary } from '../../providerSetup/templateDemo'
 import { formatCatalogFieldPolicyMode } from '../../catalog/catalogPublishConfig'
 import { CatalogClusterVersionValue } from '../catalog/CatalogClusterVersionValue'
 import { CatalogVmDefaultsSections } from '../catalog/CatalogVmDefaultsSections'
@@ -49,6 +55,7 @@ export function TenantCatalogItemDetailsPage({
   onLaunch,
 }: TenantCatalogItemDetailsPageProps) {
   const specRows = getTenantCatalogItemDetailSpecRows(item)
+  const isBareMetal = item.serviceId === 'baremetal'
   const isVirtualMachine = item.serviceId === 'virtual-machine'
   const isCluster = item.serviceId === 'cluster'
   const vmHighlightRows = isVirtualMachine
@@ -107,6 +114,11 @@ export function TenantCatalogItemDetailsPage({
             )
           : specRows
   const specsSectionLabel = getCatalogSpecsSectionLabel(item.serviceId)
+  const description = getCatalogItemUserDescription({
+    catalogItemId: item.catalogItemId ?? item.id,
+    serviceId: item.serviceId,
+    description: item.description,
+  })
 
   return (
     <EntityDetailsPageShell
@@ -114,7 +126,7 @@ export function TenantCatalogItemDetailsPage({
       onBack={onBack}
       title={item.displayName}
       titleId="tenant-catalog-item-details-title"
-      description={item.description?.trim() || TENANT_CATALOG_MANAGER_DEMO.drawerAccessLede}
+      description={description}
       icon={
         <Icon size="lg" isInline>
           {getCatalogServiceIcon(item.serviceId)}
@@ -128,6 +140,61 @@ export function TenantCatalogItemDetailsPage({
         ) : undefined
       }
     >
+      {isBareMetal ? (
+        <BareMetalCatalogItemDetailsBody
+          variant="entity"
+          content={{
+            service: item.service,
+            statusLabel: item.status,
+            statusColor: item.status === 'Unpublished' ? 'grey' : 'green',
+            catalogItemId: item.catalogItemId ?? item.id,
+            rateSummary: formatRateCardSummary(item.rateCard),
+            scope: item.scope,
+            visibilityLabel: getVisibilityLabel(item.scope),
+            createdAtLabel: formatCatalogItemCreatedAt(item.createdAt),
+            hardwareSpecRows: resolveCatalogSpecRows({
+              serviceId: item.serviceId,
+              templateRefId: item.templateRefId,
+              templateName: item.templateName,
+              instanceTypeLabel: item.instanceTypeLabel,
+              diskImageLabel: item.diskImageLabel,
+              diskImageId: item.diskImageId,
+            }),
+          }}
+        />
+      ) : isCluster ? (
+        <ClusterCatalogItemDetailsBody
+          variant="entity"
+          content={{
+            service: item.service,
+            statusLabel: item.status,
+            statusColor: item.status === 'Unpublished' ? 'grey' : 'green',
+            catalogItemId: item.catalogItemId ?? item.id,
+            rateSummary: formatRateCardSummary(item.rateCard),
+            scope: item.scope,
+            visibilityLabel: getVisibilityLabel(item.scope),
+            createdAtLabel: formatCatalogItemCreatedAt(item.createdAt),
+            clusterVersionMode: item.clusterVersionMode,
+            configurationRows: resolveCatalogSpecRows(
+              {
+                serviceId: item.serviceId,
+                templateRefId: item.templateRefId,
+                templateName: item.templateName,
+                instanceTypeLabel: item.instanceTypeLabel,
+                diskImageLabel: item.diskImageLabel,
+                diskImageId: item.diskImageId,
+                clusterVersionMode: item.clusterVersionMode,
+                nodeSetId: item.nodeSetId,
+                nodeSetLabel: item.nodeSetLabel,
+                hostTypeId: item.hostTypeId,
+                hostTypeLabel: item.hostTypeLabel,
+                clusterNodeTopologyMode: item.clusterNodeTopologyMode,
+              },
+              { includeDetails: true },
+            ),
+          }}
+        />
+      ) : (
       <div className="entity-details-page__columns">
         <div className="entity-details-page__column">
           <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
@@ -339,6 +406,7 @@ export function TenantCatalogItemDetailsPage({
           ) : null}
         </div>
       </div>
+      )}
     </EntityDetailsPageShell>
   )
 }

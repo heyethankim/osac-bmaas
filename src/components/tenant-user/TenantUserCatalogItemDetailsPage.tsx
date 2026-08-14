@@ -10,7 +10,11 @@ import {
   Title,
 } from '@patternfly/react-core'
 import { EntityDetailsPageShell } from '../shared/EntityDetailsPageShell'
+import { BareMetalCatalogItemDetailsBody } from '../catalog/BareMetalCatalogItemDetailsBody'
+import { ClusterCatalogItemDetailsBody } from '../catalog/ClusterCatalogItemDetailsBody'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
+import { formatCatalogItemCreatedAt } from '../../catalog/catalogDetails'
+import { getCatalogItemUserDescription } from '../../catalog/catalogItemDescriptions'
 import {
   getCatalogSpecsSectionLabel,
   resolveCatalogSpecRows,
@@ -54,6 +58,7 @@ export function TenantUserCatalogItemDetailsPage({
   )
   const isVirtualMachine = catalogItem.serviceId === 'virtual-machine'
   const isCluster = catalogItem.serviceId === 'cluster'
+  const isBareMetal = catalogItem.serviceId === 'baremetal'
   const vmHighlightRows = isVirtualMachine
     ? resolveVmCatalogHighlightRows({
         serviceId: catalogItem.serviceId,
@@ -110,13 +115,11 @@ export function TenantUserCatalogItemDetailsPage({
             )
           : specRows
   const specsSectionLabel = getCatalogSpecsSectionLabel(catalogItem.serviceId)
-  const description =
-    catalogItem.description?.trim() ||
-    (catalogItem.serviceId === 'cluster'
-      ? 'Review the cluster configuration before you launch.'
-      : catalogItem.serviceId === 'virtual-machine'
-        ? 'Review the instance configuration before you launch.'
-        : 'Review the hardware configured for this offering before you launch.')
+  const description = getCatalogItemUserDescription({
+    catalogItemId: catalogItem.catalogItemId,
+    serviceId: catalogItem.serviceId,
+    description: catalogItem.description,
+  })
 
   return (
     <EntityDetailsPageShell
@@ -136,6 +139,66 @@ export function TenantUserCatalogItemDetailsPage({
         </Button>
       }
     >
+      {isBareMetal ? (
+        <BareMetalCatalogItemDetailsBody
+          variant="entity"
+          content={{
+            service: catalogItem.service,
+            statusLabel: catalogItem.status,
+            statusColor: 'green',
+            catalogItemId: catalogItem.catalogItemId,
+            rateSummary: formatRateCardSummary(catalogItem.rateCard),
+            scope: catalogItem.scope,
+            visibilityLabel:
+              catalogItem.scope === 'vip-enterprise' ? 'VIP enterprise' : 'Global public',
+            createdAtLabel: formatCatalogItemCreatedAt(catalogItem.createdAt),
+            hardwareSpecRows: resolveCatalogSpecRows(
+              {
+                serviceId: catalogItem.serviceId,
+                templateRefId: catalogItem.templateRefId,
+                templateName: catalogItem.templateName,
+                instanceTypeLabel: catalogItem.instanceTypeLabel,
+                diskImageLabel: catalogItem.diskImageLabel,
+                diskImageId: catalogItem.diskImageId,
+              },
+              { includeDetails: false },
+            ),
+          }}
+        />
+      ) : isCluster ? (
+        <ClusterCatalogItemDetailsBody
+          variant="entity"
+          content={{
+            service: catalogItem.service,
+            statusLabel: catalogItem.status,
+            statusColor: 'green',
+            catalogItemId: catalogItem.catalogItemId,
+            rateSummary: formatRateCardSummary(catalogItem.rateCard),
+            scope: catalogItem.scope,
+            visibilityLabel:
+              catalogItem.scope === 'vip-enterprise' ? 'VIP enterprise' : 'Global public',
+            createdAtLabel: formatCatalogItemCreatedAt(catalogItem.createdAt),
+            clusterVersionMode: catalogItem.clusterVersionMode,
+            configurationRows: resolveCatalogSpecRows(
+              {
+                serviceId: catalogItem.serviceId,
+                templateRefId: catalogItem.templateRefId,
+                templateName: catalogItem.templateName,
+                instanceTypeLabel: catalogItem.instanceTypeLabel,
+                diskImageLabel: catalogItem.diskImageLabel,
+                diskImageId: catalogItem.diskImageId,
+                clusterVersionMode: catalogItem.clusterVersionMode,
+                nodeSetId: catalogItem.nodeSetId,
+                nodeSetLabel: catalogItem.nodeSetLabel,
+                hostTypeId: catalogItem.hostTypeId,
+                hostTypeLabel: catalogItem.hostTypeLabel,
+                clusterNodeTopologyMode: catalogItem.clusterNodeTopologyMode,
+              },
+              { includeDetails: true },
+            ),
+          }}
+        />
+      ) : (
       <div className="entity-details-page__columns">
         <div className="entity-details-page__column">
           <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
@@ -311,6 +374,7 @@ export function TenantUserCatalogItemDetailsPage({
           ) : null}
         </div>
       </div>
+      )}
     </EntityDetailsPageShell>
   )
 }
