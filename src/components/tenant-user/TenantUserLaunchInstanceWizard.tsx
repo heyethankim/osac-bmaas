@@ -105,16 +105,12 @@ import {
   resolveLaunchNetworkContext,
   type LaunchNetworkFieldView,
 } from '../../tenantUser/launchNetworking'
-import {
-  getCatalogExternalIpPoolOptions,
-  getCatalogSecurityGroupOptions,
-  getCatalogSubnetOptions,
-  getCatalogVirtualNetworkOptions,
-} from '../../providerSetup/storage'
+import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope'
 import { formatTenantInstanceName, generateTenantInstanceId, type TenantInstance } from '../../tenantUser/instances'
 import type { TenantUserScopeKind } from '../../tenantUser/scope'
 import { KubernetesResourceNameField } from '../shared/KubernetesResourceNameHelper'
 import { CatalogWizardPageShell } from '../catalog/CatalogWizardPageShell'
+import { useWizardLeaveConfirm } from '../shared/useWizardLeaveConfirm'
 
 type TenantUserLaunchInstanceWizardProps = {
   isOpen: boolean
@@ -193,6 +189,10 @@ export function TenantUserLaunchInstanceWizard({
         catalogItem.catalogItemId,
       ),
     [organization, catalogDraft, preferCatalogDraft, catalogItem.catalogItemId],
+  )
+  const networkInventory = useMemo(
+    () => resolveNetworkInventoryScope(organization?.slug ?? tenantSlug),
+    [organization?.slug, tenantSlug],
   )
   const isClusterCatalogItem = catalogItem.serviceId === 'cluster'
   const isVmCatalogItem = catalogItem.serviceId === 'virtual-machine'
@@ -478,6 +478,21 @@ export function TenantUserLaunchInstanceWizard({
     onClose()
   }
 
+  const { requestClose: showLeaveConfirm, leaveConfirmModal, wrapStepFooter } =
+    useWizardLeaveConfirm({
+      onLeave: handleClose,
+      primaryActionLabel: 'Leave',
+      titleId: 'launch-instance-leave-confirm',
+    })
+
+  const requestClose = () => {
+    if (provisioningInstanceIdRef.current) {
+      handleClose()
+      return
+    }
+    showLeaveConfirm()
+  }
+
   useEffect(() => {
     isOpenRef.current = isOpen
   }, [isOpen])
@@ -696,8 +711,10 @@ export function TenantUserLaunchInstanceWizard({
     setForm((current) => {
       if (kind === 'virtual-network') {
         const nextSubnetId =
-          getCatalogSubnetOptions(value).find((option) => option.id === current.subnetId)?.id ??
-          getCatalogSubnetOptions(value)[0]?.id ??
+          networkInventory
+            .getSubnetOptions(value)
+            .find((option) => option.id === current.subnetId)?.id ??
+          networkInventory.getSubnetOptions(value)[0]?.id ??
           current.subnetId
         return { ...current, virtualNetworkId: value, subnetId: nextSubnetId }
       }
@@ -1073,13 +1090,15 @@ export function TenantUserLaunchInstanceWizard({
     const externalIpPoolField = networkContext.fields.find(
       (field) => field.kind === 'external-ip-pool',
     )
-    const virtualNetworkOptions = virtualNetworkField?.options ?? getCatalogVirtualNetworkOptions()
+    const virtualNetworkOptions =
+      virtualNetworkField?.options ?? networkInventory.getVirtualNetworkOptions()
     const subnetOptions =
-      subnetField?.options ?? getCatalogSubnetOptions(networkSelections.virtualNetworkId)
+      subnetField?.options ??
+      networkInventory.getSubnetOptions(networkSelections.virtualNetworkId)
     const securityGroupOptions =
-      securityGroupField?.options ?? getCatalogSecurityGroupOptions()
+      securityGroupField?.options ?? networkInventory.getSecurityGroupOptions()
     const externalIpPoolOptions =
-      externalIpPoolField?.options ?? getCatalogExternalIpPoolOptions()
+      externalIpPoolField?.options ?? networkInventory.getExternalIpPoolOptions()
 
     return (
       <>
@@ -1569,21 +1588,24 @@ export function TenantUserLaunchInstanceWizard({
         : form.instanceName.trim()
 
     const virtualNetworkLabel =
-      getCatalogVirtualNetworkOptions().find(
-        (option) => option.id === networkSelections.virtualNetworkId,
-      )?.name ?? networking.virtualNetwork
+      networkInventory
+        .getVirtualNetworkOptions()
+        .find((option) => option.id === networkSelections.virtualNetworkId)?.name ??
+      networking.virtualNetwork
     const subnetLabel =
-      getCatalogSubnetOptions(networkSelections.virtualNetworkId).find(
-        (option) => option.id === networkSelections.subnetId,
-      )?.name ?? networking.subnet
+      networkInventory
+        .getSubnetOptions(networkSelections.virtualNetworkId)
+        .find((option) => option.id === networkSelections.subnetId)?.name ?? networking.subnet
     const securityGroupReviewLabel =
-      getCatalogSecurityGroupOptions().find(
-        (option) => option.id === networkSelections.securityGroupId,
-      )?.name ?? securityGroupLabel
+      networkInventory
+        .getSecurityGroupOptions()
+        .find((option) => option.id === networkSelections.securityGroupId)?.name ??
+      securityGroupLabel
     const externalIpPoolReviewLabel =
-      getCatalogExternalIpPoolOptions().find(
-        (option) => option.id === networkSelections.externalIpPoolId,
-      )?.name ?? networking.externalIpPool
+      networkInventory
+        .getExternalIpPoolOptions()
+        .find((option) => option.id === networkSelections.externalIpPoolId)?.name ??
+      networking.externalIpPool
 
     const renderReviewRow = (term: string, description: ReactNode) => (
       <DescriptionListGroup key={term}>
@@ -1946,19 +1968,19 @@ export function TenantUserLaunchInstanceWizard({
 
   const getStepFooter = (stepId: LaunchInstanceWizardStepId) => {
     if (isClusterCatalogItem) {
-      return clusterStepFooter(stepId)
+      return wrapStepFooter(clusterStepFooter(stepId))
     }
 
     if (isVmCatalogItem) {
-      return vmStepFooter(stepId)
+      return wrapStepFooter(vmStepFooter(stepId))
     }
 
     if (isBareMetalCatalogItem) {
-      return bareMetalStepFooter(stepId)
+      return wrapStepFooter(bareMetalStepFooter(stepId))
     }
 
     if (stepId === 'configure' || stepId === 'networking') {
-      return {
+      return wrapStepFooter({
         isNextDisabled:
           stepId === 'configure'
             ? !isInstanceNameValid(form.instanceName) ||
@@ -1981,11 +2003,11 @@ export function TenantUserLaunchInstanceWizard({
               ),
             }
           : {}),
-      }
+      })
     }
 
     if (stepId === 'review') {
-      return {
+      return wrapStepFooter({
         isCancelHidden: true,
         backButtonText: (
           <span className="tenant-user-launch-wizard__footer-label">
@@ -1999,17 +2021,17 @@ export function TenantUserLaunchInstanceWizard({
             <ArrowRightIcon aria-hidden />
           </span>
         ),
-      }
+      })
     }
 
-    return {
+    return wrapStepFooter({
       isCancelHidden: false,
       cancelButtonText: LAUNCH_INSTANCE_WIZARD_DEMO.closeWhileProvisioningLabel,
       isBackHidden: true,
       isNextDisabled: true,
       nextButtonText: isProvisioningComplete ? 'Complete' : 'Provisioning…',
       onClose: handleClose,
-    }
+    })
   }
 
   const isPage = presentation === 'page'
@@ -2031,7 +2053,7 @@ export function TenantUserLaunchInstanceWizard({
         .join(' ')}
       height={isPage ? '100%' : '40rem'}
       isPlain={isPage}
-      onClose={isPage ? undefined : handleClose}
+      onClose={isPage ? undefined : requestClose}
       onStepChange={(_event, currentStep, prevStep) => {
         const stepId = String(currentStep?.id ?? '').replace('launch-instance-step-', '')
         const previousStepId = String(prevStep?.id ?? '').replace('launch-instance-step-', '')
@@ -2062,7 +2084,7 @@ export function TenantUserLaunchInstanceWizard({
             title={wizardTitle}
             titleId="launch-instance-wizard-title"
             description={activeStepDescription || undefined}
-            onClose={handleClose}
+            onClose={requestClose}
             closeButtonAriaLabel="Close launch instance wizard"
           />
         )
@@ -2086,28 +2108,34 @@ export function TenantUserLaunchInstanceWizard({
       return null
     }
     return (
-      <CatalogWizardPageShell
-        title={wizardTitle}
-        description={activeStepDescription || undefined}
-        onBackToCatalog={handleClose}
-      >
-        {wizard}
-      </CatalogWizardPageShell>
+      <>
+        <CatalogWizardPageShell
+          title={wizardTitle}
+          description={activeStepDescription || undefined}
+          onBackToCatalog={requestClose}
+        >
+          {wizard}
+        </CatalogWizardPageShell>
+        {leaveConfirmModal}
+      </>
     )
   }
 
   return (
-    <Modal
-      variant={ModalVariant.medium}
-      width="64rem"
-      maxWidth="64rem"
-      isOpen={isOpen}
-      onEscapePress={handleClose}
-      aria-labelledby="launch-instance-wizard-title"
-      className="tenant-user-launch-wizard__modal"
-    >
-      {wizard}
-    </Modal>
+    <>
+      <Modal
+        variant={ModalVariant.medium}
+        width="64rem"
+        maxWidth="64rem"
+        isOpen={isOpen}
+        onEscapePress={requestClose}
+        aria-labelledby="launch-instance-wizard-title"
+        className="tenant-user-launch-wizard__modal"
+      >
+        {wizard}
+      </Modal>
+      {leaveConfirmModal}
+    </>
   )
 }
 

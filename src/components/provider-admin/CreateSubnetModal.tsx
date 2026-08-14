@@ -21,7 +21,7 @@ import {
   type ProviderVirtualNetwork,
 } from '../../providerAdmin/networkInventory'
 import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
-import { addProviderSubnet } from '../../providerSetup/storage'
+import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope'
 
 type CreateSubnetForm = {
   name: string
@@ -47,6 +47,7 @@ type CreateSubnetModalProps = {
   virtualNetworks: ProviderVirtualNetwork[]
   onClose: () => void
   onCreated: (subnet: ProviderSubnet) => void
+  tenantSlug?: string
 }
 
 export function CreateSubnetModal({
@@ -54,6 +55,7 @@ export function CreateSubnetModal({
   virtualNetworks,
   onClose,
   onCreated,
+  tenantSlug,
 }: CreateSubnetModalProps) {
   const [form, setForm] = useState<CreateSubnetForm>(() => buildDemoForm(virtualNetworks))
 
@@ -89,7 +91,7 @@ export function CreateSubnetModal({
       status: 'Ready',
     }
 
-    addProviderSubnet(subnet)
+    resolveNetworkInventoryScope(tenantSlug).addSubnet(subnet)
     onCreated(subnet)
     onClose()
   }

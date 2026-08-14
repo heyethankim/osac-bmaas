@@ -132,6 +132,7 @@ function mapProviderCatalogToGovernanceItem(
   const networkPolicy = applyTenantNetworkOverrides(
     getCatalogItemNetworkPolicy(draft),
     getTenantNetworkOverrides(organization.slug, draft.catalogItemId),
+    organization.slug,
   )
 
   return {
@@ -221,6 +222,7 @@ export function getTenantCatalogGovernanceItems(
     networkPolicy: applyTenantNetworkOverrides(
       DEFAULT_CATALOG_NETWORK_POLICY,
       getTenantNetworkOverrides(organization.slug, item.id),
+      organization.slug,
     ),
   }))
 }

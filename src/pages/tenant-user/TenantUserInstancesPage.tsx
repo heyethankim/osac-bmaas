@@ -822,6 +822,7 @@ export function TenantUserInstancesPage({
       <>
         <TenantUserInstanceDetailsPage
           instance={selectedInstance}
+          tenantSlug={tenantSlug}
           projects={projects}
           onBack={closeDetails}
           onRequestTerminate={openTerminateConfirm}

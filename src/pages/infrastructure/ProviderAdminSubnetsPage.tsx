@@ -12,7 +12,7 @@ import {
   Title,
 } from '@patternfly/react-core'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table'
-import { CreateSubnetModal } from '../../components/provider-admin/CreateSubnetModal'
+import { CreateSubnetWizard } from '../../components/networking/CreateSubnetWizard'
 import { SubnetDetailsPage } from '../../components/provider-admin/SubnetDetailsPage'
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
 import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
@@ -22,30 +22,35 @@ import {
   getNetworkInventoryStatusLabelColor,
   NETWORK_INVENTORY_STATUSES,
 } from '../../providerAdmin/networkInventory'
-import { getProviderSubnets, getProviderVirtualNetworks } from '../../providerSetup/storage'
+import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope'
 
 type ProviderAdminSubnetsPageProps = {
   openSubnetId?: string | null
   onOpenSubnetConsumed?: () => void
   onNavigateToVirtualNetwork?: (virtualNetworkId: string) => void
+  tenantSlug?: string
+  readOnly?: boolean
 }
 
 export function ProviderAdminSubnetsPage({
   openSubnetId = null,
   onOpenSubnetConsumed,
   onNavigateToVirtualNetwork,
+  tenantSlug,
+  readOnly = false,
 }: ProviderAdminSubnetsPageProps = {}) {
-  const [subnets, setSubnets] = useState(() => getProviderSubnets())
-  const [virtualNetworks, setVirtualNetworks] = useState(() => getProviderVirtualNetworks())
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const inventory = useMemo(() => resolveNetworkInventoryScope(tenantSlug), [tenantSlug])
+  const [subnets, setSubnets] = useState(() => inventory.getSubnets())
+  const [virtualNetworks, setVirtualNetworks] = useState(() => inventory.getVirtualNetworks())
+  const [isCreateWizardOpen, setIsCreateWizardOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<'all' | NetworkInventoryStatus>('all')
   const [selectedSubnet, setSelectedSubnet] = useState<ProviderSubnet | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
 
   const refresh = () => {
-    setSubnets(getProviderSubnets())
-    setVirtualNetworks(getProviderVirtualNetworks())
+    setSubnets(inventory.getSubnets())
+    setVirtualNetworks(inventory.getVirtualNetworks())
   }
 
   const getVirtualNetwork = (virtualNetworkId: string) =>
@@ -107,6 +112,18 @@ export function ProviderAdminSubnetsPage({
     ? getVirtualNetwork(selectedSubnet.virtualNetworkId)
     : undefined
 
+  if (isCreateWizardOpen && !readOnly) {
+    return (
+      <CreateSubnetWizard
+        isOpen
+        virtualNetworks={virtualNetworks}
+        tenantSlug={tenantSlug}
+        onClose={() => setIsCreateWizardOpen(false)}
+        onCreated={() => refresh()}
+      />
+    )
+  }
+
   if (isDetailsOpen && selectedSubnet) {
     return (
       <SubnetDetailsPage
@@ -130,16 +147,22 @@ export function ProviderAdminSubnetsPage({
       <ProviderAdminWorkspacePageHeader
         kicker="Networking"
         title="Subnets"
-        lede="Define subnets within virtual networks for catalog defaults and tenant selection."
+        lede={
+          tenantSlug
+            ? 'Subnets within your organization virtual networks for workloads and launch.'
+            : 'Define subnets within virtual networks for catalog defaults and tenant selection.'
+        }
         action={
+          readOnly ? undefined : (
           <Button
             variant="primary"
             icon={<PlusIcon />}
             className="provider-admin-workspace-page__action"
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={() => setIsCreateWizardOpen(true)}
           >
             Create subnet
           </Button>
+          )
         }
       />
 
@@ -294,12 +317,6 @@ export function ProviderAdminSubnetsPage({
         </div>
       )}
 
-      <CreateSubnetModal
-        isOpen={isCreateModalOpen}
-        virtualNetworks={virtualNetworks}
-        onClose={() => setIsCreateModalOpen(false)}
-        onCreated={() => refresh()}
-      />
     </div>
   )
 }

@@ -418,6 +418,8 @@ export function TenantUserWorkspacePage() {
       case 'networking-virtual-networks':
         return (
           <ProviderAdminVirtualNetworksPage
+            tenantSlug={tenantSlug}
+            readOnly
             openVirtualNetworkId={openVirtualNetworkId}
             onOpenVirtualNetworkConsumed={() => setOpenVirtualNetworkId(null)}
             onNavigateToSubnet={(subnetId) => {
@@ -433,6 +435,8 @@ export function TenantUserWorkspacePage() {
       case 'networking-subnets':
         return (
           <ProviderAdminSubnetsPage
+            tenantSlug={tenantSlug}
+            readOnly
             openSubnetId={openSubnetId}
             onOpenSubnetConsumed={() => setOpenSubnetId(null)}
             onNavigateToVirtualNetwork={(virtualNetworkId) => {
@@ -444,6 +448,8 @@ export function TenantUserWorkspacePage() {
       case 'networking-security-groups':
         return (
           <ProviderAdminSecurityGroupsPage
+            tenantSlug={tenantSlug}
+            readOnly
             openSecurityGroupId={openSecurityGroupId}
             onOpenSecurityGroupConsumed={() => setOpenSecurityGroupId(null)}
             onNavigateToVirtualNetwork={(virtualNetworkId) => {
@@ -453,7 +459,7 @@ export function TenantUserWorkspacePage() {
           />
         )
       case 'networking-external-ip-pools':
-        return <ProviderAdminExternalIpPoolsPage />
+        return <ProviderAdminExternalIpPoolsPage tenantSlug={tenantSlug} readOnly />
       case 'activity-log':
         return <TenantUserActivityLogPage />
       case 'catalog':

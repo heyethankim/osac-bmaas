@@ -21,6 +21,7 @@ import {
 } from '@patternfly/react-core'
 import { KubernetesResourceNameField } from '../shared/KubernetesResourceNameHelper'
 import { ResourceCreatePageShell } from '../shared/ResourceCreatePageShell'
+import { useWizardLeaveConfirm } from '../shared/useWizardLeaveConfirm'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import {
   getAssignableExternalIpPools,
@@ -95,6 +96,12 @@ export function RegisterOrganizationWizard({
     resetWizard()
     onClose()
   }
+
+  const { requestClose, leaveConfirmModal, wrapStepFooter } = useWizardLeaveConfirm({
+    onLeave: handleClose,
+    primaryActionLabel: 'Leave',
+    titleId: 'register-organization-leave-confirm',
+  })
 
   useEffect(() => {
     if (!isOpen) {
@@ -307,9 +314,9 @@ export function RegisterOrganizationWizard({
 
   function getStepFooter(stepId: RegisterOrganizationStepId) {
     if (stepId === 'organization') {
-      return {
+      return wrapStepFooter({
         isNextDisabled: !isOrganizationStepValid,
-      }
+      })
     }
 
     if (stepId === 'review') {
@@ -321,7 +328,7 @@ export function RegisterOrganizationWizard({
         Number.isFinite(maxInstances) &&
         maxInstances > 0
 
-      return {
+      return wrapStepFooter({
         nextButtonText: (
           <span className="provider-admin-organizations__register-label">
             <UsersIcon aria-hidden />
@@ -331,7 +338,7 @@ export function RegisterOrganizationWizard({
         ),
         onNext: handleRegister,
         isNextDisabled: !canRegister,
-      }
+      })
     }
 
     return undefined
@@ -351,13 +358,13 @@ export function RegisterOrganizationWizard({
         .join(' ')}
       height={isPage ? '100%' : '40rem'}
       isPlain={isPage}
-      onClose={isPage ? undefined : handleClose}
+      onClose={isPage ? undefined : requestClose}
       header={
         isPage ? undefined : (
           <WizardHeader
             title={wizardTitle}
             titleId="register-organization-wizard-title"
-            onClose={handleClose}
+            onClose={requestClose}
             closeButtonAriaLabel="Close register organization wizard"
           />
         )
@@ -385,24 +392,28 @@ export function RegisterOrganizationWizard({
         parentLabel="Organizations"
         title={wizardTitle}
         titleId="register-organization-wizard-title"
-        onBack={handleClose}
+        onBack={requestClose}
       >
         {wizard}
+        {leaveConfirmModal}
       </ResourceCreatePageShell>
     )
   }
 
   return (
-    <Modal
-      variant={ModalVariant.medium}
-      width="64rem"
-      maxWidth="64rem"
-      isOpen={isOpen}
-      onEscapePress={handleClose}
-      aria-labelledby="register-organization-wizard-title"
-      className="provider-admin-organizations__wizard-modal"
-    >
-      {wizard}
-    </Modal>
+    <>
+      <Modal
+        variant={ModalVariant.medium}
+        width="64rem"
+        maxWidth="64rem"
+        isOpen={isOpen}
+        onEscapePress={requestClose}
+        aria-labelledby="register-organization-wizard-title"
+        className="provider-admin-organizations__wizard-modal"
+      >
+        {wizard}
+      </Modal>
+      {leaveConfirmModal}
+    </>
   )
 }

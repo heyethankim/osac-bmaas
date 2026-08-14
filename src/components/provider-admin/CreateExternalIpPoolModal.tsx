@@ -20,7 +20,7 @@ import {
   type ExternalIpPool,
 } from '../../providerAdmin/externalIpPools'
 import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
-import { addProviderExternalIpPool } from '../../providerSetup/storage'
+import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope'
 
 type CreatePoolForm = {
   name: string
@@ -40,12 +40,14 @@ type CreateExternalIpPoolModalProps = {
   isOpen: boolean
   onClose: () => void
   onCreated: (pool: ExternalIpPool) => void
+  tenantSlug?: string
 }
 
 export function CreateExternalIpPoolModal({
   isOpen,
   onClose,
   onCreated,
+  tenantSlug,
 }: CreateExternalIpPoolModalProps) {
   const [form, setForm] = useState<CreatePoolForm>(DEFAULT_CREATE_POOL_FORM)
 
@@ -80,7 +82,7 @@ export function CreateExternalIpPoolModal({
       createdAt: new Date().toISOString(),
     }
 
-    addProviderExternalIpPool(pool)
+    resolveNetworkInventoryScope(tenantSlug).addExternalIpPool(pool)
     onCreated(pool)
     onClose()
   }

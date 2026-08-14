@@ -29,13 +29,9 @@ import {
   getCatalogNetworkOptionLabel,
   type CatalogNetworkPolicy,
 } from '../../providerAdmin/catalogNetworkPolicy'
-import {
-  getCatalogExternalIpPoolOptions,
-  getCatalogSecurityGroupOptions,
-  getCatalogSubnetOptions,
-  getCatalogVirtualNetworkOptions,
-  getProviderCatalogItems,
-} from '../../providerSetup/storage'
+import { getProviderCatalogItems } from '../../providerSetup/storage'
+import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope'
+import { getWorkspaceOrganization } from '../../tenantAdmin/organizations'
 import {
   formatTenantInstanceCreatedAt,
   formatTenantInstanceName,
@@ -86,6 +82,7 @@ import { getTenantProjectEnvironmentLabel } from '../../tenantAdmin/projects'
 
 type TenantUserInstanceDetailsPageProps = {
   instance: TenantInstance
+  tenantSlug: string
   projects: readonly TenantProject[]
   onBack: () => void
   onRequestTerminate: (instance: TenantInstance) => void
@@ -391,24 +388,26 @@ function findCatalogDraftForInstance(instance: TenantInstance) {
 function buildInstanceNetworkPolicy(
   instance: TenantInstance,
   catalogPolicy: CatalogNetworkPolicy,
+  tenantSlug: string,
 ): CatalogNetworkPolicy {
+  const inventory = resolveNetworkInventoryScope(tenantSlug)
   const networking = resolveTenantInstanceNetworking(instance)
-  const virtualNetworkOptions = getCatalogVirtualNetworkOptions()
+  const virtualNetworkOptions = inventory.getVirtualNetworkOptions()
   const virtualNetworkId = matchNetworkOptionId(
     virtualNetworkOptions,
     networking.virtualNetwork || catalogPolicy.virtualNetwork.name,
   )
-  const subnetOptions = getCatalogSubnetOptions(virtualNetworkId)
+  const subnetOptions = inventory.getSubnetOptions(virtualNetworkId)
   const subnetId = matchNetworkOptionId(
     subnetOptions,
     networking.subnet || catalogPolicy.subnet.name,
   )
-  const securityGroupOptions = getCatalogSecurityGroupOptions()
+  const securityGroupOptions = inventory.getSecurityGroupOptions()
   const securityGroupId = matchNetworkOptionId(
     securityGroupOptions,
     networking.securityGroup || catalogPolicy.securityGroup.name,
   )
-  const externalIpPoolOptions = getCatalogExternalIpPoolOptions()
+  const externalIpPoolOptions = inventory.getExternalIpPoolOptions()
   const externalIpPoolId =
     externalIpPoolOptions.find((option) => option.id === catalogPolicy.externalIpPool.id)?.id ??
     externalIpPoolOptions[0]?.id ??
@@ -421,39 +420,41 @@ function buildInstanceNetworkPolicy(
       name:
         virtualNetworkOptions.find((option) => option.id === virtualNetworkId)?.name ??
         catalogPolicy.virtualNetwork.name,
-      locked: catalogPolicy.virtualNetwork.locked,
+      locked: false,
     },
     subnet: {
       id: subnetId,
       name:
         subnetOptions.find((option) => option.id === subnetId)?.name ?? catalogPolicy.subnet.name,
-      locked: catalogPolicy.subnet.locked,
+      locked: false,
     },
     securityGroup: {
       id: securityGroupId,
       name:
         securityGroupOptions.find((option) => option.id === securityGroupId)?.name ??
         catalogPolicy.securityGroup.name,
-      locked: catalogPolicy.securityGroup.locked,
+      locked: false,
     },
     externalIpPool: {
       id: externalIpPoolId,
       name:
         externalIpPoolOptions.find((option) => option.id === externalIpPoolId)?.name ??
         catalogPolicy.externalIpPool.name,
-      locked: catalogPolicy.externalIpPool.locked,
+      locked: false,
     },
   }
 }
 
 function InstanceInheritedNetworkingSection({
   instance,
+  tenantSlug,
   onUpdateNetworking,
   conditions,
   conditionsAriaLabel,
   networkingVariant = 'summary',
 }: {
   instance: TenantInstance
+  tenantSlug: string
   onUpdateNetworking?: (
     instanceId: string,
     networking: TenantInstanceNetworking,
@@ -463,15 +464,22 @@ function InstanceInheritedNetworkingSection({
   conditionsAriaLabel?: string
   networkingVariant?: 'interactive' | 'summary'
 }) {
+  const organization = getWorkspaceOrganization(tenantSlug)
+  const inventory = resolveNetworkInventoryScope(tenantSlug)
   const catalogDraft = findCatalogDraftForInstance(instance)
-  const networkContext = resolveLaunchNetworkContext(null, catalogDraft, true, catalogDraft?.catalogItemId)
+  const networkContext = resolveLaunchNetworkContext(
+    organization,
+    catalogDraft,
+    true,
+    catalogDraft?.catalogItemId,
+  )
   const [policy, setPolicy] = useState<CatalogNetworkPolicy | null>(() =>
     networkContext.enabled
-      ? buildInstanceNetworkPolicy(instance, networkContext.policy)
+      ? buildInstanceNetworkPolicy(instance, networkContext.policy, tenantSlug)
       : null,
   )
   const [subnetOptions, setSubnetOptions] = useState(() =>
-    getCatalogSubnetOptions(policy?.virtualNetwork.id),
+    inventory.getSubnetOptions(policy?.virtualNetwork.id),
   )
 
   useEffect(() => {
@@ -479,10 +487,10 @@ function InstanceInheritedNetworkingSection({
       setPolicy(null)
       return
     }
-    const next = buildInstanceNetworkPolicy(instance, networkContext.policy)
+    const next = buildInstanceNetworkPolicy(instance, networkContext.policy, tenantSlug)
     setPolicy(next)
-    setSubnetOptions(getCatalogSubnetOptions(next.virtualNetwork.id))
-  }, [instance.id, instance.networking, networkContext.enabled, catalogDraft?.catalogItemId])
+    setSubnetOptions(inventory.getSubnetOptions(next.virtualNetwork.id))
+  }, [instance.id, instance.networking, networkContext.enabled, catalogDraft?.catalogItemId, tenantSlug])
 
   if (!networkContext.enabled || !policy) {
     return conditions && conditions.length > 0 && conditionsAriaLabel ? (
@@ -495,10 +503,10 @@ function InstanceInheritedNetworkingSection({
       <>
         <CatalogNetworkingSummarySection
           policy={policy}
-          virtualNetworkOptions={getCatalogVirtualNetworkOptions()}
+          virtualNetworkOptions={inventory.getVirtualNetworkOptions()}
           subnetOptions={subnetOptions}
-          securityGroupOptions={getCatalogSecurityGroupOptions()}
-          externalIpPoolOptions={getCatalogExternalIpPoolOptions()}
+          securityGroupOptions={inventory.getSecurityGroupOptions()}
+          externalIpPoolOptions={inventory.getExternalIpPoolOptions()}
         />
         {conditions && conditions.length > 0 && conditionsAriaLabel ? (
           <div className="entity-details-page__conditions-band">
@@ -510,29 +518,11 @@ function InstanceInheritedNetworkingSection({
   }
 
   const persistFromPolicy = (next: CatalogNetworkPolicy) => {
-    const lockedPolicy: CatalogNetworkPolicy = {
-      ...next,
-      virtualNetwork: {
-        ...next.virtualNetwork,
-        locked: networkContext.policy.virtualNetwork.locked,
-      },
-      subnet: { ...next.subnet, locked: networkContext.policy.subnet.locked },
-      securityGroup: {
-        ...next.securityGroup,
-        locked: networkContext.policy.securityGroup.locked,
-      },
-      externalIpPool: {
-        ...next.externalIpPool,
-        locked: networkContext.policy.externalIpPool.locked,
-      },
-    }
-    setPolicy(lockedPolicy)
+    setPolicy(next)
 
-    const vn = getCatalogVirtualNetworkOptions().find((o) => o.id === lockedPolicy.virtualNetwork.id)
-    const sn = getCatalogSubnetOptions(lockedPolicy.virtualNetwork.id).find(
-      (o) => o.id === lockedPolicy.subnet.id,
-    )
-    const sg = getCatalogSecurityGroupOptions().find((o) => o.id === lockedPolicy.securityGroup.id)
+    const vn = inventory.getVirtualNetworkOptions().find((o) => o.id === next.virtualNetwork.id)
+    const sn = inventory.getSubnetOptions(next.virtualNetwork.id).find((o) => o.id === next.subnet.id)
+    const sg = inventory.getSecurityGroupOptions().find((o) => o.id === next.securityGroup.id)
     if (!vn || !sn || !sg) {
       return
     }
@@ -551,7 +541,7 @@ function InstanceInheritedNetworkingSection({
   }
 
   const handleVirtualNetworkChange = (value: string, nextBase: CatalogNetworkPolicy) => {
-    const nextSubnets = getCatalogSubnetOptions(value)
+    const nextSubnets = inventory.getSubnetOptions(value)
     setSubnetOptions(nextSubnets)
     const nextSubnetId =
       nextSubnets.find((option) => option.id === nextBase.subnet.id)?.id ??
@@ -563,16 +553,16 @@ function InstanceInheritedNetworkingSection({
         ...nextBase.virtualNetwork,
         id: value,
         name:
-          getCatalogVirtualNetworkOptions().find((option) => option.id === value)?.name ??
+          inventory.getVirtualNetworkOptions().find((option) => option.id === value)?.name ??
           nextBase.virtualNetwork.name,
-        locked: networkContext.policy.virtualNetwork.locked,
+        locked: false,
       },
       subnet: {
         ...nextBase.subnet,
         id: nextSubnetId,
         name:
           nextSubnets.find((option) => option.id === nextSubnetId)?.name ?? nextBase.subnet.name,
-        locked: networkContext.policy.subnet.locked,
+        locked: false,
       },
     })
   }
@@ -586,12 +576,12 @@ function InstanceInheritedNetworkingSection({
         idPrefix={`instance-networking-${instance.id}`}
         policy={policy}
         locksReadOnly
-        lede="Locked fields cannot be changed. Unlocked fields follow the catalog item networking policy."
-        ledeDescription="Network defaults and lock state are inherited from the catalog item."
-        virtualNetworkOptions={getCatalogVirtualNetworkOptions()}
+        lede="Choose networking resources from your organization's inventory."
+        ledeDescription="Networking options are managed under Networking in your workspace."
+        virtualNetworkOptions={inventory.getVirtualNetworkOptions()}
         subnetOptions={subnetOptions}
-        securityGroupOptions={getCatalogSecurityGroupOptions()}
-        externalIpPoolOptions={getCatalogExternalIpPoolOptions()}
+        securityGroupOptions={inventory.getSecurityGroupOptions()}
+        externalIpPoolOptions={inventory.getExternalIpPoolOptions()}
         onVirtualNetworkChange={handleVirtualNetworkChange}
         onChange={persistFromPolicy}
       />
@@ -1118,6 +1108,7 @@ function getNodeSetStatusColor(
 
 function ClusterInstancePageBody({
   instance,
+  tenantSlug,
   projects,
   onUpdateNetworking,
   onAddProject,
@@ -1127,6 +1118,7 @@ function ClusterInstancePageBody({
   instanceNetworkingVariant,
 }: {
   instance: TenantInstance
+  tenantSlug: string
   projects: readonly TenantProject[]
   onUpdateNetworking?: (
     instanceId: string,
@@ -1245,6 +1237,7 @@ function ClusterInstancePageBody({
 
           <InstanceInheritedNetworkingSection
             instance={instance}
+            tenantSlug={tenantSlug}
             onUpdateNetworking={onUpdateNetworking}
             conditions={getClusterInstanceConditions(instance)}
             conditionsAriaLabel="Cluster conditions"
@@ -1392,6 +1385,7 @@ function ClusterInstancePageBody({
 
 function VmInstancePageBody({
   instance,
+  tenantSlug,
   projects,
   onAttachPublicIp,
   onUpdateNetworking,
@@ -1402,6 +1396,7 @@ function VmInstancePageBody({
   instanceNetworkingVariant,
 }: {
   instance: TenantInstance
+  tenantSlug: string
   projects: readonly TenantProject[]
   onAttachPublicIp?: (instance: TenantInstance) => void
   onUpdateNetworking?: (
@@ -1520,6 +1515,7 @@ function VmInstancePageBody({
 
           <InstanceInheritedNetworkingSection
             instance={instance}
+            tenantSlug={tenantSlug}
             onUpdateNetworking={onUpdateNetworking}
             conditions={conditions}
             conditionsAriaLabel="Virtual machine conditions"
@@ -1590,6 +1586,7 @@ function VmInstancePageBody({
 
 function DefaultInstancePageBody({
   instance,
+  tenantSlug,
   projects,
   onUpdateNetworking,
   onAddProject,
@@ -1599,6 +1596,7 @@ function DefaultInstancePageBody({
   instanceNetworkingVariant,
 }: {
   instance: TenantInstance
+  tenantSlug: string
   projects: readonly TenantProject[]
   onUpdateNetworking?: (
     instanceId: string,
@@ -1777,6 +1775,7 @@ function DefaultInstancePageBody({
 
           <InstanceInheritedNetworkingSection
             instance={instance}
+            tenantSlug={tenantSlug}
             onUpdateNetworking={onUpdateNetworking}
             conditions={
               isBareMetal && bareMetalConditions.length > 0 ? bareMetalConditions : undefined
@@ -1920,6 +1919,7 @@ function InstanceProjectsSection({
 
 export function TenantUserInstanceDetailsPage({
   instance,
+  tenantSlug,
   projects,
   onBack,
   onRequestTerminate,
@@ -1991,6 +1991,7 @@ export function TenantUserInstanceDetailsPage({
       {isCluster ? (
         <ClusterInstancePageBody
           instance={instance}
+          tenantSlug={tenantSlug}
           projects={projects}
           onUpdateNetworking={onUpdateNetworking}
           onAddProject={onAddProject}
@@ -2002,6 +2003,7 @@ export function TenantUserInstanceDetailsPage({
       ) : isVm ? (
         <VmInstancePageBody
           instance={instance}
+          tenantSlug={tenantSlug}
           projects={projects}
           onAttachPublicIp={onAttachPublicIp}
           onUpdateNetworking={onUpdateNetworking}
@@ -2014,6 +2016,7 @@ export function TenantUserInstanceDetailsPage({
       ) : (
         <DefaultInstancePageBody
           instance={instance}
+          tenantSlug={tenantSlug}
           projects={projects}
           onUpdateNetworking={onUpdateNetworking}
           onAddProject={onAddProject}

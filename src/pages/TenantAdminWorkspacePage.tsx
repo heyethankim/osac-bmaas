@@ -10,6 +10,7 @@ import { ProviderAdminSubnetsPage } from './infrastructure/ProviderAdminSubnetsP
 import { ProviderAdminVirtualNetworksPage } from './infrastructure/ProviderAdminVirtualNetworksPage'
 import { TenantAdminCatalogPage } from './tenant-admin/TenantAdminCatalogPage'
 import { TenantAdminOverviewPage } from './tenant-admin/TenantAdminOverviewPage'
+import { TenantAdminAdministratorsPage } from './tenant-admin/TenantAdminAdministratorsPage'
 import { TenantAdminProjectsTeamsPage } from './tenant-admin/TenantAdminProjectsTeamsPage'
 import { TenantUserInstancesPage } from './tenant-user/TenantUserInstancesPage'
 import {
@@ -59,6 +60,7 @@ function isTenantAdminNavId(value: string | null): value is TenantAdminNavId {
     value === 'services-models' ||
     value === 'services-virtual-machines' ||
     value === 'projects-teams' ||
+    value === 'administrators' ||
     value === 'networking-virtual-networks' ||
     value === 'networking-subnets' ||
     value === 'networking-security-groups' ||
@@ -333,9 +335,17 @@ export function TenantAdminWorkspacePage() {
             }}
           />
         )
+      case 'administrators':
+        return (
+          <TenantAdminAdministratorsPage
+            organization={organization}
+            onOrganizationChange={setOrganization}
+          />
+        )
       case 'networking-virtual-networks':
         return (
           <ProviderAdminVirtualNetworksPage
+            tenantSlug={tenant}
             openVirtualNetworkId={openVirtualNetworkId}
             onOpenVirtualNetworkConsumed={() => setOpenVirtualNetworkId(null)}
             onNavigateToSubnet={(subnetId) => {
@@ -351,6 +361,7 @@ export function TenantAdminWorkspacePage() {
       case 'networking-subnets':
         return (
           <ProviderAdminSubnetsPage
+            tenantSlug={tenant}
             openSubnetId={openSubnetId}
             onOpenSubnetConsumed={() => setOpenSubnetId(null)}
             onNavigateToVirtualNetwork={(virtualNetworkId) => {
@@ -362,6 +373,7 @@ export function TenantAdminWorkspacePage() {
       case 'networking-security-groups':
         return (
           <ProviderAdminSecurityGroupsPage
+            tenantSlug={tenant}
             openSecurityGroupId={openSecurityGroupId}
             onOpenSecurityGroupConsumed={() => setOpenSecurityGroupId(null)}
             onNavigateToVirtualNetwork={(virtualNetworkId) => {
@@ -371,7 +383,7 @@ export function TenantAdminWorkspacePage() {
           />
         )
       case 'networking-external-ip-pools':
-        return <ProviderAdminExternalIpPoolsPage />
+        return <ProviderAdminExternalIpPoolsPage tenantSlug={tenant} />
       case 'overview':
       default:
         return <TenantAdminOverviewPage />

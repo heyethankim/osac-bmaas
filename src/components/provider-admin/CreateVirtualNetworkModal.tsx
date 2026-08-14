@@ -17,7 +17,7 @@ import {
   type ProviderVirtualNetwork,
 } from '../../providerAdmin/networkInventory'
 import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
-import { addProviderVirtualNetwork } from '../../providerSetup/storage'
+import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope'
 
 type CreateVirtualNetworkForm = {
   name: string
@@ -38,12 +38,14 @@ type CreateVirtualNetworkModalProps = {
   isOpen: boolean
   onClose: () => void
   onCreated: (network: ProviderVirtualNetwork) => void
+  tenantSlug?: string
 }
 
 export function CreateVirtualNetworkModal({
   isOpen,
   onClose,
   onCreated,
+  tenantSlug,
 }: CreateVirtualNetworkModalProps) {
   const [form, setForm] = useState<CreateVirtualNetworkForm>(DEFAULT_FORM)
 
@@ -71,7 +73,8 @@ export function CreateVirtualNetworkModal({
       status: 'Ready',
     }
 
-    addProviderVirtualNetwork(network)
+    const inventory = resolveNetworkInventoryScope(tenantSlug)
+    inventory.addVirtualNetwork(network)
     onCreated(network)
     onClose()
   }

@@ -6,6 +6,7 @@ export type TenantAdminNavId =
   | 'services-models'
   | 'services-virtual-machines'
   | 'projects-teams'
+  | 'administrators'
   | 'networking-virtual-networks'
   | 'networking-subnets'
   | 'networking-security-groups'
@@ -57,6 +58,7 @@ export const TENANT_ADMIN_NAV_ITEMS: TenantAdminNavItem[] = [
     label: 'Networking',
     children: TENANT_ADMIN_NETWORKING_NAV_ITEMS,
   },
+  { id: 'administrators', label: 'Administration' },
 ]
 
 export function getTenantAdminLeafNavItems(

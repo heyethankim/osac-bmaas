@@ -14,6 +14,7 @@ import {
   TextInput,
 } from '@patternfly/react-core'
 import { ResourceCreatePageShell } from '../shared/ResourceCreatePageShell'
+import { useWizardLeaveConfirm } from '../shared/useWizardLeaveConfirm'
 import {
   buildAbbreviation,
   COMPUTE_IMAGE_ARCHITECTURES,
@@ -74,6 +75,17 @@ export function CreateComputeImageModal({
     !form.sizeLabel.trim() ||
     !form.imageUrl.trim() ||
     !form.checksum.trim()
+
+  const handleLeave = () => {
+    setForm(DEFAULT_CREATE_COMPUTE_IMAGE_FORM)
+    onClose()
+  }
+
+  const { requestClose, leaveConfirmModal } = useWizardLeaveConfirm({
+    onLeave: handleLeave,
+    primaryActionLabel: 'Leave',
+    titleId: 'create-compute-image-leave-confirm',
+  })
 
   const handleCreateImage = () => {
     if (isCreateDisabled) {
@@ -174,7 +186,7 @@ export function CreateComputeImageModal({
       <Button variant="primary" isDisabled={isCreateDisabled} onClick={handleCreateImage}>
         Create image
       </Button>
-      <Button variant="link" onClick={onClose}>
+      <Button variant="link" onClick={requestClose}>
         Cancel
       </Button>
     </>
@@ -186,37 +198,43 @@ export function CreateComputeImageModal({
     }
 
     return (
-      <ResourceCreatePageShell
-        parentLabel="Compute images"
-        title={CREATE_TITLE}
-        description={CREATE_DESCRIPTION}
-        onBack={onClose}
-        layout="form"
-      >
-        <div className="catalog-wizard-page__form-panel">
-          {formFields}
-          <div className="catalog-wizard-page__form-actions">{actions}</div>
-        </div>
-      </ResourceCreatePageShell>
+      <>
+        <ResourceCreatePageShell
+          parentLabel="Compute images"
+          title={CREATE_TITLE}
+          description={CREATE_DESCRIPTION}
+          onBack={requestClose}
+          layout="form"
+        >
+          <div className="catalog-wizard-page__form-panel">
+            {formFields}
+            <div className="catalog-wizard-page__form-actions">{actions}</div>
+          </div>
+        </ResourceCreatePageShell>
+        {leaveConfirmModal}
+      </>
     )
   }
 
   return (
-    <Modal
-      variant={ModalVariant.medium}
-      isOpen={isOpen}
-      onClose={onClose}
-      aria-labelledby="create-compute-image-title"
-      className="provider-admin-compute-images__create-modal"
-    >
-      <ModalHeader title={CREATE_TITLE} labelId="create-compute-image-title" />
-      <ModalBody>
-        <Content component="p" className="provider-admin-compute-images__modal-lede">
-          {CREATE_DESCRIPTION}
-        </Content>
-        {formFields}
-      </ModalBody>
-      <ModalFooter>{actions}</ModalFooter>
-    </Modal>
+    <>
+      <Modal
+        variant={ModalVariant.medium}
+        isOpen={isOpen}
+        onClose={requestClose}
+        aria-labelledby="create-compute-image-title"
+        className="provider-admin-compute-images__create-modal"
+      >
+        <ModalHeader title={CREATE_TITLE} labelId="create-compute-image-title" />
+        <ModalBody>
+          <Content component="p" className="provider-admin-compute-images__modal-lede">
+            {CREATE_DESCRIPTION}
+          </Content>
+          {formFields}
+        </ModalBody>
+        <ModalFooter>{actions}</ModalFooter>
+      </Modal>
+      {leaveConfirmModal}
+    </>
   )
 }

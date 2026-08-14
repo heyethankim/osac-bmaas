@@ -18,10 +18,7 @@ import {
   type ProviderSubnet,
   type ProviderVirtualNetwork,
 } from "../../providerAdmin/networkInventory";
-import {
-  getProviderSecurityGroups,
-  getProviderSubnets,
-} from "../../providerSetup/storage";
+import { resolveNetworkInventoryScope } from "../../shared/networkInventoryScope";
 
 type RelatedItem = {
   id: string;
@@ -31,6 +28,7 @@ type RelatedItem = {
 
 type VirtualNetworkDetailsPageProps = {
   network: ProviderVirtualNetwork;
+  tenantSlug?: string;
   onBack: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
@@ -129,18 +127,20 @@ function toSecurityGroupItems(
 
 export function VirtualNetworkDetailsPage({
   network,
+  tenantSlug,
   onBack,
   onEdit,
   onDelete,
   onNavigateToSubnet,
   onNavigateToSecurityGroup,
 }: VirtualNetworkDetailsPageProps) {
+  const inventory = resolveNetworkInventoryScope(tenantSlug);
   const status = getNetworkInventoryStatus(network);
   const relatedSubnets = toSubnetItems(
-    getSubnetsForVirtualNetwork(getProviderSubnets(), network.id),
+    getSubnetsForVirtualNetwork(inventory.getSubnets(), network.id),
   );
   const relatedSecurityGroups = toSecurityGroupItems(
-    getSecurityGroupsForVirtualNetwork(getProviderSecurityGroups(), network.id),
+    getSecurityGroupsForVirtualNetwork(inventory.getSecurityGroups(), network.id),
   );
 
   return (

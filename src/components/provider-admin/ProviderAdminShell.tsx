@@ -36,11 +36,9 @@ import {
 } from '@patternfly/react-core'
 import {
   PROVIDER_ADMIN_ADMINISTRATION_NAV_ITEMS,
-  PROVIDER_ADMIN_INFRASTRUCTURE_NAV_ITEMS,
   PROVIDER_ADMIN_NETWORKING_NAV_ITEMS,
   PROVIDER_ADMIN_SERVICES_NAV_ITEMS,
   isAdministrationNavId,
-  isInfrastructureNavId,
   isNetworkingNavId,
   isServicesNavId,
   type ProviderAdminNavId,
@@ -232,24 +230,6 @@ export function ProviderAdminShell({
               isActive={isNetworkingNavId(activeNavId)}
             >
               {PROVIDER_ADMIN_NETWORKING_NAV_ITEMS.map((item) => (
-                <NavItem
-                  key={item.id}
-                  itemId={item.id}
-                  isActive={activeNavId === item.id}
-                  to="#"
-                  preventDefault
-                >
-                  {item.label}
-                </NavItem>
-              ))}
-            </NavExpandable>
-            <NavExpandable
-              id="provider-admin-infrastructure-nav"
-              title="Infrastructure"
-              isExpanded
-              isActive={isInfrastructureNavId(activeNavId)}
-            >
-              {PROVIDER_ADMIN_INFRASTRUCTURE_NAV_ITEMS.map((item) => (
                 <NavItem
                   key={item.id}
                   itemId={item.id}

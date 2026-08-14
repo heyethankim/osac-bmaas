@@ -20,7 +20,7 @@ import {
   type ProviderVirtualNetwork,
 } from '../../providerAdmin/networkInventory'
 import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
-import { addProviderSecurityGroup } from '../../providerSetup/storage'
+import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope'
 
 type CreateSecurityGroupForm = {
   name: string
@@ -46,6 +46,7 @@ type CreateSecurityGroupModalProps = {
   virtualNetworks: ProviderVirtualNetwork[]
   onClose: () => void
   onCreated: (group: ProviderSecurityGroup) => void
+  tenantSlug?: string
 }
 
 export function CreateSecurityGroupModal({
@@ -53,6 +54,7 @@ export function CreateSecurityGroupModal({
   virtualNetworks,
   onClose,
   onCreated,
+  tenantSlug,
 }: CreateSecurityGroupModalProps) {
   const [form, setForm] = useState<CreateSecurityGroupForm>(() => buildDemoForm(virtualNetworks))
 
@@ -82,7 +84,7 @@ export function CreateSecurityGroupModal({
       status: 'Ready',
     }
 
-    addProviderSecurityGroup(group)
+    resolveNetworkInventoryScope(tenantSlug).addSecurityGroup(group)
     onCreated(group)
     onClose()
   }

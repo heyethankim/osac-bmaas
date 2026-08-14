@@ -9,12 +9,9 @@ import type { RegisteredOrganization } from '../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../providerSetup/storage'
 import {
   getCatalogItemNetworkPolicy,
-  getCatalogSecurityGroupOptions,
-  getCatalogSubnetOptions,
-  getCatalogVirtualNetworkOptions,
-  getCatalogExternalIpPoolOptions,
   getProviderCatalogItems,
 } from '../providerSetup/storage'
+import { resolveNetworkInventoryScope } from '../shared/networkInventoryScope'
 
 export type TenantNetworkResourceKind =
   | 'virtual-network'
@@ -165,29 +162,31 @@ export function getTenantLockForUsers(
 export function applyTenantNetworkOverrides(
   policy: CatalogNetworkPolicy,
   overrides: TenantNetworkOverrides,
+  tenantSlug?: string,
 ): CatalogNetworkPolicy {
   if (!policy.enabled) {
     return policy
   }
 
+  const inventory = resolveNetworkInventoryScope(tenantSlug ?? null)
   const virtualNetwork = resolveEffectiveNetworkField(
     policy.virtualNetwork,
-    getCatalogVirtualNetworkOptions(),
+    inventory.getVirtualNetworkOptions(),
     overrides.virtualNetworkId,
   )
   const subnet = resolveEffectiveNetworkField(
     policy.subnet,
-    getCatalogSubnetOptions(virtualNetwork.id),
+    inventory.getSubnetOptions(virtualNetwork.id),
     overrides.subnetId,
   )
   const securityGroup = resolveEffectiveNetworkField(
     policy.securityGroup,
-    getCatalogSecurityGroupOptions(),
+    inventory.getSecurityGroupOptions(),
     overrides.securityGroupId,
   )
   const externalIpPool = resolveEffectiveNetworkField(
     policy.externalIpPool,
-    getCatalogExternalIpPoolOptions(),
+    inventory.getExternalIpPoolOptions(),
     overrides.externalIpPoolId,
   )
 
@@ -267,6 +266,7 @@ export function resolveCatalogNetworkPolicyForOrganization(
   return applyTenantNetworkOverrides(
     base,
     getTenantNetworkOverrides(organization.slug, catalogItemId),
+    organization.slug,
   )
 }
 
@@ -282,6 +282,7 @@ export function resolveEffectiveNetworkPolicyForUsers(
     applyTenantNetworkOverrides(
       resolveProviderCatalogNetworkPolicy(organization, catalogDraft),
       overrides,
+      organization.slug,
     ),
     overrides,
   )
@@ -289,6 +290,7 @@ export function resolveEffectiveNetworkPolicyForUsers(
 
 export function getTenantNetworkResourceMeta(
   kind: TenantNetworkResourceKind,
+  tenantSlug?: string,
   virtualNetworkId?: string,
 ): {
   title: string
@@ -298,33 +300,34 @@ export function getTenantNetworkResourceMeta(
   overrideKey: TenantNetworkValueOverrideKey
   options: readonly CatalogNetworkResourceOption[]
 } {
+  const inventory = resolveNetworkInventoryScope(tenantSlug ?? null)
   switch (kind) {
     case 'virtual-network':
       return {
         title: 'Virtual networks',
         fieldLabel: 'Virtual network',
-        lede: 'Virtual networks available to your organization for project workloads and catalog networking.',
+        lede: 'Virtual networks available to your organization for project workloads.',
         fieldKey: 'virtualNetwork',
         overrideKey: 'virtualNetworkId',
-        options: getCatalogVirtualNetworkOptions(),
+        options: inventory.getVirtualNetworkOptions(),
       }
     case 'subnet':
       return {
         title: 'Subnets',
         fieldLabel: 'Subnet',
-        lede: 'Subnets within your organization networks. Locked catalog defaults cannot be changed.',
+        lede: 'Subnets within your organization virtual networks.',
         fieldKey: 'subnet',
         overrideKey: 'subnetId',
-        options: getCatalogSubnetOptions(virtualNetworkId),
+        options: inventory.getSubnetOptions(virtualNetworkId),
       }
     case 'security-group':
       return {
         title: 'Security groups',
         fieldLabel: 'Security group',
-        lede: 'Security groups that control network access for workloads. Locked catalog defaults cannot be changed.',
+        lede: 'Security groups that control network access for workloads.',
         fieldKey: 'securityGroup',
         overrideKey: 'securityGroupId',
-        options: getCatalogSecurityGroupOptions(),
+        options: inventory.getSecurityGroupOptions(),
       }
     case 'external-ip-pool':
       return {
@@ -333,7 +336,7 @@ export function getTenantNetworkResourceMeta(
         lede: 'External IP pools available for workloads that need public addressing.',
         fieldKey: 'externalIpPool',
         overrideKey: 'externalIpPoolId',
-        options: getCatalogExternalIpPoolOptions(),
+        options: inventory.getExternalIpPoolOptions(),
       }
   }
 }
@@ -372,12 +375,17 @@ export type TenantCatalogNetworkFieldSummary = {
 export function getTenantCatalogNetworkFieldSummaries(
   policy: CatalogNetworkPolicy,
   overrides: TenantNetworkOverrides = {},
+  tenantSlug?: string,
 ): TenantCatalogNetworkFieldSummary[] {
+  const inventory = resolveNetworkInventoryScope(tenantSlug ?? null)
   return [
     {
       kind: 'virtual-network',
       label: 'Virtual network',
-      value: getNetworkOptionDetail(getCatalogVirtualNetworkOptions(), policy.virtualNetwork.id),
+      value: getNetworkOptionDetail(
+        inventory.getVirtualNetworkOptions(),
+        policy.virtualNetwork.id,
+      ),
       providerLocked: policy.virtualNetwork.locked,
       lockedForUsers: getTenantLockForUsers(overrides, 'virtual-network'),
       selectedId: policy.virtualNetwork.id,
@@ -386,7 +394,7 @@ export function getTenantCatalogNetworkFieldSummaries(
       kind: 'subnet',
       label: 'Subnet',
       value: getNetworkOptionDetail(
-        getCatalogSubnetOptions(policy.virtualNetwork.id),
+        inventory.getSubnetOptions(policy.virtualNetwork.id),
         policy.subnet.id,
       ),
       providerLocked: policy.subnet.locked,
@@ -396,7 +404,10 @@ export function getTenantCatalogNetworkFieldSummaries(
     {
       kind: 'security-group',
       label: 'Security group',
-      value: getNetworkOptionDetail(getCatalogSecurityGroupOptions(), policy.securityGroup.id),
+      value: getNetworkOptionDetail(
+        inventory.getSecurityGroupOptions(),
+        policy.securityGroup.id,
+      ),
       providerLocked: policy.securityGroup.locked,
       lockedForUsers: getTenantLockForUsers(overrides, 'security-group'),
       selectedId: policy.securityGroup.id,
@@ -404,7 +415,10 @@ export function getTenantCatalogNetworkFieldSummaries(
     {
       kind: 'external-ip-pool',
       label: 'External IP pool',
-      value: getNetworkOptionDetail(getCatalogExternalIpPoolOptions(), policy.externalIpPool.id),
+      value: getNetworkOptionDetail(
+        inventory.getExternalIpPoolOptions(),
+        policy.externalIpPool.id,
+      ),
       providerLocked: policy.externalIpPool.locked,
       lockedForUsers: getTenantLockForUsers(overrides, 'external-ip-pool'),
       selectedId: policy.externalIpPool.id,

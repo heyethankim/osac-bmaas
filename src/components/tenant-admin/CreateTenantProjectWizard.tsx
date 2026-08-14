@@ -38,6 +38,7 @@ import {
 } from '@patternfly/react-core'
 import { KubernetesResourceNameField } from '../shared/KubernetesResourceNameHelper'
 import { ResourceCreatePageShell } from '../shared/ResourceCreatePageShell'
+import { useWizardLeaveConfirm } from '../shared/useWizardLeaveConfirm'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import {
   CREATE_PROJECT_WIZARD_DEMO,
@@ -99,6 +100,12 @@ export function CreateTenantProjectWizard({
     resetWizard()
     onClose()
   }
+
+  const { requestClose, leaveConfirmModal, wrapStepFooter } = useWizardLeaveConfirm({
+    onLeave: handleClose,
+    primaryActionLabel: 'Leave',
+    titleId: 'create-tenant-project-leave-confirm',
+  })
 
   useEffect(() => {
     if (isOpen) {
@@ -433,7 +440,7 @@ export function CreateTenantProjectWizard({
 
   const getStepFooter = (stepId: CreateProjectWizardStepId) => {
     if (stepId === 'project-info') {
-      return {
+      return wrapStepFooter({
         isNextDisabled: !isValidKubernetesResourceName(form.name),
         nextButtonText: (
           <span className="tenant-admin-projects-teams__wizard-footer-label">
@@ -441,11 +448,11 @@ export function CreateTenantProjectWizard({
             <ArrowRightIcon aria-hidden />
           </span>
         ),
-      }
+      })
     }
 
     if (stepId === 'team-members') {
-      return {
+      return wrapStepFooter({
         isCancelHidden: true,
         backButtonText: (
           <span className="tenant-admin-projects-teams__wizard-footer-label">
@@ -459,10 +466,10 @@ export function CreateTenantProjectWizard({
             <ArrowRightIcon aria-hidden />
           </span>
         ),
-      }
+      })
     }
 
-    return {
+    return wrapStepFooter({
       isCancelHidden: true,
       backButtonText: (
         <span className="tenant-admin-projects-teams__wizard-footer-label">
@@ -477,7 +484,7 @@ export function CreateTenantProjectWizard({
         </span>
       ),
       onNext: handleCreateProject,
-    }
+    })
   }
 
   const wizardTitle = 'New project'
@@ -494,13 +501,13 @@ export function CreateTenantProjectWizard({
         .join(' ')}
       height={isPage ? '100%' : '40rem'}
       isPlain={isPage}
-      onClose={isPage ? undefined : handleClose}
+      onClose={isPage ? undefined : requestClose}
       header={
         isPage ? undefined : (
           <WizardHeader
             title={wizardTitle}
             titleId="create-tenant-project-wizard-title"
-            onClose={handleClose}
+            onClose={requestClose}
             closeButtonAriaLabel="Close new project wizard"
           />
         )
@@ -528,24 +535,28 @@ export function CreateTenantProjectWizard({
         parentLabel="Projects & teams"
         title={wizardTitle}
         titleId="create-tenant-project-wizard-title"
-        onBack={handleClose}
+        onBack={requestClose}
       >
         {wizard}
+        {leaveConfirmModal}
       </ResourceCreatePageShell>
     )
   }
 
   return (
-    <Modal
-      variant={ModalVariant.medium}
-      width="64rem"
-      maxWidth="64rem"
-      isOpen={isOpen}
-      onEscapePress={handleClose}
-      aria-labelledby="create-tenant-project-wizard-title"
-      className="tenant-admin-projects-teams__wizard-modal"
-    >
-      {wizard}
-    </Modal>
+    <>
+      <Modal
+        variant={ModalVariant.medium}
+        width="64rem"
+        maxWidth="64rem"
+        isOpen={isOpen}
+        onEscapePress={requestClose}
+        aria-labelledby="create-tenant-project-wizard-title"
+        className="tenant-admin-projects-teams__wizard-modal"
+      >
+        {wizard}
+      </Modal>
+      {leaveConfirmModal}
+    </>
   )
 }

@@ -6,31 +6,8 @@ import {
 } from '../providerAdmin/catalogNetworkPolicy'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../providerSetup/storage'
-import {
-  getCatalogExternalIpPoolOptions,
-  getCatalogItemNetworkPolicy,
-  getCatalogSecurityGroupOptions,
-  getCatalogSubnetOptions,
-  getCatalogVirtualNetworkOptions,
-  getProviderCatalogItems,
-} from '../providerSetup/storage'
-import {
-  applyTenantNetworkOverrides,
-  getNetworkOptionDetail,
-  getTenantNetworkOverrides,
-  resolveEffectiveNetworkPolicyForUsers,
-} from '../tenantAdmin/networking'
-
-/** Catalog no longer configures networking locks — launchers always pick freely. */
-function unlockPolicyForLaunch(policy: CatalogNetworkPolicy): CatalogNetworkPolicy {
-  return {
-    enabled: true,
-    virtualNetwork: { ...policy.virtualNetwork, locked: false },
-    subnet: { ...policy.subnet, locked: false },
-    securityGroup: { ...policy.securityGroup, locked: false },
-    externalIpPool: { ...policy.externalIpPool, locked: false },
-  }
-}
+import { resolveNetworkInventoryScope } from '../shared/networkInventoryScope'
+import { getNetworkOptionDetail } from '../tenantAdmin/networking'
 
 export type LaunchNetworkFieldKind =
   | 'virtual-network'
@@ -64,94 +41,38 @@ export type LaunchNetworkContext = {
   assignedNetworkSummary: string
 }
 
-function resolvePolicyForLaunch(
-  organization: RegisteredOrganization | null,
-  catalogDraft: ProviderCatalogDraft | null,
-  preferCatalogDraft: boolean,
-  catalogItemId?: string,
-): CatalogNetworkPolicy {
-  const specificItem = catalogItemId
-    ? getProviderCatalogItems().find((item) => item.catalogItemId === catalogItemId)
-    : null
-
-  if (specificItem) {
-    const base = getCatalogItemNetworkPolicy(specificItem)
-    if (organization) {
-      const overrides = getTenantNetworkOverrides(
-        organization.slug,
-        specificItem.catalogItemId,
-      )
-      // Keep tenant default values; ignore lock overlays so launch stays free-choice.
-      return unlockPolicyForLaunch(applyTenantNetworkOverrides(base, overrides))
-    }
-    return unlockPolicyForLaunch(base)
-  }
-
-  if (preferCatalogDraft && catalogDraft) {
-    return unlockPolicyForLaunch(getCatalogItemNetworkPolicy(catalogDraft))
-  }
-
-  if (organization) {
-    return unlockPolicyForLaunch(
-      resolveEffectiveNetworkPolicyForUsers(organization, catalogDraft),
-    )
-  }
-
-  if (catalogDraft) {
-    return unlockPolicyForLaunch(getCatalogItemNetworkPolicy(catalogDraft))
-  }
-
-  const latest = getProviderCatalogItems()[0]
-  return unlockPolicyForLaunch(
-    latest ? getCatalogItemNetworkPolicy(latest) : DEFAULT_CATALOG_NETWORK_POLICY,
-  )
-}
-
 export function resolveLaunchNetworkContext(
   organization: RegisteredOrganization | null,
-  catalogDraft: ProviderCatalogDraft | null,
-  preferCatalogDraft = false,
-  catalogItemId?: string,
+  _catalogDraft: ProviderCatalogDraft | null = null,
+  _preferCatalogDraft = false,
+  _catalogItemId?: string,
 ): LaunchNetworkContext {
-  const basePolicy = resolvePolicyForLaunch(
-    organization,
-    catalogDraft,
-    preferCatalogDraft,
-    catalogItemId,
-  )
+  const inventory = resolveNetworkInventoryScope(organization?.slug ?? null)
 
-  const virtualNetworkOptions = getCatalogVirtualNetworkOptions()
+  const virtualNetworkOptions = inventory.getVirtualNetworkOptions()
   const preferredVirtualNetworkId =
-    virtualNetworkOptions.find((option) => option.id === basePolicy.virtualNetwork.id)?.id ??
-    virtualNetworkOptions[0]?.id ??
-    DEFAULT_CATALOG_NETWORK_POLICY.virtualNetwork.id
-  const subnetOptions = getCatalogSubnetOptions(preferredVirtualNetworkId)
-  const preferredSubnetId =
-    subnetOptions.find((option) => option.id === basePolicy.subnet.id)?.id ??
-    subnetOptions[0]?.id ??
-    DEFAULT_CATALOG_NETWORK_POLICY.subnet.id
-  const securityGroupOptions = getCatalogSecurityGroupOptions()
+    virtualNetworkOptions[0]?.id ?? DEFAULT_CATALOG_NETWORK_POLICY.virtualNetwork.id
+  const subnetOptions = inventory.getSubnetOptions(preferredVirtualNetworkId)
+  const preferredSubnetId = subnetOptions[0]?.id ?? DEFAULT_CATALOG_NETWORK_POLICY.subnet.id
+  const securityGroupOptions = inventory.getSecurityGroupOptions()
   const preferredSecurityGroupId =
-    securityGroupOptions.find((option) => option.id === basePolicy.securityGroup.id)?.id ??
-    securityGroupOptions[0]?.id ??
-    DEFAULT_CATALOG_NETWORK_POLICY.securityGroup.id
-  const externalIpPoolOptions = getCatalogExternalIpPoolOptions()
+    securityGroupOptions[0]?.id ?? DEFAULT_CATALOG_NETWORK_POLICY.securityGroup.id
+  const externalIpPoolOptions = inventory.getExternalIpPoolOptions()
   const preferredExternalIpPoolId =
-    externalIpPoolOptions.find((option) => option.id === basePolicy.externalIpPool.id)?.id ??
-    externalIpPoolOptions[0]?.id ??
-    DEFAULT_CATALOG_NETWORK_POLICY.externalIpPool.id
+    externalIpPoolOptions[0]?.id ?? DEFAULT_CATALOG_NETWORK_POLICY.externalIpPool.id
 
   const virtualNetworkName =
     virtualNetworkOptions.find((option) => option.id === preferredVirtualNetworkId)?.name ??
-    basePolicy.virtualNetwork.name
+    DEFAULT_CATALOG_NETWORK_POLICY.virtualNetwork.name
   const subnetName =
-    subnetOptions.find((option) => option.id === preferredSubnetId)?.name ?? basePolicy.subnet.name
+    subnetOptions.find((option) => option.id === preferredSubnetId)?.name ??
+    DEFAULT_CATALOG_NETWORK_POLICY.subnet.name
   const securityGroupName =
     securityGroupOptions.find((option) => option.id === preferredSecurityGroupId)?.name ??
-    basePolicy.securityGroup.name
+    DEFAULT_CATALOG_NETWORK_POLICY.securityGroup.name
   const externalIpPoolName =
     externalIpPoolOptions.find((option) => option.id === preferredExternalIpPoolId)?.name ??
-    basePolicy.externalIpPool.name
+    DEFAULT_CATALOG_NETWORK_POLICY.externalIpPool.name
 
   const policy: CatalogNetworkPolicy = {
     enabled: true,

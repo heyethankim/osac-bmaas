@@ -42,6 +42,7 @@ import {
   type OrganizationActionCompletionPhase,
 } from './OrganizationActionSuccessState'
 import { ResourceCreatePageShell } from '../shared/ResourceCreatePageShell'
+import { useWizardLeaveConfirm } from '../shared/useWizardLeaveConfirm'
 
 type SetupIdentityProviderWizardProps = {
   isOpen: boolean
@@ -289,6 +290,16 @@ export function SetupIdentityProviderWizard({
     onClose()
   }
 
+  const { requestClose: showLeaveConfirm, leaveConfirmModal, wrapStepFooter } =
+    useWizardLeaveConfirm({
+      onLeave: handleClose,
+      isLeaveDisabled: isCompleting,
+      primaryActionLabel: 'Leave',
+      titleId: 'setup-idp-leave-confirm',
+    })
+
+  const requestClose = isCompleting ? handleClose : showLeaveConfirm
+
   const selectPath = (path: SetupPath) => {
     setSetupPath(path)
     if (path === 'invite') {
@@ -328,13 +339,13 @@ export function SetupIdentityProviderWizard({
       isPlain={isPage}
       startIndex={startIndex}
       isVisitRequired
-      onClose={isPage ? undefined : handleClose}
+      onClose={isPage ? undefined : requestClose}
       header={
         isPage ? undefined : (
           <WizardHeader
             title={wizardTitle}
             titleId="setup-idp-wizard-title"
-            onClose={handleClose}
+            onClose={requestClose}
             closeButtonAriaLabel="Close set up identity provider wizard"
           />
         )
@@ -343,9 +354,9 @@ export function SetupIdentityProviderWizard({
       <WizardStep
         id={STEP_CHOICE}
         name="Choose method"
-        footer={{
+        footer={wrapStepFooter({
           isNextDisabled: setupPath === null,
-        }}
+        })}
       >
         <Content component="p" className="provider-admin-organizations__wizard-lede">
           Choose how to connect the identity provider for {organization.name}.
@@ -451,11 +462,11 @@ export function SetupIdentityProviderWizard({
         id={STEP_CONNECT}
         name="Connect identity provider"
         isHidden={setupPath !== 'myself'}
-        footer={{
+        footer={wrapStepFooter({
           nextButtonText: 'Connect identity provider',
           isNextDisabled: isConnectDisabled,
           onNext: handleConnectSave,
-        }}
+        })}
       >
         <Content component="p" className="provider-admin-organizations__wizard-lede">
           Connect the IdP for this organization’s primary email domain.
@@ -526,9 +537,9 @@ export function SetupIdentityProviderWizard({
         id={STEP_INVITE}
         name="Invite IdP manager"
         isHidden={setupPath !== 'invite'}
-        footer={{
+        footer={wrapStepFooter({
           isNextDisabled: !canSendInvite,
-        }}
+        })}
       >
         <Content component="p" className="provider-admin-organizations__wizard-lede">
           Send a single-use setup link to the person who manages federation for this
@@ -559,7 +570,7 @@ export function SetupIdentityProviderWizard({
         id={STEP_REVIEW}
         name="Review"
         isHidden={setupPath !== 'invite'}
-        footer={
+        footer={wrapStepFooter(
           showInviteReview
             ? {
                 nextButtonText: 'Done',
@@ -569,8 +580,8 @@ export function SetupIdentityProviderWizard({
                 nextButtonText: 'Send invitation',
                 isNextDisabled: !canSendInvite,
                 onNext: handleSendInvite,
-              }
-        }
+              },
+        )}
       >
         {showInviteReview ? (
           <div className="provider-admin-organizations__idp-pending">
@@ -649,37 +660,41 @@ export function SetupIdentityProviderWizard({
         parentLabel="Organizations"
         title={wizardTitle}
         titleId="setup-idp-wizard-title"
-        onBack={handleClose}
+        onBack={requestClose}
       >
         {isCompleting ? completionContent : wizard}
+        {leaveConfirmModal}
       </ResourceCreatePageShell>
     )
   }
 
   return (
-    <Modal
-      variant={ModalVariant.medium}
-      width="64rem"
-      maxWidth="64rem"
-      isOpen={isOpen}
-      onEscapePress={handleClose}
-      aria-labelledby="setup-idp-wizard-title"
-      className="provider-admin-organizations__wizard-modal"
-    >
-      {isOpen && isCompleting ? (
-        <>
-          <WizardHeader
-            title=""
-            titleId="setup-idp-wizard-title"
-            onClose={handleClose}
-            closeButtonAriaLabel="Close set up identity provider wizard"
-          />
-          {completionContent}
-        </>
-      ) : null}
+    <>
+      <Modal
+        variant={ModalVariant.medium}
+        width="64rem"
+        maxWidth="64rem"
+        isOpen={isOpen}
+        onEscapePress={requestClose}
+        aria-labelledby="setup-idp-wizard-title"
+        className="provider-admin-organizations__wizard-modal"
+      >
+        {isOpen && isCompleting ? (
+          <>
+            <WizardHeader
+              title=""
+              titleId="setup-idp-wizard-title"
+              onClose={requestClose}
+              closeButtonAriaLabel="Close set up identity provider wizard"
+            />
+            {completionContent}
+          </>
+        ) : null}
 
-      {isOpen && !isCompleting ? wizard : null}
-    </Modal>
+        {isOpen && !isCompleting ? wizard : null}
+      </Modal>
+      {leaveConfirmModal}
+    </>
   )
 }
 

@@ -12,7 +12,7 @@ import {
   Title,
 } from '@patternfly/react-core'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table'
-import { CreateSecurityGroupModal } from '../../components/provider-admin/CreateSecurityGroupModal'
+import { CreateSecurityGroupWizard } from '../../components/networking/CreateSecurityGroupWizard'
 import { SecurityGroupDetailsPage } from '../../components/provider-admin/SecurityGroupDetailsPage'
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
 import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
@@ -25,22 +25,27 @@ import {
   getNetworkInventoryStatusLabelColor,
   NETWORK_INVENTORY_STATUSES,
 } from '../../providerAdmin/networkInventory'
-import { getProviderSecurityGroups, getProviderVirtualNetworks } from '../../providerSetup/storage'
+import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope'
 
 type ProviderAdminSecurityGroupsPageProps = {
   openSecurityGroupId?: string | null
   onOpenSecurityGroupConsumed?: () => void
   onNavigateToVirtualNetwork?: (virtualNetworkId: string) => void
+  tenantSlug?: string
+  readOnly?: boolean
 }
 
 export function ProviderAdminSecurityGroupsPage({
   openSecurityGroupId = null,
   onOpenSecurityGroupConsumed,
   onNavigateToVirtualNetwork,
+  tenantSlug,
+  readOnly = false,
 }: ProviderAdminSecurityGroupsPageProps = {}) {
-  const [groups, setGroups] = useState(() => getProviderSecurityGroups())
-  const [virtualNetworks, setVirtualNetworks] = useState(() => getProviderVirtualNetworks())
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const inventory = useMemo(() => resolveNetworkInventoryScope(tenantSlug), [tenantSlug])
+  const [groups, setGroups] = useState(() => inventory.getSecurityGroups())
+  const [virtualNetworks, setVirtualNetworks] = useState(() => inventory.getVirtualNetworks())
+  const [isCreateWizardOpen, setIsCreateWizardOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<'all' | NetworkInventoryStatus>('all')
   const [selectedGroup, setSelectedGroup] = useState<ProviderSecurityGroup | null>(null)
@@ -79,9 +84,9 @@ export function ProviderAdminSecurityGroupsPage({
 
   const hasActiveFilters = Boolean(searchValue.trim()) || selectedStatus !== 'all'
 
-  const openCreateModal = () => {
-    setVirtualNetworks(getProviderVirtualNetworks())
-    setIsCreateModalOpen(true)
+  const openCreateWizard = () => {
+    setVirtualNetworks(inventory.getVirtualNetworks())
+    setIsCreateWizardOpen(true)
   }
 
   const openDetails = (group: ProviderSecurityGroup) => {
@@ -110,6 +115,18 @@ export function ProviderAdminSecurityGroupsPage({
     ? getVirtualNetwork(selectedGroup.virtualNetworkId)
     : undefined
 
+  if (isCreateWizardOpen && !readOnly) {
+    return (
+      <CreateSecurityGroupWizard
+        isOpen
+        virtualNetworks={virtualNetworks}
+        tenantSlug={tenantSlug}
+        onClose={() => setIsCreateWizardOpen(false)}
+        onCreated={() => setGroups(inventory.getSecurityGroups())}
+      />
+    )
+  }
+
   if (isDetailsOpen && selectedGroup) {
     return (
       <SecurityGroupDetailsPage
@@ -133,16 +150,22 @@ export function ProviderAdminSecurityGroupsPage({
       <ProviderAdminWorkspacePageHeader
         kicker="Networking"
         title="Security groups"
-        lede="Manage security groups that catalog offerings can lock or expose to tenant admins."
+        lede={
+          tenantSlug
+            ? 'Security groups that control network access for your organization workloads.'
+            : 'Manage security groups that catalog offerings can lock or expose to tenant admins.'
+        }
         action={
+          readOnly ? undefined : (
           <Button
             variant="primary"
             icon={<PlusIcon />}
             className="provider-admin-workspace-page__action"
-            onClick={openCreateModal}
+            onClick={openCreateWizard}
           >
             Create security group
           </Button>
+          )
         }
       />
 
@@ -297,12 +320,6 @@ export function ProviderAdminSecurityGroupsPage({
         </div>
       )}
 
-      <CreateSecurityGroupModal
-        isOpen={isCreateModalOpen}
-        virtualNetworks={virtualNetworks}
-        onClose={() => setIsCreateModalOpen(false)}
-        onCreated={() => setGroups(getProviderSecurityGroups())}
-      />
     </div>
   )
 }

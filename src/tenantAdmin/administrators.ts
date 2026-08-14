@@ -1,0 +1,108 @@
+import {
+  normalizePrimaryDomain,
+  type RegisteredOrganization,
+} from '../providerAdmin/organizations'
+import { updateProviderRegisteredOrganization } from '../providerSetup/storage'
+
+export type TenantAdministrator = {
+  name: string
+  email: string
+  isPrimary: boolean
+}
+
+export const TENANT_ADMINISTRATORS_DEMO = {
+  title: 'Administration',
+  lede: 'Manage who has tenant admin access to catalog, networking, and projects for your organization.',
+  addAdministratorLabel: 'Add tenant administrator',
+  primaryRoleLabel: 'Primary administrator',
+  additionalRoleLabel: 'Tenant administrator',
+  emptyTitle: 'No administrators match your filters',
+  emptyBody: 'Try a different role or search term, or clear filters.',
+  emptyOnlyPrimaryBody:
+    'You are the only tenant administrator. Add colleagues who should help manage this organization.',
+} as const
+
+export function listTenantAdministrators(
+  organization: RegisteredOrganization,
+): TenantAdministrator[] {
+  return [
+    {
+      name: organization.tenantAdminName,
+      email: organization.tenantAdminEmail,
+      isPrimary: true,
+    },
+    ...organization.additionalTenantAdmins.map((admin) => ({
+      name: admin.name,
+      email: admin.email,
+      isPrimary: false,
+    })),
+  ]
+}
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase()
+}
+
+export function emailMatchesOrganizationDomain(
+  email: string,
+  organization: RegisteredOrganization,
+): boolean {
+  const domain = normalizePrimaryDomain(organization.primaryDomain)
+  if (!domain || !email.includes('@')) {
+    return false
+  }
+
+  return email.split('@')[1]?.toLowerCase() === domain
+}
+
+export function isTenantAdministratorEmailTaken(
+  organization: RegisteredOrganization,
+  email: string,
+): boolean {
+  const normalized = normalizeEmail(email)
+  return listTenantAdministrators(organization).some(
+    (admin) => normalizeEmail(admin.email) === normalized,
+  )
+}
+
+export function addAdditionalTenantAdministrator(
+  organization: RegisteredOrganization,
+  admin: { name: string; email: string },
+): RegisteredOrganization | null {
+  const name = admin.name.trim()
+  const email = normalizeEmail(admin.email)
+
+  if (!name || !email || isTenantAdministratorEmailTaken(organization, email)) {
+    return null
+  }
+
+  if (!emailMatchesOrganizationDomain(email, organization)) {
+    return null
+  }
+
+  return updateProviderRegisteredOrganization(organization.id, {
+    additionalTenantAdmins: [
+      ...organization.additionalTenantAdmins,
+      { name, email },
+    ],
+    rbacConfigured: true,
+  })
+}
+
+export function removeAdditionalTenantAdministrator(
+  organization: RegisteredOrganization,
+  email: string,
+): RegisteredOrganization | null {
+  const normalized = normalizeEmail(email)
+  const nextAdmins = organization.additionalTenantAdmins.filter(
+    (admin) => normalizeEmail(admin.email) !== normalized,
+  )
+
+  if (nextAdmins.length === organization.additionalTenantAdmins.length) {
+    return null
+  }
+
+  return updateProviderRegisteredOrganization(organization.id, {
+    additionalTenantAdmins: nextAdmins,
+  })
+}

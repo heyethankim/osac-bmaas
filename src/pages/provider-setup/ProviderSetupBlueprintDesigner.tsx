@@ -22,6 +22,7 @@ import {
   WizardStep,
 } from '@patternfly/react-core'
 import { KubernetesResourceNameField } from '../../components/shared/KubernetesResourceNameHelper'
+import { useWizardLeaveConfirm } from '../../components/shared/useWizardLeaveConfirm'
 import {
   BLUEPRINT_DESIGNER_STEPS,
   DEFAULT_BLUEPRINT_FORM,
@@ -224,6 +225,12 @@ export function ProviderSetupBlueprintDesigner({
     resetDesigner()
     onClose()
   }
+
+  const { requestClose, leaveConfirmModal, wrapStepFooter } = useWizardLeaveConfirm({
+    onLeave: handleClose,
+    primaryActionLabel: isEditing ? 'Leave without saving' : 'Leave',
+    titleId: 'blueprint-designer-leave-confirm',
+  })
 
   const handleStartSave = () => {
     setTemplateRefId(existingTemplateRefId ?? generateTemplateReferenceId())
@@ -557,14 +564,14 @@ export function ProviderSetupBlueprintDesigner({
 
   function getReviewFooter() {
     if (reviewSaveState === 'idle') {
-      return {
+      return wrapStepFooter({
         nextButtonText: isEditing ? 'Save changes' : 'Save template',
         onNext: handleStartSave,
-      }
+      })
     }
 
     if (reviewSaveState === 'validating') {
-      return {
+      return wrapStepFooter({
         nextButtonText: (
           <span className="provider-setup-template__validating-footer-label">
             <Spinner size="sm" aria-label="Validating template" />
@@ -573,42 +580,43 @@ export function ProviderSetupBlueprintDesigner({
         ),
         isNextDisabled: true,
         isBackDisabled: true,
-      }
+      })
     }
 
-    return {
+    return wrapStepFooter({
       nextButtonText: 'Done',
       onNext: handleDone,
       isBackDisabled: true,
-    }
+    })
   }
 
   return (
-    <Modal
-      variant={ModalVariant.medium}
-      width="64rem"
-      maxWidth="64rem"
-      isOpen={isOpen}
-      onEscapePress={handleClose}
-      aria-labelledby="blueprint-designer-title"
-      className="provider-setup-template__designer-modal"
-    >
-      {isOpen ? (
-        <Wizard
-          key="blueprint-designer-wizard"
-          className="provider-setup-template__designer-wizard"
-          height="40rem"
-          onClose={handleClose}
-          header={
-            <WizardHeader
-              title={title}
-              titleId="blueprint-designer-title"
-              className="provider-setup-template__designer-header"
-              onClose={handleClose}
-              closeButtonAriaLabel={isEditing ? 'Close template editor' : 'Close template creator'}
-            />
-          }
-        >
+    <>
+      <Modal
+        variant={ModalVariant.medium}
+        width="64rem"
+        maxWidth="64rem"
+        isOpen={isOpen}
+        onEscapePress={requestClose}
+        aria-labelledby="blueprint-designer-title"
+        className="provider-setup-template__designer-modal"
+      >
+        {isOpen ? (
+          <Wizard
+            key="blueprint-designer-wizard"
+            className="provider-setup-template__designer-wizard"
+            height="40rem"
+            onClose={requestClose}
+            header={
+              <WizardHeader
+                title={title}
+                titleId="blueprint-designer-title"
+                className="provider-setup-template__designer-header"
+                onClose={requestClose}
+                closeButtonAriaLabel={isEditing ? 'Close template editor' : 'Close template creator'}
+              />
+            }
+          >
             {BLUEPRINT_DESIGNER_STEPS.map((step) => (
               <WizardStep
                 key={step.id}
@@ -618,14 +626,14 @@ export function ProviderSetupBlueprintDesigner({
                   step.id === 'review'
                     ? getReviewFooter()
                     : step.id === 'rate-card'
-                      ? { isNextDisabled: !parseRateCardFromForm(form) }
+                      ? wrapStepFooter({ isNextDisabled: !parseRateCardFromForm(form) })
                       : step.id === 'identity'
-                        ? {
+                        ? wrapStepFooter({
                             isNextDisabled:
                               !isValidKubernetesResourceName(form.templateName) ||
                               !form.description.trim(),
-                          }
-                        : undefined
+                          })
+                        : wrapStepFooter()
                 }
               >
                 <div className="provider-setup-template__wizard-step-body">
@@ -633,8 +641,10 @@ export function ProviderSetupBlueprintDesigner({
                 </div>
               </WizardStep>
             ))}
-        </Wizard>
-      ) : null}
-    </Modal>
+          </Wizard>
+        ) : null}
+      </Modal>
+      {leaveConfirmModal}
+    </>
   )
 }

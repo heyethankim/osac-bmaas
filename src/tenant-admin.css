@@ -122,6 +122,54 @@
   max-width: 42rem;
 }
 
+.tenant-admin-administration > .catalog-view-toolbar {
+  margin-block-end: 0;
+}
+
+.tenant-admin-administration > .catalog-table-panel {
+  margin-block-start: 0;
+}
+
+.tenant-admin-administration__table {
+  --pf-v6-c-table--cell--PaddingBlock: var(--pf-t--global--spacer--md);
+  table-layout: fixed;
+  width: 100%;
+}
+
+.tenant-admin-administration__col-name {
+  --pf-v6-c-table--cell--Width: 40%;
+  --pf-v6-c-table--cell--MinWidth: 14rem;
+  --pf-v6-c-table--cell--MaxWidth: none;
+  overflow-wrap: normal;
+}
+
+.tenant-admin-administration__col-role {
+  --pf-v6-c-table--cell--Width: 22%;
+  --pf-v6-c-table--cell--MinWidth: 10rem;
+}
+
+.tenant-admin-administration__col-name .tenant-admin-administration__primary-cell,
+.tenant-admin-administration__col-name .tenant-admin-administration__meta-cell,
+.tenant-admin-administration__table .tenant-admin-administration__primary-cell,
+.tenant-admin-administration__table .tenant-admin-administration__meta-cell {
+  margin: 0;
+}
+
+.tenant-admin-administration__primary-cell.pf-v6-c-content--p,
+.tenant-admin-administration__meta-cell.pf-v6-c-content--p {
+  margin: 0;
+}
+
+.tenant-admin-administration__meta-cell.pf-v6-c-content--p {
+  margin-block-start: var(--pf-t--global--spacer--xs);
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.tenant-admin-administration__table .pf-v6-c-table__tbody .pf-v6-c-table__td {
+  vertical-align: middle;
+}
+
 .tenant-admin-overview__cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));

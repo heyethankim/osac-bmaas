@@ -12,7 +12,7 @@ import {
   Title,
 } from '@patternfly/react-core'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table'
-import { CreateVirtualNetworkModal } from '../../components/provider-admin/CreateVirtualNetworkModal'
+import { CreateVirtualNetworkWizard } from '../../components/networking/CreateVirtualNetworkWizard'
 import { VirtualNetworkDetailsPage } from '../../components/provider-admin/VirtualNetworkDetailsPage'
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
 import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
@@ -25,13 +25,17 @@ import {
   getNetworkInventoryStatusLabelColor,
   NETWORK_INVENTORY_STATUSES,
 } from '../../providerAdmin/networkInventory'
-import { getProviderVirtualNetworks } from '../../providerSetup/storage'
+import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope'
 
 type ProviderAdminVirtualNetworksPageProps = {
   openVirtualNetworkId?: string | null
   onOpenVirtualNetworkConsumed?: () => void
   onNavigateToSubnet?: (subnetId: string) => void
   onNavigateToSecurityGroup?: (securityGroupId: string) => void
+  /** When set, reads and writes tenant-scoped inventory instead of provider global. */
+  tenantSlug?: string
+  /** Hide create actions (tenant user read-only view). */
+  readOnly?: boolean
 }
 
 export function ProviderAdminVirtualNetworksPage({
@@ -39,9 +43,12 @@ export function ProviderAdminVirtualNetworksPage({
   onOpenVirtualNetworkConsumed,
   onNavigateToSubnet,
   onNavigateToSecurityGroup,
+  tenantSlug,
+  readOnly = false,
 }: ProviderAdminVirtualNetworksPageProps = {}) {
-  const [networks, setNetworks] = useState(() => getProviderVirtualNetworks())
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const inventory = useMemo(() => resolveNetworkInventoryScope(tenantSlug), [tenantSlug])
+  const [networks, setNetworks] = useState(() => inventory.getVirtualNetworks())
+  const [isCreateWizardOpen, setIsCreateWizardOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<'all' | NetworkInventoryStatus>('all')
   const [selectedNetwork, setSelectedNetwork] = useState<ProviderVirtualNetwork | null>(null)
@@ -95,10 +102,22 @@ export function ProviderAdminVirtualNetworksPage({
     onOpenVirtualNetworkConsumed?.()
   }, [openVirtualNetworkId, networks, onOpenVirtualNetworkConsumed])
 
+  if (isCreateWizardOpen && !readOnly) {
+    return (
+      <CreateVirtualNetworkWizard
+        isOpen
+        tenantSlug={tenantSlug}
+        onClose={() => setIsCreateWizardOpen(false)}
+        onCreated={() => setNetworks(inventory.getVirtualNetworks())}
+      />
+    )
+  }
+
   if (isDetailsOpen && selectedNetwork) {
     return (
       <VirtualNetworkDetailsPage
         network={selectedNetwork}
+        tenantSlug={tenantSlug}
         onBack={closeDetails}
         onEdit={() => undefined}
         onDelete={() => undefined}
@@ -113,16 +132,22 @@ export function ProviderAdminVirtualNetworksPage({
       <ProviderAdminWorkspacePageHeader
         kicker="Networking"
         title="Virtual networks"
-        lede="Define and manage virtual networks used for tenant workloads, shared services, and catalog networking."
+        lede={
+          tenantSlug
+            ? 'Virtual networks your organization uses for workloads and catalog networking.'
+            : 'Define and manage virtual networks used for tenant workloads, shared services, and catalog networking.'
+        }
         action={
+          readOnly ? undefined : (
           <Button
             variant="primary"
             icon={<PlusIcon />}
             className="provider-admin-workspace-page__action"
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={() => setIsCreateWizardOpen(true)}
           >
             Create virtual network
           </Button>
+          )
         }
       />
 
@@ -242,11 +267,6 @@ export function ProviderAdminVirtualNetworksPage({
         </div>
       )}
 
-      <CreateVirtualNetworkModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onCreated={() => setNetworks(getProviderVirtualNetworks())}
-      />
     </div>
   )
 }
