@@ -321,6 +321,13 @@
   font-size: var(--pf-t--global--font--size--heading--sm);
 }
 
+.tenant-admin-projects-teams {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--lg);
+  max-width: none;
+}
+
 .tenant-admin-projects-teams__title.pf-v6-c-title {
   margin-block-end: var(--pf-t--global--spacer--sm);
 }
@@ -333,11 +340,19 @@
 
 .tenant-admin-projects-teams > .tenant-admin-projects-teams__lede.pf-v6-c-content--p,
 .tenant-admin-projects-teams__header .tenant-admin-projects-teams__lede.pf-v6-c-content--p {
-  margin-block-end: var(--pf-t--global--spacer--lg);
+  margin-block-end: var(--pf-t--global--spacer--md);
 }
 
 .tenant-admin-projects-teams__header {
   margin-block-end: 0;
+}
+
+.tenant-admin-projects-teams > .catalog-view-toolbar {
+  margin-block-end: 0;
+}
+
+.tenant-admin-projects-teams > .catalog-table-panel {
+  margin-block-start: 0;
 }
 
 .tenant-admin-projects-teams__header .tenant-admin-projects-teams__lede.pf-v6-c-content--p {

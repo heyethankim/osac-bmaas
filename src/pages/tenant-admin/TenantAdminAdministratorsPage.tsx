@@ -18,18 +18,18 @@ import {
 } from '@patternfly/react-core'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table'
 import { CatalogFilterEmptyState } from '../../components/catalog/CatalogFilterEmptyState'
+import { CatalogFilterResultsSummary } from '../../components/catalog/CatalogFilterResultsSummary'
 import { AddTenantAdministratorWizard } from '../../components/tenant-admin/AddTenantAdministratorWizard'
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
-import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import {
+  buildAdministratorFilterParts,
   listTenantAdministrators,
   removeAdditionalTenantAdministrator,
   TENANT_ADMINISTRATORS_DEMO,
+  type AdministratorRoleFilter,
   type TenantAdministrator,
 } from '../../tenantAdmin/administrators'
-
-type AdministratorRoleFilter = 'all' | 'primary' | 'additional'
 
 type TenantAdminAdministratorsPageProps = {
   organization: RegisteredOrganization
@@ -68,6 +68,11 @@ export function TenantAdminAdministratorsPage({
       )
     })
   }, [administrators, searchValue, selectedRole])
+
+  const filterDescriptionParts = useMemo(
+    () => buildAdministratorFilterParts(searchValue, selectedRole),
+    [searchValue, selectedRole],
+  )
 
   const hasActiveFilters = Boolean(searchValue.trim()) || selectedRole !== 'all'
 
@@ -210,9 +215,13 @@ export function TenantAdminAdministratorsPage({
         )
       ) : (
         <div className="catalog-table-panel">
-          <Content component="p" className="catalog-table-result-count">
-            {formatCatalogTableResultCount(filteredAdministrators.length, 'administrator')}
-          </Content>
+          <CatalogFilterResultsSummary
+            filteredCount={filteredAdministrators.length}
+            totalCount={administrators.length}
+            singular="administrator"
+            filterParts={filterDescriptionParts}
+            onClearFilters={clearAllFilters}
+          />
           <Table
             aria-label="Tenant administrators"
             className="catalog-data-table tenant-admin-administration__table"

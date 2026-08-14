@@ -106,6 +106,23 @@ function humanizeFilterPart(part: string): string {
     return `clusters using ${nodeSetMatch[1].trim()}`
   }
 
+  const environmentMatch = part.match(/^environment:\s*(.+)$/i)
+  if (environmentMatch) {
+    return `${environmentMatch[1].trim()} projects`
+  }
+
+  const roleMatch = part.match(/^role:\s*(.+)$/i)
+  if (roleMatch) {
+    const role = roleMatch[1].trim()
+    if (role === 'Primary administrator') {
+      return 'primary administrators'
+    }
+    if (role === 'Tenant administrator') {
+      return 'tenant administrators'
+    }
+    return `administrators with ${role.toLowerCase()} role`
+  }
+
   return part
 }
 

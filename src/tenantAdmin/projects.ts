@@ -271,6 +271,62 @@ export function getTenantProjectActions(
   ]
 }
 
+export type ProjectEnvironmentFilter = 'all' | TenantProjectEnvironment
+
+export const PROJECT_ENVIRONMENT_FILTER_OPTIONS: ReadonlyArray<{
+  value: ProjectEnvironmentFilter
+  label: string
+}> = [
+  { value: 'all', label: 'All environments' },
+  { value: 'development', label: TENANT_PROJECT_ENVIRONMENT_LABELS.development },
+  { value: 'staging', label: TENANT_PROJECT_ENVIRONMENT_LABELS.staging },
+  { value: 'production', label: TENANT_PROJECT_ENVIRONMENT_LABELS.production },
+  { value: 'research', label: TENANT_PROJECT_ENVIRONMENT_LABELS.research },
+]
+
+export function projectMatchesSearch(project: TenantProject, searchValue: string): boolean {
+  const query = searchValue.trim().toLowerCase()
+  if (!query) {
+    return true
+  }
+
+  return (
+    project.name.toLowerCase().includes(query) ||
+    project.id.toLowerCase().includes(query) ||
+    project.description.toLowerCase().includes(query) ||
+    getTenantProjectEnvironmentLabel(project.environmentType).toLowerCase().includes(query) ||
+    getTenantProjectPoolLabel(project).toLowerCase().includes(query)
+  )
+}
+
+export function matchesProjectEnvironmentFilter(
+  project: TenantProject,
+  selectedEnvironment: ProjectEnvironmentFilter,
+): boolean {
+  if (selectedEnvironment === 'all') {
+    return true
+  }
+
+  return project.environmentType === selectedEnvironment
+}
+
+export function buildProjectFilterParts(
+  searchValue: string,
+  selectedEnvironment: ProjectEnvironmentFilter,
+): string[] {
+  const parts: string[] = []
+
+  if (selectedEnvironment !== 'all') {
+    parts.push(`environment: ${getTenantProjectEnvironmentLabel(selectedEnvironment)}`)
+  }
+
+  if (searchValue.trim()) {
+    parts.push(`search: "${searchValue.trim()}"`)
+  }
+
+  return parts
+}
+
 export const TENANT_PROJECTS_TEAMS_DEMO = {
   lede: 'Carve your organization workspace into isolated projects and grant team members scoped access.',
   emptyTitle: 'No projects yet',

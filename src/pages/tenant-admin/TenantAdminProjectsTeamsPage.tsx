@@ -8,25 +8,34 @@ import {
   EmptyStateFooter,
   Flex,
   FlexItem,
+  FormSelect,
+  FormSelectOption,
   Modal,
   ModalBody,
   ModalFooter,
   ModalHeader,
   ModalVariant,
+  SearchInput,
   Title,
 } from '@patternfly/react-core'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table'
 import { CreateTenantProjectWizard } from '../../components/tenant-admin/CreateTenantProjectWizard'
 import { TenantProjectDetailsPage } from '../../components/tenant-admin/TenantProjectDetailsPage'
+import { CatalogFilterEmptyState } from '../../components/catalog/CatalogFilterEmptyState'
+import { CatalogFilterResultsSummary } from '../../components/catalog/CatalogFilterResultsSummary'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
-import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
 import {
+  buildProjectFilterParts,
   getTenantProjectActions,
   getTenantProjectMemberCountLabel,
   getTenantProjectPoolLabel,
   getTenantProjectServicesLabel,
+  matchesProjectEnvironmentFilter,
+  PROJECT_ENVIRONMENT_FILTER_OPTIONS,
+  projectMatchesSearch,
   TENANT_PROJECTS_TEAMS_DEMO,
+  type ProjectEnvironmentFilter,
   type TenantProject,
   type TenantProjectMember,
 } from '../../tenantAdmin/projects'
@@ -73,11 +82,33 @@ export function TenantAdminProjectsTeamsPage({
   const [selectedProject, setSelectedProject] = useState<TenantProject | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [projectPendingDelete, setProjectPendingDelete] = useState<TenantProject | null>(null)
+  const [searchValue, setSearchValue] = useState('')
+  const [selectedEnvironment, setSelectedEnvironment] = useState<ProjectEnvironmentFilter>('all')
 
   const sortedProjects = useMemo(
     () => [...projects].sort((left, right) => left.name.localeCompare(right.name)),
     [projects],
   )
+
+  const filteredProjects = useMemo(() => {
+    return sortedProjects.filter((project) => {
+      if (!matchesProjectEnvironmentFilter(project, selectedEnvironment)) {
+        return false
+      }
+
+      return projectMatchesSearch(project, searchValue)
+    })
+  }, [searchValue, selectedEnvironment, sortedProjects])
+
+  const filterDescriptionParts = useMemo(
+    () => buildProjectFilterParts(searchValue, selectedEnvironment),
+    [searchValue, selectedEnvironment],
+  )
+
+  const clearAllFilters = () => {
+    setSearchValue('')
+    setSelectedEnvironment('all')
+  }
 
   useEffect(() => {
     if (!openProjectId) {
@@ -284,10 +315,68 @@ export function TenantAdminProjectsTeamsPage({
       )}
 
       {sortedProjects.length > 0 ? (
+        <div className="catalog-view-toolbar">
+          <div className="catalog-view-toolbar__start">
+            <FormSelect
+              className="catalog-status-filter"
+              id="tenant-projects-environment-filter"
+              value={selectedEnvironment}
+              onChange={(_event, value) =>
+                setSelectedEnvironment(value as ProjectEnvironmentFilter)
+              }
+              aria-label="Filter projects by environment"
+            >
+              {PROJECT_ENVIRONMENT_FILTER_OPTIONS.map((option) => (
+                <FormSelectOption key={option.value} value={option.value} label={option.label} />
+              ))}
+            </FormSelect>
+            <SearchInput
+              className="catalog-search"
+              placeholder="Search projects"
+              value={searchValue}
+              onChange={(_event, value) => setSearchValue(value)}
+              onClear={() => setSearchValue('')}
+              aria-label="Search projects"
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {sortedProjects.length === 0 ? (
+        <EmptyState className="tenant-admin-projects-teams__empty">
+          <Title headingLevel="h2" size="lg">
+            {TENANT_PROJECTS_TEAMS_DEMO.emptyTitle}
+          </Title>
+          <EmptyStateBody className="tenant-admin-projects-teams__empty-body">
+            {TENANT_PROJECTS_TEAMS_DEMO.emptyBody}
+          </EmptyStateBody>
+          <EmptyStateFooter>
+            <EmptyStateActions>
+              <Button
+                variant="primary"
+                icon={<PlusIcon />}
+                onClick={() => setIsCreateModalOpen(true)}
+              >
+                {TENANT_PROJECTS_TEAMS_DEMO.createFirstProjectLabel}
+              </Button>
+            </EmptyStateActions>
+          </EmptyStateFooter>
+        </EmptyState>
+      ) : filteredProjects.length === 0 ? (
+        <CatalogFilterEmptyState
+          title="No projects match your filters"
+          description="Try a different environment or search term."
+          onClearFilters={clearAllFilters}
+        />
+      ) : (
         <div className="catalog-table-panel">
-          <Content component="p" className="catalog-table-result-count">
-            {formatCatalogTableResultCount(sortedProjects.length, 'project')}
-          </Content>
+          <CatalogFilterResultsSummary
+            filteredCount={filteredProjects.length}
+            totalCount={sortedProjects.length}
+            singular="project"
+            filterParts={filterDescriptionParts}
+            onClearFilters={clearAllFilters}
+          />
           <Table
             aria-label="Tenant projects"
             className="catalog-data-table tenant-admin-projects-teams__table"
@@ -303,7 +392,7 @@ export function TenantAdminProjectsTeamsPage({
               </Tr>
             </Thead>
             <Tbody>
-              {sortedProjects.map((project) => (
+              {filteredProjects.map((project) => (
                 <Tr key={project.id}>
                   <Td dataLabel="Name">
                     <Content component="p" className="tenant-admin-projects-teams__primary-cell">
@@ -341,26 +430,6 @@ export function TenantAdminProjectsTeamsPage({
             </Tbody>
           </Table>
         </div>
-      ) : (
-        <EmptyState className="tenant-admin-projects-teams__empty">
-          <Title headingLevel="h2" size="lg">
-            {TENANT_PROJECTS_TEAMS_DEMO.emptyTitle}
-          </Title>
-          <EmptyStateBody className="tenant-admin-projects-teams__empty-body">
-            {TENANT_PROJECTS_TEAMS_DEMO.emptyBody}
-          </EmptyStateBody>
-          <EmptyStateFooter>
-            <EmptyStateActions>
-              <Button
-                variant="primary"
-                icon={<PlusIcon />}
-                onClick={() => setIsCreateModalOpen(true)}
-              >
-                {TENANT_PROJECTS_TEAMS_DEMO.createFirstProjectLabel}
-              </Button>
-            </EmptyStateActions>
-          </EmptyStateFooter>
-        </EmptyState>
       )}
 
       {deleteConfirmModal}

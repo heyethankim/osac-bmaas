@@ -10,6 +10,8 @@ export type TenantAdministrator = {
   isPrimary: boolean
 }
 
+export type AdministratorRoleFilter = 'all' | 'primary' | 'additional'
+
 export const TENANT_ADMINISTRATORS_DEMO = {
   title: 'Administration',
   lede: 'Manage who has tenant admin access to catalog, networking, and projects for your organization.',
@@ -37,6 +39,25 @@ export function listTenantAdministrators(
       isPrimary: false,
     })),
   ]
+}
+
+export function buildAdministratorFilterParts(
+  searchValue: string,
+  selectedRole: AdministratorRoleFilter,
+): string[] {
+  const parts: string[] = []
+
+  if (selectedRole === 'primary') {
+    parts.push(`role: ${TENANT_ADMINISTRATORS_DEMO.primaryRoleLabel}`)
+  } else if (selectedRole === 'additional') {
+    parts.push(`role: ${TENANT_ADMINISTRATORS_DEMO.additionalRoleLabel}`)
+  }
+
+  if (searchValue.trim()) {
+    parts.push(`search: "${searchValue.trim()}"`)
+  }
+
+  return parts
 }
 
 function normalizeEmail(email: string): string {
