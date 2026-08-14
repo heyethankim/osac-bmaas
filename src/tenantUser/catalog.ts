@@ -1,5 +1,5 @@
 import type { CatalogSpecRow } from '../catalog/catalogSpecs'
-import { resolveCatalogOsImage, resolveCatalogSpecRows } from '../catalog/catalogSpecs'
+import { resolveCatalogOsImage, resolveCatalogSpecRows, getCatalogSpecRowValue } from '../catalog/catalogSpecs'
 import type { CatalogFieldPolicy } from '../catalog/catalogPublishConfig'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../providerSetup/storage'
@@ -101,6 +101,7 @@ export const TENANT_USER_CATALOG_FALLBACK: TenantUserCatalogCard = {
   categoryLabel: TENANT_USER_CATALOG_SPECS.categoryLabel,
   hardwareProfile: TENANT_USER_CATALOG_SPECS.hardwareProfile,
   specRows: [
+    { label: 'Size', value: 'Large' },
     { label: 'CPU', value: TENANT_USER_CATALOG_SPECS.cpu },
     { label: 'RAM', value: TENANT_USER_CATALOG_SPECS.ram },
     { label: 'GPU', value: TENANT_USER_CATALOG_SPECS.gpu },
@@ -176,9 +177,9 @@ export function getTenantUserCatalogCardFromDraft(
     categoryLabel: specRows.map((row) => row.value).join(' · '),
     hardwareProfile: getHardwareProfileLabel(serviceId, specRows),
     specRows,
-    cpu: specRows[0]?.value ?? '—',
-    ram: specRows[1]?.value ?? '—',
-    gpu: specRows[2]?.value ?? '—',
+    cpu: getCatalogSpecRowValue(specRows, 'CPU'),
+    ram: getCatalogSpecRowValue(specRows, 'RAM'),
+    gpu: getCatalogSpecRowValue(specRows, 'GPU'),
     osImage: resolveCatalogOsImage(catalog),
     footerNote: getFooterNote(serviceId),
     catalogItemId: catalog.catalogItemId,

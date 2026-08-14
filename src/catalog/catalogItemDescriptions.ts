@@ -10,20 +10,20 @@ export const DEMO_CATALOG_ITEM_IDS = {
 /** User-facing guidance shown on catalog detail pages and demo catalog seeds. */
 export const CATALOG_ITEM_DESCRIPTIONS_BY_ID: Readonly<Record<string, string>> = {
   [DEMO_CATALOG_ITEM_IDS.bareMetalGpuTraining]:
-    'Use this server when you need dedicated compute for training or batch jobs. Review the hardware below, then launch when you are ready.',
+    'Use this server when you need dedicated compute for training or batch jobs.',
   [DEMO_CATALOG_ITEM_IDS.bareMetalDenseGpu]:
     'Use this GPU server for model training or inference workloads that need accelerators.',
   [DEMO_CATALOG_ITEM_IDS.clusterNodeSets]:
-    'Use this offering to launch an OpenShift cluster. Confirm the cluster settings below, then launch when you are ready.',
+    'Use this offering to launch an OpenShift cluster.',
   [DEMO_CATALOG_ITEM_IDS.vmNetworkAttachments]:
     'Use this virtual machine for apps, testing, or development. You can adjust networking when you launch.',
 }
 
 export const CATALOG_ITEM_DESCRIPTIONS_BY_SERVICE: Readonly<Record<CatalogServiceId, string>> = {
   baremetal:
-    'Use this bare metal server when you need dedicated hardware. Review the configuration below, then launch when you are ready.',
+    'Use this bare metal server when you need dedicated hardware.',
   cluster:
-    'Use this cluster offering to run containerized applications. Review the settings below, then launch when you are ready.',
+    'Use this cluster offering to run containerized applications.',
   'virtual-machine':
     'Use this virtual machine for apps, testing, or development. Review the configuration below, then launch when you are ready.',
   models:

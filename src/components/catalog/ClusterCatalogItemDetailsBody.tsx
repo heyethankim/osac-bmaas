@@ -20,7 +20,6 @@ export type ClusterCatalogDetailsContent = {
   service: string
   statusLabel: string
   statusColor: 'green' | 'grey' | 'blue'
-  catalogItemId: string
   rateSummary: string
   scope: PublishCatalogScope
   visibilityLabel: string
@@ -100,12 +99,6 @@ export function ClusterCatalogItemDetailsBody({
               <Label color={content.statusColor} isCompact>
                 {content.statusLabel}
               </Label>
-            </DescriptionListDescription>
-          </DescriptionListGroup>
-          <DescriptionListGroup>
-            <DescriptionListTerm>Catalog item ID</DescriptionListTerm>
-            <DescriptionListDescription>
-              <code>{content.catalogItemId}</code>
             </DescriptionListDescription>
           </DescriptionListGroup>
           <DescriptionListGroup>

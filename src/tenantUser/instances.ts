@@ -1,5 +1,6 @@
 import type { CatalogSpecRow } from '../catalog/catalogSpecs'
 import {
+  resolveBaremetalSizeLabel,
   resolveCatalogSpecRows,
   resolveClusterCatalogHighlightRows,
 } from '../catalog/catalogSpecs'
@@ -162,11 +163,14 @@ export function getTenantInstanceServiceId(instance: TenantInstance): CatalogSer
 
 /** Spec rows for cards and drawers; prefers rows captured at launch. */
 export function getTenantInstanceSpecRows(instance: TenantInstance): CatalogSpecRow[] {
+  const serviceId = getTenantInstanceServiceId(instance)
+
   if (instance.specRows?.length) {
+    if (serviceId === 'baremetal') {
+      return ensureBaremetalInstanceSpecRows(instance, instance.specRows)
+    }
     return instance.specRows
   }
-
-  const serviceId = getTenantInstanceServiceId(instance)
 
   if (serviceId === 'cluster' || serviceId === 'virtual-machine') {
     return resolveCatalogSpecRows(
@@ -1184,6 +1188,27 @@ function normalizeBareMetalCardSpecRows(rows: CatalogSpecRow[]): CatalogSpecRow[
   )
 }
 
+function ensureBaremetalInstanceSpecRows(
+  instance: TenantInstance,
+  rows: CatalogSpecRow[],
+): CatalogSpecRow[] {
+  const normalized = normalizeBareMetalCardSpecRows(rows)
+  if (normalized.some((row) => row.label === 'Size')) {
+    return normalized
+  }
+
+  const catalog = findCatalogDraftForInstance(instance)
+  const sizeLabel = catalog
+    ? resolveBaremetalSizeLabel(catalog.instanceTypeId, catalog.instanceTypeLabel)
+    : undefined
+
+  if (!sizeLabel) {
+    return normalized
+  }
+
+  return [{ label: 'Size', value: sizeLabel }, ...normalized]
+}
+
 /** Card highlights for Virtual machines — include OS so OS filters are scannable. */
 export function getTenantInstanceCardSpecRows(instance: TenantInstance): CatalogSpecRow[] {
   const serviceId = getTenantInstanceServiceId(instance)
@@ -1345,12 +1370,25 @@ function createDemoTenantBareMetalInstanceVariant(
   },
 ): TenantInstance {
   const createdAt = new Date(Date.now() - 1000 * 60 * 60 * options.hoursAgo).toISOString()
+  const catalogItemDisplayName =
+    options.catalogItemDisplayName ?? 'bare-metal-gpu-training-server'
+  const catalog = getProviderCatalogItems().find(
+    (item) => item.displayName.trim().toLowerCase() === catalogItemDisplayName.trim().toLowerCase(),
+  )
+  const sizeLabel = catalog
+    ? resolveBaremetalSizeLabel(catalog.instanceTypeId, catalog.instanceTypeLabel)
+    : undefined
+  const baseSpecRows: CatalogSpecRow[] = [
+    { label: 'CPU', value: options.cpu },
+    { label: 'RAM', value: options.ram },
+    { label: 'GPU', value: options.gpuLabel },
+    { label: 'Disk image', value: options.osImage },
+  ]
 
   return {
     id: options.id,
     name: options.name,
-    catalogItemDisplayName:
-      options.catalogItemDisplayName ?? 'bare-metal-gpu-training-server',
+    catalogItemDisplayName,
     serviceId: 'baremetal',
     hardwareProfile: options.hardwareProfile,
     osImage: options.osImage,
@@ -1362,12 +1400,9 @@ function createDemoTenantBareMetalInstanceVariant(
       securityGroup: 'allow-ssh-https',
     },
     gpuLabel: options.gpuLabel,
-    specRows: [
-      { label: 'CPU', value: options.cpu },
-      { label: 'RAM', value: options.ram },
-      { label: 'GPU', value: options.gpuLabel },
-      { label: 'Disk image', value: options.osImage },
-    ],
+    specRows: sizeLabel
+      ? [{ label: 'Size', value: sizeLabel }, ...baseSpecRows]
+      : baseSpecRows,
     inventory:
       options.status === 'provisioning'
         ? undefined

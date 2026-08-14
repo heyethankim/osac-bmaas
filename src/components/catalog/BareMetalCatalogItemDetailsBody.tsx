@@ -10,6 +10,7 @@ import {
 import type { CatalogSpecRow } from '../../catalog/catalogSpecs'
 import { getCatalogSpecsSectionLabel } from '../../catalog/catalogSpecs'
 import type { PublishCatalogScope } from '../../providerSetup/templateDemo'
+import { CatalogDiskImageValue } from './CatalogDiskImageValue'
 import { CatalogPublishScopeIcon } from '../provider-admin/CatalogPublishScopeIcon'
 
 export type BareMetalCatalogDetailsVariant = 'entity' | 'provider'
@@ -18,7 +19,6 @@ export type BareMetalCatalogDetailsContent = {
   service: string
   statusLabel: string
   statusColor: 'green' | 'grey' | 'blue'
-  catalogItemId: string
   rateSummary: string
   scope: PublishCatalogScope
   visibilityLabel: string
@@ -34,6 +34,14 @@ type BareMetalCatalogItemDetailsBodyProps = {
 
 function getClassPrefix(variant: BareMetalCatalogDetailsVariant): string {
   return variant === 'entity' ? 'entity-details-page' : 'provider-admin-catalog-item-details'
+}
+
+function renderHardwareSpecRowValue(row: CatalogSpecRow) {
+  if (row.label === 'Disk image') {
+    return <CatalogDiskImageValue>{row.value}</CatalogDiskImageValue>
+  }
+
+  return row.value
 }
 
 export function BareMetalCatalogItemDetailsBody({
@@ -71,12 +79,6 @@ export function BareMetalCatalogItemDetailsBody({
               <Label color={content.statusColor} isCompact>
                 {content.statusLabel}
               </Label>
-            </DescriptionListDescription>
-          </DescriptionListGroup>
-          <DescriptionListGroup>
-            <DescriptionListTerm>Catalog item ID</DescriptionListTerm>
-            <DescriptionListDescription>
-              <code>{content.catalogItemId}</code>
             </DescriptionListDescription>
           </DescriptionListGroup>
           <DescriptionListGroup>
@@ -136,7 +138,9 @@ export function BareMetalCatalogItemDetailsBody({
               {content.hardwareSpecRows.map((row) => (
                 <DescriptionListGroup key={row.label}>
                   <DescriptionListTerm>{row.label}</DescriptionListTerm>
-                  <DescriptionListDescription>{row.value}</DescriptionListDescription>
+                  <DescriptionListDescription>
+                    {renderHardwareSpecRowValue(row)}
+                  </DescriptionListDescription>
                 </DescriptionListGroup>
               ))}
             </DescriptionList>

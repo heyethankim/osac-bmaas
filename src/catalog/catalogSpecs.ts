@@ -1,6 +1,7 @@
 import type { ProviderCatalogDraft } from '../providerSetup/storage'
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
 import {
+  CATALOG_INSTANCE_TYPE_OPTIONS,
   formatClusterHostTypeLabel,
   formatClusterNodeSetLabel,
   formatClusterPlatformLabel,
@@ -21,6 +22,10 @@ export type CatalogSpecRow = {
     text: string
     color: 'blue' | 'teal' | 'grey' | 'green' | 'orange' | 'purple'
   }
+}
+
+export function getCatalogSpecRowValue(rows: CatalogSpecRow[], label: string): string {
+  return rows.find((row) => row.label === label)?.value ?? '—'
 }
 
 /** Demo offering: object-level validation on `node_sets.fc430`. */
@@ -46,12 +51,9 @@ export const CLUSTER_NODE_SETS_RATE_CARD = {
   billingUnit: 'per-instance' as const,
 }
 
-/** Extra drawer-only rows for Cluster offerings. */
+/** Extra detail-page rows for Cluster offerings (tenant-facing). */
 const CLUSTER_NODE_SETS_DETAIL_ROWS: CatalogSpecRow[] = [
-  { label: 'Control plane', value: '3× master · highly available' },
-  { label: 'Size range', value: '1–4 nodes' },
-  { label: 'CNI', value: 'OVN-Kubernetes' },
-  { label: 'Validation', value: 'ClusterNodeSet object schema' },
+  { label: 'Worker nodes', value: '1–4 nodes' },
 ]
 
 /** Demo offering: whole-array validation on `network_attachments`. */
@@ -105,6 +107,28 @@ export function parseCatalogInstanceTypeParts(instanceTypeLabel: string): {
     return { label: match[1].trim(), size: match[2].trim() }
   }
   return { label: instanceTypeLabel.trim() }
+}
+
+/** Small / Medium / Large preset label for bare metal catalog specifications. */
+export function resolveBaremetalSizeLabel(
+  instanceTypeId?: string,
+  instanceTypeLabel?: string,
+): string | undefined {
+  if (instanceTypeId) {
+    const byId = CATALOG_INSTANCE_TYPE_OPTIONS.find((option) => option.id === instanceTypeId)
+    if (byId) {
+      return byId.label
+    }
+  }
+
+  if (instanceTypeLabel?.trim()) {
+    const { label } = parseCatalogInstanceTypeParts(instanceTypeLabel.trim())
+    if (CATALOG_INSTANCE_TYPE_OPTIONS.some((option) => option.label === label)) {
+      return label
+    }
+  }
+
+  return undefined
 }
 
 export function resolveCatalogOsImage(
@@ -298,20 +322,29 @@ function parseBaremetalHardwareFromInstanceTypeLabel(instanceTypeLabel: string):
 function buildBaremetalCatalogSpecRows(
   item: Pick<
     ProviderCatalogDraft,
-    'templateRefId' | 'templateName' | 'instanceTypeLabel' | 'diskImageLabel'
+    'templateRefId' | 'templateName' | 'instanceTypeId' | 'instanceTypeLabel' | 'diskImageLabel'
   >,
 ): CatalogSpecRow[] {
   const hardware = resolveHardwareSpecsForCatalogItem(item)
   const parsed = item.instanceTypeLabel
     ? parseBaremetalHardwareFromInstanceTypeLabel(item.instanceTypeLabel)
     : null
+  const sizeLabel = resolveBaremetalSizeLabel(item.instanceTypeId, item.instanceTypeLabel)
 
-  return [
+  const rows: CatalogSpecRow[] = []
+
+  if (sizeLabel) {
+    rows.push({ label: 'Size', value: sizeLabel })
+  }
+
+  rows.push(
     { label: 'CPU', value: parsed?.cpu ?? hardware.cpu },
     { label: 'RAM', value: parsed?.ram ?? hardware.ram },
     { label: 'GPU', value: parsed?.gpu ?? hardware.gpu },
     { label: 'Disk image', value: item.diskImageLabel?.trim() || hardware.osImage },
-  ]
+  )
+
+  return rows
 }
 
 export function resolveCatalogSpecRows(
@@ -320,6 +353,7 @@ export function resolveCatalogSpecRows(
     | 'serviceId'
     | 'templateRefId'
     | 'templateName'
+    | 'instanceTypeId'
     | 'instanceTypeLabel'
     | 'diskImageLabel'
     | 'diskImageId'

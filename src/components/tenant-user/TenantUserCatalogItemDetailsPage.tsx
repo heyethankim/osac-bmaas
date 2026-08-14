@@ -146,7 +146,6 @@ export function TenantUserCatalogItemDetailsPage({
             service: catalogItem.service,
             statusLabel: catalogItem.status,
             statusColor: 'green',
-            catalogItemId: catalogItem.catalogItemId,
             rateSummary: formatRateCardSummary(catalogItem.rateCard),
             scope: catalogItem.scope,
             visibilityLabel:
@@ -172,7 +171,6 @@ export function TenantUserCatalogItemDetailsPage({
             service: catalogItem.service,
             statusLabel: catalogItem.status,
             statusColor: 'green',
-            catalogItemId: catalogItem.catalogItemId,
             rateSummary: formatRateCardSummary(catalogItem.rateCard),
             scope: catalogItem.scope,
             visibilityLabel:

@@ -22,6 +22,7 @@ import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import { EntityDetailsPageShell } from '../shared/EntityDetailsPageShell'
 import { AddInstanceProjectModal } from './AddInstanceProjectModal'
 import { CatalogClusterVersionValue } from '../catalog/CatalogClusterVersionValue'
+import { CatalogDiskImageValue } from '../catalog/CatalogDiskImageValue'
 import { CatalogNetworkingLocksSection } from '../catalog/CatalogNetworkingLocksSection'
 import { CatalogNetworkingSummarySection } from '../catalog/CatalogNetworkingSummarySection'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
@@ -1651,12 +1652,6 @@ function DefaultInstancePageBody({
                     </DescriptionListDescription>
                   </DescriptionListGroup>
                 ) : null}
-                <DescriptionListGroup>
-                  <DescriptionListTerm>Instance ID</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    <code>{instance.id}</code>
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
                 {isBareMetal ? (
                   <>
                     <DescriptionListGroup>
@@ -1804,7 +1799,13 @@ function DefaultInstancePageBody({
               {specRows.map((row) => (
                 <DescriptionListGroup key={row.label}>
                   <DescriptionListTerm>{row.label}</DescriptionListTerm>
-                  <DescriptionListDescription>{row.value}</DescriptionListDescription>
+                  <DescriptionListDescription>
+                    {row.label === 'Disk image' ? (
+                      <CatalogDiskImageValue>{row.value}</CatalogDiskImageValue>
+                    ) : (
+                      row.value
+                    )}
+                  </DescriptionListDescription>
                 </DescriptionListGroup>
               ))}
               {isBareMetal ? (

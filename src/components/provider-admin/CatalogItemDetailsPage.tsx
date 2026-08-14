@@ -335,7 +335,6 @@ export function CatalogItemDetailsPage({
                 service: CATALOG_SERVICE_FILTER_LABELS[serviceId],
                 statusLabel: showLaunch ? 'Live' : showPublishing ? 'Publishing' : 'Unpublished',
                 statusColor: showLaunch ? 'green' : showPublishing ? 'blue' : 'grey',
-                catalogItemId: catalog.catalogItemId,
                 rateSummary: formatRateCardSummary(catalog.rateCard),
                 scope: catalog.scope,
                 visibilityLabel: scopeLabel,
@@ -351,7 +350,6 @@ export function CatalogItemDetailsPage({
                 service: CATALOG_SERVICE_FILTER_LABELS[serviceId],
                 statusLabel: showLaunch ? 'Live' : showPublishing ? 'Publishing' : 'Unpublished',
                 statusColor: showLaunch ? 'green' : showPublishing ? 'blue' : 'grey',
-                catalogItemId: catalog.catalogItemId,
                 rateSummary: formatRateCardSummary(catalog.rateCard),
                 scope: catalog.scope,
                 visibilityLabel: scopeLabel,
@@ -391,12 +389,6 @@ export function CatalogItemDetailsPage({
                     >
                       {showLaunch ? 'Live' : showPublishing ? 'Publishing' : 'Unpublished'}
                     </Label>
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
-                <DescriptionListGroup>
-                  <DescriptionListTerm>Catalog item ID</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    <code>{catalog.catalogItemId}</code>
                   </DescriptionListDescription>
                 </DescriptionListGroup>
                 <DescriptionListGroup>

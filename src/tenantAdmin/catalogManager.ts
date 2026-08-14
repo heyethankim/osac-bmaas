@@ -12,6 +12,7 @@ import type { CatalogNetworkPolicy } from '../providerAdmin/catalogNetworkPolicy
 import { DEFAULT_CATALOG_NETWORK_POLICY } from '../providerAdmin/catalogNetworkPolicy'
 import {
   type CatalogSpecRow,
+  getCatalogSpecRowValue,
   resolveCatalogOsImage,
   resolveCatalogSpecRows,
 } from '../catalog/catalogSpecs'
@@ -157,9 +158,9 @@ function mapProviderCatalogToGovernanceItem(
     fieldPolicies: draft.fieldPolicies,
     specRows,
     categoryLabel: specRows.map((row) => row.value).join(' · '),
-    cpu: specRows[0]?.value ?? '—',
-    ram: specRows[1]?.value ?? '—',
-    gpu: specRows[2]?.value ?? '—',
+    cpu: getCatalogSpecRowValue(specRows, 'CPU'),
+    ram: getCatalogSpecRowValue(specRows, 'RAM'),
+    gpu: getCatalogSpecRowValue(specRows, 'GPU'),
     osImage: resolveCatalogOsImage(draft),
     restricted: draft.scope === 'vip-enterprise',
     approved: true,

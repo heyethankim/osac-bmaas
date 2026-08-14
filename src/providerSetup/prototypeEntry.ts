@@ -25,6 +25,7 @@ import {
   DEFAULT_CLUSTER_CATALOG_VERSION_ID,
   DEFAULT_CLUSTER_HOST_TYPE_ID,
   DEFAULT_CLUSTER_NODE_SET_ID,
+  formatBaremetalInstanceTypeLabel,
   formatClusterHostTypeLabel,
   formatClusterNodeSetLabel,
   formatClusterPlatformLabel,
@@ -73,6 +74,24 @@ export const LEGACY_BARE_METAL_GPU_TEMPLATE_REF_ID = 'bm_dell_r750'
 
 /** Second Bare Metal offering — HPE ProLiant DL380 with A100 GPUs. */
 export const BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID = 'cat-bm-dense-gpu'
+
+const BARE_METAL_GPU_TRAINING_INSTANCE_TYPE_ID = 'large'
+const BARE_METAL_AI_INFERENCE_INSTANCE_TYPE_ID = 'medium'
+
+function patchBaremetalInstanceTypeIfNeeded(
+  catalogItemId: string,
+  instanceTypeId: string,
+): void {
+  const current = getProviderCatalogItems().find((item) => item.catalogItemId === catalogItemId)
+  if (!current || current.instanceTypeId === instanceTypeId) {
+    return
+  }
+
+  patchProviderCatalogItem(catalogItemId, {
+    instanceTypeId,
+    instanceTypeLabel: formatBaremetalInstanceTypeLabel(instanceTypeId),
+  })
+}
 export const BARE_METAL_AI_INFERENCE_TEMPLATE_REF_ID = 'bm-hpe-dl380-a100'
 export const LEGACY_BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID = 'cat_BM_AI_INFERENCE'
 export const LEGACY_BARE_METAL_AI_INFERENCE_TEMPLATE_REF_ID = 'bm_hpe_dl380_a100'
@@ -131,6 +150,8 @@ function createDefaultCatalogDraft(): ProviderCatalogDraft {
     scope: 'global-public',
     rateCard: DEFAULT_RATE_CARD,
     serviceId: 'baremetal',
+    instanceTypeId: BARE_METAL_GPU_TRAINING_INSTANCE_TYPE_ID,
+    instanceTypeLabel: formatBaremetalInstanceTypeLabel(BARE_METAL_GPU_TRAINING_INSTANCE_TYPE_ID),
     networkPolicy: createAllEditableCatalogNetworkPolicy(),
     status: 'live',
     createdAt: new Date().toISOString(),
@@ -150,6 +171,8 @@ function createBareMetalAiInferenceCatalogDraft(): ProviderCatalogDraft {
     enterpriseTenantId: DEMO_NORTH_SUMMIT_BANK_TENANT_ID,
     rateCard,
     serviceId: 'baremetal',
+    instanceTypeId: BARE_METAL_AI_INFERENCE_INSTANCE_TYPE_ID,
+    instanceTypeLabel: formatBaremetalInstanceTypeLabel(BARE_METAL_AI_INFERENCE_INSTANCE_TYPE_ID),
     networkPolicy: createAllEditableCatalogNetworkPolicy(),
     status: 'unpublished',
     createdAt: new Date().toISOString(),
@@ -241,6 +264,10 @@ function syncBareMetalAiInferenceCatalogItem(): void {
     findBareMetalAiInferenceCatalogItem(getProviderCatalogItems()) ?? current
 
   // Preserve publish state so detail-page Publish → Launch instance stays user-driven.
+  patchBaremetalInstanceTypeIfNeeded(
+    BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID,
+    BARE_METAL_AI_INFERENCE_INSTANCE_TYPE_ID,
+  )
 
   // Keep North Summit Bank pointed at this VIP offering so tenant personas resolve it.
   const denseGpu = synced
@@ -291,6 +318,10 @@ function syncBareMetalGpuTrainingCatalogItem(): void {
 
   // Preserve the item's current publish state so detail-page publish/unpublish
   // transitions are user-driven during demos.
+  patchBaremetalInstanceTypeIfNeeded(
+    BARE_METAL_GPU_CATALOG_ITEM_ID,
+    BARE_METAL_GPU_TRAINING_INSTANCE_TYPE_ID,
+  )
 }
 
 /**

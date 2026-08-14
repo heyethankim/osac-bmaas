@@ -467,6 +467,17 @@ export const CATALOG_INSTANCE_TYPE_OPTIONS: ReadonlyArray<CatalogInstanceTypeOpt
   },
 ]
 
+export function formatBaremetalInstanceTypeLabel(instanceTypeId: string): string | undefined {
+  const option = CATALOG_INSTANCE_TYPE_OPTIONS.find((item) => item.id === instanceTypeId)
+  if (!option) {
+    return undefined
+  }
+
+  return option.accelerator
+    ? `${option.label} (${option.detail} · ${option.accelerator})`
+    : `${option.label} (${option.detail})`
+}
+
 /** CPU/memory-only presets for virtual machine catalog items. */
 export const CATALOG_VM_INSTANCE_TYPE_OPTIONS: ReadonlyArray<CatalogInstanceTypeOption> = [
   { id: 'small', label: 'Small', detail: '4 vCPU · 16 GB', hourlyRate: '$0.48/hr' },
@@ -537,6 +548,22 @@ export function getCatalogInstanceTypeOptions(
 
 export function getCatalogDiskImageOptions(): CatalogDiskImageOption[] {
   return [...CATALOG_DISK_IMAGE_OPTIONS]
+}
+
+/** RHEL and other Red Hat OS images show the brand mark on catalog detail pages. */
+export function isRedHatBrandedDiskImageLabel(label: string): boolean {
+  const trimmed = label.trim()
+  if (!trimmed) {
+    return false
+  }
+
+  if (/^Red Hat\b/i.test(trimmed) || /^RHEL\b/i.test(trimmed)) {
+    return true
+  }
+
+  return CATALOG_DISK_IMAGE_OPTIONS.some(
+    (option) => option.id.startsWith('rhel-') && option.label === trimmed,
+  )
 }
 
 export const CATALOG_CLUSTER_VERSION_OPTIONS: ReadonlyArray<CatalogClusterVersionOption> = [
