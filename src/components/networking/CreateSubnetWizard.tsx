@@ -43,7 +43,17 @@ function buildDemoForm(virtualNetworks: ProviderVirtualNetwork[]): CreateSubnetF
   }
 }
 
-const CREATE_SUBNET_STEPS = [
+function buildFormFromSubnet(subnet: ProviderSubnet): CreateSubnetForm {
+  return {
+    name: subnet.name,
+    detail: subnet.detail,
+    cidr: subnet.cidr,
+    vlan: subnet.vlan,
+    virtualNetworkId: subnet.virtualNetworkId,
+  }
+}
+
+const SUBNET_WIZARD_STEPS = [
   { id: 'subnet', label: 'Subnet' },
   NETWORK_INVENTORY_CREATE_REVIEW_STEP,
 ] as const
@@ -53,6 +63,7 @@ type CreateSubnetWizardProps = {
   parentLabel?: string
   virtualNetworks: ProviderVirtualNetwork[]
   tenantSlug?: string
+  resource?: ProviderSubnet | null
   onClose: () => void
   onCreated: (subnet: ProviderSubnet) => void
 }
@@ -62,16 +73,21 @@ export function CreateSubnetWizard({
   parentLabel = 'Subnets',
   virtualNetworks,
   tenantSlug,
+  resource = null,
   onClose,
   onCreated,
 }: CreateSubnetWizardProps) {
+  const isEditMode = resource !== null
   const [form, setForm] = useState<CreateSubnetForm>(() => buildDemoForm(virtualNetworks))
 
   useEffect(() => {
-    if (isOpen) {
+    if (!isOpen) {
       setForm(buildDemoForm(virtualNetworks))
+      return
     }
-  }, [isOpen, virtualNetworks])
+
+    setForm(resource ? buildFormFromSubnet(resource) : buildDemoForm(virtualNetworks))
+  }, [isOpen, resource, virtualNetworks])
 
   const isNameValid = isValidKubernetesResourceName(form.name)
   const isDetailsStepValid =
@@ -89,25 +105,40 @@ export function CreateSubnetWizard({
     onClose()
   }
 
-  const handleCreate = () => {
+  const handleSubmit = () => {
     if (!isDetailsStepValid) {
       return
     }
 
     const cidr = form.cidr.trim()
     const vlan = form.vlan.trim()
-    const subnet: ProviderSubnet = {
-      id: generateProviderSubnetId(),
-      name: form.name.trim(),
-      cidr,
-      vlan,
-      detail: form.detail.trim() || formatSubnetDetail(cidr, vlan),
-      virtualNetworkId: form.virtualNetworkId,
-      createdAt: new Date().toISOString(),
-      status: 'Ready',
+    const scope = resolveNetworkInventoryScope(tenantSlug)
+    const subnet: ProviderSubnet = isEditMode
+      ? {
+          ...resource,
+          name: form.name.trim(),
+          cidr,
+          vlan,
+          detail: form.detail.trim() || formatSubnetDetail(cidr, vlan),
+          virtualNetworkId: form.virtualNetworkId,
+        }
+      : {
+          id: generateProviderSubnetId(),
+          name: form.name.trim(),
+          cidr,
+          vlan,
+          detail: form.detail.trim() || formatSubnetDetail(cidr, vlan),
+          virtualNetworkId: form.virtualNetworkId,
+          createdAt: new Date().toISOString(),
+          status: 'Ready',
+        }
+
+    if (isEditMode) {
+      scope.updateSubnet(subnet)
+    } else {
+      scope.addSubnet(subnet)
     }
 
-    resolveNetworkInventoryScope(tenantSlug).addSubnet(subnet)
     onCreated(subnet)
     handleClose()
   }
@@ -117,8 +148,9 @@ export function CreateSubnetWizard({
       return (
         <div className="provider-admin-network-inventory__wizard-step">
           <Content component="p" className="provider-admin-network-inventory__wizard-lede">
-            Subnets are scoped to a virtual network and appear in launch networking for that
-            network.
+            {isEditMode
+              ? 'Update subnet addressing and virtual network scope.'
+              : 'Subnets are scoped to a virtual network and appear in launch networking for that network.'}
           </Content>
           <Form autoComplete="off" className="provider-admin-network-inventory__form">
             <FormGroup label="Name" fieldId="create-subnet-name" isRequired>
@@ -128,6 +160,7 @@ export function CreateSubnetWizard({
                 onChange={(value) => setForm((current) => ({ ...current, name: value }))}
                 placeholder="e.g. bm-compute-a"
                 isRequired
+                isDisabled={isEditMode}
               />
             </FormGroup>
             <FormGroup label="Description" fieldId="create-subnet-detail">
@@ -215,11 +248,11 @@ export function CreateSubnetWizard({
         nextButtonText: (
           <span className="provider-admin-network-inventory__wizard-footer-label">
             <NetworkIcon aria-hidden />
-            <span>Create subnet</span>
+            <span>{isEditMode ? 'Save changes' : 'Create subnet'}</span>
             <ArrowRightIcon aria-hidden />
           </span>
         ),
-        onNext: handleCreate,
+        onNext: handleSubmit,
         isNextDisabled: !isDetailsStepValid,
       }
     }
@@ -231,12 +264,13 @@ export function CreateSubnetWizard({
     <NetworkInventoryCreateWizardShell
       isOpen={isOpen}
       parentLabel={parentLabel}
-      title="Create subnet"
+      title={isEditMode ? 'Edit subnet' : 'Create subnet'}
       titleId="create-subnet-wizard-title"
-      steps={CREATE_SUBNET_STEPS}
+      steps={SUBNET_WIZARD_STEPS}
       renderStepContent={renderStepContent}
       getStepFooter={getStepFooter}
       onClose={handleClose}
+      leaveConfirmPrimaryActionLabel={isEditMode ? 'Discard changes' : 'Leave'}
     />
   )
 }

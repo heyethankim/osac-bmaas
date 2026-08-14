@@ -58,6 +58,7 @@ import {
 import {
   generateTenantProjectId,
   resolveOrganizationExternalIpPool,
+  resolveOrganizationExternalIpPools,
   type TenantProject,
 } from '../../tenantAdmin/projects'
 import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
@@ -87,13 +88,24 @@ export function CreateTenantProjectWizard({
 }: CreateTenantProjectWizardProps) {
   const [form, setForm] = useState<CreateProjectWizardForm>(DEFAULT_CREATE_PROJECT_WIZARD_FORM)
 
-  const organizationPool = useMemo(
-    () => resolveOrganizationExternalIpPool(organization),
+  const organizationPools = useMemo(
+    () => resolveOrganizationExternalIpPools(organization),
     [organization],
   )
+  const organizationPool = useMemo(() => {
+    return (
+      organizationPools.find((pool) => pool.id === form.externalIpPoolId) ??
+      organizationPools[0] ??
+      null
+    )
+  }, [organizationPools, form.externalIpPoolId])
 
   const resetWizard = () => {
-    setForm(DEFAULT_CREATE_PROJECT_WIZARD_FORM)
+    const defaultPool = resolveOrganizationExternalIpPool(organization)
+    setForm({
+      ...DEFAULT_CREATE_PROJECT_WIZARD_FORM,
+      externalIpPoolId: defaultPool?.id ?? organizationPools[0]?.id ?? '',
+    })
   }
 
   const handleClose = () => {
@@ -235,6 +247,26 @@ export function CreateTenantProjectWizard({
           ))}
         </div>
       </FormGroup>
+      {organizationPools.length > 1 ? (
+        <FormGroup label="External IP pool" fieldId="new-project-external-ip-pool" isRequired>
+          <FormSelect
+            id="new-project-external-ip-pool"
+            value={form.externalIpPoolId}
+            onChange={(_event, value) =>
+              setForm((current) => ({ ...current, externalIpPoolId: value }))
+            }
+            aria-label="External IP pool"
+          >
+            {organizationPools.map((pool) => (
+              <FormSelectOption
+                key={pool.id}
+                value={pool.id}
+                label={`${pool.name} · ${pool.cidr}`}
+              />
+            ))}
+          </FormSelect>
+        </FormGroup>
+      ) : null}
     </Form>
   )
 

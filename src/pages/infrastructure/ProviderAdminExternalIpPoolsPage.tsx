@@ -13,16 +13,12 @@ import {
 } from '@patternfly/react-core'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
 import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
-import { AssignExternalIpPoolModal } from '../../components/provider-admin/AssignExternalIpPoolModal'
 import { CreateExternalIpPoolWizard } from '../../components/networking/CreateExternalIpPoolWizard'
 import { ExternalIpPoolDetailsPage } from '../../components/provider-admin/ExternalIpPoolDetailsPage'
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
 import type { ExternalIpPool } from '../../providerAdmin/externalIpPools'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
-import {
-  assignExternalIpPoolToRegisteredOrganization,
-  getProviderRegisteredOrganizations,
-} from '../../providerSetup/storage'
+import { getProviderRegisteredOrganizations } from '../../providerSetup/storage'
 import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope'
 
 const EXTERNAL_IP_POOL_STATUSES = ['Available', 'Assigned'] as const
@@ -36,37 +32,23 @@ function getExternalIpPoolStatus(pool: ExternalIpPool): ExternalIpPoolStatus {
 function getExternalIpPoolActions(
   pool: ExternalIpPool,
   onViewDetails: (pool: ExternalIpPool) => void,
-  onAssign: (pool: ExternalIpPool) => void,
+  onEdit: (pool: ExternalIpPool) => void,
 ): IAction[] {
-  const isAssigned = pool.assignedOrganizationId !== null
-
   return [
     {
       title: 'View details',
       onClick: () => onViewDetails(pool),
     },
     {
-      title: 'Assign to organization',
-      isAriaDisabled: isAssigned,
-      onClick: () => {
-        if (!isAssigned) {
-          onAssign(pool)
-        }
-      },
-    },
-    {
-      title: 'Edit pool',
-      isAriaDisabled: isAssigned,
-      onClick: () => {
-        /* demo */
-      },
+      title: 'Edit',
+      onClick: () => onEdit(pool),
     },
     {
       isSeparator: true,
     },
     {
-      title: 'Delete pool',
-      isAriaDisabled: isAssigned,
+      title: 'Delete',
+      isDanger: true,
       onClick: () => {
         /* demo */
       },
@@ -77,12 +59,15 @@ function getExternalIpPoolActions(
 export function ProviderAdminExternalIpPoolsPage({
   tenantSlug,
   readOnly = false,
+  scopeOrganization = null,
 }: {
   tenantSlug?: string
   readOnly?: boolean
+  scopeOrganization?: RegisteredOrganization | null
 } = {}) {
   const inventory = useMemo(() => resolveNetworkInventoryScope(tenantSlug), [tenantSlug])
   const isTenantScope = inventory.mode === 'tenant'
+  const canManagePools = !readOnly && !isTenantScope
   const [pools, setPools] = useState<ExternalIpPool[]>(() => inventory.getExternalIpPools())
   const [organizations, setOrganizations] = useState<RegisteredOrganization[]>(() =>
     getProviderRegisteredOrganizations(),
@@ -92,7 +77,17 @@ export function ProviderAdminExternalIpPoolsPage({
   const [selectedStatus, setSelectedStatus] = useState<'all' | ExternalIpPoolStatus>('all')
   const [selectedPool, setSelectedPool] = useState<ExternalIpPool | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
-  const [assignPool, setAssignPool] = useState<ExternalIpPool | null>(null)
+  const [editingPool, setEditingPool] = useState<ExternalIpPool | null>(null)
+
+  const closeWizard = () => {
+    setIsCreateWizardOpen(false)
+    setEditingPool(null)
+  }
+
+  const openEdit = (pool: ExternalIpPool) => {
+    setIsDetailsOpen(false)
+    setEditingPool(pool)
+  }
 
   const refreshData = () => {
     setPools(inventory.getExternalIpPools())
@@ -151,27 +146,18 @@ export function ProviderAdminExternalIpPoolsPage({
     )
   }, [selectedPool, organizations])
 
-  const handleAssignPool = (organizationId: string) => {
-    if (!assignPool) {
-      return
-    }
-
-    assignExternalIpPoolToRegisteredOrganization(assignPool.id, organizationId)
-    refreshData()
-    const updated = inventory.getExternalIpPools().find((pool) => pool.id === assignPool.id) ?? null
-    setAssignPool(null)
-    if (updated && isDetailsOpen && selectedPool?.id === updated.id) {
-      setSelectedPool(updated)
-    }
-  }
-
-  if (isCreateWizardOpen && !readOnly) {
+  if ((isCreateWizardOpen || editingPool) && canManagePools) {
     return (
       <CreateExternalIpPoolWizard
         isOpen
         tenantSlug={tenantSlug}
-        onClose={() => setIsCreateWizardOpen(false)}
-        onCreated={() => refreshData()}
+        organizations={organizations}
+        resource={editingPool}
+        onClose={closeWizard}
+        onCreated={() => {
+          refreshData()
+          closeWizard()
+        }}
       />
     )
   }
@@ -182,13 +168,10 @@ export function ProviderAdminExternalIpPoolsPage({
         pool={selectedPool}
         organization={detailsOrganization}
         onBack={closeDetails}
-        onAssign={
-          selectedPool.assignedOrganizationId === null
-            ? () => {
-                setAssignPool(selectedPool)
-              }
-            : undefined
-        }
+        readOnly={!canManagePools}
+        scopeOrganization={isTenantScope ? scopeOrganization : null}
+        onEdit={canManagePools ? () => openEdit(selectedPool) : undefined}
+        onDelete={() => undefined}
       />
     )
   }
@@ -201,10 +184,10 @@ export function ProviderAdminExternalIpPoolsPage({
         lede={
           isTenantScope
             ? 'External IP pools available for workloads that need public addressing in your organization.'
-            : 'Define routable address pools for tenant edge exposure and assign them to tenant organizations.'
+            : 'Define routable address pools for tenant edge exposure and assign them during creation.'
         }
         action={
-          readOnly ? undefined : (
+          canManagePools ? (
           <Button
             variant="primary"
             icon={<PlusIcon />}
@@ -213,7 +196,7 @@ export function ProviderAdminExternalIpPoolsPage({
           >
             Create pool
           </Button>
-          )
+          ) : undefined
         }
       />
 
@@ -254,7 +237,9 @@ export function ProviderAdminExternalIpPoolsPage({
           <EmptyStateBody>
             {hasActiveFilters
               ? 'Try a different status, search term, or clear filters.'
-              : 'Create a pool to define routable address ranges for tenant edge exposure.'}
+              : isTenantScope
+                ? 'Your provider has not published any external IP pools for this organization yet.'
+                : 'Create a pool to define routable address ranges for tenant edge exposure.'}
           </EmptyStateBody>
         </EmptyState>
       ) : (
@@ -319,7 +304,7 @@ export function ProviderAdminExternalIpPoolsPage({
                         items={
                           isTenantScope
                             ? [{ title: 'View details', onClick: () => openDetails(pool) }]
-                            : getExternalIpPoolActions(pool, openDetails, setAssignPool)
+                            : getExternalIpPoolActions(pool, openDetails, openEdit)
                         }
                       />
                     </Td>
@@ -330,15 +315,6 @@ export function ProviderAdminExternalIpPoolsPage({
           </Table>
         </div>
       )}
-
-      {!isTenantScope ? (
-      <AssignExternalIpPoolModal
-        pool={assignPool}
-        organizations={organizations}
-        onClose={() => setAssignPool(null)}
-        onAssign={handleAssignPool}
-      />
-      ) : null}
     </div>
   )
 }

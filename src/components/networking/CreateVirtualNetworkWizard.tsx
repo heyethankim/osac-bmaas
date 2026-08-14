@@ -35,7 +35,7 @@ const DEFAULT_FORM: CreateVirtualNetworkForm = {
   ipv6Cidr: '2001:db8:60::/48',
 }
 
-const CREATE_VIRTUAL_NETWORK_STEPS = [
+const VIRTUAL_NETWORK_WIZARD_STEPS = [
   { id: 'virtual-network', label: 'Virtual network' },
   NETWORK_INVENTORY_CREATE_REVIEW_STEP,
 ] as const
@@ -44,24 +44,39 @@ type CreateVirtualNetworkWizardProps = {
   isOpen: boolean
   parentLabel?: string
   tenantSlug?: string
+  resource?: ProviderVirtualNetwork | null
   onClose: () => void
   onCreated: (network: ProviderVirtualNetwork) => void
+}
+
+function buildFormFromNetwork(network: ProviderVirtualNetwork): CreateVirtualNetworkForm {
+  return {
+    name: network.name,
+    detail: network.detail,
+    cidr: network.cidr,
+    ipv6Cidr: network.ipv6Cidr ?? '',
+  }
 }
 
 export function CreateVirtualNetworkWizard({
   isOpen,
   parentLabel = 'Virtual networks',
   tenantSlug,
+  resource = null,
   onClose,
   onCreated,
 }: CreateVirtualNetworkWizardProps) {
+  const isEditMode = resource !== null
   const [form, setForm] = useState<CreateVirtualNetworkForm>(DEFAULT_FORM)
 
   useEffect(() => {
     if (!isOpen) {
       setForm(DEFAULT_FORM)
+      return
     }
-  }, [isOpen])
+
+    setForm(resource ? buildFormFromNetwork(resource) : DEFAULT_FORM)
+  }, [isOpen, resource])
 
   const isNameValid = isValidKubernetesResourceName(form.name)
   const isDetailsStepValid = isNameValid && Boolean(form.cidr.trim())
@@ -71,22 +86,36 @@ export function CreateVirtualNetworkWizard({
     onClose()
   }
 
-  const handleCreate = () => {
+  const handleSubmit = () => {
     if (!isDetailsStepValid) {
       return
     }
 
-    const network: ProviderVirtualNetwork = {
-      id: generateProviderVirtualNetworkId(),
-      name: form.name.trim(),
-      detail: form.detail.trim(),
-      cidr: form.cidr.trim(),
-      ipv6Cidr: form.ipv6Cidr.trim(),
-      createdAt: new Date().toISOString(),
-      status: 'Ready',
+    const scope = resolveNetworkInventoryScope(tenantSlug)
+    const network: ProviderVirtualNetwork = isEditMode
+      ? {
+          ...resource,
+          name: form.name.trim(),
+          detail: form.detail.trim(),
+          cidr: form.cidr.trim(),
+          ipv6Cidr: form.ipv6Cidr.trim(),
+        }
+      : {
+          id: generateProviderVirtualNetworkId(),
+          name: form.name.trim(),
+          detail: form.detail.trim(),
+          cidr: form.cidr.trim(),
+          ipv6Cidr: form.ipv6Cidr.trim(),
+          createdAt: new Date().toISOString(),
+          status: 'Ready',
+        }
+
+    if (isEditMode) {
+      scope.updateVirtualNetwork(network)
+    } else {
+      scope.addVirtualNetwork(network)
     }
 
-    resolveNetworkInventoryScope(tenantSlug).addVirtualNetwork(network)
     onCreated(network)
     handleClose()
   }
@@ -96,8 +125,9 @@ export function CreateVirtualNetworkWizard({
       return (
         <div className="provider-admin-network-inventory__wizard-step">
           <Content component="p" className="provider-admin-network-inventory__wizard-lede">
-            Create a virtual network to make address space available for workloads, subnets, and
-            catalog networking.
+            {isEditMode
+              ? 'Update address space and metadata for this virtual network.'
+              : 'Create a virtual network to make address space available for workloads, subnets, and catalog networking.'}
           </Content>
           <Form autoComplete="off" className="provider-admin-network-inventory__form">
             <FormGroup label="Name" fieldId="create-vnet-name" isRequired>
@@ -107,6 +137,7 @@ export function CreateVirtualNetworkWizard({
                 onChange={(value) => setForm((current) => ({ ...current, name: value }))}
                 placeholder="e.g. demo-workload"
                 isRequired
+                isDisabled={isEditMode}
               />
             </FormGroup>
             <FormGroup label="Description" fieldId="create-vnet-detail">
@@ -173,11 +204,11 @@ export function CreateVirtualNetworkWizard({
         nextButtonText: (
           <span className="provider-admin-network-inventory__wizard-footer-label">
             <NetworkIcon aria-hidden />
-            <span>Create virtual network</span>
+            <span>{isEditMode ? 'Save changes' : 'Create virtual network'}</span>
             <ArrowRightIcon aria-hidden />
           </span>
         ),
-        onNext: handleCreate,
+        onNext: handleSubmit,
         isNextDisabled: !isDetailsStepValid,
       }
     }
@@ -189,12 +220,13 @@ export function CreateVirtualNetworkWizard({
     <NetworkInventoryCreateWizardShell
       isOpen={isOpen}
       parentLabel={parentLabel}
-      title="Create virtual network"
+      title={isEditMode ? 'Edit virtual network' : 'Create virtual network'}
       titleId="create-virtual-network-wizard-title"
-      steps={CREATE_VIRTUAL_NETWORK_STEPS}
+      steps={VIRTUAL_NETWORK_WIZARD_STEPS}
       renderStepContent={renderStepContent}
       getStepFooter={getStepFooter}
       onClose={handleClose}
+      leaveConfirmPrimaryActionLabel={isEditMode ? 'Discard changes' : 'Leave'}
     />
   )
 }

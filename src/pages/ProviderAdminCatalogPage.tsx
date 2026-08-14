@@ -37,6 +37,7 @@ import { getCatalogServiceIcon } from '../catalog/serviceIcons'
 import { formatCatalogTableResultCount } from '../catalog/tableResultCount'
 import {
   formatCatalogConfigurationSummary,
+  resolveBaremetalCatalogCardSpecRows,
   resolveCatalogSpecRows,
 } from '../catalog/catalogSpecs'
 import { CatalogSpecRowsList } from '../components/catalog/CatalogSpecRowsList'
@@ -1140,7 +1141,10 @@ export function ProviderAdminCatalogPage({
                     getCatalogEnterpriseTenantIds(item),
                   )
                 : 'Global public'
-            const specRows = resolveCatalogSpecRows(item)
+            const specRows =
+              (item.serviceId ?? 'baremetal') === 'baremetal'
+                ? resolveBaremetalCatalogCardSpecRows(item)
+                : resolveCatalogSpecRows(item)
 
             return (
               <Card

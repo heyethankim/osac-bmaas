@@ -47,6 +47,18 @@ export function ProviderAdminSubnetsPage({
   const [selectedStatus, setSelectedStatus] = useState<'all' | NetworkInventoryStatus>('all')
   const [selectedSubnet, setSelectedSubnet] = useState<ProviderSubnet | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const [editingSubnet, setEditingSubnet] = useState<ProviderSubnet | null>(null)
+
+  const closeWizard = () => {
+    setIsCreateWizardOpen(false)
+    setEditingSubnet(null)
+  }
+
+  const openEdit = (subnet: ProviderSubnet) => {
+    setVirtualNetworks(inventory.getVirtualNetworks())
+    setIsDetailsOpen(false)
+    setEditingSubnet(subnet)
+  }
 
   const refresh = () => {
     setSubnets(inventory.getSubnets())
@@ -112,14 +124,18 @@ export function ProviderAdminSubnetsPage({
     ? getVirtualNetwork(selectedSubnet.virtualNetworkId)
     : undefined
 
-  if (isCreateWizardOpen && !readOnly) {
+  if ((isCreateWizardOpen || editingSubnet) && !readOnly) {
     return (
       <CreateSubnetWizard
         isOpen
         virtualNetworks={virtualNetworks}
         tenantSlug={tenantSlug}
-        onClose={() => setIsCreateWizardOpen(false)}
-        onCreated={() => refresh()}
+        resource={editingSubnet}
+        onClose={closeWizard}
+        onCreated={() => {
+          refresh()
+          closeWizard()
+        }}
       />
     )
   }
@@ -131,7 +147,7 @@ export function ProviderAdminSubnetsPage({
         virtualNetworkName={selectedVirtualNetwork?.name ?? selectedSubnet.virtualNetworkId}
         virtualNetworkCidr={selectedVirtualNetwork?.cidr ?? ''}
         onBack={closeDetails}
-        onEdit={() => undefined}
+        onEdit={readOnly ? undefined : () => openEdit(selectedSubnet)}
         onDelete={() => undefined}
         onNavigateToVirtualNetwork={
           onNavigateToVirtualNetwork
@@ -303,7 +319,7 @@ export function ProviderAdminSubnetsPage({
                       <ActionsColumn
                         items={[
                           { title: 'View details', onClick: () => openDetails(subnet) },
-                          { title: 'Edit', onClick: () => undefined },
+                          { title: 'Edit', onClick: () => openEdit(subnet) },
                           { isSeparator: true },
                           { title: 'Delete', isDanger: true, onClick: () => undefined },
                         ]}

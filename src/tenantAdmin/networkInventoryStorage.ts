@@ -16,6 +16,7 @@ import {
   type ProviderSubnet,
   type ProviderVirtualNetwork,
 } from '../providerAdmin/networkInventory'
+import { replaceInventoryItemById } from '../networking/networkInventoryStorageUtils'
 
 const TENANT_VIRTUAL_NETWORKS_KEY_PREFIX = 'bmaas-tenant-virtual-networks-'
 const TENANT_SUBNETS_KEY_PREFIX = 'bmaas-tenant-subnets-'
@@ -156,6 +157,16 @@ export function addTenantVirtualNetwork(
   setTenantVirtualNetworks(slug, [...getTenantVirtualNetworks(slug), network])
 }
 
+export function updateTenantVirtualNetwork(
+  slug: string,
+  network: ProviderVirtualNetwork,
+): void {
+  setTenantVirtualNetworks(
+    slug,
+    replaceInventoryItemById(getTenantVirtualNetworks(slug), network),
+  )
+}
+
 export function getTenantSubnets(slug: string): ProviderSubnet[] {
   return readJsonArray(
     tenantKey(TENANT_SUBNETS_KEY_PREFIX, slug),
@@ -173,6 +184,10 @@ export function setTenantSubnets(slug: string, subnets: ProviderSubnet[]): void 
 
 export function addTenantSubnet(slug: string, subnet: ProviderSubnet): void {
   setTenantSubnets(slug, [...getTenantSubnets(slug), subnet])
+}
+
+export function updateTenantSubnet(slug: string, subnet: ProviderSubnet): void {
+  setTenantSubnets(slug, replaceInventoryItemById(getTenantSubnets(slug), subnet))
 }
 
 export function getTenantSecurityGroups(slug: string): ProviderSecurityGroup[] {
@@ -200,6 +215,16 @@ export function addTenantSecurityGroup(
   setTenantSecurityGroups(slug, [...getTenantSecurityGroups(slug), group])
 }
 
+export function updateTenantSecurityGroup(
+  slug: string,
+  group: ProviderSecurityGroup,
+): void {
+  setTenantSecurityGroups(
+    slug,
+    replaceInventoryItemById(getTenantSecurityGroups(slug), group),
+  )
+}
+
 export function getTenantExternalIpPools(slug: string): ExternalIpPool[] {
   return readJsonArray(
     tenantKey(TENANT_EXTERNAL_IP_POOLS_KEY_PREFIX, slug),
@@ -214,6 +239,13 @@ export function setTenantExternalIpPools(slug: string, pools: ExternalIpPool[]):
 
 export function addTenantExternalIpPool(slug: string, pool: ExternalIpPool): void {
   setTenantExternalIpPools(slug, [...getTenantExternalIpPools(slug), pool])
+}
+
+export function updateTenantExternalIpPool(slug: string, pool: ExternalIpPool): void {
+  setTenantExternalIpPools(
+    slug,
+    replaceInventoryItemById(getTenantExternalIpPools(slug), pool),
+  )
 }
 
 export function getTenantVirtualNetworkOptions(

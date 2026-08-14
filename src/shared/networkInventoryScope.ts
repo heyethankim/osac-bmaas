@@ -18,6 +18,10 @@ import {
   getProviderSecurityGroups,
   getProviderSubnets,
   getProviderVirtualNetworks,
+  updateProviderExternalIpPool,
+  updateProviderSecurityGroup,
+  updateProviderSubnet,
+  updateProviderVirtualNetwork,
 } from '../providerSetup/storage'
 import {
   addTenantExternalIpPool,
@@ -32,6 +36,10 @@ import {
   getTenantSubnets,
   getTenantVirtualNetworkOptions,
   getTenantVirtualNetworks,
+  updateTenantExternalIpPool,
+  updateTenantSecurityGroup,
+  updateTenantSubnet,
+  updateTenantVirtualNetwork,
 } from '../tenantAdmin/networkInventoryStorage'
 
 export type NetworkInventoryScope = {
@@ -42,9 +50,13 @@ export type NetworkInventoryScope = {
   getSecurityGroups: () => ProviderSecurityGroup[]
   getExternalIpPools: () => ExternalIpPool[]
   addVirtualNetwork: (network: ProviderVirtualNetwork) => void
+  updateVirtualNetwork: (network: ProviderVirtualNetwork) => void
   addSubnet: (subnet: ProviderSubnet) => void
+  updateSubnet: (subnet: ProviderSubnet) => void
   addSecurityGroup: (group: ProviderSecurityGroup) => void
+  updateSecurityGroup: (group: ProviderSecurityGroup) => void
   addExternalIpPool: (pool: ExternalIpPool) => void
+  updateExternalIpPool: (pool: ExternalIpPool) => void
   getVirtualNetworkOptions: () => readonly CatalogNetworkResourceOption[]
   getSubnetOptions: (virtualNetworkId?: string) => readonly CatalogNetworkResourceOption[]
   getSecurityGroupOptions: () => readonly CatalogNetworkResourceOption[]
@@ -63,9 +75,13 @@ export function resolveNetworkInventoryScope(
       getSecurityGroups: () => getTenantSecurityGroups(tenantSlug),
       getExternalIpPools: () => getTenantExternalIpPools(tenantSlug),
       addVirtualNetwork: (network) => addTenantVirtualNetwork(tenantSlug, network),
+      updateVirtualNetwork: (network) => updateTenantVirtualNetwork(tenantSlug, network),
       addSubnet: (subnet) => addTenantSubnet(tenantSlug, subnet),
+      updateSubnet: (subnet) => updateTenantSubnet(tenantSlug, subnet),
       addSecurityGroup: (group) => addTenantSecurityGroup(tenantSlug, group),
+      updateSecurityGroup: (group) => updateTenantSecurityGroup(tenantSlug, group),
       addExternalIpPool: (pool) => addTenantExternalIpPool(tenantSlug, pool),
+      updateExternalIpPool: (pool) => updateTenantExternalIpPool(tenantSlug, pool),
       getVirtualNetworkOptions: () => getTenantVirtualNetworkOptions(tenantSlug),
       getSubnetOptions: (virtualNetworkId) =>
         getTenantSubnetOptions(tenantSlug, virtualNetworkId),
@@ -81,9 +97,13 @@ export function resolveNetworkInventoryScope(
     getSecurityGroups: getProviderSecurityGroups,
     getExternalIpPools: getProviderExternalIpPools,
     addVirtualNetwork: addProviderVirtualNetwork,
+    updateVirtualNetwork: updateProviderVirtualNetwork,
     addSubnet: addProviderSubnet,
+    updateSubnet: updateProviderSubnet,
     addSecurityGroup: addProviderSecurityGroup,
+    updateSecurityGroup: updateProviderSecurityGroup,
     addExternalIpPool: addProviderExternalIpPool,
+    updateExternalIpPool: updateProviderExternalIpPool,
     getVirtualNetworkOptions: getCatalogVirtualNetworkOptions,
     getSubnetOptions: getCatalogSubnetOptions,
     getSecurityGroupOptions: getCatalogSecurityGroupOptions,

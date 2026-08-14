@@ -351,6 +351,13 @@ function buildBaremetalCatalogSpecRows(
   return rows
 }
 
+/** Bare metal service cards show CPU/RAM/GPU/Disk image — not the Size preset label. */
+export function resolveBaremetalCatalogCardSpecRows(
+  item: Parameters<typeof buildBaremetalCatalogSpecRows>[0],
+): CatalogSpecRow[] {
+  return buildBaremetalCatalogSpecRows(item).filter((row) => row.label !== 'Size')
+}
+
 export function resolveCatalogSpecRows(
   item: Pick<
     ProviderCatalogDraft,

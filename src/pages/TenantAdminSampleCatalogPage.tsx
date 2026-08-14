@@ -9,7 +9,7 @@ import {
 import { CatalogSpecRowsList } from '../components/catalog/CatalogSpecRowsList'
 import { RouterButton } from '../components/RouterButton'
 import { getCatalogServiceIcon } from '../catalog/serviceIcons'
-import { resolveCatalogSpecRows } from '../catalog/catalogSpecs'
+import { resolveBaremetalCatalogCardSpecRows, resolveCatalogSpecRows } from '../catalog/catalogSpecs'
 import {
   BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID,
   ensureProviderCatalogDemoItems,
@@ -34,7 +34,10 @@ function getSampleCatalogItem(): ProviderCatalogDraft {
 export function TenantAdminSampleCatalogPage() {
   const item = useMemo(() => getSampleCatalogItem(), [])
   const serviceId = item.serviceId ?? 'baremetal'
-  const specRows = resolveCatalogSpecRows(item)
+  const specRows =
+    serviceId === 'baremetal'
+      ? resolveBaremetalCatalogCardSpecRows(item)
+      : resolveCatalogSpecRows(item)
 
   return (
     <div className="tenant-admin-sample-catalog">

@@ -323,6 +323,7 @@ export function TenantAdminWorkspacePage() {
             projects={projects}
             instances={instances}
             onProjectsChange={setProjects}
+            onInstancesChange={(updater) => setInstances((current) => [...updater(current)])}
             openProjectId={openProjectId}
             onOpenProjectConsumed={() => setOpenProjectId(null)}
             onNavigateToInstance={(instance) => {
@@ -383,7 +384,13 @@ export function TenantAdminWorkspacePage() {
           />
         )
       case 'networking-external-ip-pools':
-        return <ProviderAdminExternalIpPoolsPage tenantSlug={tenant} />
+        return (
+          <ProviderAdminExternalIpPoolsPage
+            tenantSlug={tenant}
+            readOnly
+            scopeOrganization={organization}
+          />
+        )
       case 'overview':
       default:
         return <TenantAdminOverviewPage />

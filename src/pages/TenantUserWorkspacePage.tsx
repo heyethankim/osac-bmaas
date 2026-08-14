@@ -403,6 +403,7 @@ export function TenantUserWorkspacePage() {
             projects={projects}
             instances={instances}
             onProjectsChange={setProjects}
+            onInstancesChange={(updater) => setInstances((current) => [...updater(current)])}
             openProjectId={openProjectId}
             onOpenProjectConsumed={() => setOpenProjectId(null)}
             onNavigateToInstance={(instance) => {
@@ -459,7 +460,13 @@ export function TenantUserWorkspacePage() {
           />
         )
       case 'networking-external-ip-pools':
-        return <ProviderAdminExternalIpPoolsPage tenantSlug={tenantSlug} readOnly />
+        return (
+          <ProviderAdminExternalIpPoolsPage
+            tenantSlug={tenantSlug}
+            readOnly
+            scopeOrganization={organization}
+          />
+        )
       case 'activity-log':
         return <TenantUserActivityLogPage />
       case 'catalog':

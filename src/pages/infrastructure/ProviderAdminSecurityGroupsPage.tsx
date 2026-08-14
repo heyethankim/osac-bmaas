@@ -50,6 +50,18 @@ export function ProviderAdminSecurityGroupsPage({
   const [selectedStatus, setSelectedStatus] = useState<'all' | NetworkInventoryStatus>('all')
   const [selectedGroup, setSelectedGroup] = useState<ProviderSecurityGroup | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const [editingGroup, setEditingGroup] = useState<ProviderSecurityGroup | null>(null)
+
+  const closeWizard = () => {
+    setIsCreateWizardOpen(false)
+    setEditingGroup(null)
+  }
+
+  const openEdit = (group: ProviderSecurityGroup) => {
+    setVirtualNetworks(inventory.getVirtualNetworks())
+    setIsDetailsOpen(false)
+    setEditingGroup(group)
+  }
 
   const getVirtualNetwork = (virtualNetworkId: string) =>
     virtualNetworks.find((item) => item.id === virtualNetworkId)
@@ -115,14 +127,18 @@ export function ProviderAdminSecurityGroupsPage({
     ? getVirtualNetwork(selectedGroup.virtualNetworkId)
     : undefined
 
-  if (isCreateWizardOpen && !readOnly) {
+  if ((isCreateWizardOpen || editingGroup) && !readOnly) {
     return (
       <CreateSecurityGroupWizard
         isOpen
         virtualNetworks={virtualNetworks}
         tenantSlug={tenantSlug}
-        onClose={() => setIsCreateWizardOpen(false)}
-        onCreated={() => setGroups(inventory.getSecurityGroups())}
+        resource={editingGroup}
+        onClose={closeWizard}
+        onCreated={() => {
+          setGroups(inventory.getSecurityGroups())
+          closeWizard()
+        }}
       />
     )
   }
@@ -134,7 +150,7 @@ export function ProviderAdminSecurityGroupsPage({
         virtualNetworkName={selectedVirtualNetwork?.name ?? selectedGroup.virtualNetworkId}
         virtualNetworkCidr={selectedVirtualNetwork?.cidr ?? ''}
         onBack={closeDetails}
-        onEdit={() => undefined}
+        onEdit={readOnly ? undefined : () => openEdit(selectedGroup)}
         onDelete={() => undefined}
         onNavigateToVirtualNetwork={
           onNavigateToVirtualNetwork
@@ -306,7 +322,7 @@ export function ProviderAdminSecurityGroupsPage({
                       <ActionsColumn
                         items={[
                           { title: 'View details', onClick: () => openDetails(group) },
-                          { title: 'Edit', onClick: () => undefined },
+                          { title: 'Edit', onClick: () => openEdit(group) },
                           { isSeparator: true },
                           { title: 'Delete', isDanger: true, onClick: () => undefined },
                         ]}

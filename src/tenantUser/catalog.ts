@@ -1,5 +1,10 @@
 import type { CatalogSpecRow } from '../catalog/catalogSpecs'
-import { resolveCatalogOsImage, resolveCatalogSpecRows, getCatalogSpecRowValue } from '../catalog/catalogSpecs'
+import {
+  getCatalogSpecRowValue,
+  resolveBaremetalCatalogCardSpecRows,
+  resolveCatalogOsImage,
+  resolveCatalogSpecRows,
+} from '../catalog/catalogSpecs'
 import type { CatalogFieldPolicy } from '../catalog/catalogPublishConfig'
 import { formatBaremetalInstanceTypeLabel } from '../catalog/catalogPublishConfig'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
@@ -103,7 +108,6 @@ export const TENANT_USER_CATALOG_FALLBACK: TenantUserCatalogCard = {
   categoryLabel: TENANT_USER_CATALOG_SPECS.categoryLabel,
   hardwareProfile: TENANT_USER_CATALOG_SPECS.hardwareProfile,
   specRows: [
-    { label: 'Size', value: 'Large' },
     { label: 'CPU', value: TENANT_USER_CATALOG_SPECS.cpu },
     { label: 'RAM', value: TENANT_USER_CATALOG_SPECS.ram },
     { label: 'GPU', value: TENANT_USER_CATALOG_SPECS.gpu },
@@ -170,7 +174,10 @@ export function getTenantUserCatalogCardFromDraft(
 ): TenantUserCatalogCard {
   const rateCard = resolveRateCard(catalog)
   const serviceId = catalog.serviceId ?? 'baremetal'
-  const specRows = resolveCatalogSpecRows(catalog)
+  const specRows =
+    serviceId === 'baremetal'
+      ? resolveBaremetalCatalogCardSpecRows(catalog)
+      : resolveCatalogSpecRows(catalog)
 
   return {
     serviceId,

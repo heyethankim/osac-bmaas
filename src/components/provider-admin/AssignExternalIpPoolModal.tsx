@@ -33,10 +33,7 @@ export function AssignExternalIpPoolModal({
   onClose,
   onAssign,
 }: AssignExternalIpPoolModalProps) {
-  const eligibleOrganizations = useMemo(
-    () => organizations.filter((organization) => !organization.externalIpPoolId),
-    [organizations],
-  )
+  const eligibleOrganizations = useMemo(() => organizations, [organizations])
   const [selectedOrganizationId, setSelectedOrganizationId] = useState('')
 
   useEffect(() => {
@@ -90,12 +87,11 @@ export function AssignExternalIpPoolModal({
               <Alert
                 variant="warning"
                 isInline
-                title="No eligible organizations"
+                title="No registered organizations"
                 className="provider-admin-external-ip-pools__assign-alert"
               >
                 <Content component="p">
-                  Register a tenant organization without an external IP pool, or release an existing
-                  assignment before assigning this pool.
+                  Register a tenant organization before assigning this external IP pool.
                 </Content>
               </Alert>
             ) : (
@@ -118,8 +114,8 @@ export function AssignExternalIpPoolModal({
                 </FormGroup>
                 {selectedOrganization ? (
                   <Content component="p" className="provider-admin-external-ip-pools__assign-note">
-                    {selectedOrganization.name} will receive exclusive access to this address pool
-                    for tenant edge exposure.
+                    {selectedOrganization.name} will receive this address pool for tenant edge
+                    exposure.
                   </Content>
                 ) : null}
               </Form>

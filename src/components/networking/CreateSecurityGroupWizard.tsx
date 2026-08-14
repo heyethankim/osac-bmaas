@@ -42,7 +42,17 @@ function buildDemoForm(virtualNetworks: ProviderVirtualNetwork[]): CreateSecurit
   }
 }
 
-const CREATE_SECURITY_GROUP_STEPS = [
+function buildFormFromSecurityGroup(group: ProviderSecurityGroup): CreateSecurityGroupForm {
+  return {
+    name: group.name,
+    detail: group.detail,
+    virtualNetworkId: group.virtualNetworkId,
+    inboundRules: group.inboundRules,
+    outboundRules: group.outboundRules,
+  }
+}
+
+const SECURITY_GROUP_WIZARD_STEPS = [
   { id: 'security-group', label: 'Security group' },
   NETWORK_INVENTORY_CREATE_REVIEW_STEP,
 ] as const
@@ -52,6 +62,7 @@ type CreateSecurityGroupWizardProps = {
   parentLabel?: string
   virtualNetworks: ProviderVirtualNetwork[]
   tenantSlug?: string
+  resource?: ProviderSecurityGroup | null
   onClose: () => void
   onCreated: (group: ProviderSecurityGroup) => void
 }
@@ -61,16 +72,21 @@ export function CreateSecurityGroupWizard({
   parentLabel = 'Security groups',
   virtualNetworks,
   tenantSlug,
+  resource = null,
   onClose,
   onCreated,
 }: CreateSecurityGroupWizardProps) {
+  const isEditMode = resource !== null
   const [form, setForm] = useState<CreateSecurityGroupForm>(() => buildDemoForm(virtualNetworks))
 
   useEffect(() => {
-    if (isOpen) {
+    if (!isOpen) {
       setForm(buildDemoForm(virtualNetworks))
+      return
     }
-  }, [isOpen, virtualNetworks])
+
+    setForm(resource ? buildFormFromSecurityGroup(resource) : buildDemoForm(virtualNetworks))
+  }, [isOpen, resource, virtualNetworks])
 
   const isNameValid = isValidKubernetesResourceName(form.name)
   const isDetailsStepValid =
@@ -84,23 +100,38 @@ export function CreateSecurityGroupWizard({
     onClose()
   }
 
-  const handleCreate = () => {
+  const handleSubmit = () => {
     if (!isDetailsStepValid) {
       return
     }
 
-    const group: ProviderSecurityGroup = {
-      id: generateProviderSecurityGroupId(),
-      name: form.name.trim(),
-      detail: form.detail.trim(),
-      virtualNetworkId: form.virtualNetworkId,
-      inboundRules: form.inboundRules.trim() || 'None',
-      outboundRules: form.outboundRules.trim() || 'Allow all',
-      createdAt: new Date().toISOString(),
-      status: 'Ready',
+    const scope = resolveNetworkInventoryScope(tenantSlug)
+    const group: ProviderSecurityGroup = isEditMode
+      ? {
+          ...resource,
+          name: form.name.trim(),
+          detail: form.detail.trim(),
+          virtualNetworkId: form.virtualNetworkId,
+          inboundRules: form.inboundRules.trim() || 'None',
+          outboundRules: form.outboundRules.trim() || 'Allow all',
+        }
+      : {
+          id: generateProviderSecurityGroupId(),
+          name: form.name.trim(),
+          detail: form.detail.trim(),
+          virtualNetworkId: form.virtualNetworkId,
+          inboundRules: form.inboundRules.trim() || 'None',
+          outboundRules: form.outboundRules.trim() || 'Allow all',
+          createdAt: new Date().toISOString(),
+          status: 'Ready',
+        }
+
+    if (isEditMode) {
+      scope.updateSecurityGroup(group)
+    } else {
+      scope.addSecurityGroup(group)
     }
 
-    resolveNetworkInventoryScope(tenantSlug).addSecurityGroup(group)
     onCreated(group)
     handleClose()
   }
@@ -110,7 +141,9 @@ export function CreateSecurityGroupWizard({
       return (
         <div className="provider-admin-network-inventory__wizard-step">
           <Content component="p" className="provider-admin-network-inventory__wizard-lede">
-            Security groups control network access for workloads launched in your organization.
+            {isEditMode
+              ? 'Update security group rules and virtual network scope.'
+              : 'Security groups control network access for workloads launched in your organization.'}
           </Content>
           <Form autoComplete="off" className="provider-admin-network-inventory__form">
             <FormGroup label="Name" fieldId="create-sg-name" isRequired>
@@ -120,6 +153,7 @@ export function CreateSecurityGroupWizard({
                 onChange={(value) => setForm((current) => ({ ...current, name: value }))}
                 placeholder="e.g. allow-demo-workload"
                 isRequired
+                isDisabled={isEditMode}
               />
             </FormGroup>
             <FormGroup label="Description" fieldId="create-sg-detail">
@@ -211,11 +245,11 @@ export function CreateSecurityGroupWizard({
         nextButtonText: (
           <span className="provider-admin-network-inventory__wizard-footer-label">
             <ShieldAltIcon aria-hidden />
-            <span>Create security group</span>
+            <span>{isEditMode ? 'Save changes' : 'Create security group'}</span>
             <ArrowRightIcon aria-hidden />
           </span>
         ),
-        onNext: handleCreate,
+        onNext: handleSubmit,
         isNextDisabled: !isDetailsStepValid,
       }
     }
@@ -227,12 +261,13 @@ export function CreateSecurityGroupWizard({
     <NetworkInventoryCreateWizardShell
       isOpen={isOpen}
       parentLabel={parentLabel}
-      title="Create security group"
+      title={isEditMode ? 'Edit security group' : 'Create security group'}
       titleId="create-security-group-wizard-title"
-      steps={CREATE_SECURITY_GROUP_STEPS}
+      steps={SECURITY_GROUP_WIZARD_STEPS}
       renderStepContent={renderStepContent}
       getStepFooter={getStepFooter}
       onClose={handleClose}
+      leaveConfirmPrimaryActionLabel={isEditMode ? 'Discard changes' : 'Leave'}
     />
   )
 }

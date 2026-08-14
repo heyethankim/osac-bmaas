@@ -19,7 +19,9 @@ import { TrashIcon } from '@patternfly/react-icons/dist/esm/icons/trash-icon'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import { CATALOG_SERVICE_LABELS } from '../../providerSetup/templateDemo'
 import { AddProjectMemberModal } from './AddProjectMemberModal'
+import { AddProjectServiceModal } from './AddProjectServiceModal'
 import { EntityDetailsPageShell } from '../shared/EntityDetailsPageShell'
+import { EntityDetailsActionsDropdown } from '../shared/EntityDetailsActionsDropdown'
 import {
   getProjectMemberInitials,
   getTenantProjectMemberRoleShortLabel,
@@ -47,6 +49,7 @@ type TenantProjectDetailsPageProps = {
   onDelete: (projectId: string) => void
   onAddMember: (projectId: string, member: TenantProjectMember) => void
   onRemoveMember: (projectId: string, memberId: string) => void
+  onAddService: (projectId: string, instanceId: string) => void
   onNavigateToInstance: (instance: TenantInstance) => void
 }
 
@@ -85,9 +88,11 @@ export function TenantProjectDetailsPage({
   onDelete,
   onAddMember,
   onRemoveMember,
+  onAddService,
   onNavigateToInstance,
 }: TenantProjectDetailsPageProps) {
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
+  const [isAddServiceOpen, setIsAddServiceOpen] = useState(false)
   const [memberPendingRemove, setMemberPendingRemove] = useState<TenantProjectMember | null>(null)
 
   const projectInstances = useMemo(
@@ -115,9 +120,10 @@ export function TenantProjectDetailsPage({
         title={project.name}
         titleId="tenant-project-details-title"
         actions={
-          <Button variant="secondary" isDanger onClick={() => onDelete(project.id)}>
-            Delete project
-          </Button>
+          <EntityDetailsActionsDropdown
+            onRemove={() => onDelete(project.id)}
+            removeLabel="Delete"
+          />
         }
       >
         <div className="entity-details-page__columns">
@@ -172,6 +178,14 @@ export function TenantProjectDetailsPage({
               <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
                 Services ({projectInstances.length})
               </Title>
+              <Button
+                variant="link"
+                isInline
+                icon={<PlusIcon />}
+                onClick={() => setIsAddServiceOpen(true)}
+              >
+                {TENANT_PROJECTS_TEAMS_DEMO.addServiceLabel}
+              </Button>
             </div>
             {projectInstances.length === 0 ? (
               <Content component="p" className="tenant-admin-project-details__empty">
@@ -275,6 +289,13 @@ export function TenantProjectDetailsPage({
         project={isAddMemberOpen ? project : null}
         onClose={() => setIsAddMemberOpen(false)}
         onAdd={onAddMember}
+      />
+
+      <AddProjectServiceModal
+        project={isAddServiceOpen ? project : null}
+        instances={instances}
+        onClose={() => setIsAddServiceOpen(false)}
+        onAdd={onAddService}
       />
 
       <Modal

@@ -84,6 +84,7 @@ export type CreateProjectWizardForm = {
   vcpuAllocation: number
   ramAllocationGb: number
   instanceQuota: number
+  externalIpPoolId: string
   ipPoolSlice: string
   memberName: string
   memberEmail: string
@@ -98,6 +99,7 @@ export const DEFAULT_CREATE_PROJECT_WIZARD_FORM: CreateProjectWizardForm = {
   vcpuAllocation: 80,
   ramAllocationGb: 512,
   instanceQuota: 7,
+  externalIpPoolId: '',
   ipPoolSlice: DEFAULT_PROJECT_IP_SLICE,
   memberName: 'Jordan Lee',
   memberEmail: 'jordan@northsummitbank.com',

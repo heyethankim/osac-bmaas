@@ -9,6 +9,7 @@ import {
   Title,
 } from "@patternfly/react-core";
 import { EntityDetailsPageShell } from "../shared/EntityDetailsPageShell";
+import { EntityDetailsActionsDropdown } from "../shared/EntityDetailsActionsDropdown";
 import {
   getNetworkInventoryStatus,
   getNetworkInventoryStatusLabelColor,
@@ -58,18 +59,11 @@ export function SecurityGroupDetailsPage({
       }
       actions={
         onEdit || onDelete ? (
-          <>
-            {onEdit ? (
-              <Button variant="secondary" onClick={onEdit}>
-                Edit
-              </Button>
-            ) : null}
-            {onDelete ? (
-              <Button variant="secondary" isDanger onClick={onDelete}>
-                Delete
-              </Button>
-            ) : null}
-          </>
+          <EntityDetailsActionsDropdown
+            onEdit={onEdit}
+            onRemove={onDelete}
+            removeLabel="Delete"
+          />
         ) : undefined
       }
     >

@@ -53,6 +53,17 @@ export function ProviderAdminVirtualNetworksPage({
   const [selectedStatus, setSelectedStatus] = useState<'all' | NetworkInventoryStatus>('all')
   const [selectedNetwork, setSelectedNetwork] = useState<ProviderVirtualNetwork | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const [editingNetwork, setEditingNetwork] = useState<ProviderVirtualNetwork | null>(null)
+
+  const closeWizard = () => {
+    setIsCreateWizardOpen(false)
+    setEditingNetwork(null)
+  }
+
+  const openEdit = (network: ProviderVirtualNetwork) => {
+    setIsDetailsOpen(false)
+    setEditingNetwork(network)
+  }
 
   const filteredNetworks = useMemo(() => {
     const query = searchValue.trim().toLowerCase()
@@ -102,13 +113,17 @@ export function ProviderAdminVirtualNetworksPage({
     onOpenVirtualNetworkConsumed?.()
   }, [openVirtualNetworkId, networks, onOpenVirtualNetworkConsumed])
 
-  if (isCreateWizardOpen && !readOnly) {
+  if ((isCreateWizardOpen || editingNetwork) && !readOnly) {
     return (
       <CreateVirtualNetworkWizard
         isOpen
         tenantSlug={tenantSlug}
-        onClose={() => setIsCreateWizardOpen(false)}
-        onCreated={() => setNetworks(inventory.getVirtualNetworks())}
+        resource={editingNetwork}
+        onClose={closeWizard}
+        onCreated={() => {
+          setNetworks(inventory.getVirtualNetworks())
+          closeWizard()
+        }}
       />
     )
   }
@@ -119,7 +134,7 @@ export function ProviderAdminVirtualNetworksPage({
         network={selectedNetwork}
         tenantSlug={tenantSlug}
         onBack={closeDetails}
-        onEdit={() => undefined}
+        onEdit={readOnly ? undefined : () => openEdit(selectedNetwork)}
         onDelete={() => undefined}
         onNavigateToSubnet={onNavigateToSubnet}
         onNavigateToSecurityGroup={onNavigateToSecurityGroup}
@@ -253,7 +268,7 @@ export function ProviderAdminVirtualNetworksPage({
                       <ActionsColumn
                         items={[
                           { title: 'View details', onClick: () => openDetails(network) },
-                          { title: 'Edit', onClick: () => undefined },
+                          { title: 'Edit', onClick: () => openEdit(network) },
                           { isSeparator: true },
                           { title: 'Delete', isDanger: true, onClick: () => undefined },
                         ]}

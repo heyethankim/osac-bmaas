@@ -1,5 +1,8 @@
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
-import { getExternalIpPoolById } from '../providerAdmin/externalIpPools'
+import {
+  getExternalIpPoolById,
+  getExternalIpPoolsAssignedToOrganization,
+} from '../providerAdmin/externalIpPools'
 import { getProviderExternalIpPools } from '../providerSetup/storage'
 import type { TenantInstance } from '../tenantUser/instances'
 import { instanceBelongsToProject } from '../tenantUser/instances'
@@ -81,7 +84,27 @@ export function generateTenantProjectId(): string {
   return `project_${suffix}`
 }
 
-export function resolveOrganizationExternalIpPool(
+export function resolveOrganizationExternalIpPools(
+  organization: RegisteredOrganization,
+): OrganizationExternalIpPool[] {
+  const assignedPools = getExternalIpPoolsAssignedToOrganization(
+    getProviderExternalIpPools(),
+    organization.id,
+  ).map((pool) => ({
+    id: pool.id,
+    name: pool.name,
+    cidr: pool.cidr,
+  }))
+
+  if (assignedPools.length > 0) {
+    return assignedPools
+  }
+
+  const legacyPool = resolveOrganizationExternalIpPoolFromOrgFields(organization)
+  return legacyPool ? [legacyPool] : []
+}
+
+function resolveOrganizationExternalIpPoolFromOrgFields(
   organization: RegisteredOrganization,
 ): OrganizationExternalIpPool | null {
   if (organization.externalIpPoolId && organization.externalIpPoolName && organization.externalIpPoolCidr) {
@@ -106,6 +129,35 @@ export function resolveOrganizationExternalIpPool(
     name: pool.name,
     cidr: pool.cidr,
   }
+}
+
+export function resolveOrganizationExternalIpPool(
+  organization: RegisteredOrganization,
+): OrganizationExternalIpPool | null {
+  const pools = resolveOrganizationExternalIpPools(organization)
+  if (pools.length === 0) {
+    return null
+  }
+
+  return (
+    pools.find((pool) => pool.id === organization.externalIpPoolId) ??
+    pools[0] ??
+    null
+  )
+}
+
+export function formatOrganizationExternalIpPoolsLabel(
+  pools: readonly OrganizationExternalIpPool[],
+): string {
+  if (pools.length === 0) {
+    return 'Not assigned'
+  }
+
+  if (pools.length === 1) {
+    return formatOrganizationExternalIpPoolLabel(pools[0])
+  }
+
+  return `${pools.length} pools assigned`
 }
 
 export function formatOrganizationExternalIpPoolLabel(
@@ -182,6 +234,15 @@ export function getInstancesForTenantProject(
   return instances.filter((instance) => instanceBelongsToProject(instance, project))
 }
 
+export function getInstancesAvailableForTenantProject(
+  instances: readonly TenantInstance[],
+  project: TenantProject,
+): TenantInstance[] {
+  return instances
+    .filter((instance) => !instanceBelongsToProject(instance, project))
+    .sort((left, right) => left.name.localeCompare(right.name))
+}
+
 export function getTenantProjectActions(
   project: TenantProject,
   handlers: {
@@ -217,9 +278,12 @@ export const TENANT_PROJECTS_TEAMS_DEMO = {
   createFirstProjectLabel: 'Create first project',
   createProjectLabel: 'Create project',
   detailsFallbackDescription: 'Project workspace for scoped catalog access and team collaboration.',
-  servicesEmpty: 'No services launched in this project yet.',
+  servicesEmpty: 'No services in this project yet.',
   membersEmpty: 'No project members yet. Add someone to grant project access.',
   addMemberLabel: 'Add',
+  addServiceLabel: 'Add',
+  addServiceModalDescription:
+    'Associate an existing service with this project. Project members will see it in Services.',
   removeMemberLabel: 'Remove',
 } as const
 

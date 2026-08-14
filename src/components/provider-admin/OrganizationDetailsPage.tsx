@@ -1,5 +1,6 @@
 import { CheckCircleIcon } from '@patternfly/react-icons/dist/esm/icons/check-circle-icon'
 import { PendingIcon } from '@patternfly/react-icons/dist/esm/icons/pending-icon'
+import { useMemo } from 'react'
 import {
   Button,
   Content,
@@ -11,6 +12,7 @@ import {
   Title,
 } from '@patternfly/react-core'
 import { EntityDetailsPageShell } from '../shared/EntityDetailsPageShell'
+import { EntityDetailsActionsDropdown } from '../shared/EntityDetailsActionsDropdown'
 import {
   formatOrganizationRolesAssignmentSummary,
   getOrganizationActivationSteps,
@@ -20,6 +22,7 @@ import {
   type RegisteredOrganization,
 } from '../../providerAdmin/organizations'
 import { OrganizationReadyForLoginLinks } from './OrganizationReadyForLoginLinks'
+import { resolveOrganizationExternalIpPools } from '../../tenantAdmin/projects'
 
 type OrganizationDetailsPageProps = {
   organization: RegisteredOrganization
@@ -168,6 +171,10 @@ export function OrganizationDetailsPage({
   const activationSteps = getOrganizationActivationSteps(organization)
   const additionalAdmins = organization.additionalTenantAdmins
   const invitedUsers = organization.invitedTenantUserEmails
+  const externalIpPools = useMemo(
+    () => resolveOrganizationExternalIpPools(organization),
+    [organization],
+  )
 
   return (
     <EntityDetailsPageShell
@@ -178,18 +185,7 @@ export function OrganizationDetailsPage({
       description="Tenant organization details for billing, identity domain, and workspace access."
       actions={
         onEdit || onRemove ? (
-          <>
-            {onEdit ? (
-              <Button variant="secondary" onClick={onEdit}>
-                Edit
-              </Button>
-            ) : null}
-            {onRemove ? (
-              <Button variant="secondary" isDanger onClick={onRemove}>
-                Remove
-              </Button>
-            ) : null}
-          </>
+          <EntityDetailsActionsDropdown onEdit={onEdit} onRemove={onRemove} removeLabel="Remove" />
         ) : undefined
       }
     >
@@ -362,24 +358,34 @@ export function OrganizationDetailsPage({
                 </DescriptionListDescription>
               </DescriptionListGroup>
               <DescriptionListGroup>
-                <DescriptionListTerm>External IP pool</DescriptionListTerm>
+                <DescriptionListTerm>External IP pools</DescriptionListTerm>
                 <DescriptionListDescription>
-                  {organization.externalIpPoolName ? (
-                    <>
-                      <Content component="p" className="provider-admin-organizations__primary-cell">
-                        {organization.externalIpPoolName}
-                      </Content>
-                      <Content
-                        component="p"
-                        className="provider-admin-organizations__secondary-cell"
-                      >
-                        <code>
-                          {organization.externalIpPoolCidr || organization.externalIpPoolId || '—'}
-                        </code>
-                      </Content>
-                    </>
-                  ) : (
+                  {externalIpPools.length === 0 ? (
                     '—'
+                  ) : (
+                    <ul className="provider-admin-organizations__pool-list">
+                      {externalIpPools.map((pool) => (
+                        <li key={pool.id}>
+                          <Content component="p" className="provider-admin-organizations__primary-cell">
+                            {pool.name}
+                            {pool.id === organization.externalIpPoolId ? (
+                              <>
+                                {' '}
+                                <Label color="blue" isCompact>
+                                  Primary
+                                </Label>
+                              </>
+                            ) : null}
+                          </Content>
+                          <Content
+                            component="p"
+                            className="provider-admin-organizations__secondary-cell"
+                          >
+                            <code>{pool.cidr}</code>
+                          </Content>
+                        </li>
+                      ))}
+                    </ul>
                   )}
                 </DescriptionListDescription>
               </DescriptionListGroup>

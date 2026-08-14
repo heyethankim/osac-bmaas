@@ -15,6 +15,7 @@ import {
   type CatalogSpecRow,
   getCatalogSpecRowValue,
   resolveCatalogOsImage,
+  resolveBaremetalCatalogCardSpecRows,
   resolveCatalogSpecRows,
 } from '../catalog/catalogSpecs'
 import {
@@ -131,7 +132,10 @@ function mapProviderCatalogToGovernanceItem(
   organization: RegisteredOrganization,
 ): TenantCatalogGovernanceItemWithNetworking {
   const serviceId = draft.serviceId ?? 'baremetal'
-  const specRows = resolveCatalogSpecRows(draft)
+  const specRows =
+    serviceId === 'baremetal'
+      ? resolveBaremetalCatalogCardSpecRows(draft)
+      : resolveCatalogSpecRows(draft)
   const networkPolicy = applyTenantNetworkOverrides(
     getCatalogItemNetworkPolicy(draft),
     getTenantNetworkOverrides(organization.slug, draft.catalogItemId),
@@ -188,7 +192,6 @@ export const TENANT_CATALOG_GOVERNANCE_ITEMS: TenantCatalogGovernanceItem[] = [
     instanceTypeId: 'large',
     instanceTypeLabel: formatBaremetalInstanceTypeLabel('large'),
     specRows: [
-      { label: 'Size', value: 'Large' },
       { label: 'CPU', value: '64 vCPU' },
       { label: 'RAM', value: '512 GB' },
       { label: 'GPU', value: 'NVIDIA A100 80 GB' },

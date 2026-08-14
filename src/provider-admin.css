@@ -2712,6 +2712,12 @@
   margin-block-end: 0;
 }
 
+.provider-admin-network-inventory__wizard-footer-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
 .provider-admin-network-inventory__table .pf-v6-c-table__tbody .pf-v6-c-content--p {
   margin-block-end: 0;
 }
@@ -3525,6 +3531,19 @@
   margin-block-end: 0;
 }
 
+.entity-details-page__pool-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--xs);
+}
+
+.entity-details-page__pool-list > li {
+  margin: 0;
+}
+
 .provider-admin-catalog-items__drawer {
   min-height: calc(100vh - 11rem);
 }
@@ -4140,6 +4159,19 @@
 }
 
 .provider-admin-organizations__account-list > li {
+  margin: 0;
+}
+
+.provider-admin-organizations__pool-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.provider-admin-organizations__pool-list > li {
   margin: 0;
 }
 

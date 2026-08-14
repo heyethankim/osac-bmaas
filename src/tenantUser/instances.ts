@@ -1231,7 +1231,7 @@ export function getTenantInstanceCardSpecRows(instance: TenantInstance): Catalog
   const allSpecRows = getTenantInstanceSpecRows(instance)
 
   if (serviceId === 'baremetal') {
-    return normalizeBareMetalCardSpecRows(allSpecRows)
+    return normalizeBareMetalCardSpecRows(allSpecRows).filter((row) => row.label !== 'Size')
   }
 
   if (serviceId === 'virtual-machine') {

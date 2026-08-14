@@ -27,6 +27,7 @@ import {
   toCatalogNetworkOption,
 } from '../providerAdmin/networkInventory'
 import type { CatalogNetworkPolicy, CatalogNetworkResourceOption } from '../providerAdmin/catalogNetworkPolicy'
+import { replaceInventoryItemById } from '../networking/networkInventoryStorageUtils'
 import {
   normalizeCatalogNetworkPolicy,
   resolveCatalogNetworkPolicy,
@@ -1852,6 +1853,10 @@ export function addProviderExternalIpPool(pool: ExternalIpPool): void {
   setProviderExternalIpPools([...current, pool])
 }
 
+export function updateProviderExternalIpPool(pool: ExternalIpPool): void {
+  setProviderExternalIpPools(replaceInventoryItemById(getProviderExternalIpPools(), pool))
+}
+
 export function assignExternalIpPoolToOrganization(
   poolId: string,
   organizationId: string,
@@ -1896,10 +1901,6 @@ export function assignExternalIpPoolToRegisteredOrganization(
       return false
     }
 
-    if (organization.externalIpPoolId && organization.externalIpPoolId !== poolId) {
-      return false
-    }
-
     if (
       pool.assignedOrganizationId !== null &&
       pool.assignedOrganizationId !== organizationId
@@ -1907,10 +1908,7 @@ export function assignExternalIpPoolToRegisteredOrganization(
       return false
     }
 
-    if (
-      pool.assignedOrganizationId === organizationId &&
-      organization.externalIpPoolId === poolId
-    ) {
+    if (pool.assignedOrganizationId === organizationId) {
       return true
     }
 
@@ -1918,12 +1916,14 @@ export function assignExternalIpPoolToRegisteredOrganization(
     setProviderRegisteredOrganizations(
       organizations.map((item) =>
         item.id === organizationId
-          ? {
-              ...item,
-              externalIpPoolId: pool.id,
-              externalIpPoolName: pool.name,
-              externalIpPoolCidr: pool.cidr,
-            }
+          ? organization.externalIpPoolId
+            ? item
+            : {
+                ...item,
+                externalIpPoolId: pool.id,
+                externalIpPoolName: pool.name,
+                externalIpPoolCidr: pool.cidr,
+              }
           : item,
       ),
     )
@@ -2092,6 +2092,10 @@ export function addProviderVirtualNetwork(network: ProviderVirtualNetwork): void
   setProviderVirtualNetworks([...getProviderVirtualNetworks(), network])
 }
 
+export function updateProviderVirtualNetwork(network: ProviderVirtualNetwork): void {
+  setProviderVirtualNetworks(replaceInventoryItemById(getProviderVirtualNetworks(), network))
+}
+
 export function getProviderSubnets(): ProviderSubnet[] {
   try {
     const raw = sessionStorage.getItem(PROVIDER_SUBNETS_KEY)
@@ -2122,6 +2126,10 @@ export function setProviderSubnets(subnets: ProviderSubnet[]): void {
 
 export function addProviderSubnet(subnet: ProviderSubnet): void {
   setProviderSubnets([...getProviderSubnets(), subnet])
+}
+
+export function updateProviderSubnet(subnet: ProviderSubnet): void {
+  setProviderSubnets(replaceInventoryItemById(getProviderSubnets(), subnet))
 }
 
 export function getProviderSecurityGroups(): ProviderSecurityGroup[] {
@@ -2181,6 +2189,10 @@ export function setProviderSecurityGroups(groups: ProviderSecurityGroup[]): void
 
 export function addProviderSecurityGroup(group: ProviderSecurityGroup): void {
   setProviderSecurityGroups([...getProviderSecurityGroups(), group])
+}
+
+export function updateProviderSecurityGroup(group: ProviderSecurityGroup): void {
+  setProviderSecurityGroups(replaceInventoryItemById(getProviderSecurityGroups(), group))
 }
 
 export function getCatalogVirtualNetworkOptions(): CatalogNetworkResourceOption[] {

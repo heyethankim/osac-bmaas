@@ -43,6 +43,13 @@ export function getAssignableExternalIpPools(pools: ExternalIpPool[]): ExternalI
   return pools.filter((pool) => pool.assignedOrganizationId === null)
 }
 
+export function getExternalIpPoolsAssignedToOrganization(
+  pools: readonly ExternalIpPool[],
+  organizationId: string,
+): ExternalIpPool[] {
+  return pools.filter((pool) => pool.assignedOrganizationId === organizationId)
+}
+
 export function getExternalIpPoolById(
   pools: ExternalIpPool[],
   poolId: string,
