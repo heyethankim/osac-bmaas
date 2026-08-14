@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
   Button,
@@ -9,16 +9,21 @@ import {
   EmptyStateFooter,
   Flex,
   FlexItem,
+  FormSelect,
+  FormSelectOption,
   Label,
   Modal,
   ModalBody,
   ModalFooter,
   ModalHeader,
   ModalVariant,
+  SearchInput,
   Spinner,
   Title,
 } from '@patternfly/react-core'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
+import { CatalogFilterEmptyState } from '../components/catalog/CatalogFilterEmptyState'
+import { CatalogFilterResultsSummary } from '../components/catalog/CatalogFilterResultsSummary'
 import { ConnectOrganizationIdentityProviderModal } from '../components/provider-admin/ConnectOrganizationIdentityProviderModal'
 import { DefineOrganizationRolesModal } from '../components/provider-admin/DefineOrganizationRolesModal'
 import { OrganizationDetailsPage } from '../components/provider-admin/OrganizationDetailsPage'
@@ -28,7 +33,12 @@ import {
   getOrganizationSetupNextAction,
   getOrganizationSetupSignal,
   hasPendingIdpInvite,
+  buildOrganizationFilterParts,
+  matchesOrganizationSetupFilter,
+  ORGANIZATION_SETUP_FILTER_OPTIONS,
+  organizationMatchesSearch,
   PROVIDER_ORGANIZATIONS_DEMO,
+  type OrganizationSetupFilter,
   type OrganizationSetupNextAction,
   type RegisteredOrganization,
 } from '../providerAdmin/organizations'
@@ -122,12 +132,42 @@ export function ProviderAdminOrganizationsPage({
   const [rolesOrganization, setRolesOrganization] = useState<RegisteredOrganization | null>(null)
   const [organizationPendingRemove, setOrganizationPendingRemove] =
     useState<RegisteredOrganization | null>(null)
+  const [searchValue, setSearchValue] = useState('')
+  const [selectedStatus, setSelectedStatus] = useState<'all' | RegisteredOrganization['status']>(
+    'all',
+  )
+  const [selectedSetup, setSelectedSetup] = useState<OrganizationSetupFilter>('all')
   const [registeringOrganizationId, setRegisteringOrganizationId] = useState<string | null>(null)
   const registeringTimerRef = useRef<number | null>(null)
   const [activatingOrganizationId, setActivatingOrganizationId] = useState<string | null>(null)
   const activatingTimerRef = useRef<number | null>(null)
   const pendingActivationAfterIdpCloseRef = useRef<string | null>(null)
   const catalogDraft = getProviderCatalogDraft()
+
+  const filteredOrganizations = useMemo(() => {
+    return organizations.filter((organization) => {
+      if (selectedStatus !== 'all' && organization.status !== selectedStatus) {
+        return false
+      }
+
+      if (!matchesOrganizationSetupFilter(organization, selectedSetup)) {
+        return false
+      }
+
+      return organizationMatchesSearch(organization, searchValue)
+    })
+  }, [organizations, searchValue, selectedSetup, selectedStatus])
+
+  const filterDescriptionParts = useMemo(
+    () => buildOrganizationFilterParts(searchValue, selectedStatus, selectedSetup),
+    [searchValue, selectedSetup, selectedStatus],
+  )
+
+  const clearAllFilters = () => {
+    setSearchValue('')
+    setSelectedStatus('all')
+    setSelectedSetup('all')
+  }
 
   const clearRegisteringTimer = () => {
     if (registeringTimerRef.current !== null) {
@@ -383,12 +423,53 @@ export function ProviderAdminOrganizationsPage({
           </>
         )}
 
+        {organizations.length > 0 ? (
+          <div className="catalog-view-toolbar">
+            <div className="catalog-view-toolbar__start">
+              <FormSelect
+                className="catalog-status-filter"
+                id="organizations-status-filter"
+                value={selectedStatus}
+                onChange={(_event, value) =>
+                  setSelectedStatus(value as 'all' | RegisteredOrganization['status'])
+                }
+                aria-label="Filter organizations by status"
+              >
+                <FormSelectOption value="all" label="All statuses" />
+                <FormSelectOption value="Active" label="Active" />
+                <FormSelectOption value="Pending activation" label="Pending activation" />
+              </FormSelect>
+              <FormSelect
+                className="catalog-status-filter"
+                id="organizations-setup-filter"
+                value={selectedSetup}
+                onChange={(_event, value) =>
+                  setSelectedSetup(value as OrganizationSetupFilter)
+                }
+                aria-label="Filter organizations by setup state"
+              >
+                {ORGANIZATION_SETUP_FILTER_OPTIONS.map((option) => (
+                  <FormSelectOption key={option.value} value={option.value} label={option.label} />
+                ))}
+              </FormSelect>
+              <SearchInput
+                className="catalog-search"
+                placeholder="Search organizations"
+                value={searchValue}
+                onChange={(_event, value) => setSearchValue(value)}
+                onClear={() => setSearchValue('')}
+                aria-label="Search organizations"
+              />
+            </div>
+          </div>
+        ) : null}
+
         {organizations.length === 0 ? (
-          <EmptyState className="provider-admin-organizations__empty">
+          <EmptyState className="catalog-filter-empty provider-admin-organizations__empty">
             <Title headingLevel="h2" size="lg">
               {PROVIDER_ORGANIZATIONS_DEMO.emptyTitle}
             </Title>
-            <EmptyStateBody className="provider-admin-organizations__empty-body">
+            <EmptyStateBody className="catalog-filter-empty__body">
               {PROVIDER_ORGANIZATIONS_DEMO.emptyBody}
             </EmptyStateBody>
             <EmptyStateFooter>
@@ -399,7 +480,21 @@ export function ProviderAdminOrganizationsPage({
               </EmptyStateActions>
             </EmptyStateFooter>
           </EmptyState>
+        ) : filteredOrganizations.length === 0 ? (
+          <CatalogFilterEmptyState
+            title="No organizations match your filters"
+            description="Try a different status, setup state, or search term."
+            onClearFilters={clearAllFilters}
+          />
         ) : (
+          <div className="catalog-table-panel">
+            <CatalogFilterResultsSummary
+              filteredCount={filteredOrganizations.length}
+              totalCount={organizations.length}
+              singular="organization"
+              filterParts={filterDescriptionParts}
+              onClearFilters={clearAllFilters}
+            />
           <Table
             aria-label="Organizations"
             borders={false}
@@ -416,7 +511,7 @@ export function ProviderAdminOrganizationsPage({
               </Tr>
             </Thead>
             <Tbody>
-              {organizations.map((org) => {
+              {filteredOrganizations.map((org) => {
                 const isRegistering = registeringOrganizationId === org.id
                 const isActivating = activatingOrganizationId === org.id
                 const isStatusPending = isRegistering || isActivating
@@ -524,6 +619,7 @@ export function ProviderAdminOrganizationsPage({
               })}
             </Tbody>
           </Table>
+          </div>
         )}
       </div>
       )}

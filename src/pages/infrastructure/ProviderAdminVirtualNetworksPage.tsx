@@ -15,7 +15,9 @@ import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/reac
 import { CreateVirtualNetworkWizard } from '../../components/networking/CreateVirtualNetworkWizard'
 import { VirtualNetworkDetailsPage } from '../../components/provider-admin/VirtualNetworkDetailsPage'
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
-import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
+import { CatalogFilterEmptyState } from '../../components/catalog/CatalogFilterEmptyState'
+import { CatalogFilterResultsSummary } from '../../components/catalog/CatalogFilterResultsSummary'
+import { buildInventoryFilterParts } from '../../catalog/catalogFilterSummary'
 import type {
   NetworkInventoryStatus,
   ProviderVirtualNetwork,
@@ -90,6 +92,16 @@ export function ProviderAdminVirtualNetworksPage({
   }, [networks, searchValue, selectedStatus])
 
   const hasActiveFilters = Boolean(searchValue.trim()) || selectedStatus !== 'all'
+
+  const filterDescriptionParts = useMemo(
+    () => buildInventoryFilterParts(searchValue, selectedStatus),
+    [searchValue, selectedStatus],
+  )
+
+  const clearAllFilters = () => {
+    setSearchValue('')
+    setSelectedStatus('all')
+  }
 
   const openDetails = (network: ProviderVirtualNetwork) => {
     setSelectedNetwork(network)
@@ -194,23 +206,29 @@ export function ProviderAdminVirtualNetworksPage({
       </div>
 
       {filteredNetworks.length === 0 ? (
+        hasActiveFilters ? (
+          <CatalogFilterEmptyState
+            title="No virtual networks match your filters"
+            description="Try a different status or search term."
+            onClearFilters={clearAllFilters}
+          />
+        ) : (
         <EmptyState>
           <Title headingLevel="h2" size="lg">
-            {hasActiveFilters
-              ? 'No virtual networks match your filters'
-              : 'No virtual networks yet'}
+            No virtual networks yet
           </Title>
-          <EmptyStateBody>
-            {hasActiveFilters
-              ? 'Try a different status, search term, or clear filters.'
-              : 'Create a virtual network to get started.'}
-          </EmptyStateBody>
+          <EmptyStateBody>Create a virtual network to get started.</EmptyStateBody>
         </EmptyState>
+        )
       ) : (
         <div className="catalog-table-panel">
-          <Content component="p" className="catalog-table-result-count">
-            {formatCatalogTableResultCount(filteredNetworks.length, 'virtual network')}
-          </Content>
+          <CatalogFilterResultsSummary
+            filteredCount={filteredNetworks.length}
+            totalCount={networks.length}
+            singular="virtual network"
+            filterParts={filterDescriptionParts}
+            onClearFilters={clearAllFilters}
+          />
           <Table
             aria-label="Virtual networks"
             className="catalog-data-table provider-admin-network-inventory__table"

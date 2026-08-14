@@ -2225,9 +2225,10 @@
   max-width: none;
 }
 
-/* Parent gap spaces sections; keep a light extra gap under the toolbar. */
-.provider-admin-catalog-items > .catalog-view-toolbar {
-  margin-block-end: var(--pf-t--global--spacer--sm);
+/* Parent gap spaces sections; toolbar margin handled by workspace flex gap. */
+.provider-admin-catalog-items > .catalog-view-toolbar,
+.provider-admin-catalog-items > .catalog-filter-results.pf-v6-c-content--p {
+  margin-block-end: 0;
 }
 
 .provider-admin-workspace-page {
@@ -4335,6 +4336,10 @@
   margin-block-end: 0;
 }
 
+.provider-admin-organizations > .catalog-view-toolbar {
+  margin-block-end: 0;
+}
+
 .provider-admin-organizations__header .provider-admin-organizations__lede.pf-v6-c-content--p {
   margin: 0;
 }
@@ -4560,18 +4565,8 @@
   margin: 0;
 }
 
-.provider-admin-organizations__empty {
+.provider-admin-organizations__empty.pf-v6-c-empty-state {
   margin-block-start: 0;
-  padding: var(--pf-t--global--spacer--2xl);
-  border: 1px dashed var(--pf-t--global--border--color--default);
-  border-radius: var(--pf-t--global--border--radius--medium);
-}
-
-.provider-admin-organizations__empty-body,
-.provider-admin-organizations__empty-body.pf-v6-c-empty-state__body {
-  font-size: 0.875rem;
-  color: var(--pf-t--global--text--color--subtle);
-  max-width: 36rem;
 }
 
 .provider-admin-organizations__wizard-lede,

@@ -167,7 +167,7 @@
 }
 
 .catalog-table-panel {
-  margin-block-start: var(--pf-t--global--spacer--md);
+  margin-block-start: 0;
 }
 
 .catalog-table-result-count {
@@ -176,6 +176,49 @@
   font-size: var(--pf-t--global--font--size--body--default);
   font-weight: var(--pf-t--global--font--weight--body--default);
   line-height: var(--pf-t--global--font--line-height--body);
+}
+
+.catalog-filter-results.pf-v6-c-content--p {
+  margin-block-start: 0;
+  margin-block-end: var(--pf-t--global--spacer--lg);
+  color: var(--pf-t--global--text--color--regular);
+  font-size: var(--pf-t--global--font--size--body--default);
+  line-height: var(--pf-t--global--font--line-height--body);
+}
+
+.catalog-table-panel > .catalog-filter-results.pf-v6-c-content--p {
+  margin-block-start: 0;
+  margin-block-end: var(--pf-t--global--spacer--md);
+}
+
+.catalog-filter-results__count-value {
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+}
+
+.catalog-filter-results__description {
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.catalog-filter-results__clear.pf-v6-c-button {
+  padding: 0;
+  vertical-align: baseline;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.catalog-filter-empty.pf-v6-c-empty-state {
+  margin-block-start: 0;
+  padding: var(--pf-t--global--spacer--2xl);
+  border: 1px dashed var(--pf-t--global--border--color--default);
+  border-radius: var(--pf-t--global--border--radius--medium);
+}
+
+.catalog-filter-empty__body,
+.catalog-filter-empty__body.pf-v6-c-empty-state__body {
+  font-size: var(--pf-t--global--font--size--body--default);
+  line-height: var(--pf-t--global--font--line-height--body);
+  color: var(--pf-t--global--text--color--subtle);
+  max-width: 36rem;
 }
 
 /* Shared card/table title link — matches My instances card title treatment. */

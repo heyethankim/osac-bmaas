@@ -21,13 +21,18 @@ import {
   countCatalogServices,
   toggleCatalogServiceFilter,
 } from '../../components/catalog/CatalogServiceFilterToggle'
+import { CatalogFilterEmptyState } from '../../components/catalog/CatalogFilterEmptyState'
+import { CatalogFilterResultsSummary } from '../../components/catalog/CatalogFilterResultsSummary'
 import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
 import { CatalogViewToggle } from '../../components/catalog/CatalogViewToggle'
+import {
+  createCatalogServiceFilterSet,
+  describeCatalogServiceFilter,
+} from '../../catalog/catalogFilterSummary'
 import { TenantUserCatalogItemDetailsPage } from '../../components/tenant-user/TenantUserCatalogItemDetailsPage'
 import { TenantUserLaunchInstanceWizard } from '../../components/tenant-user/TenantUserLaunchInstanceWizard'
 import { formatCatalogConfigurationSummary } from '../../catalog/catalogSpecs'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
-import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
 import { getCatalogViewMode, setCatalogViewMode, type CatalogViewMode } from '../../catalog/viewMode'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
@@ -236,6 +241,28 @@ export function TenantUserCatalogPage({
     setSelectedFilters((current) => toggleCatalogServiceFilter(current, serviceId, isSelected))
   }
 
+  const catalogServiceIds = useMemo(
+    () => catalogItems.map((item) => item.serviceId),
+    [catalogItems],
+  )
+
+  const filterDescriptionParts = useMemo(() => {
+    const parts: string[] = []
+    const serviceDescription = describeCatalogServiceFilter(selectedFilters, catalogServiceIds)
+    if (serviceDescription) {
+      parts.push(`service: ${serviceDescription}`)
+    }
+    if (searchValue.trim()) {
+      parts.push(`search: "${searchValue.trim()}"`)
+    }
+    return parts
+  }, [catalogServiceIds, searchValue, selectedFilters])
+
+  const clearAllFilters = () => {
+    setSearchValue('')
+    setSelectedFilters(createCatalogServiceFilterSet(catalogServiceIds))
+  }
+
   const emptyStateTitle = (() => {
     if (selectedFilters.size === 0) {
       return 'Select a service to view catalog items'
@@ -347,6 +374,13 @@ export function TenantUserCatalogPage({
         </div>
 
         {filteredItems.length === 0 ? (
+          filterDescriptionParts.length > 0 ? (
+            <CatalogFilterEmptyState
+              title="No catalog items match your filters"
+              description="Try a different service or search term."
+              onClearFilters={clearAllFilters}
+            />
+          ) : (
           <EmptyState className="tenant-user-catalog__empty">
             <Title headingLevel="h2" size="lg">
               {emptyStateTitle}
@@ -359,7 +393,16 @@ export function TenantUserCatalogPage({
                   : 'No catalog items match the selected services.'}
             </EmptyStateBody>
           </EmptyState>
+          )
         ) : viewMode === 'grid' ? (
+          <>
+            <CatalogFilterResultsSummary
+              filteredCount={filteredItems.length}
+              totalCount={catalogItems.length}
+              singular="catalog item"
+              filterParts={filterDescriptionParts}
+              onClearFilters={clearAllFilters}
+            />
           <div className="catalog-card-grid tenant-user-catalog__grid">
             {filteredItems.map((item) => {
               const catalogItemActions = getCatalogItemActions(
@@ -422,11 +465,16 @@ export function TenantUserCatalogPage({
               )
             })}
           </div>
+          </>
         ) : (
           <div className="catalog-table-panel">
-            <Content component="p" className="catalog-table-result-count">
-              {formatCatalogTableResultCount(filteredItems.length, 'catalog item')}
-            </Content>
+            <CatalogFilterResultsSummary
+              filteredCount={filteredItems.length}
+              totalCount={catalogItems.length}
+              singular="catalog item"
+              filterParts={filterDescriptionParts}
+              onClearFilters={clearAllFilters}
+            />
             <Table
               aria-label="Catalog items"
               className="catalog-data-table tenant-user-catalog__table"

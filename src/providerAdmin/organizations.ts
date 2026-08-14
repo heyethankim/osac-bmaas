@@ -611,6 +611,100 @@ export function buildNextRegisterOrganizationForm(
   }
 }
 
+export type OrganizationSetupFilter =
+  | 'all'
+  | 'ready'
+  | 'needs-idp'
+  | 'waiting-idp'
+  | 'expired-idp'
+  | 'needs-roles'
+
+export const ORGANIZATION_SETUP_FILTER_OPTIONS: ReadonlyArray<{
+  value: OrganizationSetupFilter
+  label: string
+}> = [
+  { value: 'all', label: 'All setup states' },
+  { value: 'ready', label: 'Ready' },
+  { value: 'needs-idp', label: 'Needs identity provider' },
+  { value: 'waiting-idp', label: 'Waiting on IdP Manager' },
+  { value: 'expired-idp', label: 'IdP invitation expired' },
+  { value: 'needs-roles', label: 'Needs roles' },
+]
+
+export function getOrganizationSetupFilterKey(
+  organization: RegisteredOrganization,
+): Exclude<OrganizationSetupFilter, 'all'> {
+  const signal = getOrganizationSetupSignal(organization)
+  if (signal === null) {
+    return 'ready'
+  }
+  if (signal === 'Waiting on IdP Manager') {
+    return 'waiting-idp'
+  }
+  if (signal === 'IdP invitation expired') {
+    return 'expired-idp'
+  }
+  if (signal === 'Needs roles') {
+    return 'needs-roles'
+  }
+  return 'needs-idp'
+}
+
+export function matchesOrganizationSetupFilter(
+  organization: RegisteredOrganization,
+  filter: OrganizationSetupFilter,
+): boolean {
+  if (filter === 'all') {
+    return true
+  }
+
+  return getOrganizationSetupFilterKey(organization) === filter
+}
+
+export function organizationMatchesSearch(
+  organization: RegisteredOrganization,
+  query: string,
+): boolean {
+  const normalizedQuery = query.trim().toLowerCase()
+  if (!normalizedQuery) {
+    return true
+  }
+
+  return (
+    organization.name.toLowerCase().includes(normalizedQuery) ||
+    organization.tenantId.toLowerCase().includes(normalizedQuery) ||
+    organization.slug.toLowerCase().includes(normalizedQuery) ||
+    organization.primaryDomain.toLowerCase().includes(normalizedQuery) ||
+    organization.billingAccountName.toLowerCase().includes(normalizedQuery) ||
+    organization.billingAccountId.toLowerCase().includes(normalizedQuery)
+  )
+}
+
+export function buildOrganizationFilterParts(
+  searchValue: string,
+  selectedStatus: 'all' | RegisteredOrganization['status'],
+  selectedSetup: OrganizationSetupFilter,
+): string[] {
+  const parts: string[] = []
+
+  if (selectedStatus !== 'all') {
+    parts.push(`status: ${selectedStatus}`)
+  }
+
+  if (selectedSetup !== 'all') {
+    const setupLabel =
+      ORGANIZATION_SETUP_FILTER_OPTIONS.find((option) => option.value === selectedSetup)?.label ??
+      selectedSetup
+    parts.push(`setup: ${setupLabel}`)
+  }
+
+  if (searchValue.trim()) {
+    parts.push(`search: "${searchValue.trim()}"`)
+  }
+
+  return parts
+}
+
 export const PROVIDER_ORGANIZATIONS_DEMO = {
   lede: 'Register tenant organizations and map billing accounts.',
   emptyTitle: 'No organizations yet',

@@ -15,7 +15,9 @@ import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/reac
 import { CreateSubnetWizard } from '../../components/networking/CreateSubnetWizard'
 import { SubnetDetailsPage } from '../../components/provider-admin/SubnetDetailsPage'
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
-import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
+import { CatalogFilterEmptyState } from '../../components/catalog/CatalogFilterEmptyState'
+import { CatalogFilterResultsSummary } from '../../components/catalog/CatalogFilterResultsSummary'
+import { buildInventoryFilterParts } from '../../catalog/catalogFilterSummary'
 import type { NetworkInventoryStatus, ProviderSubnet } from '../../providerAdmin/networkInventory'
 import {
   getNetworkInventoryStatus,
@@ -97,6 +99,16 @@ export function ProviderAdminSubnetsPage({
   }, [subnets, searchValue, selectedStatus, virtualNetworks])
 
   const hasActiveFilters = Boolean(searchValue.trim()) || selectedStatus !== 'all'
+
+  const filterDescriptionParts = useMemo(
+    () => buildInventoryFilterParts(searchValue, selectedStatus),
+    [searchValue, selectedStatus],
+  )
+
+  const clearAllFilters = () => {
+    setSearchValue('')
+    setSelectedStatus('all')
+  }
 
   const openDetails = (subnet: ProviderSubnet) => {
     setSelectedSubnet(subnet)
@@ -210,21 +222,29 @@ export function ProviderAdminSubnetsPage({
       </div>
 
       {filteredSubnets.length === 0 ? (
+        hasActiveFilters ? (
+          <CatalogFilterEmptyState
+            title="No subnets match your filters"
+            description="Try a different status or search term."
+            onClearFilters={clearAllFilters}
+          />
+        ) : (
         <EmptyState>
           <Title headingLevel="h2" size="lg">
-            {hasActiveFilters ? 'No subnets match your filters' : 'No subnets yet'}
+            No subnets yet
           </Title>
-          <EmptyStateBody>
-            {hasActiveFilters
-              ? 'Try a different status, search term, or clear filters.'
-              : 'Create a subnet to get started.'}
-          </EmptyStateBody>
+          <EmptyStateBody>Create a subnet to get started.</EmptyStateBody>
         </EmptyState>
+        )
       ) : (
         <div className="catalog-table-panel">
-          <Content component="p" className="catalog-table-result-count">
-            {formatCatalogTableResultCount(filteredSubnets.length, 'subnet')}
-          </Content>
+          <CatalogFilterResultsSummary
+            filteredCount={filteredSubnets.length}
+            totalCount={subnets.length}
+            singular="subnet"
+            filterParts={filterDescriptionParts}
+            onClearFilters={clearAllFilters}
+          />
           <Table
             aria-label="Subnets"
             className="catalog-data-table provider-admin-network-inventory__table"

@@ -30,6 +30,8 @@ import {
   countCatalogServices,
   toggleCatalogServiceFilter,
 } from '../../components/catalog/CatalogServiceFilterToggle'
+import { CatalogFilterEmptyState } from '../../components/catalog/CatalogFilterEmptyState'
+import { CatalogFilterResultsSummary } from '../../components/catalog/CatalogFilterResultsSummary'
 import { CatalogViewToggle } from '../../components/catalog/CatalogViewToggle'
 import { CatalogPublishScopeIcon } from '../../components/provider-admin/CatalogPublishScopeIcon'
 import { TenantCatalogItemDetailsPage } from '../../components/tenant-admin/TenantCatalogItemDetailsPage'
@@ -38,7 +40,10 @@ import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsLis
 import { KubernetesResourceNameField } from '../../components/shared/KubernetesResourceNameHelper'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import { formatCatalogConfigurationSummary } from '../../catalog/catalogSpecs'
-import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
+import {
+  createCatalogServiceFilterSet,
+  describeCatalogServiceFilter,
+} from '../../catalog/catalogFilterSummary'
 import { getCatalogViewMode, setCatalogViewMode, type CatalogViewMode } from '../../catalog/viewMode'
 import {
   findCatalogItemByWorkspaceParam,
@@ -301,6 +306,34 @@ export function TenantAdminCatalogPage({
       )
     })
   }, [catalogItems, selectedFilters, selectedStatus, searchValue])
+
+  const catalogServiceIds = useMemo(
+    () => catalogItems.map((item) => item.serviceId),
+    [catalogItems],
+  )
+
+  const filterDescriptionParts = useMemo(() => {
+    const parts: string[] = []
+    const serviceDescription = describeCatalogServiceFilter(selectedFilters, catalogServiceIds)
+    if (serviceDescription) {
+      parts.push(`service: ${serviceDescription}`)
+    }
+    if (selectedStatus !== 'all') {
+      parts.push(
+        `publish status: ${selectedStatus === 'Live' ? 'Published' : 'Unpublished'}`,
+      )
+    }
+    if (searchValue.trim()) {
+      parts.push(`search: "${searchValue.trim()}"`)
+    }
+    return parts
+  }, [catalogServiceIds, searchValue, selectedFilters, selectedStatus])
+
+  const clearAllFilters = () => {
+    setSearchValue('')
+    setSelectedStatus('all')
+    setSelectedFilters(createCatalogServiceFilterSet(catalogServiceIds))
+  }
 
   const emptyStateTitle = (() => {
     if (selectedFilters.size === 0) {
@@ -613,13 +646,29 @@ export function TenantAdminCatalogPage({
         </div>
 
         {filteredItems.length === 0 ? (
+          filterDescriptionParts.length > 0 ? (
+            <CatalogFilterEmptyState
+              title="No catalog items match your filters"
+              description="Try a different service, publish status, or search term."
+              onClearFilters={clearAllFilters}
+            />
+          ) : (
           <EmptyState className="tenant-admin-catalog-manager__empty">
             <Title headingLevel="h2" size="lg">
               {emptyStateTitle}
             </Title>
             <EmptyStateBody>{emptyStateBody}</EmptyStateBody>
           </EmptyState>
+          )
         ) : viewMode === 'grid' ? (
+          <>
+            <CatalogFilterResultsSummary
+              filteredCount={filteredItems.length}
+              totalCount={catalogItems.length}
+              singular="catalog item"
+              filterParts={filterDescriptionParts}
+              onClearFilters={clearAllFilters}
+            />
           <div className="catalog-card-grid tenant-admin-catalog-manager__catalog-list">
             {filteredItems.map((item) => {
               const catalogItemActions = buildCatalogItemActions(item)
@@ -700,11 +749,16 @@ export function TenantAdminCatalogPage({
               )
             })}
           </div>
+          </>
         ) : (
           <div className="catalog-table-panel">
-            <Content component="p" className="catalog-table-result-count">
-              {formatCatalogTableResultCount(filteredItems.length, 'catalog item')}
-            </Content>
+            <CatalogFilterResultsSummary
+              filteredCount={filteredItems.length}
+              totalCount={catalogItems.length}
+              singular="catalog item"
+              filterParts={filterDescriptionParts}
+              onClearFilters={clearAllFilters}
+            />
             <Table
               aria-label="Catalog items"
               className="catalog-data-table tenant-admin-catalog-manager__table"

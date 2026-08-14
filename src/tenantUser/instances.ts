@@ -7,6 +7,7 @@ import {
   formatClusterHostTypeLabel,
   formatClusterNodeSetLabel,
   formatClusterPlatformLabel,
+  formatCatalogDiskImageLabel,
   getReleaseImageForClusterVersion,
   resolveBaremetalInstanceTypeHardware,
   resolveBaremetalInstanceTypeHardwareFromSizeLabel,
@@ -163,6 +164,36 @@ export function getTenantInstanceServiceId(instance: TenantInstance): CatalogSer
   return 'baremetal'
 }
 
+export const BARE_METAL_DISK_IMAGE_FILTER_OPTIONS = [
+  'RHEL 9.4',
+  'Fedora',
+  'Ubuntu 22.04',
+] as const
+
+export type BareMetalDiskImageFilterOption = (typeof BARE_METAL_DISK_IMAGE_FILTER_OPTIONS)[number]
+
+export function normalizeBareMetalDiskImageFilterLabel(
+  label: string,
+): BareMetalDiskImageFilterOption | null {
+  const trimmed = label.trim()
+  if (!trimmed || trimmed === '—' || trimmed === '-') {
+    return null
+  }
+
+  const display = normalizeCatalogDiskImageDisplayLabel(trimmed)
+  if (display === 'RHEL 9.4') {
+    return 'RHEL 9.4'
+  }
+  if (display === 'Fedora' || /^fedora$/i.test(trimmed)) {
+    return 'Fedora'
+  }
+  if (display === 'Ubuntu 22.04 LTS' || display === 'Ubuntu 22.04' || /^ubuntu 22\.04/i.test(trimmed)) {
+    return 'Ubuntu 22.04'
+  }
+
+  return null
+}
+
 /** Spec rows for cards and drawers; prefers rows captured at launch. */
 export function getTenantInstanceSpecRows(instance: TenantInstance): CatalogSpecRow[] {
   const serviceId = getTenantInstanceServiceId(instance)
@@ -181,9 +212,14 @@ export function getTenantInstanceSpecRows(instance: TenantInstance): CatalogSpec
     )
   }
 
+  return buildBareMetalFallbackSpecRows(instance)
+}
+
+function buildBareMetalFallbackSpecRows(instance: TenantInstance): CatalogSpecRow[] {
+  const diskImage = resolveBareMetalDiskImageValue(instance, [])
   return [
     { label: 'Hardware', value: instance.hardwareProfile },
-    { label: 'Disk image', value: instance.osImage },
+    ...(diskImage ? [{ label: 'Disk image', value: diskImage }] : []),
     { label: 'GPU', value: instance.gpuLabel },
   ]
 }
@@ -1183,6 +1219,54 @@ export function getClusterNodeSetTypeLabel(instance: TenantInstance): string {
   return /\bgpu\b/i.test(nodeSet) ? 'gpu-host' : 'standard-host'
 }
 
+function isPopulatedSpecRowValue(value: string): boolean {
+  const trimmed = value.trim()
+  return trimmed.length > 0 && trimmed !== '—' && trimmed !== '-'
+}
+
+function findCatalogDraftForInstance(instance: TenantInstance) {
+  const needle = instance.catalogItemDisplayName.trim().toLowerCase()
+  if (!needle) {
+    return null
+  }
+
+  return (
+    getProviderCatalogItems().find(
+      (item) =>
+        item.displayName.trim().toLowerCase() === needle ||
+        item.catalogItemId.trim().toLowerCase() === needle,
+    ) ?? null
+  )
+}
+
+function resolveBareMetalDiskImageValue(
+  instance: TenantInstance,
+  rows: CatalogSpecRow[],
+): string | null {
+  const fromRow = rows.find((row) => row.label === 'Disk image' || row.label === 'OS image')?.value
+  const catalog = findCatalogDraftForInstance(instance)
+  const fromCatalog = catalog
+    ? formatCatalogDiskImageLabel(catalog.diskImageId, catalog.diskImageLabel)
+    : undefined
+
+  const candidate = [fromRow, instance.osImage, fromCatalog].find((value) =>
+    value ? isPopulatedSpecRowValue(value) : false,
+  )
+
+  if (!candidate) {
+    return null
+  }
+
+  return normalizeCatalogDiskImageDisplayLabel(candidate)
+}
+
+export function getBareMetalInstanceDiskImageFilterLabel(
+  instance: TenantInstance,
+): BareMetalDiskImageFilterOption | null {
+  const resolved = resolveBareMetalDiskImageValue(instance, instance.specRows ?? [])
+  return resolved ? normalizeBareMetalDiskImageFilterLabel(resolved) : null
+}
+
 /** Bare metal cards use Disk image; normalize legacy OS image rows from storage. */
 function normalizeBareMetalCardSpecRows(rows: CatalogSpecRow[]): CatalogSpecRow[] {
   return rows.map((row) =>
@@ -1197,6 +1281,11 @@ function ensureBaremetalInstanceSpecRows(
   const normalized = normalizeBareMetalCardSpecRows(rows)
   const catalog = findCatalogDraftForInstance(instance)
   const sizeFromRow = normalized.find((row) => row.label === 'Size')?.value
+  const diskImage = resolveBareMetalDiskImageValue(instance, normalized)
+  const otherTrailingRows = normalized.filter(
+    (row) =>
+      !['Size', 'CPU', 'RAM', 'GPU', 'Disk image', 'OS image'].includes(row.label),
+  )
 
   const typeHardware =
     resolveBaremetalInstanceTypeHardware(catalog?.instanceTypeId, catalog?.instanceTypeLabel) ??
@@ -1205,23 +1294,19 @@ function ensureBaremetalInstanceSpecRows(
       : undefined)
 
   if (!typeHardware) {
-    return normalized
-  }
-
-  const trailingRows = normalized
-    .filter((row) => !['Size', 'CPU', 'RAM', 'GPU'].includes(row.label))
-    .map((row) =>
-      row.label === 'Disk image'
-        ? { ...row, value: normalizeCatalogDiskImageDisplayLabel(row.value) }
-        : row,
+    const baseRows = normalized.filter(
+      (row) => row.label !== 'Disk image' && row.label !== 'OS image',
     )
+    return diskImage ? [...baseRows, { label: 'Disk image', value: diskImage }] : baseRows
+  }
 
   return [
     { label: 'Size', value: typeHardware.sizeLabel },
     { label: 'CPU', value: typeHardware.cpu },
     { label: 'RAM', value: typeHardware.ram },
     { label: 'GPU', value: typeHardware.gpu },
-    ...trailingRows,
+    ...otherTrailingRows,
+    ...(diskImage ? [{ label: 'Disk image', value: diskImage }] : []),
   ]
 }
 
@@ -1231,7 +1316,7 @@ export function getTenantInstanceCardSpecRows(instance: TenantInstance): Catalog
   const allSpecRows = getTenantInstanceSpecRows(instance)
 
   if (serviceId === 'baremetal') {
-    return normalizeBareMetalCardSpecRows(allSpecRows).filter((row) => row.label !== 'Size')
+    return allSpecRows.filter((row) => row.label !== 'Size')
   }
 
   if (serviceId === 'virtual-machine') {
@@ -1268,21 +1353,6 @@ export function getTenantInstanceCardSpecRows(instance: TenantInstance): Catalog
   }
 
   return allSpecRows.slice(0, 3)
-}
-
-function findCatalogDraftForInstance(instance: TenantInstance) {
-  const needle = instance.catalogItemDisplayName.trim().toLowerCase()
-  if (!needle) {
-    return null
-  }
-
-  return (
-    getProviderCatalogItems().find(
-      (item) =>
-        item.displayName.trim().toLowerCase() === needle ||
-        item.catalogItemId.trim().toLowerCase() === needle,
-    ) ?? null
-  )
 }
 
 /** Same Cluster version / Node set / Host type rows as cluster catalog cards. */

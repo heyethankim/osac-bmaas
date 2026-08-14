@@ -15,7 +15,9 @@ import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/reac
 import { CreateSecurityGroupWizard } from '../../components/networking/CreateSecurityGroupWizard'
 import { SecurityGroupDetailsPage } from '../../components/provider-admin/SecurityGroupDetailsPage'
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
-import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
+import { CatalogFilterEmptyState } from '../../components/catalog/CatalogFilterEmptyState'
+import { CatalogFilterResultsSummary } from '../../components/catalog/CatalogFilterResultsSummary'
+import { buildInventoryFilterParts } from '../../catalog/catalogFilterSummary'
 import type {
   NetworkInventoryStatus,
   ProviderSecurityGroup,
@@ -95,6 +97,16 @@ export function ProviderAdminSecurityGroupsPage({
   }, [groups, searchValue, selectedStatus, virtualNetworks])
 
   const hasActiveFilters = Boolean(searchValue.trim()) || selectedStatus !== 'all'
+
+  const filterDescriptionParts = useMemo(
+    () => buildInventoryFilterParts(searchValue, selectedStatus),
+    [searchValue, selectedStatus],
+  )
+
+  const clearAllFilters = () => {
+    setSearchValue('')
+    setSelectedStatus('all')
+  }
 
   const openCreateWizard = () => {
     setVirtualNetworks(inventory.getVirtualNetworks())
@@ -213,23 +225,29 @@ export function ProviderAdminSecurityGroupsPage({
       </div>
 
       {filteredGroups.length === 0 ? (
+        hasActiveFilters ? (
+          <CatalogFilterEmptyState
+            title="No security groups match your filters"
+            description="Try a different status or search term."
+            onClearFilters={clearAllFilters}
+          />
+        ) : (
         <EmptyState>
           <Title headingLevel="h2" size="lg">
-            {hasActiveFilters
-              ? 'No security groups match your filters'
-              : 'No security groups yet'}
+            No security groups yet
           </Title>
-          <EmptyStateBody>
-            {hasActiveFilters
-              ? 'Try a different status, search term, or clear filters.'
-              : 'Create a security group to get started.'}
-          </EmptyStateBody>
+          <EmptyStateBody>Create a security group to get started.</EmptyStateBody>
         </EmptyState>
+        )
       ) : (
         <div className="catalog-table-panel">
-          <Content component="p" className="catalog-table-result-count">
-            {formatCatalogTableResultCount(filteredGroups.length, 'security group')}
-          </Content>
+          <CatalogFilterResultsSummary
+            filteredCount={filteredGroups.length}
+            totalCount={groups.length}
+            singular="security group"
+            filterParts={filterDescriptionParts}
+            onClearFilters={clearAllFilters}
+          />
           <Table
             aria-label="Security groups"
             className="catalog-data-table provider-admin-network-inventory__table"

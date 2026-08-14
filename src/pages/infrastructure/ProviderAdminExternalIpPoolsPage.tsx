@@ -12,7 +12,9 @@ import {
   Title,
 } from '@patternfly/react-core'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
-import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
+import { CatalogFilterEmptyState } from '../../components/catalog/CatalogFilterEmptyState'
+import { CatalogFilterResultsSummary } from '../../components/catalog/CatalogFilterResultsSummary'
+import { buildInventoryFilterParts } from '../../catalog/catalogFilterSummary'
 import { CreateExternalIpPoolWizard } from '../../components/networking/CreateExternalIpPoolWizard'
 import { ExternalIpPoolDetailsPage } from '../../components/provider-admin/ExternalIpPoolDetailsPage'
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
@@ -124,6 +126,16 @@ export function ProviderAdminExternalIpPoolsPage({
 
   const hasActiveFilters = Boolean(searchValue.trim()) || selectedStatus !== 'all'
 
+  const filterDescriptionParts = useMemo(
+    () => buildInventoryFilterParts(searchValue, selectedStatus),
+    [searchValue, selectedStatus],
+  )
+
+  const clearAllFilters = () => {
+    setSearchValue('')
+    setSelectedStatus('all')
+  }
+
   const openDetails = (pool: ExternalIpPool) => {
     setSelectedPool(pool)
     setIsDetailsOpen(true)
@@ -228,25 +240,33 @@ export function ProviderAdminExternalIpPoolsPage({
       </div>
 
       {filteredPools.length === 0 ? (
+        hasActiveFilters ? (
+          <CatalogFilterEmptyState
+            title="No external IP pools match your filters"
+            description="Try a different status or search term."
+            onClearFilters={clearAllFilters}
+          />
+        ) : (
         <EmptyState>
           <Title headingLevel="h2" size="lg">
-            {hasActiveFilters
-              ? 'No external IP pools match your filters'
-              : 'No external IP pools yet'}
+            No external IP pools yet
           </Title>
           <EmptyStateBody>
-            {hasActiveFilters
-              ? 'Try a different status, search term, or clear filters.'
-              : isTenantScope
-                ? 'Your provider has not published any external IP pools for this organization yet.'
-                : 'Create a pool to define routable address ranges for tenant edge exposure.'}
+            {isTenantScope
+              ? 'Your provider has not published any external IP pools for this organization yet.'
+              : 'Create a pool to define routable address ranges for tenant edge exposure.'}
           </EmptyStateBody>
         </EmptyState>
+        )
       ) : (
         <div className="catalog-table-panel">
-          <Content component="p" className="catalog-table-result-count">
-            {formatCatalogTableResultCount(filteredPools.length, 'external IP pool')}
-          </Content>
+          <CatalogFilterResultsSummary
+            filteredCount={filteredPools.length}
+            totalCount={pools.length}
+            singular="external IP pool"
+            filterParts={filterDescriptionParts}
+            onClearFilters={clearAllFilters}
+          />
           <Table
             aria-label="External IP pools"
             className="catalog-data-table provider-admin-external-ip-pools__table"

@@ -26,6 +26,8 @@ import {
 } from '@patternfly/react-core'
 import { Table, ActionsColumn, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
 import { CatalogServiceFilterToggle, countCatalogServices, toggleCatalogServiceFilter } from '../components/catalog/CatalogServiceFilterToggle'
+import { CatalogFilterEmptyState } from '../components/catalog/CatalogFilterEmptyState'
+import { CatalogFilterResultsSummary } from '../components/catalog/CatalogFilterResultsSummary'
 import { CatalogViewToggle } from '../components/catalog/CatalogViewToggle'
 import { CatalogItemDetailsPage } from '../components/provider-admin/CatalogItemDetailsPage'
 import { CatalogPublishScopeIcon } from '../components/provider-admin/CatalogPublishScopeIcon'
@@ -34,7 +36,10 @@ import {
   getCatalogEnterpriseTenantIds,
 } from '../components/provider-admin/VipEnterpriseOrganizationField'
 import { getCatalogServiceIcon } from '../catalog/serviceIcons'
-import { formatCatalogTableResultCount } from '../catalog/tableResultCount'
+import {
+  createCatalogServiceFilterSet,
+  describeCatalogServiceFilter,
+} from '../catalog/catalogFilterSummary'
 import {
   formatCatalogConfigurationSummary,
   resolveBaremetalCatalogCardSpecRows,
@@ -840,6 +845,50 @@ export function ProviderAdminCatalogPage({
     setSelectedFilters((current) => toggleCatalogServiceFilter(current, serviceId, isSelected))
   }
 
+  const catalogServiceIds = useMemo(
+    () => orderedCatalogItems.map(getDraftServiceId),
+    [orderedCatalogItems],
+  )
+
+  const filterDescriptionParts = useMemo(() => {
+    const parts: string[] = []
+    const serviceDescription = describeCatalogServiceFilter(selectedFilters, catalogServiceIds)
+    if (serviceDescription) {
+      parts.push(`service: ${serviceDescription}`)
+    }
+    if (selectedStatus !== 'all') {
+      parts.push(
+        `publish status: ${selectedStatus === 'live' ? 'Published' : 'Unpublished'}`,
+      )
+    }
+    if (organizationFilter) {
+      const organizationName =
+        organizations.find(
+          (organization) =>
+            organization.tenantId === organizationFilter || organization.id === organizationFilter,
+        )?.name ?? organizationFilter
+      parts.push(`organization: ${organizationName}`)
+    }
+    if (searchValue.trim()) {
+      parts.push(`search: "${searchValue.trim()}"`)
+    }
+    return parts
+  }, [
+    catalogServiceIds,
+    organizationFilter,
+    organizations,
+    searchValue,
+    selectedFilters,
+    selectedStatus,
+  ])
+
+  const clearAllFilters = () => {
+    setSearchValue('')
+    setSelectedStatus('all')
+    setOrganizationFilter('')
+    setSelectedFilters(createCatalogServiceFilterSet(catalogServiceIds))
+  }
+
   const emptyStateTitle = (() => {
     if (selectedFilters.size === 0) {
       return 'Select a service to view catalog items'
@@ -1109,13 +1158,29 @@ export function ProviderAdminCatalogPage({
       </div>
 
       {filteredCatalogItems.length === 0 ? (
+        filterDescriptionParts.length > 0 ? (
+          <CatalogFilterEmptyState
+            title="No catalog items match your filters"
+            description="Try a different service, publish status, organization, or search term."
+            onClearFilters={clearAllFilters}
+          />
+        ) : (
         <EmptyState className="provider-admin-catalog-items__empty">
           <Title headingLevel="h2" size="lg">
             {emptyStateTitle}
           </Title>
           <EmptyStateBody>{emptyStateBody}</EmptyStateBody>
         </EmptyState>
+        )
       ) : viewMode === 'grid' ? (
+        <>
+          <CatalogFilterResultsSummary
+            filteredCount={filteredCatalogItems.length}
+            totalCount={orderedCatalogItems.length}
+            singular="catalog item"
+            filterParts={filterDescriptionParts}
+            onClearFilters={clearAllFilters}
+          />
         <div
           ref={catalogCardGridRef}
           className="catalog-card-grid catalog-card-grid--stable provider-admin-catalog-items__card-grid"
@@ -1239,11 +1304,16 @@ export function ProviderAdminCatalogPage({
             )
           })}
         </div>
+        </>
       ) : (
         <div className="catalog-table-panel">
-          <Content component="p" className="catalog-table-result-count">
-            {formatCatalogTableResultCount(filteredCatalogItems.length, 'catalog item')}
-          </Content>
+          <CatalogFilterResultsSummary
+            filteredCount={filteredCatalogItems.length}
+            totalCount={orderedCatalogItems.length}
+            singular="catalog item"
+            filterParts={filterDescriptionParts}
+            onClearFilters={clearAllFilters}
+          />
           <Table
             aria-label="Catalog items"
             className="catalog-data-table provider-admin-catalog-items__table"

@@ -17,6 +17,7 @@ import {
   Title,
 } from '@patternfly/react-core'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table'
+import { CatalogFilterEmptyState } from '../../components/catalog/CatalogFilterEmptyState'
 import { AddTenantAdministratorWizard } from '../../components/tenant-admin/AddTenantAdministratorWizard'
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
 import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
@@ -67,6 +68,13 @@ export function TenantAdminAdministratorsPage({
       )
     })
   }, [administrators, searchValue, selectedRole])
+
+  const hasActiveFilters = Boolean(searchValue.trim()) || selectedRole !== 'all'
+
+  const clearAllFilters = () => {
+    setSearchValue('')
+    setSelectedRole('all')
+  }
 
   const closeRemoveAdministrator = () => {
     setAdministratorPendingRemove(null)
@@ -186,12 +194,20 @@ export function TenantAdminAdministratorsPage({
       </div>
 
       {filteredAdministrators.length === 0 ? (
+        hasActiveFilters ? (
+          <CatalogFilterEmptyState
+            title={TENANT_ADMINISTRATORS_DEMO.emptyTitle}
+            description={TENANT_ADMINISTRATORS_DEMO.emptyBody}
+            onClearFilters={clearAllFilters}
+          />
+        ) : (
         <EmptyState>
           <Title headingLevel="h2" size="lg">
             {TENANT_ADMINISTRATORS_DEMO.emptyTitle}
           </Title>
           <EmptyStateBody>{TENANT_ADMINISTRATORS_DEMO.emptyBody}</EmptyStateBody>
         </EmptyState>
+        )
       ) : (
         <div className="catalog-table-panel">
           <Content component="p" className="catalog-table-result-count">

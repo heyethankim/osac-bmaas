@@ -31,11 +31,16 @@ import {
   countCatalogServices,
   toggleCatalogServiceFilter,
 } from '../../components/catalog/CatalogServiceFilterToggle'
+import { CatalogFilterEmptyState } from '../../components/catalog/CatalogFilterEmptyState'
+import { CatalogFilterResultsSummary } from '../../components/catalog/CatalogFilterResultsSummary'
 import { ViewModeToggle } from '../../components/catalog/CatalogViewToggle'
 import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
 import { TenantUserInstanceDetailsPage, BareMetalConnectSshModal } from '../../components/tenant-user/TenantUserInstanceDetailsPage'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
-import { formatCatalogTableResultCount } from '../../catalog/tableResultCount'
+import {
+  createCatalogServiceFilterSet,
+  describeCatalogServiceFilter,
+} from '../../catalog/catalogFilterSummary'
 import {
   getInstancesViewMode,
   setInstancesViewMode,
@@ -43,10 +48,12 @@ import {
 } from '../../catalog/viewMode'
 import { CATALOG_SERVICE_FILTER_LABELS, type CatalogServiceId } from '../../providerSetup/templateDemo'
 import {
+  BARE_METAL_DISK_IMAGE_FILTER_OPTIONS,
   createDemoPublicIp,
   downloadClusterKubeconfig,
   formatTenantInstanceCreatedAt,
   formatTenantInstanceName,
+  getBareMetalInstanceDiskImageFilterLabel,
   getBareMetalSerialConsoleUrl,
   getClusterDemoPassword,
   getClusterNodeSetTypeLabel,
@@ -172,6 +179,9 @@ const CLUSTER_STATUS_FILTER_OPTIONS: Array<{
   { value: 'stopped', label: 'Stopped' },
   { value: 'failed', label: 'Failed' },
 ]
+
+const DISK_IMAGE_FILTER_ALL_OPTION = { value: 'all', label: 'All disk images' } as const
+const OS_IMAGE_FILTER_ALL_OPTION = { value: 'all', label: 'All OS images' } as const
 
 export function TenantUserInstancesPage({
   tenantSlug,
@@ -329,20 +339,6 @@ export function TenantUserInstancesPage({
     [instanceServiceIds],
   )
 
-  const bareMetalOsOptions = useMemo(() => {
-    const osValues = new Set<string>()
-    for (const instance of sortedInstances) {
-      if (getTenantInstanceServiceId(instance) !== 'baremetal') {
-        continue
-      }
-      const osImage = instance.osImage.trim()
-      if (osImage) {
-        osValues.add(osImage)
-      }
-    }
-    return [...osValues].sort((left, right) => left.localeCompare(right))
-  }, [sortedInstances])
-
   const bareMetalGpuOptions = useMemo(() => {
     const gpuValues = new Set<string>()
     for (const instance of sortedInstances) {
@@ -399,20 +395,28 @@ export function TenantUserInstancesPage({
     return [...osValues].sort((left, right) => left.localeCompare(right))
   }, [sortedInstances])
 
+  const serviceFilteredInstances = useMemo(
+    () =>
+      sortedInstances.filter((instance) =>
+        selectedFilters.has(getTenantInstanceServiceId(instance)),
+      ),
+    [sortedInstances, selectedFilters],
+  )
+
   const filteredInstances = useMemo(() => {
     const query = searchValue.trim().toLowerCase()
 
-    return sortedInstances.filter((instance) => {
+    return serviceFilteredInstances.filter((instance) => {
       const serviceId = getTenantInstanceServiceId(instance)
-      if (!selectedFilters.has(serviceId)) {
-        return false
-      }
 
       if (isBareMetalPage) {
         if (powerStateFilter !== 'all' && instance.status !== powerStateFilter) {
           return false
         }
-        if (osFilter !== 'all' && instance.osImage !== osFilter) {
+        if (
+          osFilter !== 'all' &&
+          getBareMetalInstanceDiskImageFilterLabel(instance) !== osFilter
+        ) {
           return false
         }
         if (gpuFilter !== 'all' && getTenantInstanceGpuLabel(instance) !== gpuFilter) {
@@ -472,8 +476,7 @@ export function TenantUserInstancesPage({
       )
     })
   }, [
-    sortedInstances,
-    selectedFilters,
+    serviceFilteredInstances,
     searchValue,
     isBareMetalPage,
     isClustersPage,
@@ -484,6 +487,73 @@ export function TenantUserInstancesPage({
     platformFilter,
     nodeSetTypeFilter,
   ])
+
+  const filterDescriptionParts = useMemo(() => {
+    const parts: string[] = []
+
+    if (!lockedServiceId) {
+      const serviceDescription = describeCatalogServiceFilter(selectedFilters, instanceServiceIds)
+      if (serviceDescription) {
+        parts.push(`service: ${serviceDescription}`)
+      }
+    }
+
+    if (isBareMetalPage || isVirtualMachinesPage || isClustersPage) {
+      const powerOptions = isClustersPage ? CLUSTER_STATUS_FILTER_OPTIONS : POWER_STATE_FILTER_OPTIONS
+      if (powerStateFilter !== 'all') {
+        const label =
+          powerOptions.find((option) => option.value === powerStateFilter)?.label ??
+          powerStateFilter
+        parts.push(`status: ${label}`)
+      }
+    }
+
+    if (isBareMetalPage && osFilter !== 'all') {
+      parts.push(`Disk image: ${osFilter}`)
+    }
+    if (isBareMetalPage && gpuFilter !== 'all') {
+      parts.push(`GPU: ${gpuFilter}`)
+    }
+    if (isClustersPage && platformFilter !== 'all') {
+      parts.push(`platform: ${platformFilter}`)
+    }
+    if (isClustersPage && nodeSetTypeFilter !== 'all') {
+      parts.push(`node set: ${nodeSetTypeFilter}`)
+    }
+    if (isVirtualMachinesPage && osFilter !== 'all') {
+      parts.push(`OS image: ${osFilter}`)
+    }
+    if (searchValue.trim()) {
+      parts.push(`search: "${searchValue.trim()}"`)
+    }
+
+    return parts
+  }, [
+    gpuFilter,
+    instanceServiceIds,
+    isBareMetalPage,
+    isClustersPage,
+    isVirtualMachinesPage,
+    lockedServiceId,
+    nodeSetTypeFilter,
+    osFilter,
+    platformFilter,
+    powerStateFilter,
+    searchValue,
+    selectedFilters,
+  ])
+
+  const clearAllFilters = () => {
+    setSearchValue('')
+    setPowerStateFilter('all')
+    setOsFilter('all')
+    setGpuFilter('all')
+    setPlatformFilter('all')
+    setNodeSetTypeFilter('all')
+    if (!lockedServiceId) {
+      setSelectedFilters(createCatalogServiceFilterSet(instanceServiceIds))
+    }
+  }
 
   const selectedInstance = useMemo(
     () => instances.find((instance) => instance.id === selectedInstanceId) ?? null,
@@ -1013,10 +1083,13 @@ export function TenantUserInstancesPage({
                   id="instances-bm-os-filter"
                   value={osFilter}
                   onChange={(_event, value) => setOsFilter(value)}
-                  aria-label="Filter bare metal by operating system"
+                  aria-label="Filter bare metal by disk image"
                 >
-                  <FormSelectOption value="all" label="All operating systems" />
-                  {bareMetalOsOptions.map((osImage) => (
+                  <FormSelectOption
+                    value={DISK_IMAGE_FILTER_ALL_OPTION.value}
+                    label={DISK_IMAGE_FILTER_ALL_OPTION.label}
+                  />
+                  {BARE_METAL_DISK_IMAGE_FILTER_OPTIONS.map((osImage) => (
                     <FormSelectOption key={osImage} value={osImage} label={osImage} />
                   ))}
                 </FormSelect>
@@ -1103,9 +1176,12 @@ export function TenantUserInstancesPage({
                   id="instances-vm-os-filter"
                   value={osFilter}
                   onChange={(_event, value) => setOsFilter(value)}
-                  aria-label="Filter virtual machines by operating system"
+                  aria-label="Filter virtual machines by OS image"
                 >
-                  <FormSelectOption value="all" label="All operating systems" />
+                  <FormSelectOption
+                    value={OS_IMAGE_FILTER_ALL_OPTION.value}
+                    label={OS_IMAGE_FILTER_ALL_OPTION.label}
+                  />
                   {vmOsOptions.map((osImage) => (
                     <FormSelectOption key={osImage} value={osImage} label={osImage} />
                   ))}
@@ -1151,6 +1227,13 @@ export function TenantUserInstancesPage({
         ) : null}
 
         {filteredInstances.length === 0 ? (
+          filterDescriptionParts.length > 0 ? (
+            <CatalogFilterEmptyState
+              title="No instances match your filters"
+              description="Try a different filter option or search term."
+              onClearFilters={clearAllFilters}
+            />
+          ) : (
           <EmptyState className="tenant-user-instances__empty">
             <span className="tenant-user-instances__empty-icon" aria-hidden>
               {getCatalogServiceIcon(lockedServiceId ?? 'baremetal')}
@@ -1170,7 +1253,16 @@ export function TenantUserInstancesPage({
                     : 'No instances match the selected services.'}
             </EmptyStateBody>
           </EmptyState>
+          )
         ) : viewMode === 'grid' ? (
+            <>
+            <CatalogFilterResultsSummary
+              filteredCount={filteredInstances.length}
+              totalCount={serviceFilteredInstances.length}
+              singular="instance"
+              filterParts={filterDescriptionParts}
+              onClearFilters={clearAllFilters}
+            />
             <div className="catalog-card-grid tenant-user-instances__grid">
               {filteredInstances.map((instance) => {
                 const serviceId = getTenantInstanceServiceId(instance)
@@ -1255,11 +1347,16 @@ export function TenantUserInstancesPage({
                 )
               })}
             </div>
+            </>
           ) : (
             <div className="catalog-table-panel">
-              <Content component="p" className="catalog-table-result-count">
-                {formatCatalogTableResultCount(filteredInstances.length, 'instance')}
-              </Content>
+              <CatalogFilterResultsSummary
+                filteredCount={filteredInstances.length}
+                totalCount={serviceFilteredInstances.length}
+                singular="instance"
+                filterParts={filterDescriptionParts}
+                onClearFilters={clearAllFilters}
+              />
               <Table
                 aria-label="My instances"
                 className="catalog-data-table tenant-user-instances__table"
