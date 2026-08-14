@@ -105,6 +105,13 @@ type ProviderAdminCatalogPageProps = {
   initialProjectId?: string | null
   onProjectScopeChange?: (projectId: string) => void
   onProjectsChange?: (projects: TenantProject[]) => void
+  /**
+   * When the edit wizard is open, parent navigation should call this to show the same
+   * leave confirmation before leaving the page.
+   */
+  onEditLeaveAttemptChange?: (
+    attemptLeave: ((onConfirmed: () => void) => void) | null,
+  ) => void
 }
 
 /** Intentional create latency before revealing the new catalog card. */
@@ -309,6 +316,7 @@ export function ProviderAdminCatalogPage({
   initialProjectId = null,
   onProjectScopeChange,
   onProjectsChange,
+  onEditLeaveAttemptChange,
 }: ProviderAdminCatalogPageProps) {
   const [searchParams, setSearchParams] = useSearchParams()
   const initialServiceFilters = catalogItems.map(getDraftServiceId)
@@ -342,6 +350,8 @@ export function ProviderAdminCatalogPage({
   const createRevealTimeoutRef = useRef<number | null>(null)
   const publishRevealTimeoutRef = useRef<number | null>(null)
   const catalogCardGridRef = useRef<HTMLDivElement | null>(null)
+  const editWizardRequestCloseRef = useRef<(() => void) | null>(null)
+  const pendingLeaveActionRef = useRef<(() => void) | null>(null)
   const itemParam = getWorkspaceCatalogItemParam(searchParams)
 
   const uniqueCatalogItems = useMemo(
@@ -581,13 +591,23 @@ export function ProviderAdminCatalogPage({
   }
 
   const closeEditWizard = () => {
+    const pendingLeave = pendingLeaveActionRef.current
+    pendingLeaveActionRef.current = null
+    const returnToDetails = editReturnToDetails
+
     setIsEditWizardOpen(false)
     setEditResumeTenantId(undefined)
-    if (editReturnToDetails && selectedCatalogItem) {
+    setEditReturnToDetails(false)
+
+    if (pendingLeave) {
+      pendingLeave()
+      return
+    }
+
+    if (returnToDetails && selectedCatalogItem) {
       setIsViewingDetails(true)
       syncWorkspaceCatalogItemParam(setSearchParams, selectedCatalogItem.catalogItemId)
     }
-    setEditReturnToDetails(false)
   }
 
   const openCreateWizard = () => {
@@ -628,7 +648,7 @@ export function ProviderAdminCatalogPage({
         }
         return match
       })
-      if (!isWizardOpen) {
+      if (!isWizardOpen && !isEditWizardOpen && !isPublishWizardOpen) {
         setIsViewingDetails(true)
       }
       return
@@ -637,7 +657,34 @@ export function ProviderAdminCatalogPage({
     if (!itemParam) {
       setIsViewingDetails(false)
     }
-  }, [itemParam, orderedCatalogItems, isWizardOpen, publishingCatalogItemId])
+  }, [
+    itemParam,
+    orderedCatalogItems,
+    isWizardOpen,
+    isEditWizardOpen,
+    isPublishWizardOpen,
+    publishingCatalogItemId,
+  ])
+
+  useEffect(() => {
+    if (!onEditLeaveAttemptChange) {
+      return
+    }
+
+    if (!isEditWizardOpen) {
+      onEditLeaveAttemptChange(null)
+      return
+    }
+
+    onEditLeaveAttemptChange((onConfirmed) => {
+      pendingLeaveActionRef.current = onConfirmed
+      editWizardRequestCloseRef.current?.()
+    })
+
+    return () => {
+      onEditLeaveAttemptChange(null)
+    }
+  }, [isEditWizardOpen, onEditLeaveAttemptChange])
 
   const openEdit = (
     item: ProviderCatalogDraft,
@@ -659,8 +706,24 @@ export function ProviderAdminCatalogPage({
       return
     }
 
-    setSelectedCatalogItem(duplicate)
+    const wasOnDetailPage =
+      isViewingDetails && selectedCatalogItem?.catalogItemId === item.catalogItemId
+
     refreshCatalogItems()
+    setSelectedCatalogItem(duplicate)
+    setIsEditWizardOpen(false)
+    setIsPublishWizardOpen(false)
+    setIsWizardOpen(false)
+
+    if (wasOnDetailPage) {
+      setIsViewingDetails(false)
+      setViewMode('grid')
+      setCatalogViewMode('grid')
+      setSelectedStatus('all')
+      setSearchValue('')
+      beginCatalogItemCreateReveal(duplicate.catalogItemId)
+      syncWorkspaceCatalogItemParam(setSearchParams, null, { replace: true })
+    }
   }
 
   const publishCatalogItem = (item: ProviderCatalogDraft) => {
@@ -886,6 +949,12 @@ export function ProviderAdminCatalogPage({
           leaveConfirmActionLabel={
             editReturnToDetails ? 'Back to catalog item' : 'Go to Catalog'
           }
+          onRegisterRequestClose={(requestClose) => {
+            editWizardRequestCloseRef.current = requestClose
+          }}
+          onLeaveConfirmDismissed={() => {
+            pendingLeaveActionRef.current = null
+          }}
           onClose={closeEditWizard}
           onCreateCatalogItem={() => undefined}
           onSaveCatalogItem={handleUpdateCatalogItemFromWizard}

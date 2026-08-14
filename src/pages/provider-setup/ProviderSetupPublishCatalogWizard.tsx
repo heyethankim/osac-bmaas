@@ -133,6 +133,10 @@ type ProviderSetupPublishCatalogWizardProps = {
   initialEnterpriseTenantId?: string
   /** Primary action label for the leave-without-saving confirm modal. */
   leaveConfirmActionLabel?: string
+  /** Parent can invoke the same leave flow as Cancel / breadcrumb (e.g. sidebar nav). */
+  onRegisterRequestClose?: (requestClose: () => void) => void
+  /** Fired when the leave-confirm modal is dismissed without leaving. */
+  onLeaveConfirmDismissed?: () => void
   onClose: () => void
   onCreateCatalogItem: (payload: PublishedTemplatePayload) => void
   onSaveCatalogItem?: (catalogItemId: string, payload: PublishedTemplatePayload) => void
@@ -224,6 +228,8 @@ export function ProviderSetupPublishCatalogWizard({
   initialPublishScope = 'global-public',
   initialEnterpriseTenantId = '',
   leaveConfirmActionLabel,
+  onRegisterRequestClose,
+  onLeaveConfirmDismissed,
   onClose,
   onCreateCatalogItem,
   onSaveCatalogItem,
@@ -462,8 +468,22 @@ export function ProviderSetupPublishCatalogWizard({
     setIsLeaveConfirmOpen(true)
   }
 
+  const requestCloseRef = useRef(requestClose)
+  requestCloseRef.current = requestClose
+
+  useEffect(() => {
+    if (!isOpen || !onRegisterRequestClose) {
+      return
+    }
+
+    onRegisterRequestClose(() => {
+      requestCloseRef.current()
+    })
+  }, [isOpen, onRegisterRequestClose])
+
   const closeLeaveConfirm = () => {
     setIsLeaveConfirmOpen(false)
+    onLeaveConfirmDismissed?.()
   }
 
   const confirmLeave = () => {

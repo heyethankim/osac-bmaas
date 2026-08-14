@@ -177,7 +177,7 @@ export function getTenantInstanceSpecRows(instance: TenantInstance): CatalogSpec
 
   return [
     { label: 'Hardware', value: instance.hardwareProfile },
-    { label: 'OS image', value: instance.osImage },
+    { label: 'Disk image', value: instance.osImage },
     { label: 'GPU', value: instance.gpuLabel },
   ]
 }
@@ -1177,13 +1177,20 @@ export function getClusterNodeSetTypeLabel(instance: TenantInstance): string {
   return /\bgpu\b/i.test(nodeSet) ? 'gpu-host' : 'standard-host'
 }
 
+/** Bare metal cards use Disk image; normalize legacy OS image rows from storage. */
+function normalizeBareMetalCardSpecRows(rows: CatalogSpecRow[]): CatalogSpecRow[] {
+  return rows.map((row) =>
+    row.label === 'OS image' ? { ...row, label: 'Disk image' } : row,
+  )
+}
+
 /** Card highlights for Virtual machines — include OS so OS filters are scannable. */
 export function getTenantInstanceCardSpecRows(instance: TenantInstance): CatalogSpecRow[] {
   const serviceId = getTenantInstanceServiceId(instance)
   const allSpecRows = getTenantInstanceSpecRows(instance)
 
   if (serviceId === 'baremetal') {
-    return allSpecRows
+    return normalizeBareMetalCardSpecRows(allSpecRows)
   }
 
   if (serviceId === 'virtual-machine') {
@@ -1359,7 +1366,7 @@ function createDemoTenantBareMetalInstanceVariant(
       { label: 'CPU', value: options.cpu },
       { label: 'RAM', value: options.ram },
       { label: 'GPU', value: options.gpuLabel },
-      { label: 'OS image', value: options.osImage },
+      { label: 'Disk image', value: options.osImage },
     ],
     inventory:
       options.status === 'provisioning'

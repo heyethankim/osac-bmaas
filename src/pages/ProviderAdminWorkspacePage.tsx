@@ -149,6 +149,7 @@ export function ProviderAdminWorkspacePage() {
   )
   const [navContentKey, setNavContentKey] = useState(0)
   const provisioningTimersRef = useRef<Map<string, number>>(new Map())
+  const catalogEditLeaveAttemptRef = useRef<((onConfirmed: () => void) => void) | null>(null)
 
   const navParam = searchParams.get('nav')
 
@@ -288,7 +289,7 @@ export function ProviderAdminWorkspacePage() {
     setProjectScopeId(PROVIDER_SERVICES_DEMO_TENANT, scopeId)
   }
 
-  const handleNavChange = (navId: ProviderAdminNavId) => {
+  const performNavChange = (navId: ProviderAdminNavId) => {
     setActiveNavId(navId)
     setProviderActiveNav(navId)
     setNavContentKey((current) => current + 1)
@@ -301,6 +302,17 @@ export function ProviderAdminWorkspacePage() {
     ) {
       setInstances(ensureTenantDemoInstances(PROVIDER_SERVICES_DEMO_TENANT))
     }
+  }
+
+  const handleNavChange = (navId: ProviderAdminNavId) => {
+    if (catalogEditLeaveAttemptRef.current) {
+      catalogEditLeaveAttemptRef.current(() => {
+        performNavChange(navId)
+      })
+      return
+    }
+
+    performNavChange(navId)
   }
 
   const clearProvisioningTimer = (instanceId: string) => {
@@ -433,6 +445,9 @@ export function ProviderAdminWorkspacePage() {
             initialProjectId={isAllProjectsScope(projectScopeId) ? null : projectScopeId}
             onProjectScopeChange={handleProjectScopeChange}
             onProjectsChange={setProjects}
+            onEditLeaveAttemptChange={(attemptLeave) => {
+              catalogEditLeaveAttemptRef.current = attemptLeave
+            }}
           />
         )
       case 'infrastructure-data-centers':
