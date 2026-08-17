@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react'
-import { useLayoutEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BarsIcon } from '@patternfly/react-icons/dist/esm/icons/bars-icon'
-import { MoonIcon } from '@patternfly/react-icons/dist/esm/icons/moon-icon'
+import { CogIcon } from '@patternfly/react-icons/dist/esm/icons/cog-icon'
 import { OutlinedQuestionCircleIcon } from '@patternfly/react-icons/dist/esm/icons/outlined-question-circle-icon'
-import { SunIcon } from '@patternfly/react-icons/dist/esm/icons/sun-icon'
 import { UserIcon } from '@patternfly/react-icons/dist/esm/icons/user-icon'
 import {
   Button,
+  Divider,
   Dropdown,
   DropdownItem,
   DropdownList,
@@ -36,6 +36,7 @@ import {
 } from '@patternfly/react-core'
 import type { TenantNavGroup, TenantNavItem } from '../../tenantShell/constants'
 import { flattenTenantNavItems } from '../../tenantShell/constants'
+import { UserPreferencesModal } from '../shared/UserPreferencesModal'
 import { NorthstarBankMastheadLogo } from './NorthstarBankMastheadLogo'
 
 type TenantShellRole = 'tenant-admin' | 'tenant-user'
@@ -78,7 +79,7 @@ export function TenantShell({
   const [internalActiveNavId, setInternalActiveNavId] = useState(flattenedNavItems[0]?.id ?? '')
   const activeNavId = activeNavIdProp ?? internalActiveNavId
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
-  const [isDarkTheme, setIsDarkTheme] = useState(false)
+  const [isPreferencesModalOpen, setIsPreferencesModalOpen] = useState(false)
 
   const renderNavItem = (item: TenantNavItem) => {
     if (item.children?.length) {
@@ -122,14 +123,6 @@ export function TenantShell({
     )
   }
 
-  useLayoutEffect(() => {
-    const root = document.documentElement
-    root.classList.toggle('pf-v6-theme-dark', isDarkTheme)
-    return () => {
-      root.classList.remove('pf-v6-theme-dark')
-    }
-  }, [isDarkTheme])
-
   const roleLabel = roleLabels[role]
 
   const masthead = (
@@ -155,15 +148,6 @@ export function TenantShell({
               variant="action-group-plain"
               gap={{ default: 'gapSm' }}
             >
-              <ToolbarItem>
-                <Button
-                  variant="plain"
-                  aria-label={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
-                  onClick={() => setIsDarkTheme((dark) => !dark)}
-                >
-                  {isDarkTheme ? <SunIcon /> : <MoonIcon />}
-                </Button>
-              </ToolbarItem>
               <ToolbarItem>
                 <Button variant="plain" aria-label="Help">
                   <OutlinedQuestionCircleIcon />
@@ -194,6 +178,17 @@ export function TenantShell({
                   )}
                 >
                   <DropdownList>
+                    <DropdownItem
+                      value="user-preferences"
+                      icon={<CogIcon />}
+                      onClick={() => {
+                        setIsUserMenuOpen(false)
+                        setIsPreferencesModalOpen(true)
+                      }}
+                    >
+                      User preferences
+                    </DropdownItem>
+                    <Divider />
                     <DropdownItem
                       value="logout"
                       onClick={() => {
@@ -246,24 +241,30 @@ export function TenantShell({
   )
 
   return (
-    <Page
-      masthead={masthead}
-      sidebar={showNavigation ? sidebar : undefined}
-      isManagedSidebar={showNavigation}
-      className={[
-        'tenant-shell-page',
-        isOnboardingLayout ? 'tenant-shell-page--onboarding' : undefined,
-      ]
-        .filter(Boolean)
-        .join(' ')}
-    >
-      <PageSection
-        isWidthLimited={isOnboardingLayout}
-        isCenterAligned={isOnboardingLayout}
-        className="tenant-shell-page__main osac-page-main-section"
+    <>
+      <Page
+        masthead={masthead}
+        sidebar={showNavigation ? sidebar : undefined}
+        isManagedSidebar={showNavigation}
+        className={[
+          'tenant-shell-page',
+          isOnboardingLayout ? 'tenant-shell-page--onboarding' : undefined,
+        ]
+          .filter(Boolean)
+          .join(' ')}
       >
-        {children}
-      </PageSection>
-    </Page>
+        <PageSection
+          isWidthLimited={isOnboardingLayout}
+          isCenterAligned={isOnboardingLayout}
+          className="tenant-shell-page__main osac-page-main-section"
+        >
+          {children}
+        </PageSection>
+      </Page>
+      <UserPreferencesModal
+        isOpen={isPreferencesModalOpen}
+        onClose={() => setIsPreferencesModalOpen(false)}
+      />
+    </>
   )
 }

@@ -8,9 +8,12 @@ import './tenant-shell.css'
 import './tenant-admin.css'
 import './catalog.css'
 import App from './App.tsx'
+import { ThemePreferencesProvider } from './theme/themePreferences'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ThemePreferencesProvider>
+      <App />
+    </ThemePreferencesProvider>
   </StrictMode>,
 )

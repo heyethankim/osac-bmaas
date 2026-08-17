@@ -10,10 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@patternfly/react-core": "^6.6.0",
-    "@patternfly/react-icons": "^6.6.0",
-    "@patternfly/react-styles": "^6.6.0",
-    "@patternfly/react-table": "^6.6.0",
+    "@patternfly/react-core": "^6.6.1",
+    "@patternfly/react-icons": "^6.6.1",
+    "@patternfly/react-styles": "^6.6.1",
+    "@patternfly/react-table": "^6.6.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.18.1"
