@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { BarsIcon } from '@patternfly/react-icons/dist/esm/icons/bars-icon'
 import { CogIcon } from '@patternfly/react-icons/dist/esm/icons/cog-icon'
 import { OutlinedQuestionCircleIcon } from '@patternfly/react-icons/dist/esm/icons/outlined-question-circle-icon'
 import { UserIcon } from '@patternfly/react-icons/dist/esm/icons/user-icon'
