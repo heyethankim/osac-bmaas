@@ -57,11 +57,7 @@ export function NetworkInventoryCreateWizardShell({
       >
         <Wizard
           key={titleId}
-          className={[
-            'provider-admin-network-inventory__wizard',
-            'catalog-wizard-page__wizard',
-            className,
-          ]
+          className={['provider-admin-network-inventory__wizard', className]
             .filter(Boolean)
             .join(' ')}
           height="100%"

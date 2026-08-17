@@ -350,12 +350,7 @@ export function RegisterOrganizationWizard({
   const wizard = isOpen ? (
     <Wizard
       key="register-organization-wizard"
-      className={[
-        'provider-admin-organizations__wizard',
-        isPage ? 'catalog-wizard-page__wizard' : undefined,
-      ]
-        .filter(Boolean)
-        .join(' ')}
+      className="provider-admin-organizations__wizard"
       height={isPage ? '100%' : '40rem'}
       isPlain={isPage}
       onClose={isPage ? undefined : requestClose}

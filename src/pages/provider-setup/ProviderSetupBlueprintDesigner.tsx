@@ -604,7 +604,6 @@ export function ProviderSetupBlueprintDesigner({
         {isOpen ? (
           <Wizard
             key="blueprint-designer-wizard"
-            className="provider-setup-template__designer-wizard"
             height="40rem"
             onClose={requestClose}
             header={

@@ -2265,12 +2265,6 @@ export function ProviderSetupPublishCatalogWizard({
   const wizard = isOpen ? (
     <Wizard
       key={isEditMode ? 'edit-catalog-wizard' : 'publish-catalog-wizard'}
-      className={[
-        'provider-setup-template__designer-wizard',
-        isPage ? 'catalog-wizard-page__wizard' : undefined,
-      ]
-        .filter(Boolean)
-        .join(' ')}
       height={isPage ? '100%' : '40rem'}
       isPlain={isPage}
       onClose={isPage || isSubmitting ? undefined : requestClose}
