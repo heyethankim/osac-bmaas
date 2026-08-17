@@ -133,14 +133,14 @@
   padding-block: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
   font-weight: var(--pf-t--global--font--weight--body--bold);
   color: var(--pf-t--global--text--color--regular);
-  background-color: var(--pf-t--global--background--color--primary--default);
+  background-color: transparent;
   border-block-end: var(--pf-t--global--border--width--divider--default) solid
     var(--pf-t--global--border--color--default);
   white-space: nowrap;
 }
 
 .catalog-data-table .pf-v6-c-table__tbody .pf-v6-c-table__tr {
-  background-color: var(--pf-t--global--background--color--primary--default);
+  background-color: transparent;
   border-block-end: var(--pf-t--global--border--width--divider--default) solid
     var(--pf-t--global--border--color--default);
   vertical-align: middle;

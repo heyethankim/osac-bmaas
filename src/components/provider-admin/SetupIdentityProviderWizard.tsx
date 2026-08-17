@@ -329,12 +329,7 @@ export function SetupIdentityProviderWizard({
   const wizard = (
     <Wizard
       key={`setup-idp-wizard-${organization.id}-${wizardKey}`}
-      className={[
-        'provider-admin-organizations__wizard',
-        isPage ? 'catalog-wizard-page__wizard' : undefined,
-      ]
-        .filter(Boolean)
-        .join(' ')}
+      className="provider-admin-organizations__wizard"
       height={isPage ? '100%' : '40rem'}
       isPlain={isPage}
       startIndex={startIndex}

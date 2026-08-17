@@ -525,12 +525,7 @@ export function CreateTenantProjectWizard({
   const wizard = isOpen ? (
     <Wizard
       key="create-tenant-project-wizard"
-      className={[
-        'tenant-admin-projects-teams__wizard',
-        isPage ? 'catalog-wizard-page__wizard' : undefined,
-      ]
-        .filter(Boolean)
-        .join(' ')}
+      className="tenant-admin-projects-teams__wizard"
       height={isPage ? '100%' : '40rem'}
       isPlain={isPage}
       onClose={isPage ? undefined : requestClose}

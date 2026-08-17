@@ -2048,9 +2048,7 @@ export function TenantUserLaunchInstanceWizard({
   const wizard = isOpen ? (
     <Wizard
       key={`launch-instance-wizard-${catalogItem.serviceId}-${includeNetworkingStep ? 'net' : 'no-net'}`}
-      className={['tenant-user-launch-wizard', isPage ? 'catalog-wizard-page__wizard' : undefined]
-        .filter(Boolean)
-        .join(' ')}
+      className="tenant-user-launch-wizard"
       height={isPage ? '100%' : '40rem'}
       isPlain={isPage}
       onClose={isPage ? undefined : requestClose}

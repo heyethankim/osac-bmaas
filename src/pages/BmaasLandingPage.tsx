@@ -1,9 +1,27 @@
-import { Button, Card, CardBody, Content, Icon, Label, Title } from '@patternfly/react-core'
+import {
+  Brand,
+  Bullseye,
+  Button,
+  Card,
+  CardBody,
+  Content,
+  Divider,
+  Flex,
+  FlexItem,
+  Icon,
+  Label,
+  Stack,
+  StackItem,
+  Title,
+} from '@patternfly/react-core'
+import { css } from '@patternfly/react-styles'
+import bullseyeStyles from '@patternfly/react-styles/css/layouts/Bullseye/bullseye'
+import spacingStyles from '@patternfly/react-styles/css/utilities/Spacing/spacing'
 import { CogIcon } from '@patternfly/react-icons/dist/esm/icons/cog-icon'
 import { CrownIcon } from '@patternfly/react-icons/dist/esm/icons/crown-icon'
 import { UserIcon } from '@patternfly/react-icons/dist/esm/icons/user-icon'
 import { UsersIcon } from '@patternfly/react-icons/dist/esm/icons/users-icon'
-import type { ReactNode } from 'react'
+import { Fragment, type ReactNode } from 'react'
 import { RouterButton } from '../components/RouterButton'
 import { BMAAS_LANDING_LAST_UPDATED } from '../bmaasLandingLastUpdated'
 import {
@@ -30,49 +48,50 @@ type RoleBlockProps = {
 
 function RoleBlock({ id, title, description, icon, actions, prototypeLinks = [] }: RoleBlockProps) {
   return (
-    <section className="bmaas-role-landing__role-block" aria-labelledby={id}>
-      <div className="bmaas-role-landing__icon-wrap" aria-hidden>
+    <Flex
+      component="section"
+      direction={{ default: 'column' }}
+      alignItems={{ default: 'alignItemsCenter' }}
+      gap={{ default: 'gapLg' }}
+      fullWidth={{ default: 'fullWidth' }}
+      aria-labelledby={id}
+    >
+      <Icon size="lg" aria-hidden>
         {icon}
-      </div>
-      <Title id={id} headingLevel="h2" size="lg" className="bmaas-role-landing__card-title">
+      </Icon>
+      <Title id={id} headingLevel="h2" size="lg">
         {title}
       </Title>
-      <Content component="p" className="bmaas-role-landing__card-copy">
-        {description}
-      </Content>
-      <div className="bmaas-role-landing__tenant-user-actions">{actions}</div>
-      <div className="bmaas-role-landing__prototype-links">
+      <Content component="p">{description}</Content>
+      <FlexItem fullWidth={{ default: 'fullWidth' }}>{actions}</FlexItem>
+      <FlexItem>
         {prototypeLinks.length > 0 ? (
-          <ul className="bmaas-role-landing__prototype-link-list">
+          <Stack hasGutter>
             {prototypeLinks.map((link) => (
-              <li key={`${link.label}-${link.to}`} className="bmaas-role-landing__prototype-link-item">
-                <RouterButton
-                  variant="link"
-                  isInline
-                  to={link.to}
-                  className="bmaas-role-landing__prototype-link"
+              <StackItem key={`${link.label}-${link.to}`}>
+                <Flex
+                  gap={{ default: 'gapSm' }}
+                  alignItems={{ default: 'alignItemsCenter' }}
+                  justifyContent={{ default: 'justifyContentCenter' }}
+                  flexWrap={{ default: 'wrap' }}
                 >
-                  {link.label}
-                </RouterButton>
-                {link.statusLabel ? (
-                  <Label
-                    color="orange"
-                    isCompact
-                    className="bmaas-role-landing__prototype-status"
-                  >
-                    {link.statusLabel}
-                  </Label>
-                ) : null}
-              </li>
+                  <RouterButton variant="link" isInline to={link.to}>
+                    {link.label}
+                  </RouterButton>
+                  {link.statusLabel ? (
+                    <Label color="orange" isCompact>
+                      {link.statusLabel}
+                    </Label>
+                  ) : null}
+                </Flex>
+              </StackItem>
             ))}
-          </ul>
+          </Stack>
         ) : (
-          <Content component="p" className="bmaas-role-landing__prototype-empty">
-            Prototype versions coming soon
-          </Content>
+          <Content component="p">Prototype versions coming soon</Content>
         )}
-      </div>
-    </section>
+      </FlexItem>
+    </Flex>
   )
 }
 
@@ -85,28 +104,18 @@ function SingleEnterActions({
   disabled?: boolean
   ariaLabel: string
 }) {
+  if (disabled || !to) {
+    return (
+      <Button variant="primary" isBlock isDisabled aria-label={ariaLabel}>
+        Enter
+      </Button>
+    )
+  }
+
   return (
-    <>
-      {disabled || !to ? (
-        <Button
-          variant="primary"
-          className="bmaas-role-landing__action"
-          isDisabled
-          aria-label={ariaLabel}
-        >
-          Enter
-        </Button>
-      ) : (
-        <RouterButton
-          variant="primary"
-          to={to}
-          className="bmaas-role-landing__action"
-          aria-label={ariaLabel}
-        >
-          Enter
-        </RouterButton>
-      )}
-    </>
+    <RouterButton variant="primary" isBlock to={to} aria-label={ariaLabel}>
+      Enter
+    </RouterButton>
   )
 }
 
@@ -125,113 +134,111 @@ export function BmaasLandingPage() {
     })),
   ]
 
+  const roles: RoleBlockProps[] = [
+    {
+      id: 'bmaas-landing-role-infra-admin-title',
+      title: 'Infra Admin',
+      description: 'Bootstrap the environment, manage bare metal, and make Red Hat cloud-ready.',
+      icon: <CogIcon />,
+      actions: (
+        <SingleEnterActions disabled ariaLabel="Infra Admin — not available in this demo" />
+      ),
+    },
+    {
+      id: 'bmaas-landing-role-provider-title',
+      title: 'Provider Admin',
+      description: 'Manage platform services, tenants, and global policies for the OSAC environment.',
+      icon: <CrownIcon />,
+      actions: <SingleEnterActions to="/provider" ariaLabel="Enter Provider Admin demo" />,
+      prototypeLinks: providerPrototypeLinks,
+    },
+    {
+      id: 'bmaas-landing-role-tenant-admin-title',
+      title: 'Tenant Admin',
+      description: 'Configure organization resources, users, quotas, and shared services.',
+      icon: <UserIcon />,
+      actions: (
+        <SingleEnterActions to="/tenant-admin/northstar" ariaLabel="Enter Tenant Admin demo" />
+      ),
+      prototypeLinks: [
+        {
+          label: 'Catalog',
+          to: '/tenant-admin/northstar/workspace?nav=catalog',
+          statusLabel: 'Not approved yet',
+        },
+      ],
+    },
+    {
+      id: 'bmaas-landing-role-tenant-user-title',
+      title: 'Tenant User',
+      description: 'Provision and manage Bare Metal, Cluster, VM, and Models workloads.',
+      icon: <UsersIcon />,
+      actions: (
+        <SingleEnterActions to="/tenant-user/northstar" ariaLabel="Enter Tenant User demo" />
+      ),
+      prototypeLinks: [
+        {
+          label: 'Catalog',
+          to: '/tenant-user/northstar/workspace?nav=catalog',
+          statusLabel: 'Not approved yet',
+        },
+      ],
+    },
+  ]
+
   return (
-    <div className="bmaas-role-landing bmaas-role-landing--light">
-      <div className="bmaas-role-landing__wrap">
-        <header className="bmaas-role-landing__header">
-          <img
-            src={redHatHatLogoUrl}
-            alt="Red Hat"
-            width={192}
-            height={145}
-            className="bmaas-role-landing__brand-logo"
-          />
-          <Title headingLevel="h1" size="4xl" className="bmaas-role-landing__title">
-            Red Hat OSAC Prototypes 0.2
-          </Title>
-          <Content component="p" className="bmaas-role-landing__lede">
-            Select a role to access the customized interface.
-          </Content>
-        </header>
+    <Bullseye className={css(spacingStyles.pMd)}>
+      <Stack hasGutter className={css(bullseyeStyles.bullseye)}>
+        <StackItem>
+          <Flex
+            component="header"
+            direction={{ default: 'column' }}
+            alignItems={{ default: 'alignItemsCenter' }}
+            gap={{ default: 'gapMd' }}
+          >
+            <Brand src={redHatHatLogoUrl} alt="Red Hat" heights={{ default: '52px' }} />
+            <Title headingLevel="h1" size="4xl">
+              Red Hat OSAC Prototypes 0.2
+            </Title>
+            <Content component="p">Select a role to access the customized interface.</Content>
+          </Flex>
+        </StackItem>
 
-        <Card className="bmaas-role-landing__combined-card" component="article">
-          <CardBody className="bmaas-role-landing__combined-card-body">
-            <div className="bmaas-role-landing__roles">
-              <RoleBlock
-                id="bmaas-landing-role-infra-admin-title"
-                title="Infra Admin"
-                description="Bootstrap the environment, manage bare metal, and make Red Hat cloud-ready."
-                icon={
-                  <Icon size="md">
-                    <CogIcon className="bmaas-role-landing__icon-svg" />
-                  </Icon>
-                }
-                actions={
-                  <SingleEnterActions
-                    disabled
-                    ariaLabel="Infra Admin — not available in this demo"
-                  />
-                }
-              />
+        <StackItem>
+          <Card component="article">
+            <CardBody>
+              <Flex
+                direction={{ default: 'column', lg: 'row' }}
+                alignItems={{ default: 'alignItemsStretch' }}
+                gap={{ default: 'gapLg' }}
+              >
+                {roles.map((role, index) => (
+                  <Fragment key={role.id}>
+                    {index > 0 ? (
+                      <Divider
+                        orientation={{
+                          default: 'horizontal',
+                          lg: 'vertical',
+                        }}
+                      />
+                    ) : null}
+                    <FlexItem flex={{ default: 'flex_1' }}>
+                      <RoleBlock {...role} />
+                    </FlexItem>
+                  </Fragment>
+                ))}
+              </Flex>
+            </CardBody>
+          </Card>
+        </StackItem>
 
-              <RoleBlock
-                id="bmaas-landing-role-provider-title"
-                title="Provider Admin"
-                description="Manage platform services, tenants, and global policies for the OSAC environment."
-                icon={
-                  <Icon size="md">
-                    <CrownIcon className="bmaas-role-landing__icon-svg" />
-                  </Icon>
-                }
-                actions={
-                  <SingleEnterActions to="/provider" ariaLabel="Enter Provider Admin demo" />
-                }
-                prototypeLinks={providerPrototypeLinks}
-              />
-
-              <RoleBlock
-                id="bmaas-landing-role-tenant-admin-title"
-                title="Tenant Admin"
-                description="Configure organization resources, users, quotas, and shared services."
-                icon={
-                  <Icon size="md">
-                    <UserIcon className="bmaas-role-landing__icon-svg" />
-                  </Icon>
-                }
-                actions={
-                  <SingleEnterActions
-                    to="/tenant-admin/northstar"
-                    ariaLabel="Enter Tenant Admin demo"
-                  />
-                }
-                prototypeLinks={[
-                  {
-                    label: 'Catalog',
-                    to: '/tenant-admin/northstar/workspace?nav=catalog',
-                    statusLabel: 'Not approved yet',
-                  },
-                ]}
-              />
-
-              <RoleBlock
-                id="bmaas-landing-role-tenant-user-title"
-                title="Tenant User"
-                description="Provision and manage Bare Metal, Cluster, VM, and Models workloads."
-                icon={
-                  <Icon size="md">
-                    <UsersIcon className="bmaas-role-landing__icon-svg" />
-                  </Icon>
-                }
-                actions={
-                  <SingleEnterActions
-                    to="/tenant-user/northstar"
-                    ariaLabel="Enter Tenant User demo"
-                  />
-                }
-                prototypeLinks={[
-                  {
-                    label: 'Catalog',
-                    to: '/tenant-user/northstar/workspace?nav=catalog',
-                    statusLabel: 'Not approved yet',
-                  },
-                ]}
-              />
-            </div>
-          </CardBody>
-        </Card>
-
-        <footer className="bmaas-role-landing__footer">
-          <div className="bmaas-role-landing__footer-issues">
+        <StackItem>
+          <Flex
+            component="footer"
+            direction={{ default: 'column' }}
+            alignItems={{ default: 'alignItemsCenter' }}
+            gap={{ default: 'gapMd' }}
+          >
             <Button
               variant="link"
               component="a"
@@ -242,37 +249,35 @@ export function BmaasLandingPage() {
             >
               OSAC Delivery Overview
             </Button>
-          </div>
-          <Content component="p" className="bmaas-role-landing__footer-meta">
-            Created by{' '}
-            <Button
-              variant="link"
-              component="a"
-              isInline
-              href="https://redhat.enterprise.slack.com/archives/D021Q4YKTBR"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Ethan Kim
-            </Button>
-            {' & '}
-            <Button
-              variant="link"
-              component="a"
-              isInline
-              href="https://redhat.enterprise.slack.com/archives/D08ABCFSWGW"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Kyle Baker
-            </Button>
-            {' - OpenShift UXD'}
-          </Content>
-          <Content component="p" className="bmaas-role-landing__footer-updated">
-            Last updated: {BMAAS_LANDING_LAST_UPDATED}
-          </Content>
-        </footer>
-      </div>
-    </div>
+            <Content component="p">
+              Created by{' '}
+              <Button
+                variant="link"
+                component="a"
+                isInline
+                href="https://redhat.enterprise.slack.com/archives/D021Q4YKTBR"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Ethan Kim
+              </Button>
+              {' & '}
+              <Button
+                variant="link"
+                component="a"
+                isInline
+                href="https://redhat.enterprise.slack.com/archives/D08ABCFSWGW"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Kyle Baker
+              </Button>
+              {' - OpenShift UXD'}
+            </Content>
+            <Content component="p">Last updated: {BMAAS_LANDING_LAST_UPDATED}</Content>
+          </Flex>
+        </StackItem>
+      </Stack>
+    </Bullseye>
   )
 }
