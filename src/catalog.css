@@ -108,7 +108,7 @@
 
 .catalog-card-grid > .pf-v6-c-card:hover {
   z-index: 1;
-  transform: translateY(-0.25rem);
+  /* transform: translateY(-0.25rem); */
   box-shadow: var(--pf-t--global--box-shadow--md);
 }
 

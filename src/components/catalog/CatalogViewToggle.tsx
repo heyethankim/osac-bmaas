@@ -21,7 +21,6 @@ export function ViewModeToggle({
   return (
     <ToggleGroup
       aria-label={ariaLabel}
-      isCompact
       className={['catalog-view-toggle', className].filter(Boolean).join(' ')}
     >
       <ToggleGroupItem
