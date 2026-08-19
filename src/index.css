@@ -13,6 +13,45 @@ body {
   background-color: var(--pf-t--global--background--color--primary--default);
 }
 
+.bmaas-role-landing {
+  min-height: 100dvh;
+  width: 100%;
+  box-sizing: border-box;
+  padding-block: var(--pf-t--global--spacer--2xl) var(--pf-t--global--spacer--3xl);
+  padding-inline: var(--pf-t--global--spacer--3xl);
+}
+
+.bmaas-role-landing__wrap {
+  width: min(92rem, 100%);
+}
+
+.bmaas-role-landing__icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--pf-t--global--border--radius--pill);
+  background-color: var(--pf-t--global--background--color--secondary--default);
+  color: var(--pf-t--global--icon--color--subtle);
+  border: var(--pf-t--global--border--width--regular) solid var(--pf-t--global--border--color--default);
+}
+
+.bmaas-role-landing__icon-wrap .pf-v6-c-icon,
+.bmaas-role-landing__icon-wrap .pf-v6-c-icon__content,
+.bmaas-role-landing__icon-wrap svg {
+  color: inherit;
+  fill: currentcolor;
+}
+
+@media (max-width: 576px) {
+  .bmaas-role-landing {
+    padding-inline: var(--pf-t--global--spacer--sm);
+    padding-block: var(--pf-t--global--spacer--xl) var(--pf-t--global--spacer--2xl);
+  }
+}
+
 /* DNS-1123 name validation status + checklist popover */
 .k8s-resource-name__field {
   width: 100%;

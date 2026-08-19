@@ -15,8 +15,7 @@ import {
   Title,
 } from '@patternfly/react-core'
 import { css } from '@patternfly/react-styles'
-import bullseyeStyles from '@patternfly/react-styles/css/layouts/Bullseye/bullseye'
-import spacingStyles from '@patternfly/react-styles/css/utilities/Spacing/spacing'
+import alignmentStyles from '@patternfly/react-styles/css/utilities/Alignment/alignment'
 import { CogIcon } from '@patternfly/react-icons/dist/esm/icons/cog-icon'
 import { CrownIcon } from '@patternfly/react-icons/dist/esm/icons/crown-icon'
 import { UserIcon } from '@patternfly/react-icons/dist/esm/icons/user-icon'
@@ -54,11 +53,12 @@ function RoleBlock({ id, title, description, icon, actions, prototypeLinks = [] 
       alignItems={{ default: 'alignItemsCenter' }}
       gap={{ default: 'gapLg' }}
       fullWidth={{ default: 'fullWidth' }}
+      className={css(alignmentStyles.textAlignCenter)}
       aria-labelledby={id}
     >
-      <Icon size="lg" aria-hidden>
-        {icon}
-      </Icon>
+      <span className="bmaas-role-landing__icon-wrap" aria-hidden>
+        <Icon size="lg">{icon}</Icon>
+      </span>
       <Title id={id} headingLevel="h2" size="lg">
         {title}
       </Title>
@@ -187,14 +187,21 @@ export function BmaasLandingPage() {
   ]
 
   return (
-    <Bullseye className={css(spacingStyles.pMd)}>
-      <Stack hasGutter className={css(bullseyeStyles.bullseye)}>
-        <StackItem>
+    <Bullseye className="bmaas-role-landing">
+      <Flex
+        className="bmaas-role-landing__wrap"
+        direction={{ default: 'column' }}
+        alignItems={{ default: 'alignItemsCenter' }}
+        gap={{ default: 'gap2xl' }}
+        flexWrap={{ default: 'nowrap' }}
+      >
+        <FlexItem>
           <Flex
             component="header"
             direction={{ default: 'column' }}
             alignItems={{ default: 'alignItemsCenter' }}
             gap={{ default: 'gapMd' }}
+            className={css(alignmentStyles.textAlignCenter)}
           >
             <Brand src={redHatHatLogoUrl} alt="Red Hat" heights={{ default: '52px' }} />
             <Title headingLevel="h1" size="4xl">
@@ -202,9 +209,9 @@ export function BmaasLandingPage() {
             </Title>
             <Content component="p">Select a role to access the customized interface.</Content>
           </Flex>
-        </StackItem>
+        </FlexItem>
 
-        <StackItem>
+        <FlexItem alignSelf={{ default: 'alignSelfStretch' }}>
           <Card component="article">
             <CardBody>
               <Flex
@@ -230,14 +237,15 @@ export function BmaasLandingPage() {
               </Flex>
             </CardBody>
           </Card>
-        </StackItem>
+        </FlexItem>
 
-        <StackItem>
+        <FlexItem>
           <Flex
             component="footer"
             direction={{ default: 'column' }}
             alignItems={{ default: 'alignItemsCenter' }}
             gap={{ default: 'gapMd' }}
+            className={css(alignmentStyles.textAlignCenter)}
           >
             <Button
               variant="link"
@@ -276,8 +284,8 @@ export function BmaasLandingPage() {
             </Content>
             <Content component="p">Last updated: {BMAAS_LANDING_LAST_UPDATED}</Content>
           </Flex>
-        </StackItem>
-      </Stack>
+        </FlexItem>
+      </Flex>
     </Bullseye>
   )
 }

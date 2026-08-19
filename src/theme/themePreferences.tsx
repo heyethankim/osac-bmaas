@@ -7,10 +7,10 @@ export type ContrastMode = 'default' | 'high-contrast' | 'glass'
 export type ColorSchemePreference = 'system' | ColorScheme
 export type ContrastModePreference = 'system' | ContrastMode
 
-const COLOR_SCHEME_STORAGE_KEY = 'osac-bmaas.color-scheme'
+const COLOR_SCHEME_STORAGE_KEY = 'osac-bmaas.color-scheme.v2'
 const CONTRAST_MODE_STORAGE_KEY = 'osac-bmaas.contrast-mode'
 
-const DEFAULT_COLOR_SCHEME_PREFERENCE: ColorSchemePreference = 'system'
+const DEFAULT_COLOR_SCHEME_PREFERENCE: ColorSchemePreference = 'light'
 const DEFAULT_CONTRAST_MODE_PREFERENCE: ContrastModePreference = 'system'
 
 function matchesMediaQuery(query: string): boolean {
