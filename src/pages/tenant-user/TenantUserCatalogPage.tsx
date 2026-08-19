@@ -519,6 +519,7 @@ export function TenantUserCatalogPage({
                         diskImageLabel: item.diskImageLabel,
                         diskImageId: item.diskImageId,
                         clusterVersionMode: item.clusterVersionMode,
+                        hardwareOsMode: item.hardwareOsMode,
                       })}
                     </Td>
                     <Td dataLabel="Action">

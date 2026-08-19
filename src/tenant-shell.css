@@ -67,8 +67,8 @@
 
 .bmaas-conceptual-design-sticker--floating {
   position: fixed;
-  bottom: var(--pf-t--global--spacer--md);
-  left: var(--pf-t--global--spacer--md);
+  bottom: calc(var(--pf-t--global--spacer--md) + var(--pf-t--global--spacer--sm));
+  left: calc(var(--pf-t--global--spacer--md) + var(--pf-t--global--spacer--sm));
   /* Above PatternFly page/sidebar chrome so the badge stays visible on every route. */
   z-index: 10000;
   pointer-events: none;

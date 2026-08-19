@@ -159,6 +159,7 @@ export function TenantCatalogItemDetailsPage({
               instanceTypeLabel: item.instanceTypeLabel,
               diskImageLabel: item.diskImageLabel,
               diskImageId: item.diskImageId,
+              hardwareOsMode: item.hardwareOsMode,
             }),
           }}
         />

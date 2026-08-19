@@ -390,6 +390,8 @@ export type PublishedTemplatePayload = {
   diskImageLabel?: string
   /** Cluster as a Service: locked (default) or editable at provisioning. */
   clusterVersionMode?: 'locked' | 'editable'
+  /** Bare metal Hardware & OS: locked (default) or editable at provisioning. */
+  hardwareOsMode?: 'locked' | 'editable'
   /** Cluster default worker node set id/label. */
   nodeSetId?: string
   nodeSetLabel?: string

@@ -44,10 +44,12 @@ export function TenantUserCatalogItemDetailsPage({
       serviceId: catalogItem.serviceId,
       templateRefId: catalogItem.templateRefId,
       templateName: catalogItem.templateName,
+      instanceTypeId: catalogItem.instanceTypeId,
       instanceTypeLabel: catalogItem.instanceTypeLabel,
       diskImageLabel: catalogItem.diskImageLabel,
       diskImageId: catalogItem.diskImageId,
       clusterVersionMode: catalogItem.clusterVersionMode,
+      hardwareOsMode: catalogItem.hardwareOsMode,
       nodeSetId: catalogItem.nodeSetId,
       nodeSetLabel: catalogItem.nodeSetLabel,
       hostTypeId: catalogItem.hostTypeId,
@@ -159,6 +161,7 @@ export function TenantUserCatalogItemDetailsPage({
               instanceTypeLabel: catalogItem.instanceTypeLabel,
               diskImageLabel: catalogItem.diskImageLabel,
               diskImageId: catalogItem.diskImageId,
+              hardwareOsMode: catalogItem.hardwareOsMode,
             }),
           }}
         />

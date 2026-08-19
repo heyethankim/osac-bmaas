@@ -42,6 +42,7 @@ export type TenantCatalogGovernanceItem = {
   diskImageLabel?: string
   diskImageId?: string
   clusterVersionMode?: 'locked' | 'editable'
+  hardwareOsMode?: 'locked' | 'editable'
   nodeSetId?: string
   nodeSetLabel?: string
   hostTypeId?: string
@@ -157,6 +158,7 @@ function mapProviderCatalogToGovernanceItem(
     diskImageLabel: draft.diskImageLabel,
     diskImageId: draft.diskImageId,
     clusterVersionMode: draft.clusterVersionMode,
+    hardwareOsMode: draft.hardwareOsMode,
     nodeSetId: draft.nodeSetId,
     nodeSetLabel: draft.nodeSetLabel,
     hostTypeId: draft.hostTypeId,
@@ -258,6 +260,7 @@ export function getTenantCatalogItemDetailSpecRows(
       diskImageLabel: item.diskImageLabel,
       diskImageId: item.diskImageId,
       clusterVersionMode: item.clusterVersionMode,
+      hardwareOsMode: item.hardwareOsMode,
       nodeSetId: item.nodeSetId,
       nodeSetLabel: item.nodeSetLabel,
       hostTypeId: item.hostTypeId,

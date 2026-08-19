@@ -37,11 +37,25 @@ function getClassPrefix(variant: BareMetalCatalogDetailsVariant): string {
 }
 
 function renderHardwareSpecRowValue(row: CatalogSpecRow) {
-  if (row.label === 'Disk image') {
-    return <CatalogDiskImageValue>{row.value}</CatalogDiskImageValue>
+  const value =
+    row.label === 'Disk image' ? (
+      <CatalogDiskImageValue badge={row.badge}>{row.value}</CatalogDiskImageValue>
+    ) : (
+      row.value
+    )
+
+  if (!row.badge || row.label === 'Disk image') {
+    return value
   }
 
-  return row.value
+  return (
+    <span className="catalog-spec-row-value-with-badge">
+      {value}
+      <Label color={row.badge.color} isCompact>
+        {row.badge.text}
+      </Label>
+    </span>
+  )
 }
 
 export function BareMetalCatalogItemDetailsBody({

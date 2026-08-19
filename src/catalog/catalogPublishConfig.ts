@@ -165,6 +165,22 @@ export function resolveCatalogClusterVersionMode(
 }
 
 /**
+ * Bare metal Hardware & OS: whether tenants can change instance type and disk
+ * image at launch. Defaults to locked when omitted (legacy catalog items).
+ */
+export type CatalogHardwareOsMode = 'locked' | 'editable'
+
+export function getCatalogHardwareOsModeLabel(mode: CatalogHardwareOsMode): string {
+  return mode === 'editable' ? 'Editable' : 'Locked'
+}
+
+export function resolveCatalogHardwareOsMode(
+  mode: CatalogHardwareOsMode | undefined | null,
+): CatalogHardwareOsMode {
+  return mode === 'editable' ? 'editable' : 'locked'
+}
+
+/**
  * Whether tenants can change default node set / host type when provisioning.
  * Defaults to locked when omitted (legacy catalog items).
  */

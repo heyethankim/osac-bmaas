@@ -37,6 +37,7 @@ import type {
   CatalogClusterNodeTopologyMode,
   CatalogClusterVersionMode,
   CatalogFieldPolicy,
+  CatalogHardwareOsMode,
 } from '../catalog/catalogPublishConfig'
 import type {
   CatalogServiceId,
@@ -241,6 +242,11 @@ export type ProviderCatalogDraft = {
    * Defaults to locked when omitted.
    */
   clusterVersionMode?: CatalogClusterVersionMode
+  /**
+   * Bare metal only. When `editable`, tenants may change instance type and disk
+   * image at launch. Defaults to locked when omitted.
+   */
+  hardwareOsMode?: CatalogHardwareOsMode
   /** Cluster default worker node set. */
   nodeSetId?: string
   nodeSetLabel?: string
@@ -625,6 +631,7 @@ export function duplicateProviderCatalogItem(catalogItemId: string): ProviderCat
     ...(source.diskImageId ? { diskImageId: source.diskImageId } : {}),
     ...(source.diskImageLabel ? { diskImageLabel: source.diskImageLabel } : {}),
     ...(source.clusterVersionMode ? { clusterVersionMode: source.clusterVersionMode } : {}),
+    ...(source.hardwareOsMode ? { hardwareOsMode: source.hardwareOsMode } : {}),
     ...(source.nodeSetId ? { nodeSetId: source.nodeSetId } : {}),
     ...(source.nodeSetLabel ? { nodeSetLabel: source.nodeSetLabel } : {}),
     ...(source.hostTypeId ? { hostTypeId: source.hostTypeId } : {}),
@@ -779,6 +786,7 @@ export function updateProviderCatalogItemFromPayload(
     ...(payload.clusterVersionMode
       ? { clusterVersionMode: payload.clusterVersionMode }
       : {}),
+    ...(payload.hardwareOsMode ? { hardwareOsMode: payload.hardwareOsMode } : {}),
     ...(payload.nodeSetId ? { nodeSetId: payload.nodeSetId } : {}),
     ...(payload.nodeSetLabel ? { nodeSetLabel: payload.nodeSetLabel } : {}),
     ...(payload.hostTypeId ? { hostTypeId: payload.hostTypeId } : {}),

@@ -72,6 +72,7 @@ import {
   getCatalogClusterVersionLifecycleMeta,
   getCatalogClusterVersionModeLabel,
   getCatalogClusterVersionOptions,
+  getCatalogHardwareOsModeLabel,
   getLatestCatalogClusterVersionId,
   getCatalogDiskImageOptions,
   getCatalogInstanceTypeOptions,
@@ -81,10 +82,12 @@ import {
   isValidCustomInstanceTypeConfig,
   resolveCatalogClusterNodeTopologyMode,
   resolveCatalogClusterVersionMode,
+  resolveCatalogHardwareOsMode,
   type CatalogClusterNodeTopologyMode,
   type CatalogClusterVersionMode,
   type CatalogClusterVersionOption,
   type CatalogFieldPolicy,
+  type CatalogHardwareOsMode,
   type CustomInstanceTypeConfig,
 } from '../../catalog/catalogPublishConfig'
 import {
@@ -251,6 +254,7 @@ export function ProviderSetupPublishCatalogWizard({
   const [selectedDiskImageId, setSelectedDiskImageId] = useState('')
   const [clusterVersionMode, setClusterVersionMode] =
     useState<CatalogClusterVersionMode>('locked')
+  const [hardwareOsMode, setHardwareOsMode] = useState<CatalogHardwareOsMode>('locked')
   const [selectedNodeSetId, setSelectedNodeSetId] = useState(DEFAULT_CLUSTER_NODE_SET_ID)
   const [selectedHostTypeId, setSelectedHostTypeId] = useState(DEFAULT_CLUSTER_HOST_TYPE_ID)
   const [clusterNodeTopologyMode, setClusterNodeTopologyMode] =
@@ -273,6 +277,7 @@ export function ProviderSetupPublishCatalogWizard({
     [selectedServiceId],
   )
   const isClusterService = selectedServiceId === 'cluster'
+  const isBareMetalService = selectedServiceId === 'baremetal'
   const softwareImageOptions = useMemo(
     () =>
       isClusterService ? getCatalogClusterVersionOptions() : getCatalogDiskImageOptions(),
@@ -349,6 +354,7 @@ export function ProviderSetupPublishCatalogWizard({
         diskImageId: selectedDiskImageId,
         diskImageLabel: currentDiskImageLabel,
         clusterVersionMode,
+        hardwareOsMode,
         nodeSetId: selectedNodeSetId,
         hostTypeId: selectedHostTypeId,
         clusterNodeTopologyMode,
@@ -362,6 +368,7 @@ export function ProviderSetupPublishCatalogWizard({
   }, [
     clusterNodeTopologyMode,
     clusterVersionMode,
+    hardwareOsMode,
     currentDiskImageLabel,
     description,
     displayName,
@@ -445,6 +452,7 @@ export function ProviderSetupPublishCatalogWizard({
     setCustomInstanceType(getDefaultCustomInstanceTypeConfig(null))
     setSelectedDiskImageId('')
     setClusterVersionMode('locked')
+    setHardwareOsMode('locked')
     setSelectedNodeSetId(DEFAULT_CLUSTER_NODE_SET_ID)
     setSelectedHostTypeId(DEFAULT_CLUSTER_HOST_TYPE_ID)
     setClusterNodeTopologyMode('locked')
@@ -577,6 +585,7 @@ export function ProviderSetupPublishCatalogWizard({
       setSelectedDiskImageId(nextSoftwareOptions[0]?.id ?? '')
     }
     setClusterVersionMode(catalog.clusterVersionMode ?? 'locked')
+    setHardwareOsMode(catalog.hardwareOsMode ?? 'locked')
     setSelectedNodeSetId(catalog.nodeSetId ?? DEFAULT_CLUSTER_NODE_SET_ID)
     setSelectedHostTypeId(catalog.hostTypeId ?? DEFAULT_CLUSTER_HOST_TYPE_ID)
     setClusterNodeTopologyMode(catalog.clusterNodeTopologyMode ?? 'locked')
@@ -658,6 +667,7 @@ export function ProviderSetupPublishCatalogWizard({
       setSelectedInstanceTypeId('')
       setSelectedDiskImageId('')
       setClusterVersionMode('locked')
+      setHardwareOsMode('locked')
       setSelectedNodeSetId(DEFAULT_CLUSTER_NODE_SET_ID)
       setSelectedHostTypeId(DEFAULT_CLUSTER_HOST_TYPE_ID)
       setClusterNodeTopologyMode('locked')
@@ -688,6 +698,7 @@ export function ProviderSetupPublishCatalogWizard({
     setCustomInstanceType(getDefaultCustomInstanceTypeConfig(selectedServiceId))
     setSelectedDiskImageId(nextSoftwareOptions[0]?.id ?? '')
     setClusterVersionMode('locked')
+    setHardwareOsMode('locked')
     setSelectedNodeSetId(DEFAULT_CLUSTER_NODE_SET_ID)
     setSelectedHostTypeId(DEFAULT_CLUSTER_HOST_TYPE_ID)
     setClusterNodeTopologyMode('locked')
@@ -807,7 +818,11 @@ export function ProviderSetupPublishCatalogWizard({
               clusterNodeTopologyMode,
             ),
           }
-        : {}),
+        : isBareMetalService
+          ? {
+              hardwareOsMode: resolveCatalogHardwareOsMode(hardwareOsMode),
+            }
+          : {}),
       fieldPolicies,
       networkPolicy: {
         ...DEFAULT_CATALOG_NETWORK_POLICY,
@@ -1114,7 +1129,9 @@ export function ProviderSetupPublishCatalogWizard({
             <Content component="p" className="provider-setup-template__publish-step-lede">
               {isClusterService
                 ? 'Choose the OpenShift version for this catalog item.'
-                : 'Choose the hardware flavor and OS image for this catalog item.'}
+                : isBareMetalService
+                  ? 'Choose tenant access, instance type, and disk image.'
+                  : 'Choose the hardware flavor and OS image for this catalog item.'}
             </Content>
             {isClusterService ? (
               <FormGroup
@@ -1218,8 +1235,112 @@ export function ProviderSetupPublishCatalogWizard({
             ) : null}
             {!isClusterService ? (
               <>
+                {isBareMetalService ? (
+                  <FormGroup
+                    label="Tenant access to hardware and OS"
+                    fieldId="publish-catalog-hardware-os-mode"
+                    className="provider-setup-template__publish-subsection"
+                  >
+                    <CatalogEditPreviousValue previous={editPrevious('hardwareOsMode')} />
+                    <div
+                      id="publish-catalog-hardware-os-mode"
+                      className="provider-setup-template__cluster-version-mode-options"
+                      role="radiogroup"
+                      aria-label="Tenant access to hardware and OS"
+                    >
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={hardwareOsMode === 'locked'}
+                        className={`provider-setup-template__cluster-version-mode-card${
+                          hardwareOsMode === 'locked'
+                            ? ' provider-setup-template__cluster-version-mode-card--selected'
+                            : ''
+                        }`}
+                        onClick={() => setHardwareOsMode('locked')}
+                      >
+                        {hardwareOsMode === 'locked' ? (
+                          <Label
+                            color="grey"
+                            isCompact
+                            className="provider-setup-template__select-card-selected-badge"
+                          >
+                            Selected
+                          </Label>
+                        ) : null}
+                        <span
+                          className="provider-setup-template__cluster-version-mode-icon"
+                          aria-hidden
+                        >
+                          <LockIcon />
+                        </span>
+                        <span className="provider-setup-template__cluster-version-mode-copy">
+                          <Title
+                            headingLevel="h3"
+                            size="md"
+                            className="provider-setup-template__select-card-title"
+                          >
+                            Locked
+                          </Title>
+                          <Content
+                            component="p"
+                            className="provider-setup-template__select-card-detail"
+                          >
+                            Tenants cannot change it.
+                          </Content>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={hardwareOsMode === 'editable'}
+                        className={`provider-setup-template__cluster-version-mode-card${
+                          hardwareOsMode === 'editable'
+                            ? ' provider-setup-template__cluster-version-mode-card--selected'
+                            : ''
+                        }`}
+                        onClick={() => setHardwareOsMode('editable')}
+                      >
+                        {hardwareOsMode === 'editable' ? (
+                          <Label
+                            color="grey"
+                            isCompact
+                            className="provider-setup-template__select-card-selected-badge"
+                          >
+                            Selected
+                          </Label>
+                        ) : null}
+                        <span
+                          className="provider-setup-template__cluster-version-mode-icon"
+                          aria-hidden
+                        >
+                          <UnlockIcon />
+                        </span>
+                        <span className="provider-setup-template__cluster-version-mode-copy">
+                          <Title
+                            headingLevel="h3"
+                            size="md"
+                            className="provider-setup-template__select-card-title"
+                          >
+                            Editable at provisioning
+                          </Title>
+                          <Content
+                            component="p"
+                            className="provider-setup-template__select-card-detail"
+                          >
+                            Tenants can change at launch.
+                          </Content>
+                        </span>
+                      </button>
+                    </div>
+                  </FormGroup>
+                ) : null}
                 <FormGroup
-                  label="Instance type"
+                  label={
+                    isBareMetalService && hardwareOsMode === 'editable'
+                      ? 'Default instance type'
+                      : 'Instance type'
+                  }
                   fieldId="publish-catalog-instance-type"
                   isRequired
                   role="radiogroup"
@@ -1385,7 +1506,9 @@ export function ProviderSetupPublishCatalogWizard({
                   ? clusterVersionMode === 'editable'
                     ? 'Default cluster version'
                     : 'Cluster version'
-                  : softwareImageStepLabel
+                  : isBareMetalService && hardwareOsMode === 'editable'
+                    ? 'Default disk image'
+                    : softwareImageStepLabel
               }
               fieldId="publish-catalog-disk-image"
               isRequired
@@ -2073,14 +2196,36 @@ export function ProviderSetupPublishCatalogWizard({
               </DescriptionListGroup>
               {!isClusterService ? (
                 <DescriptionListGroup>
-                  <DescriptionListTerm>Instance type</DescriptionListTerm>
+                  <DescriptionListTerm>
+                    {isBareMetalService && hardwareOsMode === 'editable'
+                      ? 'Default instance type'
+                      : 'Instance type'}
+                  </DescriptionListTerm>
                   <DescriptionListDescription>
-                    {selectedInstanceTypeLabel || '—'}
+                    {selectedInstanceTypeLabel ? (
+                      <span className="provider-setup-template__publish-review-version">
+                        {selectedInstanceTypeLabel}
+                        {isBareMetalService ? (
+                          <Label
+                            color={hardwareOsMode === 'editable' ? 'purple' : 'grey'}
+                            isCompact
+                          >
+                            {getCatalogHardwareOsModeLabel(hardwareOsMode)}
+                          </Label>
+                        ) : null}
+                      </span>
+                    ) : (
+                      '—'
+                    )}
                   </DescriptionListDescription>
                 </DescriptionListGroup>
               ) : null}
               <DescriptionListGroup>
-                <DescriptionListTerm>{softwareImageStepLabel}</DescriptionListTerm>
+                <DescriptionListTerm>
+                  {isBareMetalService && hardwareOsMode === 'editable'
+                    ? 'Default disk image'
+                    : softwareImageStepLabel}
+                </DescriptionListTerm>
                 <DescriptionListDescription>
                   {selectedDiskImage ? (
                     <span className="provider-setup-template__publish-review-version">
@@ -2104,6 +2249,13 @@ export function ProviderSetupPublishCatalogWizard({
                           isCompact
                         >
                           {getCatalogClusterVersionModeLabel(clusterVersionMode)}
+                        </Label>
+                      ) : isBareMetalService ? (
+                        <Label
+                          color={hardwareOsMode === 'editable' ? 'purple' : 'grey'}
+                          isCompact
+                        >
+                          {getCatalogHardwareOsModeLabel(hardwareOsMode)}
                         </Label>
                       ) : null}
                     </span>

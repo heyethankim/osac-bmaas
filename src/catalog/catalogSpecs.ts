@@ -9,11 +9,14 @@ import {
   getCatalogClusterVersionModeLabel,
   normalizeCatalogDiskImageDisplayLabel,
   formatCatalogDiskImageLabel,
+  getCatalogHardwareOsModeLabel,
   resolveBaremetalInstanceTypeHardware,
   resolveCatalogClusterNodeTopologyMode,
   resolveCatalogClusterVersionMode,
+  resolveCatalogHardwareOsMode,
   type CatalogClusterNodeTopologyMode,
   type CatalogClusterVersionMode,
+  type CatalogHardwareOsMode,
 } from './catalogPublishConfig'
 import { resolveHardwareSpecsForCatalogItem } from './hardwareSpecs'
 
@@ -219,6 +222,16 @@ function getClusterNodeTopologyModeBadge(
   }
 }
 
+function getHardwareOsModeBadge(
+  mode: CatalogHardwareOsMode | undefined | null,
+): CatalogSpecRow['badge'] {
+  const resolved = resolveCatalogHardwareOsMode(mode)
+  return {
+    text: getCatalogHardwareOsModeLabel(resolved),
+    color: resolved === 'editable' ? 'purple' : 'grey',
+  }
+}
+
 function resolveClusterNodeSetDisplayLabel(
   item: Pick<ProviderCatalogDraft, 'nodeSetLabel' | 'nodeSetId'>,
 ): string {
@@ -315,6 +328,7 @@ function buildBaremetalCatalogSpecRows(
     | 'instanceTypeLabel'
     | 'diskImageId'
     | 'diskImageLabel'
+    | 'hardwareOsMode'
   >,
 ): CatalogSpecRow[] {
   const hardware = resolveHardwareSpecsForCatalogItem(item)
@@ -323,14 +337,15 @@ function buildBaremetalCatalogSpecRows(
     item.instanceTypeId,
     item.instanceTypeLabel,
   )
+  const hardwareOsBadge = getHardwareOsModeBadge(item.hardwareOsMode)
 
   if (typeHardware) {
     return [
-      { label: 'Size', value: typeHardware.sizeLabel },
+      { label: 'Size', value: typeHardware.sizeLabel, badge: hardwareOsBadge },
       { label: 'CPU', value: typeHardware.cpu },
       { label: 'RAM', value: typeHardware.ram },
       { label: 'GPU', value: typeHardware.gpu },
-      { label: 'Disk image', value: diskImage },
+      { label: 'Disk image', value: diskImage, badge: hardwareOsBadge },
     ]
   }
 
@@ -338,14 +353,14 @@ function buildBaremetalCatalogSpecRows(
   const rows: CatalogSpecRow[] = []
 
   if (sizeLabel) {
-    rows.push({ label: 'Size', value: sizeLabel })
+    rows.push({ label: 'Size', value: sizeLabel, badge: hardwareOsBadge })
   }
 
   rows.push(
     { label: 'CPU', value: hardware.cpu },
     { label: 'RAM', value: hardware.ram },
     { label: 'GPU', value: hardware.gpu },
-    { label: 'Disk image', value: diskImage },
+    { label: 'Disk image', value: diskImage, badge: hardwareOsBadge },
   )
 
   return rows
@@ -374,6 +389,7 @@ export function resolveCatalogSpecRows(
     | 'hostTypeId'
     | 'hostTypeLabel'
     | 'clusterNodeTopologyMode'
+    | 'hardwareOsMode'
   >,
   options?: { includeDetails?: boolean },
 ): CatalogSpecRow[] {
@@ -447,6 +463,7 @@ export function formatCatalogConfigurationSummary(
     | 'hostTypeId'
     | 'hostTypeLabel'
     | 'clusterNodeTopologyMode'
+    | 'hardwareOsMode'
   >,
 ): string {
   return resolveCatalogSpecRows(item)

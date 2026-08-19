@@ -12,8 +12,8 @@ export function ConceptualDesignSticker() {
       aria-hidden
       style={{
         position: 'fixed',
-        bottom: 16,
-        left: 16,
+        bottom: 24,
+        left: 24,
         zIndex: 2147483646,
         pointerEvents: 'none',
       }}

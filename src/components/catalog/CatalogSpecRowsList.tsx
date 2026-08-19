@@ -29,7 +29,7 @@ export function CatalogSpecRowsList({
             {row.label === 'Cluster version' ? (
               <CatalogClusterVersionValue badge={row.badge}>{row.value}</CatalogClusterVersionValue>
             ) : DISK_IMAGE_SPEC_LABELS.has(row.label) ? (
-              <CatalogDiskImageValue>{row.value}</CatalogDiskImageValue>
+              <CatalogDiskImageValue badge={row.badge}>{row.value}</CatalogDiskImageValue>
             ) : row.badge ? (
               <span className="catalog-spec-row-value-with-badge">
                 <span>{row.value}</span>

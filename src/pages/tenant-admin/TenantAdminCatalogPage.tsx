@@ -805,6 +805,7 @@ export function TenantAdminCatalogPage({
                             diskImageLabel: item.diskImageLabel,
                             diskImageId: item.diskImageId,
                             clusterVersionMode: item.clusterVersionMode,
+                            hardwareOsMode: item.hardwareOsMode,
                           })}
                         </Content>
                       </Td>
