@@ -403,7 +403,6 @@ export function TenantUserWorkspacePage() {
             projects={projects}
             instances={instances}
             onProjectsChange={setProjects}
-            onInstancesChange={(updater) => setInstances((current) => [...updater(current)])}
             openProjectId={openProjectId}
             onOpenProjectConsumed={() => setOpenProjectId(null)}
             onNavigateToInstance={(instance) => {

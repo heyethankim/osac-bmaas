@@ -234,15 +234,6 @@ export function getInstancesForTenantProject(
   return instances.filter((instance) => instanceBelongsToProject(instance, project))
 }
 
-export function getInstancesAvailableForTenantProject(
-  instances: readonly TenantInstance[],
-  project: TenantProject,
-): TenantInstance[] {
-  return instances
-    .filter((instance) => !instanceBelongsToProject(instance, project))
-    .sort((left, right) => left.name.localeCompare(right.name))
-}
-
 export function getTenantProjectActions(
   project: TenantProject,
   handlers: {
@@ -337,9 +328,6 @@ export const TENANT_PROJECTS_TEAMS_DEMO = {
   servicesEmpty: 'No services in this project yet.',
   membersEmpty: 'No project members yet. Add someone to grant project access.',
   addMemberLabel: 'Add',
-  addServiceLabel: 'Add',
-  addServiceModalDescription:
-    'Associate an existing service with this project. Project members will see it in Services.',
   removeMemberLabel: 'Remove',
 } as const
 

@@ -18,9 +18,7 @@ import {
   Tooltip,
 } from '@patternfly/react-core'
 import { PlusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/plus-circle-icon'
-import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import { EntityDetailsPageShell } from '../shared/EntityDetailsPageShell'
-import { AddInstanceProjectModal } from './AddInstanceProjectModal'
 import { CatalogClusterVersionValue } from '../catalog/CatalogClusterVersionValue'
 import { CatalogDiskImageValue } from '../catalog/CatalogDiskImageValue'
 import { CatalogNetworkingLocksSection } from '../catalog/CatalogNetworkingLocksSection'
@@ -79,7 +77,10 @@ import {
   resolveLaunchNetworkContext,
 } from '../../tenantUser/launchNetworking'
 import type { TenantProject } from '../../tenantAdmin/projects'
-import { getTenantProjectEnvironmentLabel } from '../../tenantAdmin/projects'
+import {
+  getTenantProjectEnvironmentLabel,
+  getTenantProjectMemberCountLabel,
+} from '../../tenantAdmin/projects'
 
 type TenantUserInstanceDetailsPageProps = {
   instance: TenantInstance
@@ -96,8 +97,6 @@ type TenantUserInstanceDetailsPageProps = {
     networking: TenantInstanceNetworking,
     networkLabel: string,
   ) => void
-  onAddProject: (instanceId: string, projectId: string) => void
-  onCreateProject: (instanceId: string, projectName: string) => void
   onNavigateToProject?: (project: TenantProject) => void
   /** Opens the matching catalog item detail page in Catalog. */
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
@@ -1112,8 +1111,6 @@ function ClusterInstancePageBody({
   tenantSlug,
   projects,
   onUpdateNetworking,
-  onAddProject,
-  onCreateProject,
   onNavigateToProject,
   onNavigateToCatalogItem,
   instanceNetworkingVariant,
@@ -1126,8 +1123,6 @@ function ClusterInstancePageBody({
     networking: TenantInstanceNetworking,
     networkLabel: string,
   ) => void
-  onAddProject: (instanceId: string, projectId: string) => void
-  onCreateProject: (instanceId: string, projectName: string) => void
   onNavigateToProject?: (project: TenantProject) => void
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
   instanceNetworkingVariant?: 'interactive' | 'summary'
@@ -1231,8 +1226,6 @@ function ClusterInstancePageBody({
           <InstanceProjectsSection
             instance={instance}
             projects={projects}
-            onAddProject={onAddProject}
-            onCreateProject={onCreateProject}
             onNavigateToProject={onNavigateToProject}
           />
 
@@ -1390,8 +1383,6 @@ function VmInstancePageBody({
   projects,
   onAttachPublicIp,
   onUpdateNetworking,
-  onAddProject,
-  onCreateProject,
   onNavigateToProject,
   onNavigateToCatalogItem,
   instanceNetworkingVariant,
@@ -1405,8 +1396,6 @@ function VmInstancePageBody({
     networking: TenantInstanceNetworking,
     networkLabel: string,
   ) => void
-  onAddProject: (instanceId: string, projectId: string) => void
-  onCreateProject: (instanceId: string, projectName: string) => void
   onNavigateToProject?: (project: TenantProject) => void
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
   instanceNetworkingVariant?: 'interactive' | 'summary'
@@ -1509,8 +1498,6 @@ function VmInstancePageBody({
           <InstanceProjectsSection
             instance={instance}
             projects={projects}
-            onAddProject={onAddProject}
-            onCreateProject={onCreateProject}
             onNavigateToProject={onNavigateToProject}
           />
 
@@ -1590,8 +1577,6 @@ function DefaultInstancePageBody({
   tenantSlug,
   projects,
   onUpdateNetworking,
-  onAddProject,
-  onCreateProject,
   onNavigateToProject,
   onNavigateToCatalogItem,
   instanceNetworkingVariant,
@@ -1604,8 +1589,6 @@ function DefaultInstancePageBody({
     networking: TenantInstanceNetworking,
     networkLabel: string,
   ) => void
-  onAddProject: (instanceId: string, projectId: string) => void
-  onCreateProject: (instanceId: string, projectName: string) => void
   onNavigateToProject?: (project: TenantProject) => void
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
   instanceNetworkingVariant?: 'interactive' | 'summary'
@@ -1763,8 +1746,6 @@ function DefaultInstancePageBody({
           <InstanceProjectsSection
             instance={instance}
             projects={projects}
-            onAddProject={onAddProject}
-            onCreateProject={onCreateProject}
             onNavigateToProject={onNavigateToProject}
           />
 
@@ -1835,86 +1816,65 @@ function DefaultInstancePageBody({
 function InstanceProjectsSection({
   instance,
   projects,
-  onAddProject,
-  onCreateProject,
   onNavigateToProject,
 }: {
   instance: TenantInstance
   projects: readonly TenantProject[]
-  onAddProject: (instanceId: string, projectId: string) => void
-  onCreateProject: (instanceId: string, projectName: string) => void
   onNavigateToProject?: (project: TenantProject) => void
 }) {
-  const [isAddOpen, setIsAddOpen] = useState(false)
-  const attachedProjectIds = useMemo(() => getTenantInstanceProjectIds(instance), [instance])
-  const attachedProjects = useMemo(
-    () =>
-      attachedProjectIds
-        .map((projectId) => projects.find((project) => project.id === projectId))
-        .filter((project): project is TenantProject => Boolean(project)),
-    [attachedProjectIds, projects],
-  )
+  const owningProject = useMemo(() => {
+    const [projectId] = getTenantInstanceProjectIds(instance)
+    if (!projectId) {
+      return null
+    }
+    return projects.find((project) => project.id === projectId) ?? null
+  }, [instance, projects])
+
+  const owningLabel = owningProject?.name ?? instance.projectName.trim()
+  const hasOwningProject =
+    Boolean(owningProject) ||
+    (instance.scopeKind === 'project' && Boolean(owningLabel))
 
   return (
-    <>
-      <div className="entity-details-page__column entity-details-page__column--span-2 tenant-user-instance-details__projects">
-        <div className="entity-details-page__section-header">
-          <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
-            Projects ({attachedProjects.length})
-          </Title>
-          <Button
-            variant="link"
-            isInline
-            icon={<PlusIcon />}
-            onClick={() => setIsAddOpen(true)}
-          >
-            Add
-          </Button>
-        </div>
-        {attachedProjects.length === 0 ? (
-          <Content component="p" className="tenant-admin-project-details__empty">
-            Not associated with a project yet. Add a project so its members can manage this service.
-          </Content>
-        ) : (
-          <ul className="tenant-admin-project-details__list" aria-label="Associated projects">
-            {attachedProjects.map((project) => (
-              <li key={project.id} className="tenant-admin-project-details__list-item">
-                <div className="tenant-admin-project-details__member-row">
-                  <div className="tenant-admin-project-details__member-copy">
-                    <Content component="p" className="tenant-admin-project-details__primary">
-                      {onNavigateToProject ? (
-                        <Button
-                          variant="link"
-                          isInline
-                          className="tenant-admin-project-details__service-link"
-                          onClick={() => onNavigateToProject(project)}
-                        >
-                          {project.name}
-                        </Button>
-                      ) : (
-                        project.name
-                      )}
-                    </Content>
-                    <Content component="p" className="tenant-admin-project-details__meta">
-                      {getTenantProjectEnvironmentLabel(project.environmentType)}
-                    </Content>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <AddInstanceProjectModal
-        isOpen={isAddOpen}
-        projects={projects}
-        attachedProjectIds={attachedProjectIds}
-        onClose={() => setIsAddOpen(false)}
-        onAdd={(projectId) => onAddProject(instance.id, projectId)}
-        onCreateProject={(projectName) => onCreateProject(instance.id, projectName)}
-      />
-    </>
+    <div className="entity-details-page__column entity-details-page__column--span-2 tenant-user-instance-details__projects">
+      <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
+        Project
+      </Title>
+      {!hasOwningProject ? (
+        <Content component="p" className="tenant-admin-project-details__empty">
+          Project is assigned when the instance is launched.
+        </Content>
+      ) : (
+        <ul className="tenant-admin-project-details__list" aria-label="Owning project">
+          <li className="tenant-admin-project-details__list-item">
+            <div className="tenant-admin-project-details__member-row">
+              <div className="tenant-admin-project-details__member-copy">
+                <Content component="p" className="tenant-admin-project-details__primary">
+                  {owningProject && onNavigateToProject ? (
+                    <Button
+                      variant="link"
+                      isInline
+                      className="tenant-admin-project-details__service-link"
+                      onClick={() => onNavigateToProject(owningProject)}
+                    >
+                      {owningProject.name}
+                    </Button>
+                  ) : (
+                    owningLabel
+                  )}
+                </Content>
+                {owningProject ? (
+                  <Content component="p" className="tenant-admin-project-details__meta">
+                    {getTenantProjectEnvironmentLabel(owningProject.environmentType)} ·{' '}
+                    {getTenantProjectMemberCountLabel(owningProject)}
+                  </Content>
+                ) : null}
+              </div>
+            </div>
+          </li>
+        </ul>
+      )}
+    </div>
   )
 }
 
@@ -1929,8 +1889,6 @@ export function TenantUserInstanceDetailsPage({
   onStop,
   onAttachPublicIp,
   onUpdateNetworking,
-  onAddProject,
-  onCreateProject,
   onNavigateToProject,
   onNavigateToCatalogItem,
   onViewPassword,
@@ -1995,8 +1953,6 @@ export function TenantUserInstanceDetailsPage({
           tenantSlug={tenantSlug}
           projects={projects}
           onUpdateNetworking={onUpdateNetworking}
-          onAddProject={onAddProject}
-          onCreateProject={onCreateProject}
           onNavigateToProject={onNavigateToProject}
           onNavigateToCatalogItem={onNavigateToCatalogItem}
           instanceNetworkingVariant={instanceNetworkingVariant}
@@ -2008,8 +1964,6 @@ export function TenantUserInstanceDetailsPage({
           projects={projects}
           onAttachPublicIp={onAttachPublicIp}
           onUpdateNetworking={onUpdateNetworking}
-          onAddProject={onAddProject}
-          onCreateProject={onCreateProject}
           onNavigateToProject={onNavigateToProject}
           onNavigateToCatalogItem={onNavigateToCatalogItem}
           instanceNetworkingVariant={instanceNetworkingVariant}
@@ -2020,8 +1974,6 @@ export function TenantUserInstanceDetailsPage({
           tenantSlug={tenantSlug}
           projects={projects}
           onUpdateNetworking={onUpdateNetworking}
-          onAddProject={onAddProject}
-          onCreateProject={onCreateProject}
           onNavigateToProject={onNavigateToProject}
           onNavigateToCatalogItem={onNavigateToCatalogItem}
           instanceNetworkingVariant={instanceNetworkingVariant}

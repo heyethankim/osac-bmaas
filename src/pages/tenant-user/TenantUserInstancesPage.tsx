@@ -62,7 +62,6 @@ import {
   getTenantInstanceActions,
   getTenantInstanceCardSpecRows,
   getTenantInstanceGpuLabel,
-  getTenantInstanceProjectIds,
   getTenantInstanceProjectLabel,
   getTenantInstanceServiceId,
   getTenantInstanceSpecRows,
@@ -72,7 +71,6 @@ import {
   type TenantInstance,
   type TenantInstanceNetworking,
   type TenantInstanceStatus,
-  withInstanceProjectIds,
 } from '../../tenantUser/instances'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
 import {
@@ -81,15 +79,6 @@ import {
   updateTenantUserInstance,
 } from '../../tenantUser/storage'
 import type { TenantProject } from '../../tenantAdmin/projects'
-import {
-  generateTenantProjectId,
-  resolveOrganizationExternalIpPool,
-} from '../../tenantAdmin/projects'
-import {
-  DEFAULT_CREATE_PROJECT_WIZARD_FORM,
-  DEFAULT_PROJECT_IP_SLICE,
-} from '../../tenantAdmin/createProjectWizard'
-import { addTenantProject } from '../../tenantAdmin/storage'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import {
   filterInstancesByProjectScope,
@@ -755,63 +744,6 @@ export function TenantUserInstancesPage({
     )
   }
 
-  const organizationName = organization?.name ?? tenantSlug
-
-  const handleAddInstanceProject = (instanceId: string, projectId: string) => {
-    onInstancesChange((current) => {
-      const target = current.find((instance) => instance.id === instanceId)
-      if (!target) {
-        return current
-      }
-
-      const nextIds = [...new Set([...getTenantInstanceProjectIds(target), projectId])]
-      return updateTenantUserInstance(
-        tenantSlug,
-        instanceId,
-        withInstanceProjectIds(target, nextIds, projects, organizationName),
-        current,
-      )
-    })
-  }
-
-  const handleCreateInstanceProject = (instanceId: string, projectName: string) => {
-    const organizationPool = organization
-      ? resolveOrganizationExternalIpPool(organization)
-      : null
-    const project: TenantProject = {
-      id: generateTenantProjectId(),
-      name: projectName.trim(),
-      description: '',
-      environmentType: DEFAULT_CREATE_PROJECT_WIZARD_FORM.environmentType,
-      instanceQuota: DEFAULT_CREATE_PROJECT_WIZARD_FORM.instanceQuota,
-      externalIpPoolId: organizationPool?.id ?? null,
-      externalIpPoolName: organizationPool?.name ?? null,
-      externalIpPoolCidr: DEFAULT_PROJECT_IP_SLICE,
-      catalogItems: [],
-      members: [],
-      createdAt: new Date().toISOString(),
-    }
-
-    addTenantProject(tenantSlug, project)
-    const nextProjects = [...projects, project]
-    onProjectsChange(nextProjects)
-
-    onInstancesChange((current) => {
-      const target = current.find((instance) => instance.id === instanceId)
-      if (!target) {
-        return current
-      }
-
-      const nextIds = [...new Set([...getTenantInstanceProjectIds(target), project.id])]
-      return updateTenantUserInstance(
-        tenantSlug,
-        instanceId,
-        withInstanceProjectIds(target, nextIds, nextProjects, organizationName),
-        current,
-      )
-    })
-  }
-
   const closeAttachPublicIp = () => {
     setInstancePendingPublicIp(null)
     setPublicIpFamily('IPv4')
@@ -904,8 +836,6 @@ export function TenantUserInstancesPage({
             setInstancePendingPublicIp(instance)
           }}
           onUpdateNetworking={handleUpdateNetworking}
-          onAddProject={handleAddInstanceProject}
-          onCreateProject={handleCreateInstanceProject}
           onNavigateToCatalogItem={onNavigateToCatalogItem}
           onNavigateToProject={onNavigateToProject}
           onViewPassword={(instance) => {

@@ -46,11 +46,6 @@ import {
   removeTenantProjectMember,
 } from '../../tenantAdmin/storage'
 import type { TenantInstance } from '../../tenantUser/instances'
-import {
-  getTenantInstanceProjectIds,
-  withInstanceProjectIds,
-} from '../../tenantUser/instances'
-import { updateTenantUserInstance } from '../../tenantUser/storage'
 
 type TenantAdminProjectsTeamsPageProps = {
   tenantSlug: string
@@ -58,9 +53,6 @@ type TenantAdminProjectsTeamsPageProps = {
   projects: TenantProject[]
   instances: readonly TenantInstance[]
   onProjectsChange: (projects: TenantProject[]) => void
-  onInstancesChange: (
-    updater: (instances: readonly TenantInstance[]) => readonly TenantInstance[],
-  ) => void
   onNavigateToInstance: (instance: TenantInstance) => void
   /** Opens this project's detail page when navigating from another workspace view. */
   openProjectId?: string | null
@@ -73,7 +65,6 @@ export function TenantAdminProjectsTeamsPage({
   projects,
   instances,
   onProjectsChange,
-  onInstancesChange,
   onNavigateToInstance,
   openProjectId = null,
   onOpenProjectConsumed,
@@ -226,23 +217,6 @@ export function TenantAdminProjectsTeamsPage({
     onProjectsChange(removeTenantProjectMember(tenantSlug, projectId, memberId))
   }
 
-  const handleAddService = (projectId: string, instanceId: string) => {
-    onInstancesChange((current) => {
-      const target = current.find((instance) => instance.id === instanceId)
-      if (!target) {
-        return current
-      }
-
-      const nextIds = [...new Set([...getTenantInstanceProjectIds(target), projectId])]
-      return updateTenantUserInstance(
-        tenantSlug,
-        instanceId,
-        withInstanceProjectIds(target, nextIds, projects, organization.name),
-        [...current],
-      )
-    })
-  }
-
   if (isCreateModalOpen) {
     return (
       <>
@@ -268,7 +242,6 @@ export function TenantAdminProjectsTeamsPage({
           onDelete={openDeleteProject}
           onAddMember={handleAddMember}
           onRemoveMember={handleRemoveMember}
-          onAddService={handleAddService}
           onNavigateToInstance={onNavigateToInstance}
         />
         {deleteConfirmModal}

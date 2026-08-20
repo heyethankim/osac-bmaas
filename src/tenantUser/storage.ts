@@ -279,39 +279,27 @@ export function ensureTenantDemoInstances(
     const desiredProjectIds = getDemoInstanceProjectIds(demo.id)
     const hasStoredProjectIds = Array.isArray(current.projectIds)
     const currentProjectIds = hasStoredProjectIds
-      ? [...new Set(current.projectIds.filter(Boolean))]
+      ? [...new Set(current.projectIds.filter(Boolean))].slice(0, 1)
       : []
-    const desiredKey = desiredProjectIds.slice().sort().join(',')
-    const currentKey = currentProjectIds.slice().sort().join(',')
+    const desiredKey = desiredProjectIds.join(',')
+    const currentKey = currentProjectIds.join(',')
+    const desiredProjectName =
+      desiredProjectIds[0] === DEMO_TENANT_PROJECT_ID_02
+        ? DEMO_TENANT_PROJECT_NAME_02
+        : DEMO_TENANT_PROJECT_NAME
     const needsProjectSync =
-      !hasStoredProjectIds &&
       desiredProjectIds.length > 0 &&
       (desiredKey !== currentKey ||
         current.scopeKind !== 'project' ||
         current.projectName === 'ml-platform' ||
-        !current.projectName.trim() ||
-        current.projectName === organizationName)
+        current.projectName !== desiredProjectName)
 
     if (needsProjectSync) {
       next[existingIndex] = {
         ...current,
         scopeKind: 'project',
-        projectName: DEMO_TENANT_PROJECT_NAME,
+        projectName: desiredProjectName,
         projectIds: desiredProjectIds,
-      }
-      changed = true
-    } else if (
-      !hasStoredProjectIds &&
-      current.scopeKind === 'project' &&
-      current.projectName === 'ml-platform'
-    ) {
-      next[existingIndex] = {
-        ...current,
-        projectName: DEMO_TENANT_PROJECT_NAME,
-        projectIds:
-          desiredProjectIds.length > 0
-            ? desiredProjectIds
-            : [...new Set([...currentProjectIds, DEMO_TENANT_PROJECT_ID])],
       }
       changed = true
     } else if (!hasStoredProjectIds) {
