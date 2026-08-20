@@ -556,6 +556,7 @@ export function TenantAdminCatalogPage({
           organization={organization}
           catalogDraft={launchCatalogDraft}
           preferCatalogDraft
+          canManageNetworkObjects
           tenantSlug={organization.slug}
           projects={projects}
           initialProjectId={initialProjectId}

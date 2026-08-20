@@ -137,6 +137,11 @@ type TenantUserLaunchInstanceWizardProps = {
   onProvisioningStarted: (instance: TenantInstance) => void
   onDismissDuringProvisioning: (instanceId: string, serviceId: CatalogServiceId) => void
   onWizardFinished: (instanceId: string, serviceId: CatalogServiceId) => void
+  /**
+   * Provider / tenant admin launch: networking lede can point to Networking
+   * to add objects. Tenant users keep the original choose-only copy.
+   */
+  canManageNetworkObjects?: boolean
 }
 
 function resolveInitialLaunchProjectId(
@@ -185,6 +190,7 @@ export function TenantUserLaunchInstanceWizard({
   onProvisioningStarted,
   onDismissDuringProvisioning,
   onWizardFinished,
+  canManageNetworkObjects = false,
 }: TenantUserLaunchInstanceWizardProps) {
   const networkContext = useMemo(
     () =>
@@ -354,6 +360,12 @@ export function TenantUserLaunchInstanceWizard({
   ])
   // Networking is service-level — always available at launch for every catalog service.
   const includeNetworkingStep = true
+  const networkingLede = canManageNetworkObjects
+    ? LAUNCH_INSTANCE_WIZARD_DEMO.networkingAdminLede
+    : LAUNCH_INSTANCE_WIZARD_DEMO.networkingLede
+  const clusterInfrastructureNetworkingLede = canManageNetworkObjects
+    ? CLUSTER_LAUNCH_INSTANCE_DEMO.infrastructureNetworkingAdminLede
+    : CLUSTER_LAUNCH_INSTANCE_DEMO.infrastructureNetworkingLede
   const wizardSteps = useMemo(
     () =>
       getLaunchInstanceWizardSteps({
@@ -1293,6 +1305,9 @@ export function TenantUserLaunchInstanceWizard({
 
   const renderVmNetworkingStep = () => (
     <div className="tenant-user-launch-wizard__step">
+      <Content component="p" className="tenant-user-launch-wizard__step-lede">
+        {networkingLede}
+      </Content>
       <Form autoComplete="off" className="tenant-user-launch-wizard__form">
         {renderPlacementNetworkingFields('launch-vm')}
       </Form>
@@ -1302,7 +1317,7 @@ export function TenantUserLaunchInstanceWizard({
   const renderBareMetalNetworkingStep = () => (
     <div className="tenant-user-launch-wizard__step">
       <Content component="p" className="tenant-user-launch-wizard__step-lede">
-        {LAUNCH_INSTANCE_WIZARD_DEMO.networkingLede}
+        {networkingLede}
       </Content>
       <Form autoComplete="off" className="tenant-user-launch-wizard__form">
         {renderPlacementNetworkingFields('launch-bm')}
@@ -1561,7 +1576,7 @@ export function TenantUserLaunchInstanceWizard({
             {CLUSTER_LAUNCH_INSTANCE_DEMO.infrastructureNetworkingTitle}
           </Content>
           <Content component="p" className="tenant-user-launch-wizard__network-section-lede">
-            {CLUSTER_LAUNCH_INSTANCE_DEMO.infrastructureNetworkingLede}
+            {clusterInfrastructureNetworkingLede}
           </Content>
           {renderPlacementNetworkingFields('launch-cluster')}
         </div>
@@ -1661,7 +1676,7 @@ export function TenantUserLaunchInstanceWizard({
         {LAUNCH_INSTANCE_WIZARD_DEMO.networkingTitle}
       </Content>
       <Content component="p" className="tenant-user-launch-wizard__step-lede">
-        {LAUNCH_INSTANCE_WIZARD_DEMO.networkingLede}
+        {networkingLede}
       </Content>
 
       <Form autoComplete="off" className="tenant-user-launch-wizard__form">

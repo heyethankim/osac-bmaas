@@ -1023,6 +1023,7 @@ export function ProviderAdminCatalogPage({
           organization={launchOrganization}
           catalogDraft={drawerCatalog}
           preferCatalogDraft
+          canManageNetworkObjects
           tenantSlug={tenantSlug}
           projects={projects}
           initialProjectId={initialProjectId}
