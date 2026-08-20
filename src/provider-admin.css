@@ -4159,6 +4159,82 @@
   gap: var(--pf-t--global--spacer--sm);
 }
 
+.provider-admin-organizations__accounts-header {
+  align-items: center;
+}
+
+.provider-admin-organizations__break-glass {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--sm);
+  min-width: 0;
+}
+
+.provider-admin-organizations__break-glass .pf-v6-c-clipboard-copy {
+  min-width: 0;
+}
+
+.provider-admin-organizations__break-glass .pf-v6-c-clipboard-copy__group {
+  min-width: 0;
+}
+
+.provider-admin-organizations__break-glass .pf-v6-c-form-control {
+  min-width: 0;
+}
+
+.provider-admin-organizations__break-glass .provider-admin-organizations__secondary-cell {
+  margin: 0;
+}
+
+.provider-admin-organizations__accounts-add {
+  padding-inline-start: 0;
+  white-space: nowrap;
+}
+
+.provider-admin-organizations__account-people {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.provider-admin-organizations__account-person {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--pf-t--global--spacer--sm);
+  align-items: start;
+  padding-block: var(--pf-t--global--spacer--md);
+  border-block-end: var(--pf-t--global--border--width--regular) solid
+    var(--pf-t--global--border--color--default);
+}
+
+.provider-admin-organizations__account-person:first-child {
+  padding-block-start: 0;
+}
+
+.provider-admin-organizations__account-person:last-child {
+  padding-block-end: 0;
+  border-block-end: none;
+}
+
+.provider-admin-organizations__account-person-main {
+  min-width: 0;
+}
+
+.provider-admin-organizations__account-person-main .provider-admin-organizations__primary-cell,
+.provider-admin-organizations__account-person-main .provider-admin-organizations__secondary-cell {
+  margin: 0;
+}
+
+.provider-admin-organizations__account-person-main .provider-admin-organizations__secondary-cell {
+  margin-block-start: var(--pf-t--global--spacer--xs);
+}
+
+.provider-admin-organizations__account-person-role {
+  margin-block-start: var(--pf-t--global--spacer--sm);
+}
+
 .provider-admin-organizations__account-list > li {
   margin: 0;
 }
@@ -4170,6 +4246,120 @@
   display: flex;
   flex-direction: column;
   gap: var(--pf-t--global--spacer--sm);
+}
+
+.provider-admin-organizations__usage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+}
+
+.provider-admin-organizations__usage-lede.pf-v6-c-content--p {
+  margin: 0;
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.provider-admin-organizations__usage-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11.5rem, 1fr));
+  gap: var(--pf-t--global--spacer--md);
+}
+
+.provider-admin-organizations__usage-kpi-value.pf-v6-c-title {
+  margin: 0 0 var(--pf-t--global--spacer--sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.provider-admin-organizations__usage-kpi-value span {
+  font-size: var(--pf-t--global--font--size--heading--md);
+  color: var(--pf-t--global--text--color--subtle);
+  font-weight: var(--pf-t--global--font--weight--body--default);
+}
+
+.provider-admin-organizations__usage-kpi-hint.pf-v6-c-content--p {
+  margin: var(--pf-t--global--spacer--sm) 0 0;
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.provider-admin-organizations__usage-labels {
+  margin-block-start: var(--pf-t--global--spacer--sm);
+}
+
+.provider-admin-organizations__usage-split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--pf-t--global--spacer--md);
+}
+
+.provider-admin-organizations__usage-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+}
+
+.provider-admin-organizations__usage-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  gap: var(--pf-t--global--spacer--sm);
+  align-items: center;
+}
+
+.provider-admin-organizations__usage-row-copy {
+  min-width: 0;
+}
+
+.provider-admin-organizations__usage-row-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm);
+  min-width: 0;
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.provider-admin-organizations__usage-row-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--pf-t--global--icon--color--regular);
+}
+
+.provider-admin-organizations__usage-row-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.provider-admin-organizations__usage-row-hint {
+  display: block;
+  margin-block-start: var(--pf-t--global--spacer--xs);
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.provider-admin-organizations__usage-row-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+  white-space: nowrap;
+}
+
+.provider-admin-organizations__usage-empty.pf-v6-c-content--p {
+  margin: var(--pf-t--global--spacer--md) 0 0;
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+@media (max-width: 640px) {
+  .provider-admin-organizations__usage-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .provider-admin-organizations__usage-row .pf-v6-c-progress {
+    grid-column: 1 / -1;
+  }
 }
 
 .provider-admin-organizations__pool-list > li {
@@ -4484,6 +4674,18 @@
   color: var(--pf-t--global--text--color--subtle);
 }
 
+.provider-admin-organizations__additional-domain-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--pf-t--global--spacer--md);
+  align-items: start;
+  margin-block-end: var(--pf-t--global--spacer--sm);
+}
+
+.provider-admin-organizations__additional-domain-remove {
+  margin-block-start: 0.15rem;
+}
+
 .provider-admin-organizations__roles-admin-row {
   display: grid;
   grid-template-columns: 1fr 1fr auto;
@@ -4527,6 +4729,10 @@
 }
 
 @media (max-width: 768px) {
+  .provider-admin-organizations__additional-domain-row {
+    grid-template-columns: 1fr auto;
+  }
+
   .provider-admin-organizations__roles-admin-row {
     grid-template-columns: 1fr;
   }
@@ -4602,10 +4808,24 @@
 
 .provider-admin-organizations__idp-wizard-completion {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   min-height: 40rem;
   padding: var(--pf-t--global--spacer--xl);
+  gap: var(--pf-t--global--spacer--lg);
+}
+
+.provider-admin-organizations__idp-break-glass {
+  width: min(32rem, 100%);
+}
+
+.provider-admin-organizations__idp-break-glass .pf-v6-c-form__group {
+  margin-block-start: var(--pf-t--global--spacer--sm);
+}
+
+.provider-admin-organizations__idp-break-glass-done {
+  margin-block-start: var(--pf-t--global--spacer--sm);
 }
 
 .provider-admin-organizations__idp-path-icon-wrap {

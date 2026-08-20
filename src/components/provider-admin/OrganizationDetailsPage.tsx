@@ -1,14 +1,26 @@
 import { CheckCircleIcon } from '@patternfly/react-icons/dist/esm/icons/check-circle-icon'
 import { PendingIcon } from '@patternfly/react-icons/dist/esm/icons/pending-icon'
-import { useMemo } from 'react'
+import { EllipsisVIcon } from '@patternfly/react-icons/dist/esm/icons/ellipsis-v-icon'
+import { PlusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/plus-circle-icon'
+import { useState } from 'react'
 import {
   Button,
+  ClipboardCopy,
   Content,
   DescriptionList,
   DescriptionListDescription,
   DescriptionListGroup,
   DescriptionListTerm,
+  Dropdown,
+  DropdownItem,
+  DropdownList,
   Label,
+  MenuToggle,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  ModalVariant,
   Title,
 } from '@patternfly/react-core'
 import { EntityDetailsPageShell } from '../shared/EntityDetailsPageShell'
@@ -16,13 +28,22 @@ import { EntityDetailsActionsDropdown } from '../shared/EntityDetailsActionsDrop
 import {
   formatOrganizationRolesAssignmentSummary,
   getOrganizationActivationSteps,
+  hasBreakGlassAccount,
   hasPendingIdpInvite,
   isOrganizationReadyForLogin,
   type OrganizationActivationStep,
   type RegisteredOrganization,
 } from '../../providerAdmin/organizations'
 import { OrganizationReadyForLoginLinks } from './OrganizationReadyForLoginLinks'
-import { resolveOrganizationExternalIpPools } from '../../tenantAdmin/projects'
+import { AdditionalEmailDomainsValue } from './AdditionalEmailDomainsField'
+import { AddTenantAdministratorWizard } from '../tenant-admin/AddTenantAdministratorWizard'
+import { OrganizationResourceUsageSection } from './OrganizationResourceUsageSection'
+import {
+  listTenantAdministrators,
+  removeAdditionalTenantAdministrator,
+  TENANT_ADMINISTRATORS_DEMO,
+  type TenantAdministrator,
+} from '../../tenantAdmin/administrators'
 
 type OrganizationDetailsPageProps = {
   organization: RegisteredOrganization
@@ -31,6 +52,7 @@ type OrganizationDetailsPageProps = {
   onRemove?: () => void
   onReviewIdentityProvider?: (organization: RegisteredOrganization) => void
   onReviewRoles?: (organization: RegisteredOrganization) => void
+  onOrganizationChange?: (organization: RegisteredOrganization) => void
 }
 
 function formatRegisteredAt(iso: string): string {
@@ -78,6 +100,66 @@ function PersonField({
   )
 }
 
+function AccountPersonRow({
+  admin,
+  onRequestRemove,
+}: {
+  admin: TenantAdministrator
+  onRequestRemove: (admin: TenantAdministrator) => void
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+
+  return (
+    <li className="provider-admin-organizations__account-person">
+      <div className="provider-admin-organizations__account-person-main">
+        <Content component="p" className="provider-admin-organizations__primary-cell">
+          {admin.name}
+        </Content>
+        <Content component="p" className="provider-admin-organizations__secondary-cell">
+          {admin.email}
+        </Content>
+        <Label
+          color={admin.isPrimary ? 'blue' : 'grey'}
+          isCompact
+          className="provider-admin-organizations__account-person-role"
+        >
+          {admin.isPrimary
+            ? TENANT_ADMINISTRATORS_DEMO.primaryRoleLabel
+            : TENANT_ADMINISTRATORS_DEMO.additionalRoleLabel}
+        </Label>
+      </div>
+      {admin.isPrimary ? null : (
+        <Dropdown
+          isOpen={isOpen}
+          onOpenChange={setIsOpen}
+          onSelect={() => setIsOpen(false)}
+          popperProps={{ position: 'right' }}
+          toggle={(toggleRef) => (
+            <MenuToggle
+              ref={toggleRef}
+              variant="plain"
+              isExpanded={isOpen}
+              onClick={() => setIsOpen((open) => !open)}
+              icon={<EllipsisVIcon />}
+              aria-label={`Actions for ${admin.name}`}
+            />
+          )}
+        >
+          <DropdownList>
+            <DropdownItem
+              value="remove"
+              isDanger
+              onClick={() => onRequestRemove(admin)}
+            >
+              Remove
+            </DropdownItem>
+          </DropdownList>
+        </Dropdown>
+      )}
+    </li>
+  )
+}
+
 function ActivationStepRow({
   step,
   organization,
@@ -97,7 +179,11 @@ function ActivationStepRow({
   const showLoginPaths =
     step.id === 'ready' && step.complete && organization.identityProviderConnected
   const canReviewIdp = step.id === 'idp' && typeof onReviewIdentityProvider === 'function'
-  const canReviewRoles = step.id === 'rbac' && typeof onReviewRoles === 'function'
+  const canReviewRoles =
+    step.id === 'rbac' &&
+    !step.complete &&
+    typeof onReviewRoles === 'function' &&
+    organization.identityProviderConnected
 
   return (
     <li
@@ -167,16 +253,63 @@ export function OrganizationDetailsPage({
   onRemove,
   onReviewIdentityProvider,
   onReviewRoles,
+  onOrganizationChange,
 }: OrganizationDetailsPageProps) {
   const activationSteps = getOrganizationActivationSteps(organization)
-  const additionalAdmins = organization.additionalTenantAdmins
-  const invitedUsers = organization.invitedTenantUserEmails
-  const externalIpPools = useMemo(
-    () => resolveOrganizationExternalIpPools(organization),
-    [organization],
-  )
+  const administrators = organization.rbacConfigured
+    ? listTenantAdministrators(organization)
+    : []
+  const [isAddAdministratorOpen, setIsAddAdministratorOpen] = useState(false)
+  const [administratorPendingRemove, setAdministratorPendingRemove] =
+    useState<TenantAdministrator | null>(null)
+  const canAddAdministrator = organization.identityProviderConnected
+  const canManageAdministrators = organization.rbacConfigured
+
+  const handleAddAdministrator = () => {
+    if (!canAddAdministrator) {
+      return
+    }
+    if (!canManageAdministrators) {
+      onReviewRoles?.(organization)
+      return
+    }
+    setIsAddAdministratorOpen(true)
+  }
+
+  const handleAdministratorAdded = (updated: RegisteredOrganization) => {
+    onOrganizationChange?.(updated)
+    setIsAddAdministratorOpen(false)
+  }
+
+  const handleConfirmRemoveAdministrator = () => {
+    if (!administratorPendingRemove) {
+      return
+    }
+
+    const updated = removeAdditionalTenantAdministrator(
+      organization,
+      administratorPendingRemove.email,
+    )
+    if (updated) {
+      onOrganizationChange?.(updated)
+    }
+    setAdministratorPendingRemove(null)
+  }
+
+  if (isAddAdministratorOpen) {
+    return (
+      <AddTenantAdministratorWizard
+        isOpen
+        organization={organization}
+        parentLabel={organization.name}
+        onClose={() => setIsAddAdministratorOpen(false)}
+        onAdded={handleAdministratorAdded}
+      />
+    )
+  }
 
   return (
+    <>
     <EntityDetailsPageShell
       parentLabel="Organizations"
       onBack={onBack}
@@ -219,15 +352,15 @@ export function OrganizationDetailsPage({
                   </DescriptionListDescription>
                 </DescriptionListGroup>
                 <DescriptionListGroup>
-                  <DescriptionListTerm>Tenant ID</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    <code>{organization.tenantId}</code>
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
-                <DescriptionListGroup>
                   <DescriptionListTerm>Primary email domain</DescriptionListTerm>
                   <DescriptionListDescription>
                     <code>{organization.primaryDomain || '—'}</code>
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Additional email domains</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    <AdditionalEmailDomainsValue domains={organization.additionalDomains ?? []} />
                   </DescriptionListDescription>
                 </DescriptionListGroup>
                 <DescriptionListGroup>
@@ -252,179 +385,158 @@ export function OrganizationDetailsPage({
 
             <div className="entity-details-page__column">
               <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
-                Accounts
+                Activation status
               </Title>
-              <DescriptionList
-                isCompact
-                className="entity-details-page__dl"
-                aria-label="Organization accounts"
+              <ol
+                className="provider-admin-organizations__status-steps"
+                aria-label="Activation progress"
               >
-                <DescriptionListGroup>
-                  <DescriptionListTerm>First tenant admin</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    {organization.rbacConfigured ? (
-                      <PersonField
-                        name={organization.tenantAdminName}
-                        email={organization.tenantAdminEmail}
-                      />
-                    ) : (
-                      '—'
-                    )}
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
-                <DescriptionListGroup>
-                  <DescriptionListTerm>Additional tenant admins</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    {organization.rbacConfigured && additionalAdmins.length > 0 ? (
-                      <ul className="provider-admin-organizations__account-list">
-                        {additionalAdmins.map((admin) => (
-                          <li key={`${admin.email}-${admin.name}`}>
-                            <PersonField name={admin.name} email={admin.email} />
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      '—'
-                    )}
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
-                <DescriptionListGroup>
-                  <DescriptionListTerm>Break-glass account</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    {organization.rbacConfigured && organization.breakGlassEmail ? (
-                      <PersonField
-                        name={organization.breakGlassName || '—'}
-                        email={organization.breakGlassEmail}
-                      />
-                    ) : (
-                      '—'
-                    )}
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
-                <DescriptionListGroup>
-                  <DescriptionListTerm>Invited tenant users</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    {organization.rbacConfigured && invitedUsers.length > 0 ? (
-                      <ul className="provider-admin-organizations__account-list">
-                        {invitedUsers.map((email) => (
-                          <li key={email}>
-                            <Content
-                              component="p"
-                              className="provider-admin-organizations__secondary-cell"
-                            >
-                              <code>{email}</code>
-                            </Content>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      '—'
-                    )}
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
-              </DescriptionList>
+                {activationSteps.map((step) => (
+                  <ActivationStepRow
+                    key={step.id}
+                    step={step}
+                    organization={organization}
+                    onReviewIdentityProvider={onReviewIdentityProvider}
+                    onReviewRoles={onReviewRoles}
+                  />
+                ))}
+              </ol>
             </div>
           </div>
 
           <div className="entity-details-page__column">
-            <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
-              Resources
-            </Title>
-            <DescriptionList
-              isCompact
-              className="entity-details-page__dl"
-              aria-label="Organization resources"
-            >
-              <DescriptionListGroup>
-                <DescriptionListTerm>Catalog item</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {organization.catalogDisplayName ? (
-                    <>
-                      <Content component="p" className="provider-admin-organizations__primary-cell">
-                        {organization.catalogDisplayName}
-                      </Content>
-                      {organization.catalogItemId ? (
-                        <Content
-                          component="p"
-                          className="provider-admin-organizations__secondary-cell"
-                        >
-                          <code>{organization.catalogItemId}</code>
-                        </Content>
-                      ) : null}
-                    </>
-                  ) : (
-                    '—'
-                  )}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>External IP pools</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {externalIpPools.length === 0 ? (
-                    '—'
-                  ) : (
-                    <ul className="provider-admin-organizations__pool-list">
-                      {externalIpPools.map((pool) => (
-                        <li key={pool.id}>
-                          <Content component="p" className="provider-admin-organizations__primary-cell">
-                            {pool.name}
-                            {pool.id === organization.externalIpPoolId ? (
-                              <>
-                                {' '}
-                                <Label color="blue" isCompact>
-                                  Primary
-                                </Label>
-                              </>
-                            ) : null}
-                          </Content>
-                          <Content
-                            component="p"
-                            className="provider-admin-organizations__secondary-cell"
-                          >
-                            <code>{pool.cidr}</code>
-                          </Content>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Max instances</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {organization.maxInstances.toLocaleString()}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-            </DescriptionList>
+            <OrganizationResourceUsageSection organization={organization} />
           </div>
         </div>
 
         <div className="entity-details-page__rail-stack">
           <div className="entity-details-page__column entity-details-page__column--config">
-            <Title
-              headingLevel="h2"
-              size="md"
-              className="entity-details-page__section-title entity-details-page__section-title--config"
-            >
-              Activation status
-            </Title>
-            <ol
-              className="provider-admin-organizations__status-steps"
-              aria-label="Activation progress"
-            >
-              {activationSteps.map((step) => (
-                <ActivationStepRow
-                  key={step.id}
-                  step={step}
-                  organization={organization}
-                  onReviewIdentityProvider={onReviewIdentityProvider}
-                  onReviewRoles={onReviewRoles}
+            <div className="entity-details-page__column-block">
+              <div className="entity-details-page__section-header entity-details-page__section-header--config provider-admin-organizations__accounts-header">
+                <Title
+                  headingLevel="h2"
+                  size="md"
+                  className="entity-details-page__section-title entity-details-page__section-title--config"
+                >
+                  Accounts
+                </Title>
+                {canAddAdministrator ? (
+                  <Button
+                    variant="link"
+                    isInline
+                    icon={<PlusCircleIcon />}
+                    className="provider-admin-organizations__accounts-add"
+                    onClick={handleAddAdministrator}
+                  >
+                    Add administrator
+                  </Button>
+                ) : null}
+              </div>
+              {administrators.length === 0 ? (
+                <Content component="p" className="provider-admin-organizations__secondary-cell">
+                  {canAddAdministrator
+                    ? 'No tenant administrators yet.'
+                    : 'Connect the identity provider before adding tenant administrators.'}
+                </Content>
+              ) : (
+                <ul
+                  className="provider-admin-organizations__account-people"
+                  aria-label="Tenant administrators"
+                >
+                  {administrators.map((admin) => (
+                    <AccountPersonRow
+                      key={admin.email}
+                      admin={admin}
+                      onRequestRemove={setAdministratorPendingRemove}
+                    />
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="entity-details-page__column-block">
+              <Title
+                headingLevel="h2"
+                size="md"
+                className="entity-details-page__section-title entity-details-page__section-title--config"
+              >
+                Break-glass account
+              </Title>
+              {hasBreakGlassAccount(organization) ? (
+                <div className="provider-admin-organizations__break-glass">
+                  <ClipboardCopy
+                    isReadOnly
+                    isCode
+                    hoverTip="Copy username"
+                    clickTip="Username copied"
+                    textAriaLabel="Break-glass username"
+                  >
+                    {organization.breakGlassUsername as string}
+                  </ClipboardCopy>
+                  <Content
+                    component="p"
+                    className="provider-admin-organizations__secondary-cell"
+                  >
+                    Custodian:{' '}
+                    {organization.breakGlassName || 'IdP manager'}
+                    {organization.breakGlassEmail
+                      ? ` · ${organization.breakGlassEmail}`
+                      : ''}
+                  </Content>
+                  <Content
+                    component="p"
+                    className="provider-admin-organizations__secondary-cell"
+                  >
+                    Local login. Does not use the organization IdP.
+                  </Content>
+                </div>
+              ) : organization.breakGlassEmail ? (
+                <PersonField
+                  name={organization.breakGlassName || '—'}
+                  email={organization.breakGlassEmail}
                 />
-              ))}
-            </ol>
+              ) : (
+                <Content component="p" className="provider-admin-organizations__secondary-cell">
+                  —
+                </Content>
+              )}
+            </div>
           </div>
         </div>
       </div>
     </EntityDetailsPageShell>
+    <Modal
+      variant={ModalVariant.small}
+      isOpen={administratorPendingRemove !== null}
+      onClose={() => setAdministratorPendingRemove(null)}
+      aria-labelledby="remove-organization-administrator-title"
+      aria-describedby="remove-organization-administrator-description"
+    >
+      <ModalHeader
+        title="Are you sure?"
+        titleIconVariant="warning"
+        labelId="remove-organization-administrator-title"
+      />
+      <ModalBody>
+        <Content component="p" id="remove-organization-administrator-description">
+          {administratorPendingRemove ? (
+            <>
+              <strong>{administratorPendingRemove.name}</strong> will lose tenant admin access to
+              this organization. This cannot be undone.
+            </>
+          ) : (
+            'This administrator will lose tenant admin access to this organization.'
+          )}
+        </Content>
+      </ModalBody>
+      <ModalFooter>
+        <Button variant="danger" onClick={handleConfirmRemoveAdministrator}>
+          Remove
+        </Button>
+        <Button variant="link" onClick={() => setAdministratorPendingRemove(null)}>
+          Cancel
+        </Button>
+      </ModalFooter>
+    </Modal>
+    </>
   )
 }

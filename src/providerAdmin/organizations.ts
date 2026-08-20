@@ -12,6 +12,8 @@ export type RegisteredOrganization = {
   slug: string
   /** Primary email domain used for IdP association and RBAC tenancy. */
   primaryDomain: string
+  /** Extra email domains covered by the same IdP. Set when connecting identity. */
+  additionalDomains: string[]
   billingAccountId: string
   billingAccountName: string
   catalogItemId: string | null
@@ -35,17 +37,21 @@ export type RegisteredOrganization = {
   identityProviderIssuerUrl: string | null
   identityProviderClientId: string | null
   /**
-   * IdP Manager delegation invite (Option B). Provider Admin may still configure
-   * IdP themselves (Option A) and cancel a pending invite.
+   * IdP manager handoff (Path B). Provider copies break-glass credentials and an
+   * OSAC link to send out of band. Path A still lets the provider connect IdP.
    */
   idpManagerEmail: string | null
   idpInviteToken: string | null
   idpInviteStatus: IdpInviteStatus
   idpInviteSentAt: string | null
   idpInviteExpiresAt: string | null
-  /** Emergency break-glass admin captured during Define roles. */
+  /** Emergency break-glass custodian who receives the credentials. */
   breakGlassName: string | null
   breakGlassEmail: string | null
+  /** Platform-local username; does not authenticate through the organization IdP. */
+  breakGlassUsername: string | null
+  breakGlassPassword: string | null
+  breakGlassIssuedAt: string | null
   /** Org-scoped roles + first tenant admin assigned after registration. */
   rbacConfigured: boolean
   status: 'Pending activation' | 'Active'
@@ -92,6 +98,62 @@ export function hasPendingIdpInvite(organization: RegisteredOrganization, now = 
   return !isIdpInviteExpired(organization, now)
 }
 
+export type BreakGlassCustodian = {
+  name: string
+  email: string
+}
+
+export type BreakGlassIssuePatch = Pick<
+  RegisteredOrganization,
+  | 'breakGlassName'
+  | 'breakGlassEmail'
+  | 'breakGlassUsername'
+  | 'breakGlassPassword'
+  | 'breakGlassIssuedAt'
+>
+
+export function generateBreakGlassUsername(slug: string): string {
+  const normalized = slug.trim().toLowerCase() || 'org'
+  return `breakglass-${normalized}`
+}
+
+/** Stable demo password for seeded orgs; new issues use a one-time token. */
+export function getDemoBreakGlassPassword(slug: string): string {
+  const normalized = slug.trim().toLowerCase() || 'org'
+  return `BG-${normalized}-vault`
+}
+
+export function generateBreakGlassPassword(slug: string): string {
+  const normalized = slug.trim().toLowerCase() || 'org'
+  const token = Math.random().toString(36).slice(2, 8)
+  return `BG-${normalized}-${token}`
+}
+
+export function hasBreakGlassAccount(organization: RegisteredOrganization): boolean {
+  return Boolean(organization.breakGlassUsername?.trim() && organization.breakGlassPassword?.trim())
+}
+
+export function buildBreakGlassIssuePatch(
+  organization: Pick<
+    RegisteredOrganization,
+    'slug' | 'breakGlassUsername' | 'breakGlassPassword' | 'breakGlassIssuedAt'
+  >,
+  custodian: BreakGlassCustodian,
+): BreakGlassIssuePatch {
+  const username =
+    organization.breakGlassUsername?.trim() || generateBreakGlassUsername(organization.slug)
+  const password =
+    organization.breakGlassPassword?.trim() || generateBreakGlassPassword(organization.slug)
+
+  return {
+    breakGlassName: custodian.name.trim() || 'IdP manager',
+    breakGlassEmail: custodian.email.trim().toLowerCase(),
+    breakGlassUsername: username,
+    breakGlassPassword: password,
+    breakGlassIssuedAt: organization.breakGlassIssuedAt ?? new Date().toISOString(),
+  }
+}
+
 /** Pending IdP manager invites that can be opened from the demo landing page. */
 export function getPendingIdpManagerInvites(
   organizations: RegisteredOrganization[],
@@ -124,7 +186,7 @@ export function getOrganizationSetupSignal(organization: RegisteredOrganization)
       return 'Waiting on IdP Manager'
     }
     if (organization.idpInviteStatus === 'expired' || isIdpInviteExpired(organization)) {
-      return 'IdP invitation expired'
+      return 'IdP manager link expired'
     }
     return 'Needs identity provider'
   }
@@ -157,10 +219,6 @@ export function formatOrganizationRolesAssignmentSummary(
 ): string {
   const adminCount = getOrganizationTenantAdminCount(organization)
   const adminLabel = adminCount === 1 ? '1 tenant admin' : `${adminCount} tenant admins`
-  const breakGlass = organization.breakGlassEmail?.trim()
-  if (breakGlass) {
-    return `${adminLabel} · Break-glass: ${breakGlass}`
-  }
   return `${adminLabel} · Tenant users by email domain`
 }
 
@@ -229,14 +287,16 @@ export function getOrganizationActivationSteps(
     },
     {
       id: 'idp',
-      label: hasPendingIdpInvite(organization)
-        ? 'Waiting on IdP Manager'
-        : 'Identity provider connected',
+      label: idpComplete
+        ? 'Identity provider connected'
+        : hasPendingIdpInvite(organization)
+          ? 'Waiting on IdP Manager'
+          : 'Set up identity provider',
       complete: idpComplete,
     },
     {
       id: 'rbac',
-      label: 'Roles defined (optional)',
+      label: rbacComplete ? 'Roles defined' : 'Define roles (optional)',
       complete: rbacComplete,
     },
     {
@@ -309,6 +369,7 @@ export function createDemoNorthSummitBankOrganization(
     tenantId: DEMO_NORTH_SUMMIT_BANK_TENANT_ID,
     slug: 'northstar',
     primaryDomain,
+    additionalDomains: ['northsummitbank.net'],
     billingAccountId: 'ACCT-NSB-2048',
     billingAccountName: 'north-summit-bank-enterprise-billing',
     catalogItemId: options.catalogItemId ?? null,
@@ -340,8 +401,11 @@ export function createDemoNorthSummitBankOrganization(
     idpInviteStatus: 'none',
     idpInviteSentAt: null,
     idpInviteExpiresAt: null,
-    breakGlassName: 'Break-glass admin',
-    breakGlassEmail: `breakglass@${primaryDomain}`,
+    breakGlassName: 'IdP manager',
+    breakGlassEmail: `idp-admin@${primaryDomain}`,
+    breakGlassUsername: generateBreakGlassUsername('northstar'),
+    breakGlassPassword: getDemoBreakGlassPassword('northstar'),
+    breakGlassIssuedAt: '2026-06-12T14:30:00.000Z',
     rbacConfigured: true,
     status: 'Active',
     createdAt: '2026-06-12T14:30:00.000Z',
@@ -366,6 +430,7 @@ export function createDemoHarborlineCapitalOrganization(
     tenantId: DEMO_HARBORLINE_CAPITAL_TENANT_ID,
     slug: DEMO_HARBORLINE_CAPITAL_SLUG,
     primaryDomain,
+    additionalDomains: ['harborline.com'],
     billingAccountId: 'ACCT-HLC-3910',
     billingAccountName: 'harborline-capital-enterprise-billing',
     catalogItemId: options.catalogItemId ?? null,
@@ -396,8 +461,11 @@ export function createDemoHarborlineCapitalOrganization(
     idpInviteStatus: 'none',
     idpInviteSentAt: null,
     idpInviteExpiresAt: null,
-    breakGlassName: 'Break-glass admin',
-    breakGlassEmail: `breakglass@${primaryDomain}`,
+    breakGlassName: 'IdP manager',
+    breakGlassEmail: `idp-admin@${primaryDomain}`,
+    breakGlassUsername: generateBreakGlassUsername(DEMO_HARBORLINE_CAPITAL_SLUG),
+    breakGlassPassword: getDemoBreakGlassPassword(DEMO_HARBORLINE_CAPITAL_SLUG),
+    breakGlassIssuedAt: '2026-06-18T11:00:00.000Z',
     rbacConfigured: true,
     status: 'Active',
     createdAt: '2026-06-18T11:00:00.000Z',
@@ -477,6 +545,98 @@ export function isValidPrimaryDomain(value: string): boolean {
   )
 }
 
+export function getOrganizationEmailDomains(
+  organization: Pick<RegisteredOrganization, 'primaryDomain' | 'additionalDomains'>,
+): string[] {
+  const primary = normalizePrimaryDomain(organization.primaryDomain)
+  const additional = (organization.additionalDomains ?? [])
+    .map((domain) => normalizePrimaryDomain(domain))
+    .filter(Boolean)
+  return [...new Set([primary, ...additional].filter(Boolean))]
+}
+
+export function normalizeAdditionalDomains(
+  domains: readonly string[],
+  primaryDomain: string,
+): string[] {
+  const primary = normalizePrimaryDomain(primaryDomain)
+  const seen = new Set<string>()
+  const result: string[] = []
+
+  for (const value of domains) {
+    const domain = normalizePrimaryDomain(value)
+    if (!domain || domain === primary || seen.has(domain) || !isValidPrimaryDomain(domain)) {
+      continue
+    }
+    seen.add(domain)
+    result.push(domain)
+  }
+
+  return result
+}
+
+export function buildDemoSubsidiaryDomain(primaryDomain: string): string {
+  const domain = normalizePrimaryDomain(primaryDomain)
+  return domain ? `subsidiary.${domain}` : 'subsidiary.example.com'
+}
+
+export function buildDefaultAdditionalDomains(
+  organization: Pick<
+    RegisteredOrganization,
+    'primaryDomain' | 'additionalDomains' | 'identityProviderConnected'
+  >,
+): string[] {
+  const existing = normalizeAdditionalDomains(
+    organization.additionalDomains ?? [],
+    organization.primaryDomain,
+  )
+  if (existing.length > 0) {
+    return existing
+  }
+  if (organization.identityProviderConnected) {
+    return []
+  }
+
+  return [buildDemoSubsidiaryDomain(organization.primaryDomain)]
+}
+
+export function emailMatchesOrganizationDomains(
+  email: string,
+  organization: Pick<RegisteredOrganization, 'primaryDomain' | 'additionalDomains'>,
+): boolean {
+  if (!email.includes('@')) {
+    return false
+  }
+
+  const emailDomain = email.split('@')[1]?.toLowerCase() ?? ''
+  return getOrganizationEmailDomains(organization).includes(emailDomain)
+}
+
+export function areAdditionalDomainsValid(
+  domains: readonly string[],
+  primaryDomain: string,
+  takenDomains: ReadonlySet<string>,
+): boolean {
+  const primary = normalizePrimaryDomain(primaryDomain)
+  const seen = new Set<string>()
+
+  for (const value of domains) {
+    if (!value.trim()) {
+      continue
+    }
+    if (!isValidPrimaryDomain(value)) {
+      return false
+    }
+    const domain = normalizePrimaryDomain(value)
+    if (domain === primary || takenDomains.has(domain) || seen.has(domain)) {
+      return false
+    }
+    seen.add(domain)
+  }
+
+  return true
+}
+
 export function slugifyOrganizationName(name: string): string {
   const normalized = name.trim().toLowerCase()
 
@@ -510,9 +670,7 @@ function getTakenOrganizationKeys(existingOrganizations: RegisteredOrganization[
       existingOrganizations.map((organization) => organization.name.trim().toLowerCase()),
     ),
     domains: new Set(
-      existingOrganizations.map((organization) =>
-        normalizePrimaryDomain(organization.primaryDomain),
-      ),
+      existingOrganizations.flatMap((organization) => getOrganizationEmailDomains(organization)),
     ),
     slugs: new Set(existingOrganizations.map((organization) => organization.slug)),
   }
@@ -531,15 +689,48 @@ export function isOrganizationNameTaken(
 }
 
 export function isOrganizationDomainTaken(
-  primaryDomain: string,
+  domainValue: string,
   existingOrganizations: RegisteredOrganization[],
+  excludeOrganizationId?: string,
 ): boolean {
-  const domain = normalizePrimaryDomain(primaryDomain)
+  const domain = normalizePrimaryDomain(domainValue)
   if (!domain) {
     return false
   }
 
-  return getTakenOrganizationKeys(existingOrganizations).domains.has(domain)
+  const organizations = excludeOrganizationId
+    ? existingOrganizations.filter((organization) => organization.id !== excludeOrganizationId)
+    : existingOrganizations
+
+  return getTakenOrganizationKeys(organizations).domains.has(domain)
+}
+
+export function getTakenEmailDomains(
+  existingOrganizations: RegisteredOrganization[],
+  excludeOrganizationId?: string,
+): Set<string> {
+  const organizations = excludeOrganizationId
+    ? existingOrganizations.filter((organization) => organization.id !== excludeOrganizationId)
+    : existingOrganizations
+
+  return getTakenOrganizationKeys(organizations).domains
+}
+
+export function formatOrganizationEmailDomainsLabel(
+  organization: Pick<RegisteredOrganization, 'primaryDomain' | 'additionalDomains'>,
+): string {
+  const domains = getOrganizationEmailDomains(organization).map((domain) => `@${domain}`)
+  if (domains.length === 0) {
+    return 'the organization domain'
+  }
+  if (domains.length === 1) {
+    return domains[0]
+  }
+  if (domains.length === 2) {
+    return `${domains[0]} or ${domains[1]}`
+  }
+
+  return `${domains.slice(0, -1).join(', ')}, or ${domains[domains.length - 1]}`
 }
 
 export function isOrganizationSlugTaken(
@@ -627,7 +818,7 @@ export const ORGANIZATION_SETUP_FILTER_OPTIONS: ReadonlyArray<{
   { value: 'ready', label: 'Ready' },
   { value: 'needs-idp', label: 'Needs identity provider' },
   { value: 'waiting-idp', label: 'Waiting on IdP Manager' },
-  { value: 'expired-idp', label: 'IdP invitation expired' },
+  { value: 'expired-idp', label: 'IdP manager link expired' },
   { value: 'needs-roles', label: 'Needs roles' },
 ]
 
@@ -641,7 +832,7 @@ export function getOrganizationSetupFilterKey(
   if (signal === 'Waiting on IdP Manager') {
     return 'waiting-idp'
   }
-  if (signal === 'IdP invitation expired') {
+  if (signal === 'IdP manager link expired') {
     return 'expired-idp'
   }
   if (signal === 'Needs roles') {
@@ -675,6 +866,9 @@ export function organizationMatchesSearch(
     organization.tenantId.toLowerCase().includes(normalizedQuery) ||
     organization.slug.toLowerCase().includes(normalizedQuery) ||
     organization.primaryDomain.toLowerCase().includes(normalizedQuery) ||
+    (organization.additionalDomains ?? []).some((domain) =>
+      domain.toLowerCase().includes(normalizedQuery),
+    ) ||
     organization.billingAccountName.toLowerCase().includes(normalizedQuery) ||
     organization.billingAccountId.toLowerCase().includes(normalizedQuery)
   )

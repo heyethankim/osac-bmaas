@@ -25,7 +25,6 @@ import { useWizardLeaveConfirm } from '../shared/useWizardLeaveConfirm'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import {
   getAssignableExternalIpPools,
-  getExternalIpPoolById,
 } from '../../providerAdmin/externalIpPools'
 import {
   getProviderExternalIpPools,
@@ -37,6 +36,7 @@ import {
   buildNextRegisterOrganizationForm,
   generateOrganizationId,
   generateTenantId,
+  generateBillingAccountId,
   isOrganizationDomainTaken,
   isOrganizationNameTaken,
   isOrganizationSlugTaken,
@@ -138,20 +138,18 @@ export function RegisterOrganizationWizard({
 
   const handleRegister = () => {
     const maxInstances = Number.parseInt(form.maxInstances, 10)
-    const selectedPool = getExternalIpPoolById(getProviderExternalIpPools(), form.externalIpPoolId)
     const latestOrganizations = getProviderRegisteredOrganizations()
+    const selectedPool =
+      assignablePools.find((pool) => pool.id === form.externalIpPoolId) ??
+      assignablePools[0] ??
+      null
     if (
       !isOrganizationStepValid ||
       isOrganizationNameTaken(form.organizationName, latestOrganizations) ||
       isOrganizationDomainTaken(form.primaryDomain, latestOrganizations) ||
       isOrganizationSlugTaken(form.organizationName, latestOrganizations) ||
-      !form.billingAccountId.trim() ||
-      !form.externalIpPoolId.trim() ||
-      !selectedPool ||
-      selectedPool.assignedOrganizationId !== null ||
       !Number.isFinite(maxInstances) ||
-      maxInstances <= 0 ||
-      assignablePools.length === 0
+      maxInstances <= 0
     ) {
       return
     }
@@ -162,13 +160,14 @@ export function RegisterOrganizationWizard({
       tenantId: generateTenantId(),
       slug: slugifyOrganizationName(form.organizationName),
       primaryDomain,
-      billingAccountId: form.billingAccountId.trim(),
+      additionalDomains: [],
+      billingAccountId: form.billingAccountId.trim() || generateBillingAccountId(),
       billingAccountName: form.billingAccountName.trim(),
       catalogItemId: catalogDraft?.catalogItemId ?? null,
       catalogDisplayName: catalogDraft?.displayName ?? null,
-      externalIpPoolId: selectedPool.id,
-      externalIpPoolName: selectedPool.name,
-      externalIpPoolCidr: selectedPool.cidr,
+      externalIpPoolId: selectedPool?.id ?? null,
+      externalIpPoolName: selectedPool?.name ?? null,
+      externalIpPoolCidr: selectedPool?.cidr ?? null,
       maxInstances,
       tenantAdminName: DEFAULT_REGISTER_ORGANIZATION_TENANT_ADMIN.name,
       tenantAdminEmail: DEFAULT_REGISTER_ORGANIZATION_TENANT_ADMIN.email,
@@ -187,6 +186,9 @@ export function RegisterOrganizationWizard({
       idpInviteExpiresAt: null,
       breakGlassName: null,
       breakGlassEmail: null,
+      breakGlassUsername: null,
+      breakGlassPassword: null,
+      breakGlassIssuedAt: null,
       rbacConfigured: false,
       status: 'Pending activation',
       createdAt: new Date().toISOString(),
@@ -254,7 +256,7 @@ export function RegisterOrganizationWizard({
                     <HelperTextItem variant={domainTaken ? 'error' : 'default'}>
                       {domainTaken
                         ? 'This email domain is already mapped to another organization.'
-                        : 'Used to associate identity-provider users with this organization. Tenant admins are assigned later under Roles.'}
+                        : 'Used to map this organization to an identity provider. Add more domains when you connect the IdP.'}
                     </HelperTextItem>
                   </HelperText>
                 </FormHelperText>
@@ -322,11 +324,7 @@ export function RegisterOrganizationWizard({
     if (stepId === 'review') {
       const maxInstances = Number.parseInt(form.maxInstances, 10)
       const canRegister =
-        isOrganizationStepValid &&
-        Boolean(form.externalIpPoolId.trim()) &&
-        assignablePools.length > 0 &&
-        Number.isFinite(maxInstances) &&
-        maxInstances > 0
+        isOrganizationStepValid && Number.isFinite(maxInstances) && maxInstances > 0
 
       return wrapStepFooter({
         nextButtonText: (

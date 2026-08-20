@@ -3,11 +3,8 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import {
   Alert,
   Button,
+  ClipboardCopy,
   Content,
-  DescriptionList,
-  DescriptionListDescription,
-  DescriptionListGroup,
-  DescriptionListTerm,
   Form,
   FormGroup,
   FormHelperText,
@@ -25,11 +22,16 @@ import {
   updateProviderRegisteredOrganization,
 } from '../providerSetup/storage'
 import {
+  areAdditionalDomainsValid,
+  buildDefaultAdditionalDomains,
   buildDemoIdentityProviderName,
   getIdpManagerSetupRoute,
   getPendingIdpManagerInvites,
+  getTakenEmailDomains,
+  hasBreakGlassAccount,
   hasPendingIdpInvite,
   isIdpInviteExpired,
+  normalizeAdditionalDomains,
   type RegisteredOrganization,
 } from '../providerAdmin/organizations'
 import {
@@ -40,6 +42,7 @@ import {
   type OrganizationActionCompletionPhase,
 } from '../components/provider-admin/OrganizationActionSuccessState'
 import { RouterButton } from '../components/RouterButton'
+import { AdditionalEmailDomainsField } from '../components/provider-admin/AdditionalEmailDomainsField'
 import { BlueSolaceFinancialGroupLoginPage } from './BlueSolaceFinancialGroupLoginPage'
 import { NorthstarBankLoginPage } from './NorthstarBankLoginPage'
 import { OsacSignInPage } from './OsacSignInPage'
@@ -82,7 +85,7 @@ function usesNorthstarLogin(organization: RegisteredOrganization): boolean {
 }
 
 /**
- * IdP manager experience from the invitation email link:
+ * IdP manager experience from the OSAC link the provider admin sends:
  * OSAC sign-in → institution login → IdP setup.
  */
 export function IdpManagerSetupPage() {
@@ -101,6 +104,7 @@ export function IdpManagerSetupPage() {
     issuerUrl: '',
     clientId: '',
   })
+  const [additionalDomains, setAdditionalDomains] = useState<string[]>([])
   const [completionPhase, setCompletionPhase] =
     useState<OrganizationActionCompletionPhase>('idle')
   const completionTimersRef = useRef<number[]>([])
@@ -156,6 +160,7 @@ export function IdpManagerSetupPage() {
     }
 
     setForm(buildDefaultForm(match))
+    setAdditionalDomains(buildDefaultAdditionalDomains(match))
     setGateState('ready')
   }, [token])
 
@@ -172,9 +177,22 @@ export function IdpManagerSetupPage() {
     return () => window.clearTimeout(timeoutId)
   }, [isOsacContinuing])
 
+  const takenEmailDomains = getTakenEmailDomains(
+    getProviderRegisteredOrganizations(),
+    organization?.id,
+  )
+  const additionalDomainsValid = areAdditionalDomainsValid(
+    additionalDomains,
+    organization?.primaryDomain ?? '',
+    takenEmailDomains,
+  )
   const isFormDisabled = useMemo(
-    () => !form.displayName.trim() || !form.issuerUrl.trim() || !form.clientId.trim(),
-    [form],
+    () =>
+      !form.displayName.trim() ||
+      !form.issuerUrl.trim() ||
+      !form.clientId.trim() ||
+      !additionalDomainsValid,
+    [form, additionalDomainsValid],
   )
 
   const issuerLabel = form.protocol === 'SAML' ? 'Metadata URL' : 'Issuer URL'
@@ -205,6 +223,10 @@ export function IdpManagerSetupPage() {
         identityProviderProtocol: form.protocol,
         identityProviderIssuerUrl: form.issuerUrl.trim(),
         identityProviderClientId: form.clientId.trim(),
+        additionalDomains: normalizeAdditionalDomains(
+          additionalDomains,
+          organization.primaryDomain,
+        ),
         idpInviteStatus: 'accepted',
         status: 'Active',
       })
@@ -230,7 +252,7 @@ export function IdpManagerSetupPage() {
       <div className="idp-manager-setup-page">
         <div className="idp-manager-setup-page__card">
           <div className="idp-manager-setup-page__loading">
-            <Spinner size="lg" aria-label="Loading invitation" />
+            <Spinner size="lg" aria-label="Loading OSAC link" />
           </div>
         </div>
       </div>
@@ -253,22 +275,22 @@ export function IdpManagerSetupPage() {
             Vertexa Cloud · IdP manager
           </Content>
           <Title headingLevel="h1" size="2xl" className="idp-manager-setup-page__title">
-            IdP manager invitation
+            IdP manager
           </Title>
           {gateState === 'invalid' ? (
-            <Alert variant="danger" isInline title="Invitation not found">
-              This link is invalid or no longer available. Ask the provider admin to resend an
-              invitation.
+            <Alert variant="danger" isInline title="OSAC link not found">
+              This link is invalid or no longer available. Ask the provider admin to create
+              credentials again.
             </Alert>
           ) : null}
           {gateState === 'expired' ? (
-            <Alert variant="warning" isInline title="Invitation expired">
-              Ask the provider admin for {organization?.name ?? 'this organization'} to resend a new
-              single-use setup link.
+            <Alert variant="warning" isInline title="OSAC link expired">
+              Ask the provider admin for {organization?.name ?? 'this organization'} to create a
+              new break-glass account and OSAC link.
             </Alert>
           ) : null}
           {gateState === 'used' ? (
-            <Alert variant="info" isInline title="Invitation already used">
+            <Alert variant="info" isInline title="Already connected">
               The identity provider for {organization?.name ?? 'this organization'} is already
               connected.
             </Alert>
@@ -281,7 +303,7 @@ export function IdpManagerSetupPage() {
                   to={getIdpManagerSetupRoute(invite.token)}
                   variant="primary"
                 >
-                  Open invite for {invite.organization.name}
+                  Open OSAC link for {invite.organization.name}
                 </RouterButton>
               ))}
             </div>
@@ -352,7 +374,7 @@ export function IdpManagerSetupPage() {
         ? 'Connecting identity provider'
         : setupView === 'connect'
           ? 'Connect identity provider'
-          : "You've been invited"
+          : "Sign in to OSAC"
 
   return (
     <div className="idp-manager-setup-page">
@@ -383,33 +405,43 @@ export function IdpManagerSetupPage() {
         {!isCompleting && setupView === 'invite' ? (
           <>
             <Content component="p" className="idp-manager-setup-page__lede">
-              Complete federation for this organization, then return the flow to the provider admin.
+              The provider admin sent you a break-glass account and this OSAC link. Connect the
+              IdP for <strong>{organization.name}</strong>, then return the flow to the provider
+              admin.
             </Content>
 
-            <div className="idp-manager-setup-page__email" aria-label="Invitation email">
-              <Content component="p" className="idp-manager-setup-page__email-label">
-                Invitation email
-              </Content>
-              <DescriptionList isCompact className="idp-manager-setup-page__email-meta">
-                <DescriptionListGroup>
-                  <DescriptionListTerm>To</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    {organization.idpManagerEmail || signInEmail || '—'}
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
-                <DescriptionListGroup>
-                  <DescriptionListTerm>Subject</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    Connect identity provider for {organization.name}
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
-              </DescriptionList>
-              <Content component="p" className="idp-manager-setup-page__email-body">
-                You've been invited as the IdP manager for <strong>{organization.name}</strong> (
-                {organization.primaryDomain}). Use this single-use link to connect the organization's
-                identity provider.
-              </Content>
-            </div>
+            {hasBreakGlassAccount(organization) ? (
+              <div className="idp-manager-setup-page__email" aria-label="Break-glass account">
+                <Content component="p" className="idp-manager-setup-page__email-label">
+                  Break-glass account
+                </Content>
+                <Content component="p" className="idp-manager-setup-page__email-body">
+                  Use this local login for OSAC. It does not use the organization IdP.
+                </Content>
+                <FormGroup label="Username" fieldId="idp-manager-break-glass-username">
+                  <ClipboardCopy
+                    id="idp-manager-break-glass-username"
+                    isReadOnly
+                    hoverTip="Copy username"
+                    clickTip="Username copied"
+                    textAriaLabel="Break-glass username"
+                  >
+                    {organization.breakGlassUsername as string}
+                  </ClipboardCopy>
+                </FormGroup>
+                <FormGroup label="Password" fieldId="idp-manager-break-glass-password">
+                  <ClipboardCopy
+                    id="idp-manager-break-glass-password"
+                    isReadOnly
+                    hoverTip="Copy password"
+                    clickTip="Password copied"
+                    textAriaLabel="Break-glass password"
+                  >
+                    {organization.breakGlassPassword as string}
+                  </ClipboardCopy>
+                </FormGroup>
+              </div>
+            ) : null}
 
             <ol className="idp-manager-setup-page__steps" aria-label="What you'll do">
               <li>Confirm the organization and primary email domain.</li>
@@ -431,8 +463,7 @@ export function IdpManagerSetupPage() {
         {!isCompleting && setupView === 'connect' ? (
           <>
             <Content component="p" className="idp-manager-setup-page__lede">
-              Connect the IdP for <strong>{organization.name}</strong> (
-              {organization.primaryDomain}).
+              Connect the IdP for <strong>{organization.name}</strong>.
             </Content>
             <Form autoComplete="off" className="idp-manager-setup-page__form">
               <FormGroup label="Primary email domain" fieldId="idp-setup-domain">
@@ -443,6 +474,14 @@ export function IdpManagerSetupPage() {
                   aria-readonly="true"
                 />
               </FormGroup>
+              <AdditionalEmailDomainsField
+                idPrefix="idp-setup-additional-domain"
+                primaryDomain={organization.primaryDomain}
+                domains={additionalDomains}
+                onChange={setAdditionalDomains}
+                takenDomains={takenEmailDomains}
+                isDisabled={isCompleting}
+              />
               <FormGroup label="Protocol" fieldId="idp-setup-protocol" isRequired>
                 <FormSelect
                   id="idp-setup-protocol"

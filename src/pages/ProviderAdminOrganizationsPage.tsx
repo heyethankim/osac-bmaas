@@ -32,7 +32,6 @@ import { SetupIdentityProviderWizard } from '../components/provider-admin/SetupI
 import {
   getOrganizationSetupNextAction,
   getOrganizationSetupSignal,
-  hasPendingIdpInvite,
   buildOrganizationFilterParts,
   matchesOrganizationSetupFilter,
   ORGANIZATION_SETUP_FILTER_OPTIONS,
@@ -68,33 +67,12 @@ function formatRegisteredAt(iso: string): string {
 function getOrganizationActions(
   organization: RegisteredOrganization,
   onViewDetails: (organization: RegisteredOrganization) => void,
-  onIdentityProvider: (organization: RegisteredOrganization) => void,
-  onRoles: (organization: RegisteredOrganization) => void,
   onRemove: (organization: RegisteredOrganization) => void,
 ): IAction[] {
-  const idpActionTitle = organization.identityProviderConnected
-    ? 'View identity provider'
-    : hasPendingIdpInvite(organization)
-      ? 'Manage IdP invitation'
-      : 'Set up identity provider'
-
   return [
     {
       title: 'View details',
       onClick: () => onViewDetails(organization),
-    },
-    {
-      title: idpActionTitle,
-      onClick: () => onIdentityProvider(organization),
-    },
-    {
-      title: organization.rbacConfigured ? 'View roles' : 'Define roles',
-      isAriaDisabled: !organization.identityProviderConnected,
-      onClick: () => {
-        if (organization.identityProviderConnected) {
-          onRoles(organization)
-        }
-      },
     },
     {
       title: 'Edit',
@@ -316,18 +294,6 @@ export function ProviderAdminOrganizationsPage({
     setRolesOrganization(organization)
   }
 
-  const openIdentityProvider = (organization: RegisteredOrganization) => {
-    if (organization.identityProviderConnected) {
-      setIdpOrganization(organization)
-      return
-    }
-    setIdpDelegationOrganization(organization)
-  }
-
-  const openRoles = (organization: RegisteredOrganization) => {
-    setRolesOrganization(organization)
-  }
-
   const handleIdentityProviderConnected = (organization: RegisteredOrganization) => {
     refreshOrganizations(organization.id)
     // Keep the setup wizard mounted so working → success can play; it closes via onClose.
@@ -388,6 +354,7 @@ export function ProviderAdminOrganizationsPage({
             setIdpDelegationOrganization(organization)
           }}
           onReviewRoles={(organization) => setRolesOrganization(organization)}
+          onOrganizationChange={(organization) => refreshOrganizations(organization.id)}
         />
       ) : (
       <div className="provider-admin-workspace-page provider-admin-organizations">
@@ -605,13 +572,7 @@ export function ProviderAdminOrganizationsPage({
                     </Td>
                     <Td isActionCell>
                       <ActionsColumn
-                        items={getOrganizationActions(
-                          org,
-                          openDetails,
-                          openIdentityProvider,
-                          openRoles,
-                          openRemove,
-                        )}
+                        items={getOrganizationActions(org, openDetails, openRemove)}
                       />
                     </Td>
                   </Tr>

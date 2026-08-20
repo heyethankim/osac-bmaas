@@ -1,5 +1,5 @@
 import {
-  normalizePrimaryDomain,
+  emailMatchesOrganizationDomains,
   type RegisteredOrganization,
 } from '../providerAdmin/organizations'
 import { updateProviderRegisteredOrganization } from '../providerSetup/storage'
@@ -68,12 +68,7 @@ export function emailMatchesOrganizationDomain(
   email: string,
   organization: RegisteredOrganization,
 ): boolean {
-  const domain = normalizePrimaryDomain(organization.primaryDomain)
-  if (!domain || !email.includes('@')) {
-    return false
-  }
-
-  return email.split('@')[1]?.toLowerCase() === domain
+  return emailMatchesOrganizationDomains(email, organization)
 }
 
 export function isTenantAdministratorEmailTaken(

@@ -1,6 +1,5 @@
 import type { ProviderServiceId } from './constants'
 import type { ProviderAdminNavId } from '../providerAdmin/constants'
-import type { RegisteredOrganization } from '../providerAdmin/organizations'
 import {
   createDemoHarborlineCapitalOrganization,
   createDemoNorthSummitBankOrganization,
@@ -9,6 +8,10 @@ import {
   DEMO_NORTH_SUMMIT_BANK_ORG_ID,
   DEFAULT_REGISTER_ORGANIZATION_FORM,
   hasPendingIdpInvite,
+  generateBreakGlassUsername,
+  getDemoBreakGlassPassword,
+  normalizeAdditionalDomains,
+  type RegisteredOrganization,
 } from '../providerAdmin/organizations'
 import type { ComputeImage } from '../providerAdmin/computeImages'
 import { DEFAULT_COMPUTE_IMAGES } from '../providerAdmin/computeImages'
@@ -1199,6 +1202,12 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
       typeof org.primaryDomain === 'string' && org.primaryDomain.trim()
         ? org.primaryDomain.trim().toLowerCase()
         : emailDomain,
+    additionalDomains: normalizeAdditionalDomains(
+      Array.isArray(org.additionalDomains) ? org.additionalDomains : [],
+      typeof org.primaryDomain === 'string' && org.primaryDomain.trim()
+        ? org.primaryDomain.trim().toLowerCase()
+        : emailDomain,
+    ),
     catalogItemId:
       org.catalogItemId === 'cat_BM_GPU_TRAINING'
         ? 'cat-bm-gpu-training'
@@ -1295,6 +1304,24 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
       typeof org.breakGlassEmail === 'string' && org.breakGlassEmail.trim()
         ? org.breakGlassEmail.trim().toLowerCase()
         : null,
+    breakGlassUsername:
+      typeof org.breakGlassUsername === 'string' && org.breakGlassUsername.trim()
+        ? org.breakGlassUsername.trim()
+        : typeof org.breakGlassEmail === 'string' && org.breakGlassEmail.trim()
+          ? generateBreakGlassUsername(org.slug)
+          : null,
+    breakGlassPassword:
+      typeof org.breakGlassPassword === 'string' && org.breakGlassPassword.trim()
+        ? org.breakGlassPassword.trim()
+        : typeof org.breakGlassEmail === 'string' && org.breakGlassEmail.trim()
+          ? getDemoBreakGlassPassword(org.slug)
+          : null,
+    breakGlassIssuedAt:
+      typeof org.breakGlassIssuedAt === 'string' && org.breakGlassIssuedAt.trim()
+        ? org.breakGlassIssuedAt
+        : typeof org.breakGlassEmail === 'string' && org.breakGlassEmail.trim()
+          ? (org.createdAt ?? null)
+          : null,
     // Name is the source of truth — clears stub-only "connected" flags from earlier demos.
     identityProviderConnected:
       typeof org.identityProviderName === 'string' && Boolean(org.identityProviderName.trim()),
@@ -1380,7 +1407,9 @@ export function getProviderRegisteredOrganizations(): RegisteredOrganization[] {
         original.catalogDisplayName !== organization.catalogDisplayName ||
         original.externalIpPoolName !== organization.externalIpPoolName ||
         original.billingAccountName !== organization.billingAccountName ||
-        original.identityProviderDisplayName !== organization.identityProviderDisplayName
+        original.identityProviderDisplayName !== organization.identityProviderDisplayName ||
+        JSON.stringify(original.additionalDomains ?? []) !==
+          JSON.stringify(organization.additionalDomains)
       )
     })
     if (needsPersist) {

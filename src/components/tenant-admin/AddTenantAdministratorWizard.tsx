@@ -14,7 +14,10 @@ import {
   HelperTextItem,
   TextInput,
 } from '@patternfly/react-core'
-import type { RegisteredOrganization } from '../../providerAdmin/organizations'
+import {
+  formatOrganizationEmailDomainsLabel,
+  type RegisteredOrganization,
+} from '../../providerAdmin/organizations'
 import {
   addAdditionalTenantAdministrator,
   emailMatchesOrganizationDomain,
@@ -39,6 +42,7 @@ type AddTenantAdministratorWizardProps = {
   organization: RegisteredOrganization
   onClose: () => void
   onAdded: (organization: RegisteredOrganization) => void
+  parentLabel?: string
 }
 
 export function AddTenantAdministratorWizard({
@@ -46,6 +50,7 @@ export function AddTenantAdministratorWizard({
   organization,
   onClose,
   onAdded,
+  parentLabel = TENANT_ADMINISTRATORS_DEMO.title,
 }: AddTenantAdministratorWizardProps) {
   const [form, setForm] = useState<AddTenantAdministratorForm>({ name: '', email: '' })
 
@@ -111,7 +116,7 @@ export function AddTenantAdministratorWizard({
                     {emailTaken
                       ? 'This person is already a tenant administrator.'
                       : !emailDomainOk
-                        ? `Use an address on your organization domain (${organization.primaryDomain}).`
+                        ? `Use an address on ${formatOrganizationEmailDomainsLabel(organization)}.`
                         : 'They will sign in with this email after your identity provider is connected.'}
                   </HelperTextItem>
                 </HelperText>
@@ -169,7 +174,7 @@ export function AddTenantAdministratorWizard({
   return (
     <NetworkInventoryCreateWizardShell
       isOpen={isOpen}
-      parentLabel={TENANT_ADMINISTRATORS_DEMO.title}
+      parentLabel={parentLabel}
       title="Add tenant administrator"
       titleId="add-tenant-administrator-wizard-title"
       steps={ADD_TENANT_ADMINISTRATOR_STEPS}

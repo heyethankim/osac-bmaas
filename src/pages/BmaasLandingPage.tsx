@@ -130,7 +130,7 @@ export function BmaasLandingPage() {
     ...pendingInvites.map((invite) => ({
       label: 'IdP manager',
       to: getIdpManagerSetupRoute(invite.token),
-      statusLabel: `Email invite · ${invite.organization.name}`,
+      statusLabel: `OSAC link · ${invite.organization.name}`,
     })),
   ]
 

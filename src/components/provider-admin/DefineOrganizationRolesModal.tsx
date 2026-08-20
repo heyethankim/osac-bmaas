@@ -22,7 +22,8 @@ import {
 } from '@patternfly/react-core'
 import {
   DEFAULT_REGISTER_ORGANIZATION_TENANT_ADMIN,
-  normalizePrimaryDomain,
+  emailMatchesOrganizationDomains,
+  formatOrganizationEmailDomainsLabel,
   type RegisteredOrganization,
 } from '../../providerAdmin/organizations'
 import { updateProviderRegisteredOrganization } from '../../providerSetup/storage'
@@ -41,8 +42,6 @@ type TenantAdminDraft = {
 
 type DefineRolesForm = {
   admins: TenantAdminDraft[]
-  breakGlassName: string
-  breakGlassEmail: string
 }
 
 type ModalMode = 'define' | 'view' | 'edit'
@@ -72,27 +71,12 @@ function buildDefaultForm(organization: RegisteredOrganization): DefineRolesForm
 
     return {
       admins: admins.length > 0 ? admins : [buildDefaultAdmin(organization)],
-      breakGlassName: organization.breakGlassName ?? '',
-      breakGlassEmail: organization.breakGlassEmail ?? '',
     }
   }
 
-  const domain = organization.primaryDomain || 'example.com'
   return {
     admins: [buildDefaultAdmin(organization)],
-    breakGlassName: 'Break-glass admin',
-    breakGlassEmail: `breakglass@${domain}`,
   }
-}
-
-function emailMatchesOrganizationDomain(email: string, primaryDomain: string): boolean {
-  const domain = normalizePrimaryDomain(primaryDomain)
-  if (!domain || !email.includes('@')) {
-    return false
-  }
-
-  const emailDomain = email.split('@')[1]?.toLowerCase() ?? ''
-  return emailDomain === domain
 }
 
 type DefineOrganizationRolesModalProps = {
@@ -111,8 +95,6 @@ export function DefineOrganizationRolesModal({
   const [mode, setMode] = useState<ModalMode>('define')
   const [form, setForm] = useState<DefineRolesForm>({
     admins: [{ name: '', email: '' }],
-    breakGlassName: '',
-    breakGlassEmail: '',
   })
   const [completionPhase, setCompletionPhase] =
     useState<OrganizationActionCompletionPhase>('idle')
@@ -144,12 +126,12 @@ export function DefineOrganizationRolesModal({
     return null
   }
 
-  const domain = organization.primaryDomain || 'the organization domain'
+  const domain = formatOrganizationEmailDomainsLabel(organization)
   const adminValidity = form.admins.map((admin) => {
     const email = admin.email.trim()
     const hasName = Boolean(admin.name.trim())
     const hasEmail = Boolean(email)
-    const domainOk = !hasEmail || emailMatchesOrganizationDomain(email, organization.primaryDomain)
+    const domainOk = !hasEmail || emailMatchesOrganizationDomains(email, organization)
     return {
       hasName,
       hasEmail,
@@ -157,17 +139,8 @@ export function DefineOrganizationRolesModal({
       isComplete: hasName && hasEmail && domainOk,
     }
   })
-  const breakGlassEmail = form.breakGlassEmail.trim()
-  const breakGlassHasName = Boolean(form.breakGlassName.trim())
-  const breakGlassHasEmail = Boolean(breakGlassEmail)
-  const breakGlassDomainOk =
-    !breakGlassHasEmail ||
-    emailMatchesOrganizationDomain(breakGlassEmail, organization.primaryDomain)
-  const breakGlassComplete = breakGlassHasName && breakGlassHasEmail && breakGlassDomainOk
   const isAssignDisabled =
-    form.admins.length === 0 ||
-    adminValidity.some((entry) => !entry.isComplete) ||
-    !breakGlassComplete
+    form.admins.length === 0 || adminValidity.some((entry) => !entry.isComplete)
   const isCompleting = completionPhase !== 'idle'
 
   const handleClose = () => {
@@ -195,8 +168,6 @@ export function DefineOrganizationRolesModal({
         name: admin.name.trim(),
         email: admin.email.trim().toLowerCase(),
       })),
-      breakGlassName: form.breakGlassName.trim(),
-      breakGlassEmail: form.breakGlassEmail.trim().toLowerCase(),
       // Tenant users sign in by email domain; no invite list is required.
       invitedTenantUserEmails: [],
     })
@@ -266,10 +237,10 @@ export function DefineOrganizationRolesModal({
   const description = isCompleting
     ? undefined
     : mode === 'define'
-      ? `Assign tenant admins and a break-glass recovery contact for ${organization.name}. Anyone with an @${domain} email can sign in as a tenant user.`
+      ? `Assign tenant admins for ${organization.name}. Anyone with an @${domain} email can sign in as a tenant user.`
       : mode === 'edit'
-        ? `Update tenant admins and break-glass recovery for ${organization.name}.`
-        : `Tenant admins and break-glass recovery for ${organization.name}.`
+        ? `Update tenant admins for ${organization.name}.`
+        : `Tenant admins for ${organization.name}.`
 
   const allAdminsForView: TenantAdminDraft[] = organization.rbacConfigured
     ? [
@@ -331,23 +302,6 @@ export function DefineOrganizationRolesModal({
                 )}
               </DescriptionListDescription>
             </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Break-glass recovery</DescriptionListTerm>
-              <DescriptionListDescription>
-                {organization.breakGlassEmail ? (
-                  <>
-                    <Content component="p" className="provider-admin-organizations__primary-cell">
-                      {organization.breakGlassName || '—'}
-                    </Content>
-                    <Content component="p" className="provider-admin-organizations__secondary-cell">
-                      <code>{organization.breakGlassEmail}</code>
-                    </Content>
-                  </>
-                ) : (
-                  '—'
-                )}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
           </DescriptionList>
         ) : (
           <Form autoComplete="off" className="provider-admin-organizations__roles-form">
@@ -395,7 +349,7 @@ export function DefineOrganizationRolesModal({
                         <FormHelperText>
                           <HelperText>
                             <HelperTextItem variant="error">
-                              Email must use @{domain}.
+                              Email must use {domain}.
                             </HelperTextItem>
                           </HelperText>
                         </FormHelperText>
@@ -416,46 +370,6 @@ export function DefineOrganizationRolesModal({
               <Button variant="link" icon={<PlusCircleIcon />} onClick={addAdmin}>
                 Add tenant admin
               </Button>
-            </div>
-
-            <div className="provider-admin-organizations__roles-section">
-              <Content component="p" className="provider-admin-organizations__roles-section-title">
-                Break-glass recovery
-              </Content>
-              <Content component="p" className="provider-admin-organizations__roles-section-help">
-                Emergency contact if IdP federation fails. Must use @{domain}.
-              </Content>
-              <div className="provider-admin-organizations__roles-admin-row">
-                <FormGroup label="Name" fieldId="define-roles-break-glass-name" isRequired>
-                  <TextInput
-                    id="define-roles-break-glass-name"
-                    value={form.breakGlassName}
-                    onChange={(_event, value) =>
-                      setForm((current) => ({ ...current, breakGlassName: value }))
-                    }
-                  />
-                </FormGroup>
-                <FormGroup label="Email" fieldId="define-roles-break-glass-email" isRequired>
-                  <TextInput
-                    id="define-roles-break-glass-email"
-                    type="email"
-                    value={form.breakGlassEmail}
-                    validated={
-                      breakGlassHasEmail && !breakGlassDomainOk ? 'error' : 'default'
-                    }
-                    onChange={(_event, value) =>
-                      setForm((current) => ({ ...current, breakGlassEmail: value }))
-                    }
-                  />
-                  {breakGlassHasEmail && !breakGlassDomainOk ? (
-                    <FormHelperText>
-                      <HelperText>
-                        <HelperTextItem variant="error">Email must use @{domain}.</HelperTextItem>
-                      </HelperText>
-                    </FormHelperText>
-                  ) : null}
-                </FormGroup>
-              </div>
             </div>
           </Form>
         )}

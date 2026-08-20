@@ -72,8 +72,8 @@ function humanizeFilterPart(part: string): string {
     if (setup === 'Waiting on IdP Manager') {
       return 'organizations waiting on IdP Manager'
     }
-    if (setup === 'IdP invitation expired') {
-      return 'organizations with an expired IdP invitation'
+    if (setup === 'IdP manager link expired') {
+      return 'organizations with an expired IdP manager link'
     }
     if (setup === 'Needs roles') {
       return 'organizations that need roles'
