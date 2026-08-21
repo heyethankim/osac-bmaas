@@ -6,6 +6,10 @@ import {
   DEMO_HARBORLINE_CAPITAL_ORG_ID,
   DEMO_HARBORLINE_CAPITAL_SLUG,
   DEMO_NORTH_SUMMIT_BANK_ORG_ID,
+  DEMO_NORTHSTAR_ADDITIONAL_DOMAIN,
+  DEMO_NORTHSTAR_BILLING_ACCOUNT_NAME,
+  DEMO_NORTHSTAR_IDP_DISPLAY_NAME,
+  DEMO_NORTHSTAR_PRIMARY_DOMAIN,
   DEFAULT_REGISTER_ORGANIZATION_FORM,
   hasPendingIdpInvite,
   generateBreakGlassUsername,
@@ -1181,39 +1185,137 @@ export function clearProviderSavedTemplate(): void {
   }
 }
 
+function migrateNorthstarIssuerUrl(issuerUrl: string): string {
+  return issuerUrl.replace(/northsummitbank\.com/gi, DEMO_NORTHSTAR_PRIMARY_DOMAIN)
+}
+
 function normalizeRegisteredOrganization(org: RegisteredOrganization): RegisteredOrganization {
   const emailDomain = org.tenantAdminEmail.includes('@')
     ? org.tenantAdminEmail.split('@')[1]?.toLowerCase() ?? ''
     : ''
+  const isNorthstar = org.slug === 'northstar'
+  const rawPrimaryDomain =
+    typeof org.primaryDomain === 'string' && org.primaryDomain.trim()
+      ? org.primaryDomain.trim().toLowerCase()
+      : emailDomain
+  const primaryDomain =
+    isNorthstar && (rawPrimaryDomain === 'northsummitbank.com' || !rawPrimaryDomain)
+      ? DEMO_NORTHSTAR_PRIMARY_DOMAIN
+      : rawPrimaryDomain
+  const additionalDomains = normalizeAdditionalDomains(
+    (Array.isArray(org.additionalDomains) ? org.additionalDomains : []).map((domain) =>
+      isNorthstar &&
+      (domain === 'northsummitbank.net' || domain === 'subsidiary.northsummitbank.com')
+        ? DEMO_NORTHSTAR_ADDITIONAL_DOMAIN
+        : domain,
+    ),
+    primaryDomain,
+  )
+  const identityProviderDisplayName =
+    isNorthstar &&
+    (org.identityProviderDisplayName === 'North Summit Bank IdP' ||
+      org.identityProviderDisplayName === 'Northstar Bank IdP' ||
+      org.identityProviderDisplayName === 'north-summit-bank-idp' ||
+      org.identityProviderDisplayName === DEMO_NORTHSTAR_IDP_DISPLAY_NAME)
+      ? DEMO_NORTHSTAR_IDP_DISPLAY_NAME
+      : org.identityProviderDisplayName === 'North Summit Bank IdP' ||
+          org.identityProviderDisplayName === 'Northstar Bank IdP'
+        ? 'north-summit-bank-idp'
+        : typeof org.identityProviderDisplayName === 'string' &&
+            org.identityProviderDisplayName.trim()
+          ? org.identityProviderDisplayName.trim()
+          : null
+  const identityProviderIssuerUrl =
+    typeof org.identityProviderIssuerUrl === 'string' && org.identityProviderIssuerUrl.trim()
+      ? isNorthstar
+        ? migrateNorthstarIssuerUrl(org.identityProviderIssuerUrl.trim())
+        : org.identityProviderIssuerUrl.trim()
+      : null
+  const identityProviderName =
+    typeof org.identityProviderName === 'string' && org.identityProviderName.trim()
+      ? isNorthstar
+        ? migrateNorthstarIssuerUrl(org.identityProviderName.trim())
+        : org.identityProviderName.trim()
+      : null
+  const identityProviderClientId =
+    typeof org.identityProviderClientId === 'string' && org.identityProviderClientId.trim()
+      ? migrateLegacyIdentityProviderClientId(org.identityProviderClientId.trim())
+      : null
+  const identityProviders = normalizeOrganizationIdentityProviders(org.identityProviders).map(
+    (provider) =>
+      isNorthstar
+        ? {
+            ...provider,
+            displayName:
+              provider.displayName === 'north-summit-bank-idp' ||
+              provider.displayName === 'North Summit Bank IdP' ||
+              provider.displayName === 'Northstar Bank IdP'
+                ? DEMO_NORTHSTAR_IDP_DISPLAY_NAME
+                : provider.displayName,
+            issuerUrl: migrateNorthstarIssuerUrl(provider.issuerUrl),
+            clientId: migrateLegacyIdentityProviderClientId(provider.clientId),
+            name: migrateNorthstarIssuerUrl(provider.name),
+          }
+        : provider,
+  )
+  const billingAccountName =
+    isNorthstar &&
+    (org.billingAccountName === 'North Summit Bank — Enterprise Billing' ||
+      org.billingAccountName === 'Northstar Bank — Enterprise Billing' ||
+      org.billingAccountName === 'north-summit-bank-enterprise-billing' ||
+      org.billingAccountName === DEMO_NORTHSTAR_BILLING_ACCOUNT_NAME)
+      ? DEMO_NORTHSTAR_BILLING_ACCOUNT_NAME
+      : org.billingAccountName === 'North Summit Bank — Enterprise Billing' ||
+          org.billingAccountName === 'Northstar Bank — Enterprise Billing'
+        ? 'north-summit-bank-enterprise-billing'
+        : org.billingAccountName === 'BlueSolace Financial Group — Enterprise Billing' ||
+            org.billingAccountName === 'Bluestone Financial Group — Corporate'
+          ? org.billingAccountName.includes('Corporate')
+            ? 'bluestone-financial-group-corporate'
+            : DEMO_NORTHSTAR_BILLING_ACCOUNT_NAME
+          : org.billingAccountName === 'Harborline Capital — Enterprise Billing'
+            ? 'harborline-capital-enterprise-billing'
+            : org.billingAccountName === 'Silverpine Trust — Enterprise Billing'
+              ? 'silverpine-trust-enterprise-billing'
+              : org.billingAccountName === 'Redwood Mutual — Enterprise Billing'
+                ? 'redwood-mutual-enterprise-billing'
+                : org.billingAccountName
+  const breakGlassEmail =
+    typeof org.breakGlassEmail === 'string' && org.breakGlassEmail.trim()
+      ? isNorthstar
+        ? org.breakGlassEmail
+            .trim()
+            .toLowerCase()
+            .replace(/northsummitbank\.com$/i, DEMO_NORTHSTAR_PRIMARY_DOMAIN)
+        : org.breakGlassEmail.trim().toLowerCase()
+      : null
 
   const normalized: RegisteredOrganization = {
     ...org,
     id: org.id === 'org_northstar_bank' ? 'org-northstar-bank' : org.id,
     name:
-      org.name === 'North Summit Bank' ||
-      org.name === 'Northstar Bank' ||
-      (org.slug === 'northstar' && org.name === 'bluesolace-financial-group')
-        ? 'north-summit-bank'
-        : org.name === 'BlueSolace Financial Group' ||
-            org.name === 'Bluestone Financial Group'
-          ? 'bluesolace-financial-group'
-          : org.name === 'Harborline Capital'
-            ? 'harborline-capital'
-            : org.name === 'Silverpine Trust'
-              ? 'silverpine-trust'
-              : org.name === 'Redwood Mutual'
-                ? 'redwood-mutual'
-                : org.name,
-    primaryDomain:
-      typeof org.primaryDomain === 'string' && org.primaryDomain.trim()
-        ? org.primaryDomain.trim().toLowerCase()
-        : emailDomain,
-    additionalDomains: normalizeAdditionalDomains(
-      Array.isArray(org.additionalDomains) ? org.additionalDomains : [],
-      typeof org.primaryDomain === 'string' && org.primaryDomain.trim()
-        ? org.primaryDomain.trim().toLowerCase()
-        : emailDomain,
-    ),
+      org.slug === 'northstar' &&
+      (org.name === 'North Summit Bank' ||
+        org.name === 'Northstar Bank' ||
+        org.name === 'north-summit-bank' ||
+        org.name === 'BlueSolace Financial Group' ||
+        org.name === 'Bluestone Financial Group' ||
+        org.name === 'bluestone-financial-group')
+        ? 'bluesolace-financial-group'
+        : org.name === 'North Summit Bank' || org.name === 'Northstar Bank'
+          ? 'north-summit-bank'
+          : org.name === 'BlueSolace Financial Group' ||
+              org.name === 'Bluestone Financial Group'
+            ? 'bluesolace-financial-group'
+            : org.name === 'Harborline Capital'
+              ? 'harborline-capital'
+              : org.name === 'Silverpine Trust'
+                ? 'silverpine-trust'
+                : org.name === 'Redwood Mutual'
+                  ? 'redwood-mutual'
+                  : org.name,
+    primaryDomain,
+    additionalDomains,
     catalogItemId:
       org.catalogItemId === 'cat_BM_GPU_TRAINING'
         ? 'cat-bm-gpu-training'
@@ -1240,53 +1342,16 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
       ? migrateDns1123ResourceName(org.externalIpPoolName)
       : null,
     externalIpPoolCidr: org.externalIpPoolCidr ?? null,
-    billingAccountName:
-      org.billingAccountName === 'North Summit Bank — Enterprise Billing' ||
-      org.billingAccountName === 'Northstar Bank — Enterprise Billing'
-        ? 'north-summit-bank-enterprise-billing'
-        : org.slug === 'northstar' &&
-            org.billingAccountName === 'bluesolace-financial-group-enterprise-billing'
-          ? 'north-summit-bank-enterprise-billing'
-        : org.billingAccountName === 'BlueSolace Financial Group — Enterprise Billing' ||
-            org.billingAccountName === 'Bluestone Financial Group — Corporate'
-          ? org.billingAccountName.includes('Corporate')
-            ? 'bluestone-financial-group-corporate'
-            : 'bluesolace-financial-group-enterprise-billing'
-          : org.billingAccountName === 'Harborline Capital — Enterprise Billing'
-            ? 'harborline-capital-enterprise-billing'
-            : org.billingAccountName === 'Silverpine Trust — Enterprise Billing'
-              ? 'silverpine-trust-enterprise-billing'
-              : org.billingAccountName === 'Redwood Mutual — Enterprise Billing'
-                ? 'redwood-mutual-enterprise-billing'
-                : org.billingAccountName,
-    identityProviderName:
-      typeof org.identityProviderName === 'string' && org.identityProviderName.trim()
-        ? org.identityProviderName.trim()
-        : null,
-    identityProviderDisplayName:
-      org.identityProviderDisplayName === 'North Summit Bank IdP' ||
-      org.identityProviderDisplayName === 'Northstar Bank IdP'
-        ? 'north-summit-bank-idp'
-        : org.slug === 'northstar' &&
-            org.identityProviderDisplayName === 'bluesolace-financial-group-idp'
-          ? 'north-summit-bank-idp'
-        : typeof org.identityProviderDisplayName === 'string' &&
-            org.identityProviderDisplayName.trim()
-          ? org.identityProviderDisplayName.trim()
-          : null,
+    billingAccountName,
+    identityProviderName,
+    identityProviderDisplayName,
     identityProviderProtocol:
       org.identityProviderProtocol === 'OIDC' || org.identityProviderProtocol === 'SAML'
         ? org.identityProviderProtocol
         : null,
-    identityProviderIssuerUrl:
-      typeof org.identityProviderIssuerUrl === 'string' && org.identityProviderIssuerUrl.trim()
-        ? org.identityProviderIssuerUrl.trim()
-        : null,
-    identityProviderClientId:
-      typeof org.identityProviderClientId === 'string' && org.identityProviderClientId.trim()
-        ? migrateLegacyIdentityProviderClientId(org.identityProviderClientId.trim())
-        : null,
-    identityProviders: normalizeOrganizationIdentityProviders(org.identityProviders),
+    identityProviderIssuerUrl,
+    identityProviderClientId,
+    identityProviders,
     idpManagerEmail:
       typeof org.idpManagerEmail === 'string' && org.idpManagerEmail.trim()
         ? org.idpManagerEmail.trim().toLowerCase()
@@ -1313,10 +1378,7 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
       typeof org.breakGlassName === 'string' && org.breakGlassName.trim()
         ? org.breakGlassName.trim()
         : null,
-    breakGlassEmail:
-      typeof org.breakGlassEmail === 'string' && org.breakGlassEmail.trim()
-        ? org.breakGlassEmail.trim().toLowerCase()
-        : null,
+    breakGlassEmail,
     breakGlassUsername:
       typeof org.breakGlassUsername === 'string' && org.breakGlassUsername.trim()
         ? org.breakGlassUsername.trim()
@@ -1424,7 +1486,10 @@ export function getProviderRegisteredOrganizations(): RegisteredOrganization[] {
         original.catalogDisplayName !== tenant.catalogDisplayName ||
         original.externalIpPoolName !== tenant.externalIpPoolName ||
         original.billingAccountName !== tenant.billingAccountName ||
+        original.primaryDomain !== tenant.primaryDomain ||
         original.identityProviderDisplayName !== tenant.identityProviderDisplayName ||
+        original.identityProviderIssuerUrl !== tenant.identityProviderIssuerUrl ||
+        original.identityProviderClientId !== tenant.identityProviderClientId ||
         JSON.stringify(original.additionalDomains ?? []) !==
           JSON.stringify(tenant.additionalDomains)
       )
@@ -1837,8 +1902,9 @@ function isExternalIpPool(value: unknown): value is ExternalIpPool {
 function normalizeExternalIpPool(pool: ExternalIpPool): ExternalIpPool {
   const assignedOrganizationName =
     pool.assignedOrganizationName === 'North Summit Bank' ||
-    pool.assignedOrganizationName === 'Northstar Bank'
-      ? 'north-summit-bank'
+    pool.assignedOrganizationName === 'Northstar Bank' ||
+    pool.assignedOrganizationName === 'north-summit-bank'
+      ? 'bluesolace-financial-group'
       : pool.assignedOrganizationName === 'BlueSolace Financial Group' ||
           pool.assignedOrganizationName === 'Bluestone Financial Group'
         ? 'bluesolace-financial-group'

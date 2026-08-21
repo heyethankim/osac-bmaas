@@ -113,8 +113,8 @@ export function identityProviderProtocolLabel(protocol: IdentityProviderProtocol
 }
 
 export function migrateLegacyIdentityProviderClientId(clientId: string): string {
-  if (clientId === 'bmaas-northstar') {
-    return 'north-summit-bank'
+  if (clientId === 'bmaas-northstar' || clientId === 'north-summit-bank') {
+    return 'bluesolace-financial-group'
   }
   if (clientId === 'bmaas-harborline') {
     return 'harborline-capital'
@@ -495,16 +495,24 @@ export type RegisterOrganizationForm = {
   maxInstances: string
 }
 
+export const DEMO_NORTHSTAR_ORG_NAME = DEMO_TENANT_LABEL.evergreen
+export const DEMO_NORTHSTAR_PRIMARY_DOMAIN = 'bluesolacefinancial.com'
+export const DEMO_NORTHSTAR_ADDITIONAL_DOMAIN = 'bluesolacefinancial.net'
+export const DEMO_NORTHSTAR_IDP_DISPLAY_NAME = `${DEMO_NORTHSTAR_ORG_NAME}-idp`
+export const DEMO_NORTHSTAR_IDP_CLIENT_ID = DEMO_NORTHSTAR_ORG_NAME
+export const DEMO_NORTHSTAR_BILLING_ACCOUNT_NAME =
+  'bluesolace-financial-group-enterprise-billing'
+
 export const DEFAULT_REGISTER_ORGANIZATION_FORM: RegisterOrganizationForm = {
-  organizationName: DEMO_TENANT_LABEL.northstar,
-  primaryDomain: 'northsummitbank.com',
+  organizationName: DEMO_NORTHSTAR_ORG_NAME,
+  primaryDomain: DEMO_NORTHSTAR_PRIMARY_DOMAIN,
   billingAccountId: '',
-  billingAccountName: 'north-summit-bank-enterprise-billing',
+  billingAccountName: DEMO_NORTHSTAR_BILLING_ACCOUNT_NAME,
   externalIpPoolId: 'eipool-northstar-edge',
   maxInstances: '20',
 }
 
-/** Fully activated North Summit Bank — IdP connected, roles defined, Active. */
+/** Fully activated BlueSolace Financial Group — IdP connected, roles defined, Active. */
 export function createDemoNorthSummitBankOrganization(
   options: {
     catalogItemId?: string | null
@@ -514,17 +522,17 @@ export function createDemoNorthSummitBankOrganization(
     externalIpPoolCidr?: string | null
   } = {},
 ): RegisteredOrganization {
-  const primaryDomain = 'northsummitbank.com'
+  const primaryDomain = DEMO_NORTHSTAR_PRIMARY_DOMAIN
 
   return {
     id: DEMO_NORTH_SUMMIT_BANK_ORG_ID,
-    name: DEMO_TENANT_LABEL.northstar,
+    name: DEMO_NORTHSTAR_ORG_NAME,
     tenantId: DEMO_NORTH_SUMMIT_BANK_TENANT_ID,
     slug: 'northstar',
     primaryDomain,
-    additionalDomains: ['northsummitbank.net'],
+    additionalDomains: [DEMO_NORTHSTAR_ADDITIONAL_DOMAIN],
     billingAccountId: 'ACCT-NSB-2048',
-    billingAccountName: 'north-summit-bank-enterprise-billing',
+    billingAccountName: DEMO_NORTHSTAR_BILLING_ACCOUNT_NAME,
     catalogItemId: options.catalogItemId ?? null,
     catalogDisplayName: options.catalogDisplayName ?? null,
     externalIpPoolId: options.externalIpPoolId ?? DEFAULT_REGISTER_ORGANIZATION_FORM.externalIpPoolId,
@@ -550,10 +558,10 @@ export function createDemoNorthSummitBankOrganization(
     ],
     identityProviderConnected: true,
     identityProviderName: buildDemoIdentityProviderName('OIDC', primaryDomain),
-    identityProviderDisplayName: 'north-summit-bank-idp',
+    identityProviderDisplayName: DEMO_NORTHSTAR_IDP_DISPLAY_NAME,
     identityProviderProtocol: 'OIDC',
     identityProviderIssuerUrl: `https://login.${primaryDomain}/oauth2`,
-    identityProviderClientId: 'north-summit-bank',
+    identityProviderClientId: DEMO_NORTHSTAR_IDP_CLIENT_ID,
     identityProviders: [],
     idpManagerEmail: null,
     idpInviteToken: null,
@@ -654,9 +662,9 @@ const REGISTER_ORGANIZATION_DEMO_PRESETS: Array<{
     billingAccountName: 'north-summit-bank-enterprise-billing',
   },
   {
-    organizationName: DEMO_TENANT_LABEL.evergreen,
-    primaryDomain: 'bluesolacefinancial.com',
-    billingAccountName: 'bluesolace-financial-group-enterprise-billing',
+    organizationName: DEMO_NORTHSTAR_ORG_NAME,
+    primaryDomain: DEMO_NORTHSTAR_PRIMARY_DOMAIN,
+    billingAccountName: DEMO_NORTHSTAR_BILLING_ACCOUNT_NAME,
   },
   {
     organizationName: 'harborline-capital',

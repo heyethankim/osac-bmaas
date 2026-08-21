@@ -88,7 +88,7 @@ export function OpenCatalogAsTenantUserModal({
             </DescriptionList>
             {organizations.length === 0 ? (
               <Content component="p">
-                No registered tenants yet. Preview will use north-summit-bank as a demo tenant.
+                No registered tenants yet. Preview will use bluesolace-financial-group as a demo tenant.
               </Content>
             ) : (
               <Form autoComplete="off" className="provider-admin-catalog-items__assign-form">
