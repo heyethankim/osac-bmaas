@@ -39,11 +39,12 @@ import { flattenTenantNavItems } from '../../tenantShell/constants'
 import { UserPreferencesModal } from '../shared/UserPreferencesModal'
 import { NorthstarBankMastheadLogo } from './NorthstarBankMastheadLogo'
 
-type TenantShellRole = 'tenant-admin' | 'tenant-user'
+type TenantShellRole = 'tenant-admin' | 'tenant-user' | 'idp-manager'
 
 type TenantShellProps = {
   role: TenantShellRole
   displayName: string
+  accountRoleLabel?: string
   navItems?: TenantNavItem[]
   navGroups?: TenantNavGroup[]
   children?: ReactNode
@@ -57,11 +58,13 @@ type TenantShellProps = {
 const roleLabels: Record<TenantShellRole, string> = {
   'tenant-admin': 'Tenant Admin',
   'tenant-user': 'Tenant user',
+  'idp-manager': 'IdP manager',
 }
 
 export function TenantShell({
   role,
   displayName,
+  accountRoleLabel,
   navItems = [],
   navGroups = [],
   children,
@@ -101,6 +104,16 @@ export function TenantShell({
               className={disabledNavIds.includes(child.id) ? 'pf-m-disabled' : undefined}
               to="#"
               preventDefault
+              onClick={() => {
+                if (disabledNavIds.includes(child.id) || activeNavId !== child.id) {
+                  return
+                }
+                if (onNavChange) {
+                  onNavChange(child.id)
+                } else {
+                  setInternalActiveNavId(child.id)
+                }
+              }}
             >
               {child.label}
             </NavItem>
@@ -117,13 +130,23 @@ export function TenantShell({
         className={disabledNavIds.includes(item.id) ? 'pf-m-disabled' : undefined}
         to="#"
         preventDefault
+        onClick={() => {
+          if (disabledNavIds.includes(item.id) || activeNavId !== item.id) {
+            return
+          }
+          if (onNavChange) {
+            onNavChange(item.id)
+          } else {
+            setInternalActiveNavId(item.id)
+          }
+        }}
       >
         {item.label}
       </NavItem>
     )
   }
 
-  const roleLabel = roleLabels[role]
+  const roleLabel = accountRoleLabel ?? roleLabels[role]
 
   const masthead = (
     <Masthead>

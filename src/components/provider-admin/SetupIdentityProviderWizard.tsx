@@ -30,6 +30,7 @@ import {
   areAdditionalDomainsValid,
   buildBreakGlassIssuePatch,
   buildDefaultAdditionalDomains,
+  buildDefaultIdentityProviderClientId,
   buildDemoIdentityProviderName,
   createIdpInviteTimestamps,
   generateIdpInviteToken,
@@ -130,7 +131,7 @@ function buildDefaultConnectForm(organization: RegisteredOrganization): ConnectF
     protocol: 'OIDC',
     displayName: `${organization.name}-idp`,
     issuerUrl: `https://login.${domain}/oauth2`,
-    clientId: `bmaas-${organization.slug || 'tenant'}`,
+    clientId: buildDefaultIdentityProviderClientId(organization),
   }
 }
 

@@ -179,6 +179,7 @@ export function RegisterOrganizationWizard({
       identityProviderProtocol: null,
       identityProviderIssuerUrl: null,
       identityProviderClientId: null,
+      identityProviders: [],
       idpManagerEmail: null,
       idpInviteToken: null,
       idpInviteStatus: 'none',
@@ -295,7 +296,7 @@ export function RegisterOrganizationWizard({
             <DescriptionListGroup>
               <DescriptionListTerm>Primary email domain</DescriptionListTerm>
               <DescriptionListDescription>
-                <code>{primaryDomain || '—'}</code>
+                {primaryDomain || '—'}
               </DescriptionListDescription>
             </DescriptionListGroup>
             <DescriptionListGroup>

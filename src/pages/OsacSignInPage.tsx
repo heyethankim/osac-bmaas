@@ -1,27 +1,28 @@
-import { useEffect, useState } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import {
   Button,
   Form,
   FormGroup,
+  FormHelperText,
+  HelperText,
+  HelperTextItem,
   Spinner,
   TextInput,
   Title,
 } from '@patternfly/react-core'
 import redHatHatLogoUrl from '../assets/Logo-RedHat-Hat-Color-RGB.svg?url'
 
-export type OsacSignInPageProps = {
-  onNext: () => void
-  defaultEmail: string
-  isContinuing?: boolean
-}
-
-export function OsacSignInPage({
-  onNext,
-  defaultEmail,
-  isContinuing = false,
-}: OsacSignInPageProps) {
-  const [email, setEmail] = useState(defaultEmail)
-
+function OsacAuthShell({
+  title,
+  children,
+  isBusy,
+  busyLabel,
+}: {
+  title: string
+  children: ReactNode
+  isBusy?: boolean
+  busyLabel?: string
+}) {
   useEffect(() => {
     document.documentElement.style.overflow = 'hidden'
     document.body.style.overflow = 'hidden'
@@ -30,10 +31,6 @@ export function OsacSignInPage({
       document.body.style.overflow = ''
     }
   }, [])
-
-  useEffect(() => {
-    setEmail(defaultEmail)
-  }, [defaultEmail])
 
   return (
     <div className="osac-signin">
@@ -50,64 +47,295 @@ export function OsacSignInPage({
           </div>
 
           <Title headingLevel="h1" size="2xl" className="osac-signin__headline">
-            Sign in
+            {title}
           </Title>
 
-          <Form
-            autoComplete="off"
-            className="osac-signin__form"
-            onSubmit={(event) => {
-              event.preventDefault()
-              if (isContinuing) {
-                return
-              }
-              onNext()
-            }}
-          >
-            <FormGroup
-              label="Email address"
-              fieldId="osac-email"
-              className="osac-signin__field"
-            >
-              <TextInput
-                id="osac-email"
-                name="email"
-                type="email"
-                placeholder="Email address"
-                value={email}
-                onChange={(_event, value) => setEmail(value)}
-                autoComplete="email"
-                validated="default"
-                aria-label="Email address"
-                isDisabled={isContinuing}
-                className="osac-signin__field-input"
-              />
-            </FormGroup>
-
-            <Button
-              type="submit"
-              variant="primary"
-              isBlock
-              className="osac-signin__submit"
-              isDisabled={isContinuing || !email.trim()}
-            >
-              Next
-            </Button>
-          </Form>
+          {children}
         </div>
       </main>
 
-      {isContinuing ? (
+      {isBusy ? (
         <div
           className="osac-signin__loading-veil"
           role="status"
           aria-live="polite"
           aria-busy="true"
-          aria-label="Continuing to sign in"
+          aria-label={busyLabel ?? 'Continuing'}
         >
-          <Spinner size="lg" aria-label="Continuing to sign in" />
+          <Spinner size="lg" aria-label={busyLabel ?? 'Continuing'} />
         </div>
       ) : null}
     </div>
+  )
+}
+
+export type OsacSignInPageProps = {
+  onNext: () => void
+  defaultEmail?: string
+  isContinuing?: boolean
+  variant?: 'email' | 'local-account'
+  defaultUsername?: string
+  defaultPassword?: string
+  helperText?: string
+  errorMessage?: string
+  submitLabel?: string
+  onSubmitLocalAccount?: (username: string, password: string) => void
+}
+
+export function OsacSignInPage({
+  onNext,
+  defaultEmail = '',
+  isContinuing = false,
+  variant = 'email',
+  defaultUsername = '',
+  defaultPassword = '',
+  helperText,
+  errorMessage,
+  submitLabel,
+  onSubmitLocalAccount,
+}: OsacSignInPageProps) {
+  const [email, setEmail] = useState(defaultEmail)
+  const [username, setUsername] = useState(defaultUsername)
+  const [password, setPassword] = useState(defaultPassword)
+
+  useEffect(() => {
+    setEmail(defaultEmail)
+  }, [defaultEmail])
+
+  useEffect(() => {
+    setUsername(defaultUsername)
+    setPassword(defaultPassword)
+  }, [defaultUsername, defaultPassword])
+
+  const isLocalAccount = variant === 'local-account'
+  const canSubmit = isLocalAccount
+    ? Boolean(username.trim() && password.trim())
+    : Boolean(email.trim())
+
+  return (
+    <OsacAuthShell
+      title="Sign in"
+      isBusy={isContinuing}
+      busyLabel={isLocalAccount ? 'Signing in' : 'Continuing to sign in'}
+    >
+      <Form
+        autoComplete="off"
+        className="osac-signin__form"
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (isContinuing || !canSubmit) {
+            return
+          }
+          if (isLocalAccount) {
+            onSubmitLocalAccount?.(username.trim(), password)
+            return
+          }
+          onNext()
+        }}
+      >
+        {helperText ? (
+          <p className="osac-signin__helper">{helperText}</p>
+        ) : null}
+
+        {isLocalAccount ? (
+          <>
+            <FormGroup label="Username" fieldId="osac-username" className="osac-signin__field">
+              <TextInput
+                id="osac-username"
+                name="username"
+                type="text"
+                value={username}
+                onChange={(_event, value) => setUsername(value)}
+                autoComplete="username"
+                aria-label="Username"
+                isDisabled={isContinuing}
+                className="osac-signin__field-input"
+              />
+            </FormGroup>
+            <FormGroup label="Password" fieldId="osac-password" className="osac-signin__field">
+              <TextInput
+                id="osac-password"
+                name="password"
+                type="password"
+                value={password}
+                onChange={(_event, value) => setPassword(value)}
+                autoComplete="current-password"
+                aria-label="Password"
+                isDisabled={isContinuing}
+                className="osac-signin__field-input"
+              />
+            </FormGroup>
+          </>
+        ) : (
+          <FormGroup label="Email address" fieldId="osac-email" className="osac-signin__field">
+            <TextInput
+              id="osac-email"
+              name="email"
+              type="email"
+              placeholder="Email address"
+              value={email}
+              onChange={(_event, value) => setEmail(value)}
+              autoComplete="email"
+              validated="default"
+              aria-label="Email address"
+              isDisabled={isContinuing}
+              className="osac-signin__field-input"
+            />
+          </FormGroup>
+        )}
+
+        {errorMessage ? (
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem variant="error">{errorMessage}</HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        ) : null}
+
+        <Button
+          type="submit"
+          variant="primary"
+          isBlock
+          className="osac-signin__submit"
+          isDisabled={isContinuing || !canSubmit}
+        >
+          {submitLabel ?? (isLocalAccount ? 'Sign in' : 'Next')}
+        </Button>
+      </Form>
+    </OsacAuthShell>
+  )
+}
+
+export function OsacChangePasswordPage({
+  onSubmit,
+  isWorking = false,
+  errorMessage,
+  defaultCurrentPassword = '',
+  defaultNewPassword = '',
+}: {
+  onSubmit: (currentPassword: string, newPassword: string) => void
+  isWorking?: boolean
+  errorMessage?: string
+  defaultCurrentPassword?: string
+  defaultNewPassword?: string
+}) {
+  const [currentPassword, setCurrentPassword] = useState(defaultCurrentPassword)
+  const [newPassword, setNewPassword] = useState(defaultNewPassword)
+  const [confirmPassword, setConfirmPassword] = useState(defaultNewPassword)
+
+  useEffect(() => {
+    setCurrentPassword(defaultCurrentPassword)
+    setNewPassword(defaultNewPassword)
+    setConfirmPassword(defaultNewPassword)
+  }, [defaultCurrentPassword, defaultNewPassword])
+
+  const mismatch = Boolean(confirmPassword) && newPassword !== confirmPassword
+  const sameAsCurrent = Boolean(newPassword) && newPassword === currentPassword
+  const canSubmit =
+    Boolean(currentPassword.trim() && newPassword.trim() && confirmPassword.trim()) &&
+    !mismatch &&
+    !sameAsCurrent &&
+    newPassword.trim().length >= 8
+
+  return (
+    <OsacAuthShell title="Change password" isBusy={isWorking} busyLabel="Saving password">
+      <Form
+        autoComplete="off"
+        className="osac-signin__form"
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (isWorking || !canSubmit) {
+            return
+          }
+          onSubmit(currentPassword, newPassword.trim())
+        }}
+      >
+        <p className="osac-signin__helper">
+          Change this break-glass password before continuing.
+        </p>
+        <FormGroup
+          label="Current password"
+          fieldId="osac-current-password"
+          className="osac-signin__field"
+          isRequired
+        >
+          <TextInput
+            id="osac-current-password"
+            type="password"
+            value={currentPassword}
+            onChange={(_event, value) => setCurrentPassword(value)}
+            autoComplete="current-password"
+            isDisabled={isWorking}
+            className="osac-signin__field-input"
+          />
+        </FormGroup>
+        <FormGroup
+          label="New password"
+          fieldId="osac-new-password"
+          className="osac-signin__field"
+          isRequired
+        >
+          <TextInput
+            id="osac-new-password"
+            type="password"
+            value={newPassword}
+            onChange={(_event, value) => setNewPassword(value)}
+            autoComplete="new-password"
+            validated={sameAsCurrent ? 'error' : 'default'}
+            isDisabled={isWorking}
+            className="osac-signin__field-input"
+          />
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem variant={sameAsCurrent ? 'error' : 'default'}>
+                {sameAsCurrent
+                  ? 'Choose a different password from the one that was issued.'
+                  : 'Use at least 8 characters.'}
+              </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        </FormGroup>
+        <FormGroup
+          label="Confirm new password"
+          fieldId="osac-confirm-password"
+          className="osac-signin__field"
+          isRequired
+        >
+          <TextInput
+            id="osac-confirm-password"
+            type="password"
+            value={confirmPassword}
+            onChange={(_event, value) => setConfirmPassword(value)}
+            autoComplete="new-password"
+            validated={mismatch ? 'error' : 'default'}
+            isDisabled={isWorking}
+            className="osac-signin__field-input"
+          />
+          {mismatch ? (
+            <FormHelperText>
+              <HelperText>
+                <HelperTextItem variant="error">Passwords do not match.</HelperTextItem>
+              </HelperText>
+            </FormHelperText>
+          ) : null}
+        </FormGroup>
+        {errorMessage ? (
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem variant="error">{errorMessage}</HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        ) : null}
+        <Button
+          type="submit"
+          variant="primary"
+          isBlock
+          className="osac-signin__submit"
+          isDisabled={isWorking || !canSubmit}
+        >
+          Save password
+        </Button>
+      </Form>
+    </OsacAuthShell>
   )
 }

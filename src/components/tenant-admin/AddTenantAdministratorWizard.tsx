@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { ArrowRightIcon } from '@patternfly/react-icons/dist/esm/icons/arrow-right-icon'
 import { UserPlusIcon } from '@patternfly/react-icons/dist/esm/icons/user-plus-icon'
 import {
@@ -10,19 +10,28 @@ import {
   Form,
   FormGroup,
   FormHelperText,
+  FormSelect,
+  FormSelectOption,
   HelperText,
   HelperTextItem,
+  Label,
   TextInput,
+  Title,
 } from '@patternfly/react-core'
 import {
   formatOrganizationEmailDomainsLabel,
   type RegisteredOrganization,
 } from '../../providerAdmin/organizations'
 import {
-  addAdditionalTenantAdministrator,
+  ASSIGNABLE_TENANT_ROLES,
+  assignTenantAdministrator,
+  assignTenantRole,
+  buildDemoAssignRoleForm,
   emailMatchesOrganizationDomain,
+  getAssignableTenantRole,
   isTenantAdministratorEmailTaken,
   TENANT_ADMINISTRATORS_DEMO,
+  type AssignableTenantRoleId,
 } from '../../tenantAdmin/administrators'
 import { NetworkInventoryCreateWizardShell } from '../networking/NetworkInventoryCreateWizardShell'
 import { NETWORK_INVENTORY_CREATE_REVIEW_STEP } from '../../networking/networkInventoryCreateWizard'
@@ -30,12 +39,14 @@ import { NETWORK_INVENTORY_CREATE_REVIEW_STEP } from '../../networking/networkIn
 type AddTenantAdministratorForm = {
   name: string
   email: string
+  roleId: AssignableTenantRoleId | null
 }
 
-const ADD_TENANT_ADMINISTRATOR_STEPS = [
-  { id: 'administrator', label: 'Administrator' },
-  NETWORK_INVENTORY_CREATE_REVIEW_STEP,
-] as const
+const EMPTY_FORM: AddTenantAdministratorForm = {
+  name: '',
+  email: '',
+  roleId: null,
+}
 
 type AddTenantAdministratorWizardProps = {
   isOpen: boolean
@@ -43,6 +54,9 @@ type AddTenantAdministratorWizardProps = {
   onClose: () => void
   onAdded: (organization: RegisteredOrganization) => void
   parentLabel?: string
+  title?: string
+  submitLabel?: string
+  showRoleCatalog?: boolean
 }
 
 export function AddTenantAdministratorWizard({
@@ -51,14 +65,16 @@ export function AddTenantAdministratorWizard({
   onClose,
   onAdded,
   parentLabel = TENANT_ADMINISTRATORS_DEMO.title,
+  title = 'Add tenant administrator',
+  submitLabel = TENANT_ADMINISTRATORS_DEMO.addAdministratorLabel,
+  showRoleCatalog = false,
 }: AddTenantAdministratorWizardProps) {
-  const [form, setForm] = useState<AddTenantAdministratorForm>({ name: '', email: '' })
-
-  useEffect(() => {
-    if (!isOpen) {
-      setForm({ name: '', email: '' })
-    }
-  }, [isOpen])
+  const [form, setForm] = useState<AddTenantAdministratorForm>(() =>
+    showRoleCatalog
+      ? buildDemoAssignRoleForm(organization)
+      : { ...EMPTY_FORM, roleId: 'tenant-administrator' },
+  )
+  const selectedRole = form.roleId ? getAssignableTenantRole(form.roleId) : null
 
   const emailTaken = isTenantAdministratorEmailTaken(organization, form.email)
   const emailDomainOk =
@@ -67,15 +83,44 @@ export function AddTenantAdministratorWizard({
     Boolean(form.name.trim()) &&
     Boolean(form.email.trim()) &&
     !emailTaken &&
-    emailDomainOk
+    emailDomainOk &&
+    (!showRoleCatalog || Boolean(form.roleId))
+
+  const steps = [
+    { id: 'administrator', label: showRoleCatalog ? 'Details' : 'Administrator' },
+    NETWORK_INVENTORY_CREATE_REVIEW_STEP,
+  ] as const
 
   const handleClose = () => {
-    setForm({ name: '', email: '' })
+    setForm(
+      showRoleCatalog
+        ? buildDemoAssignRoleForm(organization)
+        : { ...EMPTY_FORM, roleId: 'tenant-administrator' },
+    )
     onClose()
   }
 
   const handleAdd = () => {
-    const updated = addAdditionalTenantAdministrator(organization, form)
+    if (showRoleCatalog) {
+      if (!form.roleId) {
+        return
+      }
+
+      const updated = assignTenantRole(organization, {
+        name: form.name,
+        email: form.email,
+        roleId: form.roleId,
+      })
+      if (!updated) {
+        return
+      }
+
+      onAdded(updated)
+      handleClose()
+      return
+    }
+
+    const updated = assignTenantAdministrator(organization, form)
     if (!updated) {
       return
     }
@@ -89,10 +134,70 @@ export function AddTenantAdministratorWizard({
       return (
         <div className="tenant-admin-administrators__wizard-step">
           <Content component="p" className="tenant-admin-administrators__wizard-lede">
-            Tenant administrators can manage catalog, networking, projects, and team access for
-            this organization.
+            {showRoleCatalog
+              ? 'Select a role, then enter the person to assign it to.'
+              : 'Tenant administrators can manage catalog, networking, projects, and team access for this organization.'}
           </Content>
           <Form autoComplete="off" className="tenant-admin-administrators__wizard-form">
+            {showRoleCatalog ? (
+              <FormGroup
+                label="Role"
+                fieldId="add-tenant-admin-role"
+                isRequired
+                role="radiogroup"
+              >
+                <div
+                  id="add-tenant-admin-role"
+                  className="provider-setup-template__card-group tenant-admin-administrators__role-cards"
+                  role="presentation"
+                >
+                  {ASSIGNABLE_TENANT_ROLES.map((role) => {
+                    const isSelected = form.roleId === role.id
+                    const titleId = `add-tenant-admin-role-${role.id}-title`
+
+                    return (
+                      <button
+                        key={role.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={isSelected}
+                        aria-labelledby={titleId}
+                        className={`provider-setup-template__select-card tenant-admin-administrators__role-card${
+                          isSelected ? ' provider-setup-template__select-card--selected' : ''
+                        }`}
+                        onClick={() =>
+                          setForm((current) => ({ ...current, roleId: role.id }))
+                        }
+                      >
+                        {isSelected ? (
+                          <Label
+                            color="grey"
+                            isCompact
+                            className="provider-setup-template__select-card-selected-badge"
+                          >
+                            Selected
+                          </Label>
+                        ) : null}
+                        <Title
+                          id={titleId}
+                          headingLevel="h3"
+                          size="md"
+                          className="provider-setup-template__select-card-title"
+                        >
+                          {role.label}
+                        </Title>
+                        <Content
+                          component="p"
+                          className="provider-setup-template__select-card-detail"
+                        >
+                          {role.description}
+                        </Content>
+                      </button>
+                    )
+                  })}
+                </div>
+              </FormGroup>
+            ) : null}
             <FormGroup label="Name" fieldId="add-tenant-admin-name" isRequired>
               <TextInput
                 id="add-tenant-admin-name"
@@ -114,7 +219,9 @@ export function AddTenantAdministratorWizard({
                 <HelperText>
                   <HelperTextItem variant={emailTaken || !emailDomainOk ? 'error' : 'default'}>
                     {emailTaken
-                      ? 'This person is already a tenant administrator.'
+                      ? showRoleCatalog
+                        ? 'This person is already assigned a role.'
+                        : 'This person is already a tenant administrator.'
                       : !emailDomainOk
                         ? `Use an address on ${formatOrganizationEmailDomainsLabel(organization)}.`
                         : 'They will sign in with this email after your identity provider is connected.'}
@@ -122,6 +229,21 @@ export function AddTenantAdministratorWizard({
                 </HelperText>
               </FormHelperText>
             </FormGroup>
+            {showRoleCatalog ? null : (
+              <FormGroup label="Role" fieldId="add-tenant-admin-role" isRequired>
+                <FormSelect
+                  id="add-tenant-admin-role"
+                  value="tenant-administrator"
+                  onChange={() => undefined}
+                  aria-label="Role"
+                >
+                  <FormSelectOption
+                    value="tenant-administrator"
+                    label={TENANT_ADMINISTRATORS_DEMO.roleLabel}
+                  />
+                </FormSelect>
+              </FormGroup>
+            )}
           </Form>
         </div>
       )
@@ -129,6 +251,22 @@ export function AddTenantAdministratorWizard({
 
     return (
       <DescriptionList isCompact className="tenant-admin-administrators__wizard-review">
+        {showRoleCatalog ? (
+          <>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Role</DescriptionListTerm>
+              <DescriptionListDescription>
+                {selectedRole?.label ?? '—'}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Description</DescriptionListTerm>
+              <DescriptionListDescription>
+                {selectedRole?.description ?? '—'}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+          </>
+        ) : null}
         <DescriptionListGroup>
           <DescriptionListTerm>Name</DescriptionListTerm>
           <DescriptionListDescription>{form.name.trim() || '—'}</DescriptionListDescription>
@@ -139,12 +277,14 @@ export function AddTenantAdministratorWizard({
             <code>{form.email.trim().toLowerCase() || '—'}</code>
           </DescriptionListDescription>
         </DescriptionListGroup>
-        <DescriptionListGroup>
-          <DescriptionListTerm>Role</DescriptionListTerm>
-          <DescriptionListDescription>
-            {TENANT_ADMINISTRATORS_DEMO.additionalRoleLabel}
-          </DescriptionListDescription>
-        </DescriptionListGroup>
+        {showRoleCatalog ? null : (
+          <DescriptionListGroup>
+            <DescriptionListTerm>Role</DescriptionListTerm>
+            <DescriptionListDescription>
+              {selectedRole?.label ?? '—'}
+            </DescriptionListDescription>
+          </DescriptionListGroup>
+        )}
       </DescriptionList>
     )
   }
@@ -159,7 +299,7 @@ export function AddTenantAdministratorWizard({
         nextButtonText: (
           <span className="tenant-admin-administrators__wizard-footer-label">
             <UserPlusIcon aria-hidden />
-            <span>Add tenant administrator</span>
+            <span>{submitLabel}</span>
             <ArrowRightIcon aria-hidden />
           </span>
         ),
@@ -175,9 +315,9 @@ export function AddTenantAdministratorWizard({
     <NetworkInventoryCreateWizardShell
       isOpen={isOpen}
       parentLabel={parentLabel}
-      title="Add tenant administrator"
+      title={title}
       titleId="add-tenant-administrator-wizard-title"
-      steps={ADD_TENANT_ADMINISTRATOR_STEPS}
+      steps={steps}
       renderStepContent={renderStepContent}
       getStepFooter={getStepFooter}
       onClose={handleClose}

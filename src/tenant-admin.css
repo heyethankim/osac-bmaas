@@ -148,6 +148,43 @@
   --pf-v6-c-table--cell--MinWidth: 10rem;
 }
 
+.tenant-admin-administration__col-status {
+  --pf-v6-c-table--cell--Width: 16%;
+  --pf-v6-c-table--cell--MinWidth: 7rem;
+}
+
+.tenant-admin-administration__table.tenant-admin-administration__table--with-status {
+  table-layout: fixed;
+}
+
+.tenant-admin-administration__table--with-status .tenant-admin-administration__col-name {
+  --pf-v6-c-table--cell--Width: 24%;
+  --pf-v6-c-table--cell--MinWidth: 12rem;
+  --pf-v6-c-table--cell--MaxWidth: none;
+}
+
+.tenant-admin-administration__table--with-status .tenant-admin-administration__col-status {
+  --pf-v6-c-table--cell--Width: 14%;
+  --pf-v6-c-table--cell--MinWidth: 7rem;
+  --pf-v6-c-table--cell--MaxWidth: none;
+  --pf-v6-c-table--cell--WhiteSpace: nowrap;
+}
+
+.tenant-admin-administration__table--with-status .tenant-admin-administration__col-role {
+  --pf-v6-c-table--cell--Width: 22%;
+  --pf-v6-c-table--cell--MinWidth: 12rem;
+  --pf-v6-c-table--cell--MaxWidth: none;
+}
+
+.tenant-admin-administration__col-description {
+  --pf-v6-c-table--cell--Width: auto;
+  --pf-v6-c-table--cell--MinWidth: 16rem;
+  --pf-v6-c-table--cell--MaxWidth: none;
+  --pf-v6-c-table--cell--WhiteSpace: nowrap;
+  --pf-v6-c-table--cell--Overflow: hidden;
+  --pf-v6-c-table--cell--TextOverflow: ellipsis;
+}
+
 .tenant-admin-administration__col-name .tenant-admin-administration__primary-cell,
 .tenant-admin-administration__col-name .tenant-admin-administration__meta-cell,
 .tenant-admin-administration__table .tenant-admin-administration__primary-cell,
@@ -168,6 +205,40 @@
 
 .tenant-admin-administration__table .pf-v6-c-table__tbody .pf-v6-c-table__td {
   vertical-align: middle;
+}
+
+.tenant-admin-administrators__wizard-lede.pf-v6-c-content--p {
+  margin-block: 0 var(--pf-t--global--spacer--lg);
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.tenant-admin-administrators__wizard-form .pf-v6-c-form__group:last-child {
+  margin-block-end: 0;
+}
+
+.tenant-admin-administrators__role-cards.provider-setup-template__card-group {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.tenant-admin-administrators__role-card.provider-setup-template__select-card {
+  height: 100%;
+}
+
+.tenant-admin-administrators__role-card .provider-setup-template__select-card-title.pf-v6-c-title {
+  margin-block-end: var(--pf-t--global--spacer--xs);
+  padding-inline-end: 4.5rem;
+}
+
+.tenant-admin-administrators__role-card .provider-setup-template__select-card-detail.pf-v6-c-content--p {
+  white-space: nowrap;
+}
+
+.tenant-admin-administrators__wizard-footer-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm);
 }
 
 .tenant-admin-overview__cards {

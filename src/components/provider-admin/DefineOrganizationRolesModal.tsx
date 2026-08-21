@@ -24,6 +24,7 @@ import {
   DEFAULT_REGISTER_ORGANIZATION_TENANT_ADMIN,
   emailMatchesOrganizationDomains,
   formatOrganizationEmailDomainsLabel,
+  isTenantAdministratorAssignment,
   type RegisteredOrganization,
 } from '../../providerAdmin/organizations'
 import { updateProviderRegisteredOrganization } from '../../providerSetup/storage'
@@ -66,7 +67,7 @@ function buildDefaultForm(organization: RegisteredOrganization): DefineRolesForm
         name: organization.tenantAdminName,
         email: organization.tenantAdminEmail,
       },
-      ...organization.additionalTenantAdmins,
+      ...organization.additionalTenantAdmins.filter(isTenantAdministratorAssignment),
     ].filter((admin) => admin.email.trim())
 
     return {
@@ -160,14 +161,20 @@ export function DefineOrganizationRolesModal({
     }
 
     const [primaryAdmin, ...restAdmins] = form.admins
+    const otherRoleAssignments = organization.additionalTenantAdmins.filter(
+      (assignment) => !isTenantAdministratorAssignment(assignment),
+    )
     const updated = updateProviderRegisteredOrganization(organization.id, {
       rbacConfigured: true,
       tenantAdminName: primaryAdmin.name.trim(),
       tenantAdminEmail: primaryAdmin.email.trim().toLowerCase(),
-      additionalTenantAdmins: restAdmins.map((admin) => ({
-        name: admin.name.trim(),
-        email: admin.email.trim().toLowerCase(),
-      })),
+      additionalTenantAdmins: [
+        ...restAdmins.map((admin) => ({
+          name: admin.name.trim(),
+          email: admin.email.trim().toLowerCase(),
+        })),
+        ...otherRoleAssignments,
+      ],
       // Tenant users sign in by email domain; no invite list is required.
       invitedTenantUserEmails: [],
     })
@@ -245,7 +252,7 @@ export function DefineOrganizationRolesModal({
   const allAdminsForView: TenantAdminDraft[] = organization.rbacConfigured
     ? [
         { name: organization.tenantAdminName, email: organization.tenantAdminEmail },
-        ...organization.additionalTenantAdmins,
+        ...organization.additionalTenantAdmins.filter(isTenantAdministratorAssignment),
       ].filter((admin) => admin.email.trim())
     : form.admins
 

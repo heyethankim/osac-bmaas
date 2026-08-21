@@ -176,7 +176,7 @@ export function ExternalIpPoolDetailsPage({
                 <DescriptionListGroup>
                   <DescriptionListTerm>Primary email domain</DescriptionListTerm>
                   <DescriptionListDescription>
-                    <code>{scopeOrganization?.primaryDomain || "—"}</code>
+                    {scopeOrganization?.primaryDomain || "—"}
                   </DescriptionListDescription>
                 </DescriptionListGroup>
                 {organizationPools.length > 0 ? (
@@ -223,7 +223,7 @@ export function ExternalIpPoolDetailsPage({
                         Primary email domain
                       </DescriptionListTerm>
                       <DescriptionListDescription>
-                        <code>{organization.primaryDomain || "—"}</code>
+                        {organization.primaryDomain || "—"}
                       </DescriptionListDescription>
                     </DescriptionListGroup>
                     <DescriptionListGroup>

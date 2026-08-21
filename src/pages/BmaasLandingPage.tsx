@@ -23,11 +23,7 @@ import { UsersIcon } from '@patternfly/react-icons/dist/esm/icons/users-icon'
 import { Fragment, type ReactNode } from 'react'
 import { RouterButton } from '../components/RouterButton'
 import { BMAAS_LANDING_LAST_UPDATED } from '../bmaasLandingLastUpdated'
-import {
-  getIdpManagerSetupRoute,
-  getPendingIdpManagerInvites,
-} from '../providerAdmin/organizations'
-import { getProviderRegisteredOrganizations } from '../providerSetup/storage'
+import { getIdpManagerPrototypeRoute } from '../providerAdmin/organizations'
 import redHatHatLogoUrl from '../assets/Logo-RedHat-Hat-Color-RGB.svg?url'
 
 type PrototypeLink = {
@@ -120,18 +116,17 @@ function SingleEnterActions({
 }
 
 export function BmaasLandingPage() {
-  const pendingInvites = getPendingIdpManagerInvites(getProviderRegisteredOrganizations())
   const providerPrototypeLinks: PrototypeLink[] = [
     {
       label: 'Catalog',
       to: '/provider/workspace?nav=catalog',
       statusLabel: 'Not approved yet',
     },
-    ...pendingInvites.map((invite) => ({
-      label: 'IdP manager',
-      to: getIdpManagerSetupRoute(invite.token),
-      statusLabel: `OSAC link · ${invite.organization.name}`,
-    })),
+    {
+      label: 'Onboarding',
+      to: getIdpManagerPrototypeRoute(),
+      statusLabel: 'Not approved yet',
+    },
   ]
 
   const roles: RoleBlockProps[] = [

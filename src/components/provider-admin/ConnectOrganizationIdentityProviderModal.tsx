@@ -20,6 +20,7 @@ import {
 import {
   areAdditionalDomainsValid,
   buildDefaultAdditionalDomains,
+  buildDefaultIdentityProviderClientId,
   buildDemoIdentityProviderName,
   getTakenEmailDomains,
   normalizeAdditionalDomains,
@@ -59,7 +60,9 @@ function buildDefaultForm(organization: RegisteredOrganization): ConnectIdentity
         organization.identityProviderDisplayName || `${organization.name}-idp`,
       issuerUrl:
         organization.identityProviderIssuerUrl || `https://login.${domain}/oauth2`,
-      clientId: organization.identityProviderClientId || `bmaas-${organization.slug || 'tenant'}`,
+      clientId:
+        organization.identityProviderClientId ||
+        buildDefaultIdentityProviderClientId(organization),
     }
   }
 
@@ -67,7 +70,7 @@ function buildDefaultForm(organization: RegisteredOrganization): ConnectIdentity
     protocol: 'OIDC',
     displayName: `${organization.name}-idp`,
     issuerUrl: `https://login.${domain}/oauth2`,
-    clientId: `bmaas-${organization.slug || 'tenant'}`,
+    clientId: buildDefaultIdentityProviderClientId(organization),
   }
 }
 
@@ -259,7 +262,7 @@ export function ConnectOrganizationIdentityProviderModal({
               <DescriptionListGroup>
                 <DescriptionListTerm>Primary email domain</DescriptionListTerm>
                 <DescriptionListDescription>
-                  <code>{organization.primaryDomain || '—'}</code>
+                  {organization.primaryDomain || '—'}
                 </DescriptionListDescription>
               </DescriptionListGroup>
               <DescriptionListGroup>
@@ -281,13 +284,13 @@ export function ConnectOrganizationIdentityProviderModal({
               <DescriptionListGroup>
                 <DescriptionListTerm>{issuerLabel}</DescriptionListTerm>
                 <DescriptionListDescription>
-                  <code>{form.issuerUrl || '—'}</code>
+                  {form.issuerUrl || '—'}
                 </DescriptionListDescription>
               </DescriptionListGroup>
               <DescriptionListGroup>
                 <DescriptionListTerm>{clientLabel}</DescriptionListTerm>
                 <DescriptionListDescription>
-                  <code>{form.clientId || '—'}</code>
+                  {form.clientId || '—'}
                 </DescriptionListDescription>
               </DescriptionListGroup>
             </DescriptionList>

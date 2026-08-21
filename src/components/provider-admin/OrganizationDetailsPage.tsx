@@ -119,13 +119,11 @@ function AccountPersonRow({
           {admin.email}
         </Content>
         <Label
-          color={admin.isPrimary ? 'blue' : 'grey'}
+          color="grey"
           isCompact
           className="provider-admin-organizations__account-person-role"
         >
-          {admin.isPrimary
-            ? TENANT_ADMINISTRATORS_DEMO.primaryRoleLabel
-            : TENANT_ADMINISTRATORS_DEMO.additionalRoleLabel}
+          {TENANT_ADMINISTRATORS_DEMO.roleLabel}
         </Label>
       </div>
       {admin.isPrimary ? null : (
@@ -354,7 +352,7 @@ export function OrganizationDetailsPage({
                 <DescriptionListGroup>
                   <DescriptionListTerm>Primary email domain</DescriptionListTerm>
                   <DescriptionListDescription>
-                    <code>{organization.primaryDomain || '—'}</code>
+                    {organization.primaryDomain || '—'}
                   </DescriptionListDescription>
                 </DescriptionListGroup>
                 <DescriptionListGroup>

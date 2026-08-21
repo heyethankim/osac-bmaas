@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ConceptualDesignSticker } from './components/ConceptualDesignSticker'
 import { BmaasLandingPage } from './pages/BmaasLandingPage'
 import { IdpManagerSetupPage } from './pages/IdpManagerSetupPage'
+import { IdpManagerWorkspacePage } from './pages/IdpManagerWorkspacePage'
 import { ProviderAdminWorkspacePage } from './pages/ProviderAdminWorkspacePage'
 import { ProviderLoginPage } from './pages/ProviderLoginPage'
 import { TenantAdminSampleCatalogPage } from './pages/TenantAdminSampleCatalogPage'
@@ -15,6 +16,10 @@ export default function App() {
       <ConceptualDesignSticker />
       <Routes>
         <Route path="/" element={<BmaasLandingPage />} />
+        <Route path="/idp-manager/:orgSlug/change-password" element={<IdpManagerSetupPage />} />
+        <Route path="/idp-manager/:orgSlug/workspace" element={<IdpManagerWorkspacePage />} />
+        <Route path="/idp-manager/:orgSlug" element={<IdpManagerSetupPage />} />
+        <Route path="/idp-manager" element={<IdpManagerSetupPage />} />
         <Route path="/idp-setup/:token" element={<IdpManagerSetupPage />} />
         <Route path="/provider" element={<ProviderLoginPage />} />
         <Route path="/provider/setup" element={<Navigate to="/provider/workspace" replace />} />

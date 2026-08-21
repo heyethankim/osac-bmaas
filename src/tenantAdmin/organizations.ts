@@ -101,6 +101,7 @@ export function getWorkspaceOrganization(slug: string): RegisteredOrganization {
     identityProviderProtocol: null,
     identityProviderIssuerUrl: null,
     identityProviderClientId: null,
+    identityProviders: [],
     idpManagerEmail: null,
     idpInviteToken: null,
     idpInviteStatus: 'none',

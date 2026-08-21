@@ -10,7 +10,11 @@ import {
   hasPendingIdpInvite,
   generateBreakGlassUsername,
   getDemoBreakGlassPassword,
+  isOrganizationAssignedRoleId,
+  migrateLegacyIdentityProviderClientId,
   normalizeAdditionalDomains,
+  normalizeOrganizationIdentityProviders,
+  type OrganizationRoleAssignment,
   type RegisteredOrganization,
 } from '../providerAdmin/organizations'
 import type { ComputeImage } from '../providerAdmin/computeImages'
@@ -1272,8 +1276,9 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
         : null,
     identityProviderClientId:
       typeof org.identityProviderClientId === 'string' && org.identityProviderClientId.trim()
-        ? org.identityProviderClientId.trim()
+        ? migrateLegacyIdentityProviderClientId(org.identityProviderClientId.trim())
         : null,
+    identityProviders: normalizeOrganizationIdentityProviders(org.identityProviders),
     idpManagerEmail:
       typeof org.idpManagerEmail === 'string' && org.idpManagerEmail.trim()
         ? org.idpManagerEmail.trim().toLowerCase()
@@ -1328,7 +1333,7 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
     additionalTenantAdmins: Array.isArray(org.additionalTenantAdmins)
       ? org.additionalTenantAdmins
           .filter(
-            (admin): admin is { name: string; email: string } =>
+            (admin): admin is OrganizationRoleAssignment =>
               typeof admin === 'object' &&
               admin !== null &&
               typeof admin.name === 'string' &&
@@ -1338,6 +1343,10 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
           .map((admin) => ({
             name: admin.name.trim(),
             email: admin.email.trim().toLowerCase(),
+            ...(isOrganizationAssignedRoleId(admin.roleId) &&
+            admin.roleId !== 'tenant-administrator'
+              ? { roleId: admin.roleId }
+              : {}),
           }))
       : [],
     invitedTenantUserEmails: Array.isArray(org.invitedTenantUserEmails)
@@ -1614,6 +1623,7 @@ export function ensureProviderDemoOrganizations(): RegisteredOrganization[] {
           identityProviderProtocol: pendingInviteSource.identityProviderProtocol,
           identityProviderIssuerUrl: pendingInviteSource.identityProviderIssuerUrl,
           identityProviderClientId: pendingInviteSource.identityProviderClientId,
+          identityProviders: pendingInviteSource.identityProviders ?? [],
         }
       : northSummitBase
 

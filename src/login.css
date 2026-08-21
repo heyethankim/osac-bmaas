@@ -793,6 +793,26 @@
   gap: 1.25rem;
 }
 
+.osac-signin__helper {
+  margin: 0;
+  color: rgb(255 255 255 / 72%);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.osac-signin__form .pf-v6-c-helper-text {
+  --pf-v6-c-helper-text__item-text--Color: rgb(255 255 255 / 82%);
+  --pf-v6-c-helper-text__item-text--m-indeterminate--Color: rgb(255 255 255 / 82%);
+}
+
+.osac-signin__form .pf-v6-c-helper-text__item-text {
+  color: rgb(255 255 255 / 82%);
+}
+
+.osac-signin__form .pf-v6-c-helper-text__item.pf-m-error .pf-v6-c-helper-text__item-text {
+  color: #ffb3b3;
+}
+
 .osac-signin__field.pf-v6-c-form__group {
   margin: 0;
 }

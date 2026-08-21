@@ -126,14 +126,5 @@ export function AdditionalEmailDomainsValue({ domains }: { domains: readonly str
     return '—'
   }
 
-  return (
-    <>
-      {normalized.map((domain, index) => (
-        <span key={domain}>
-          {index > 0 ? ', ' : null}
-          <code>{domain}</code>
-        </span>
-      ))}
-    </>
-  )
+  return normalized.join(', ')
 }

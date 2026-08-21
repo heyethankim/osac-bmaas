@@ -54,8 +54,14 @@ function humanizeFilterPart(part: string): string {
   const statusMatch = part.match(/^status:\s*(.+)$/i)
   if (statusMatch) {
     const status = statusMatch[1].trim()
-    if (status === 'Active' || status === 'Pending activation') {
-      return `organizations with ${status.toLowerCase()} status`
+    if (status === 'Pending') {
+      return 'pending administrators'
+    }
+    if (status === 'Active') {
+      return 'active administrators'
+    }
+    if (status === 'Pending activation') {
+      return 'organizations with pending activation status'
     }
     return `items with ${status.toLowerCase()} status`
   }
@@ -111,16 +117,40 @@ function humanizeFilterPart(part: string): string {
     return `${environmentMatch[1].trim()} projects`
   }
 
+  const protocolMatch = part.match(/^protocol:\s*(.+)$/i)
+  if (protocolMatch) {
+    const protocol = protocolMatch[1].trim()
+    if (protocol === 'OIDC') {
+      return 'OpenID Connect identity providers'
+    }
+    if (protocol === 'SAML') {
+      return 'SAML identity providers'
+    }
+    return `identity providers using ${protocol}`
+  }
+
+  const idpStatusMatch = part.match(/^idp status:\s*(.+)$/i)
+  if (idpStatusMatch) {
+    const status = idpStatusMatch[1].trim()
+    if (status === 'Connected') {
+      return 'connected identity providers'
+    }
+    return `identity providers with ${status.toLowerCase()} status`
+  }
+
   const roleMatch = part.match(/^role:\s*(.+)$/i)
   if (roleMatch) {
     const role = roleMatch[1].trim()
-    if (role === 'Primary administrator') {
-      return 'primary administrators'
-    }
     if (role === 'Tenant administrator') {
       return 'tenant administrators'
     }
-    return `administrators with ${role.toLowerCase()} role`
+    if (role === 'Tenant reader') {
+      return 'tenant readers'
+    }
+    if (role === 'Tenant user') {
+      return 'tenant users'
+    }
+    return `assignments with ${role.toLowerCase()} role`
   }
 
   return part

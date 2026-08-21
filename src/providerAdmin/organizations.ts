@@ -5,6 +5,44 @@ import {
   DEMO_TENANT_LABEL,
 } from '../demoTenant'
 
+export type IdentityProviderProtocol = 'OIDC' | 'SAML'
+
+export type OrganizationAssignedRoleId =
+  | 'tenant-administrator'
+  | 'tenant-reader'
+  | 'tenant-user'
+
+export type OrganizationRoleAssignment = {
+  name: string
+  email: string
+  roleId?: OrganizationAssignedRoleId
+}
+
+export function isOrganizationAssignedRoleId(
+  value: unknown,
+): value is OrganizationAssignedRoleId {
+  return (
+    value === 'tenant-administrator' ||
+    value === 'tenant-reader' ||
+    value === 'tenant-user'
+  )
+}
+
+export function isTenantAdministratorAssignment(
+  assignment: OrganizationRoleAssignment,
+): boolean {
+  return !assignment.roleId || assignment.roleId === 'tenant-administrator'
+}
+
+export type OrganizationIdentityProvider = {
+  id: string
+  name: string
+  displayName: string
+  protocol: IdentityProviderProtocol
+  issuerUrl: string
+  clientId: string
+}
+
 export type RegisteredOrganization = {
   id: string
   name: string
@@ -25,8 +63,8 @@ export type RegisteredOrganization = {
   /** Kept for demo activation flows; assigned later via Roles in production. */
   tenantAdminName: string
   tenantAdminEmail: string
-  /** Optional additional tenant admins from Define roles. */
-  additionalTenantAdmins: Array<{ name: string; email: string }>
+  /** Optional additional tenant admins from Define roles, plus reader/user assignments. */
+  additionalTenantAdmins: OrganizationRoleAssignment[]
   /** Optional day-0 tenant user invites; supports paste or CSV upload in Define roles. */
   invitedTenantUserEmails: string[]
   /** Org-scoped IdP connected after registration. */
@@ -36,6 +74,8 @@ export type RegisteredOrganization = {
   identityProviderProtocol: 'OIDC' | 'SAML' | null
   identityProviderIssuerUrl: string | null
   identityProviderClientId: string | null
+  /** Identity providers connected by the break-glass / IdP manager workspace. */
+  identityProviders: OrganizationIdentityProvider[]
   /**
    * IdP manager handoff (Path B). Provider copies break-glass credentials and an
    * OSAC link to send out of band. Path A still lets the provider connect IdP.
@@ -66,6 +106,84 @@ export type OrganizationSetupNextAction = 'idp' | 'rbac'
 
 export function generateIdpInviteToken(): string {
   return `idpinv-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`
+}
+
+export function identityProviderProtocolLabel(protocol: IdentityProviderProtocol): string {
+  return protocol === 'SAML' ? 'SAML 2.0' : 'OpenID Connect (OIDC)'
+}
+
+export function migrateLegacyIdentityProviderClientId(clientId: string): string {
+  if (clientId === 'bmaas-northstar') {
+    return 'north-summit-bank'
+  }
+  if (clientId === 'bmaas-harborline') {
+    return 'harborline-capital'
+  }
+  return clientId
+}
+
+export function buildDefaultIdentityProviderClientId(
+  organization: Pick<RegisteredOrganization, 'name' | 'slug'>,
+  existingClientIds: readonly string[] = [],
+): string {
+  const base = organization.name.trim() || organization.slug.trim() || 'osac-client'
+  const taken = new Set(
+    existingClientIds.map((clientId) => clientId.trim().toLowerCase()).filter(Boolean),
+  )
+  if (!taken.has(base.toLowerCase())) {
+    return base
+  }
+
+  let suffix = 2
+  let candidate = `${base}-${suffix}`
+  while (taken.has(candidate.toLowerCase())) {
+    suffix += 1
+    candidate = `${base}-${suffix}`
+  }
+  return candidate
+}
+
+export function normalizeOrganizationIdentityProviders(
+  value: unknown,
+): OrganizationIdentityProvider[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value.flatMap((entry) => {
+    if (typeof entry !== 'object' || entry === null) {
+      return []
+    }
+
+    const provider = entry as Partial<OrganizationIdentityProvider>
+    const displayName =
+      typeof provider.displayName === 'string' ? provider.displayName.trim() : ''
+    const issuerUrl = typeof provider.issuerUrl === 'string' ? provider.issuerUrl.trim() : ''
+    const clientId =
+      typeof provider.clientId === 'string'
+        ? migrateLegacyIdentityProviderClientId(provider.clientId.trim())
+        : ''
+    const protocol = provider.protocol === 'SAML' || provider.protocol === 'OIDC' ? provider.protocol : null
+    const id = typeof provider.id === 'string' ? provider.id.trim() : ''
+
+    if (!displayName || !issuerUrl || !clientId || !protocol || !id) {
+      return []
+    }
+
+    return [
+      {
+        id,
+        name:
+          typeof provider.name === 'string' && provider.name.trim()
+            ? provider.name.trim()
+            : displayName,
+        displayName,
+        protocol,
+        issuerUrl,
+        clientId,
+      },
+    ]
+  })
 }
 
 export function createIdpInviteTimestamps(now = Date.now()): {
@@ -172,11 +290,44 @@ export function getIdpManagerSetupRoute(token: string): string {
   return `/idp-setup/${encodeURIComponent(token)}`
 }
 
+/** Break-glass sign-in for an organization IdP manager. */
+export function getIdpManagerPrototypeRoute(slug = 'northstar'): string {
+  return `/idp-manager/${encodeURIComponent(slug)}`
+}
+
+export function getIdpManagerChangePasswordRoute(slug: string): string {
+  return `${getIdpManagerPrototypeRoute(slug)}/change-password`
+}
+
+export function getIdpManagerWorkspaceRoute(slug: string): string {
+  return `${getIdpManagerPrototypeRoute(slug)}/workspace`
+}
+
 /** Full browser path including the app basename (e.g. GitHub Pages). */
 export function getIdpManagerSetupPath(token: string): string {
   const base = import.meta.env.BASE_URL || '/'
   const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base
   return `${normalizedBase}${getIdpManagerSetupRoute(token)}`
+}
+
+/** Org for the landing IdP manager shortcut: pending Path B first, else North Summit. */
+export function resolveIdpManagerPrototypeOrganization(
+  organizations: RegisteredOrganization[],
+  now = Date.now(),
+): RegisteredOrganization | null {
+  const pending = getPendingIdpManagerInvites(organizations, now)
+  if (pending[0]) {
+    return pending[0].organization
+  }
+
+  return (
+    organizations.find(
+      (organization) =>
+        organization.id === DEMO_NORTH_SUMMIT_BANK_ORG_ID && hasBreakGlassAccount(organization),
+    ) ??
+    organizations.find((organization) => hasBreakGlassAccount(organization)) ??
+    null
+  )
 }
 
 /** Under-Status line: next incomplete step while setup is incomplete. */
@@ -206,7 +357,9 @@ export function isOrganizationReadyForLogin(organization: RegisteredOrganization
 export function getOrganizationTenantAdminCount(organization: RegisteredOrganization): number {
   const emails = [
     organization.tenantAdminEmail,
-    ...organization.additionalTenantAdmins.map((admin) => admin.email),
+    ...organization.additionalTenantAdmins
+      .filter(isTenantAdministratorAssignment)
+      .map((admin) => admin.email),
   ]
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean)
@@ -383,6 +536,11 @@ export function createDemoNorthSummitBankOrganization(
     additionalTenantAdmins: [
       { name: 'Jordan Hale', email: 'jhale@northsummitbank.com' },
       { name: 'Sam Okonkwo', email: 'sokonkowo@northsummitbank.com' },
+      {
+        name: 'Alex Kim',
+        email: 'akim@northsummitbank.com',
+        roleId: 'tenant-reader',
+      },
     ],
     invitedTenantUserEmails: [
       DEMO_TENANT_LOGIN_EMAIL_USER.northstar,
@@ -395,7 +553,8 @@ export function createDemoNorthSummitBankOrganization(
     identityProviderDisplayName: 'north-summit-bank-idp',
     identityProviderProtocol: 'OIDC',
     identityProviderIssuerUrl: `https://login.${primaryDomain}/oauth2`,
-    identityProviderClientId: 'bmaas-northstar',
+    identityProviderClientId: 'north-summit-bank',
+    identityProviders: [],
     idpManagerEmail: null,
     idpInviteToken: null,
     idpInviteStatus: 'none',
@@ -444,6 +603,16 @@ export function createDemoHarborlineCapitalOrganization(
     additionalTenantAdmins: [
       { name: 'Noah Patel', email: `npatel@${primaryDomain}` },
       { name: 'Riley Soto', email: `rsoto@${primaryDomain}` },
+      {
+        name: 'Morgan Lee',
+        email: `mlee@${primaryDomain}`,
+        roleId: 'tenant-reader',
+      },
+      {
+        name: 'Kai Davis',
+        email: `kdavis@${primaryDomain}`,
+        roleId: 'tenant-user',
+      },
     ],
     invitedTenantUserEmails: [
       `mlee@${primaryDomain}`,
@@ -455,7 +624,8 @@ export function createDemoHarborlineCapitalOrganization(
     identityProviderDisplayName: 'harborline-capital-idp',
     identityProviderProtocol: 'SAML',
     identityProviderIssuerUrl: `https://idp.${primaryDomain}/saml`,
-    identityProviderClientId: 'bmaas-harborline',
+    identityProviderClientId: 'harborline-capital',
+    identityProviders: [],
     idpManagerEmail: null,
     idpInviteToken: null,
     idpInviteStatus: 'none',
