@@ -290,9 +290,55 @@ export function getIdpManagerSetupRoute(token: string): string {
   return `/idp-setup/${encodeURIComponent(token)}`
 }
 
+/** Public IdP manager URL segment for the BlueSolace onboarding demo. */
+export const DEMO_IDP_MANAGER_URL_SLUG = 'bluesolace'
+
+/** Stored organization slug that backs the BlueSolace IdP manager demo. */
+export const DEMO_IDP_MANAGER_ORG_SLUG = 'northstar'
+
+export function getIdpManagerUrlSlug(slug = DEMO_IDP_MANAGER_URL_SLUG): string {
+  const normalized = slug.trim().toLowerCase()
+  if (
+    normalized === '' ||
+    normalized === DEMO_IDP_MANAGER_ORG_SLUG ||
+    normalized === DEMO_IDP_MANAGER_URL_SLUG ||
+    normalized === 'evergreen' ||
+    normalized === 'bluesolace-financial-group'
+  ) {
+    return DEMO_IDP_MANAGER_URL_SLUG
+  }
+  return normalized
+}
+
+/** Map an IdP manager URL slug to the stored organization slug. */
+export function getIdpManagerOrganizationSlug(urlSlug: string): string {
+  const normalized = urlSlug.trim().toLowerCase()
+  if (
+    normalized === DEMO_IDP_MANAGER_URL_SLUG ||
+    normalized === 'evergreen' ||
+    normalized === 'bluesolace-financial-group'
+  ) {
+    return DEMO_IDP_MANAGER_ORG_SLUG
+  }
+  return normalized
+}
+
+export function findOrganizationForIdpManagerUrlSlug(
+  organizations: RegisteredOrganization[],
+  urlSlug: string,
+): RegisteredOrganization | null {
+  const normalized = urlSlug.trim().toLowerCase()
+  const storedSlug = getIdpManagerOrganizationSlug(normalized)
+  return (
+    organizations.find((organization) => organization.slug.toLowerCase() === storedSlug) ??
+    organizations.find((organization) => organization.slug.toLowerCase() === normalized) ??
+    null
+  )
+}
+
 /** Break-glass sign-in for an organization IdP manager. */
-export function getIdpManagerPrototypeRoute(slug = 'northstar'): string {
-  return `/idp-manager/${encodeURIComponent(slug)}`
+export function getIdpManagerPrototypeRoute(slug = DEMO_IDP_MANAGER_URL_SLUG): string {
+  return `/idp-manager/${encodeURIComponent(getIdpManagerUrlSlug(slug))}`
 }
 
 export function getIdpManagerChangePasswordRoute(slug: string): string {

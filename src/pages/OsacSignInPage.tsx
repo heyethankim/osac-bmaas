@@ -65,6 +65,7 @@ function OsacAuthShell({
           aria-label={busyLabel ?? 'Continuing'}
         >
           <Spinner size="lg" aria-label={busyLabel ?? 'Continuing'} />
+          <p className="osac-signin__loading-veil-text">{busyLabel ?? 'Continuing'}</p>
         </div>
       ) : null}
     </div>
@@ -118,7 +119,7 @@ export function OsacSignInPage({
     <OsacAuthShell
       title="Sign in"
       isBusy={isContinuing}
-      busyLabel={isLocalAccount ? 'Signing in' : 'Continuing to sign in'}
+      busyLabel={isLocalAccount ? 'Signing you in…' : 'Continuing to sign in'}
     >
       <Form
         autoComplete="off"
@@ -282,7 +283,7 @@ export function OsacChangePasswordPage({
     newPassword.trim().length >= 8
 
   return (
-    <OsacAuthShell title="Change password" isBusy={isWorking} busyLabel="Saving password">
+    <OsacAuthShell title="Change password" isBusy={isWorking} busyLabel="Saving password…">
       <Form
         autoComplete="off"
         className="osac-signin__form"

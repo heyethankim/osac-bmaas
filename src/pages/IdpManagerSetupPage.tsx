@@ -8,8 +8,10 @@ import {
   updateProviderRegisteredOrganization,
 } from '../providerSetup/storage'
 import {
+  findOrganizationForIdpManagerUrlSlug,
   getIdpManagerChangePasswordRoute,
   getIdpManagerPrototypeRoute,
+  getIdpManagerUrlSlug,
   getIdpManagerWorkspaceRoute,
   getPendingIdpManagerInvites,
   hasBreakGlassAccount,
@@ -23,6 +25,8 @@ import { OsacChangePasswordPage, OsacSignInPage } from './OsacSignInPage'
 type GateState = 'invalid' | 'expired' | 'ready'
 type IdpManagerPage = 'sign-in' | 'change-password'
 
+const IDP_MANAGER_AUTH_DELAY_MS = 1500
+
 function getIdpManagerPage(pathname: string): IdpManagerPage {
   if (pathname.endsWith('/change-password')) {
     return 'change-password'
@@ -31,12 +35,7 @@ function getIdpManagerPage(pathname: string): IdpManagerPage {
 }
 
 function findOrganizationBySlug(slug: string): RegisteredOrganization | null {
-  const normalized = slug.trim().toLowerCase()
-  return (
-    getProviderRegisteredOrganizations().find(
-      (organization) => organization.slug.toLowerCase() === normalized,
-    ) ?? null
-  )
+  return findOrganizationForIdpManagerUrlSlug(getProviderRegisteredOrganizations(), slug)
 }
 
 function buildNextBreakGlassPassword(_currentPassword: string): string {
@@ -95,10 +94,27 @@ function resolveIdpManagerGate(
 
 export function IdpManagerSetupPage() {
   const { orgSlug, token } = useParams<{ orgSlug?: string; token?: string }>()
+  const location = useLocation()
+  const page = getIdpManagerPage(location.pathname)
+  const canonicalSlug = orgSlug ? getIdpManagerUrlSlug(orgSlug) : undefined
+
+  if (orgSlug && canonicalSlug && canonicalSlug !== orgSlug) {
+    return (
+      <Navigate
+        to={
+          page === 'change-password'
+            ? getIdpManagerChangePasswordRoute(canonicalSlug)
+            : getIdpManagerPrototypeRoute(canonicalSlug)
+        }
+        replace
+      />
+    )
+  }
+
   return (
     <IdpManagerSetupSession
-      key={token ?? orgSlug ?? 'idp-manager'}
-      orgSlug={orgSlug}
+      key={token ?? canonicalSlug ?? orgSlug ?? 'idp-manager'}
+      orgSlug={canonicalSlug ?? orgSlug}
       token={token}
     />
   )
@@ -121,6 +137,7 @@ function IdpManagerSetupSession({
   const [signInError, setSignInError] = useState<string | null>(null)
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [isSigningIn, setIsSigningIn] = useState(false)
+  const [isSavingPassword, setIsSavingPassword] = useState(false)
   const gateState = resolved.gateState
   const gateOrganization = organization ?? resolved.organization
 
@@ -137,7 +154,7 @@ function IdpManagerSetupSession({
   }, [gateState, resolved.organization])
 
   const handleSignIn = (username: string, password: string) => {
-    if (!gateOrganization) {
+    if (!gateOrganization || isSigningIn) {
       return
     }
     if (!credentialsMatch(gateOrganization, username, password)) {
@@ -147,14 +164,14 @@ function IdpManagerSetupSession({
 
     setSignInError(null)
     setIsSigningIn(true)
+    const nextRoute = getIdpManagerChangePasswordRoute(gateOrganization.slug)
     window.setTimeout(() => {
-      setIsSigningIn(false)
-      navigate(getIdpManagerChangePasswordRoute(gateOrganization.slug))
-    }, 600)
+      navigate(nextRoute)
+    }, IDP_MANAGER_AUTH_DELAY_MS)
   }
 
   const handleChangePassword = (currentPassword: string, newPassword: string) => {
-    if (!gateOrganization) {
+    if (!gateOrganization || isSavingPassword) {
       return
     }
     if (currentPassword !== gateOrganization.breakGlassPassword) {
@@ -172,7 +189,11 @@ function IdpManagerSetupSession({
 
     setPasswordError(null)
     setOrganization(updated)
-    navigate(getIdpManagerWorkspaceRoute(updated.slug))
+    setIsSavingPassword(true)
+    const nextRoute = getIdpManagerWorkspaceRoute(updated.slug)
+    window.setTimeout(() => {
+      navigate(nextRoute)
+    }, IDP_MANAGER_AUTH_DELAY_MS)
   }
 
   if (gateState === 'invalid' || gateState === 'expired') {
@@ -232,6 +253,7 @@ function IdpManagerSetupSession({
         defaultCurrentPassword={gateOrganization.breakGlassPassword ?? ''}
         defaultNewPassword={buildNextBreakGlassPassword(gateOrganization.breakGlassPassword ?? '')}
         errorMessage={passwordError ?? undefined}
+        isWorking={isSavingPassword}
         onSubmit={handleChangePassword}
       />
     )

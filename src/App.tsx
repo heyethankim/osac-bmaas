@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { ConceptualDesignSticker } from './components/ConceptualDesignSticker'
 import { BmaasLandingPage } from './pages/BmaasLandingPage'
 import { IdpManagerSetupPage } from './pages/IdpManagerSetupPage'
@@ -10,12 +10,28 @@ import { TenantAdminWorkspacePage } from './pages/TenantAdminWorkspacePage'
 import { TenantLoginPage } from './pages/TenantLoginPage'
 import { TenantUserWorkspacePage } from './pages/TenantUserWorkspacePage'
 
+function RedirectNorthstarIdpManager() {
+  const location = useLocation()
+  return (
+    <Navigate
+      to={`${location.pathname.replace(
+        /^\/idp-manager\/northstar/,
+        '/idp-manager/bluesolace',
+      )}${location.search}${location.hash}`}
+      replace
+    />
+  )
+}
+
 export default function App() {
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <ConceptualDesignSticker />
       <Routes>
         <Route path="/" element={<BmaasLandingPage />} />
+        <Route path="/idp-manager/northstar/change-password" element={<RedirectNorthstarIdpManager />} />
+        <Route path="/idp-manager/northstar/workspace" element={<RedirectNorthstarIdpManager />} />
+        <Route path="/idp-manager/northstar" element={<RedirectNorthstarIdpManager />} />
         <Route path="/idp-manager/:orgSlug/change-password" element={<IdpManagerSetupPage />} />
         <Route path="/idp-manager/:orgSlug/workspace" element={<IdpManagerWorkspacePage />} />
         <Route path="/idp-manager/:orgSlug" element={<IdpManagerSetupPage />} />

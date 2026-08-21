@@ -10,7 +10,10 @@ import {
   type IdpManagerNavId,
 } from '../idpManager/constants'
 import {
+  findOrganizationForIdpManagerUrlSlug,
   getIdpManagerPrototypeRoute,
+  getIdpManagerUrlSlug,
+  getIdpManagerWorkspaceRoute,
   hasBreakGlassAccount,
   type RegisteredOrganization,
 } from '../providerAdmin/organizations'
@@ -21,12 +24,7 @@ import {
 import { syncWorkspaceNavParam } from '../shared/workspaceNavUrl'
 
 function findOrganizationBySlug(slug: string): RegisteredOrganization | null {
-  const normalized = slug.trim().toLowerCase()
-  return (
-    getProviderRegisteredOrganizations().find(
-      (organization) => organization.slug.toLowerCase() === normalized,
-    ) ?? null
-  )
+  return findOrganizationForIdpManagerUrlSlug(getProviderRegisteredOrganizations(), slug)
 }
 
 function loadWorkspaceOrganization(orgSlug: string): RegisteredOrganization | null {
@@ -37,12 +35,20 @@ function loadWorkspaceOrganization(orgSlug: string): RegisteredOrganization | nu
 
 export function IdpManagerWorkspacePage() {
   const { orgSlug } = useParams<{ orgSlug: string }>()
+  const [searchParams] = useSearchParams()
 
   if (!orgSlug?.trim()) {
     return <Navigate to="/" replace />
   }
 
-  return <IdpManagerWorkspaceSession key={orgSlug} orgSlug={orgSlug} />
+  const canonicalSlug = getIdpManagerUrlSlug(orgSlug)
+  if (canonicalSlug !== orgSlug) {
+    const next = getIdpManagerWorkspaceRoute(canonicalSlug)
+    const search = searchParams.toString()
+    return <Navigate to={search ? `${next}?${search}` : next} replace />
+  }
+
+  return <IdpManagerWorkspaceSession key={canonicalSlug} orgSlug={canonicalSlug} />
 }
 
 function IdpManagerWorkspaceSession({ orgSlug }: { orgSlug: string }) {

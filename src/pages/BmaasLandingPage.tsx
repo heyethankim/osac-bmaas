@@ -23,7 +23,6 @@ import { UsersIcon } from '@patternfly/react-icons/dist/esm/icons/users-icon'
 import { Fragment, type ReactNode } from 'react'
 import { RouterButton } from '../components/RouterButton'
 import { BMAAS_LANDING_LAST_UPDATED } from '../bmaasLandingLastUpdated'
-import { getIdpManagerPrototypeRoute } from '../providerAdmin/organizations'
 import redHatHatLogoUrl from '../assets/Logo-RedHat-Hat-Color-RGB.svg?url'
 
 type PrototypeLink = {
@@ -128,7 +127,7 @@ export function BmaasLandingPage() {
     },
     {
       label: 'Onboarding',
-      to: getIdpManagerPrototypeRoute(),
+      to: '/idp-manager/bluesolace',
       statusLabel: 'Not approved yet',
     },
   ]

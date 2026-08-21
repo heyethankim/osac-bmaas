@@ -931,6 +931,14 @@
   background: rgb(0 0 0 / 72%);
 }
 
+.osac-signin__loading-veil-text {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  font-weight: 500;
+  color: #fff;
+}
+
 .osac-signin__loading-veil .pf-v6-c-spinner {
   --pf-v6-c-spinner--Color: #ee0000;
   color: #ee0000;
