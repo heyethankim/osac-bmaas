@@ -40,7 +40,7 @@ export const ASSIGNABLE_TENANT_ROLES = [
     id: 'tenant-user',
     label: 'Tenant user',
     description: 'Standard user access within a tenant.',
-    color: 'gold',
+    color: 'teal',
   },
 ] as const
 
