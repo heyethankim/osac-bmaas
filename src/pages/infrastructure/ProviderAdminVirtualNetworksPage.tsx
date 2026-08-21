@@ -161,7 +161,7 @@ export function ProviderAdminVirtualNetworksPage({
         title="Virtual networks"
         lede={
           tenantSlug
-            ? 'Virtual networks your organization uses for workloads and catalog networking.'
+            ? 'Virtual networks your tenant uses for workloads and catalog networking.'
             : 'Define and manage virtual networks used for tenant workloads, shared services, and catalog networking.'
         }
         action={

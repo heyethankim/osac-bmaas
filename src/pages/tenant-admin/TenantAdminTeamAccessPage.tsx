@@ -12,7 +12,7 @@ export function TenantAdminTeamAccessPage({ teamMembers }: TenantAdminTeamAccess
   return (
     <div className="tenant-admin-workspace-page tenant-admin-team-access">
       <TenantAdminWorkspacePageHeader
-        kicker="Organization"
+        kicker="Tenant"
         title="Team access"
         lede="Manage tenant users who can sign in and provision from your assigned catalog."
         action={

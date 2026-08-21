@@ -152,7 +152,7 @@ export function IdpManagerIdentityProviderPage({
   return (
     <div className="provider-admin-workspace-page tenant-admin-administration idp-manager-identity-provider">
       <ProviderAdminWorkspacePageHeader
-        kicker="Organization"
+        kicker="Tenant"
         title={IDP_MANAGER_IDENTITY_PROVIDER_COPY.title}
         lede={IDP_MANAGER_IDENTITY_PROVIDER_COPY.lede}
         action={
@@ -191,19 +191,6 @@ export function IdpManagerIdentityProviderPage({
             <div className="catalog-view-toolbar__start">
               <FormSelect
                 className="catalog-status-filter"
-                id="idp-manager-protocol-filter"
-                value={selectedProtocol}
-                onChange={(_event, value) =>
-                  setSelectedProtocol(value as IdentityProviderProtocolFilter)
-                }
-                aria-label="Filter by protocol"
-              >
-                <FormSelectOption value="all" label="By protocol" />
-                <FormSelectOption value="OIDC" label="OIDC" />
-                <FormSelectOption value="SAML" label="SAML" />
-              </FormSelect>
-              <FormSelect
-                className="catalog-status-filter"
                 id="idp-manager-status-filter"
                 value={selectedStatus}
                 onChange={(_event, value) =>
@@ -211,8 +198,21 @@ export function IdpManagerIdentityProviderPage({
                 }
                 aria-label="Filter by status"
               >
-                <FormSelectOption value="all" label="By status" />
+                <FormSelectOption value="all" label="All Statuses" />
                 <FormSelectOption value="Connected" label="Connected" />
+              </FormSelect>
+              <FormSelect
+                className="catalog-status-filter"
+                id="idp-manager-protocol-filter"
+                value={selectedProtocol}
+                onChange={(_event, value) =>
+                  setSelectedProtocol(value as IdentityProviderProtocolFilter)
+                }
+                aria-label="Filter by protocol"
+              >
+                <FormSelectOption value="all" label="All protocols" />
+                <FormSelectOption value="OIDC" label="OIDC" />
+                <FormSelectOption value="SAML" label="SAML" />
               </FormSelect>
               <SearchInput
                 className="catalog-search"

@@ -161,12 +161,12 @@ export function TenantAdminAdministratorsPage({
             <>
               <strong>{administratorPendingRemove.name}</strong>{' '}
               {showRoleCatalog
-                ? 'will lose this role assignment for this organization.'
-                : 'will lose tenant admin access to this organization.'}{' '}
+                ? 'will lose this role assignment for this tenant.'
+                : 'will lose tenant admin access to this tenant.'}{' '}
               This cannot be undone.
             </>
           ) : (
-            'This administrator will lose tenant admin access to this organization.'
+            'This administrator will lose tenant admin access to this tenant.'
           )}
         </Content>
       </ModalBody>
@@ -202,7 +202,7 @@ export function TenantAdminAdministratorsPage({
   return (
     <div className="provider-admin-workspace-page tenant-admin-administration">
       <ProviderAdminWorkspacePageHeader
-        kicker="Organization"
+        kicker="Tenant"
         title={title}
         lede={lede}
         action={
@@ -219,20 +219,6 @@ export function TenantAdminAdministratorsPage({
 
       <div className="catalog-view-toolbar">
         <div className="catalog-view-toolbar__start">
-          <FormSelect
-            className="catalog-status-filter"
-            id="tenant-administration-role-filter"
-            value={selectedRole}
-            onChange={(_event, value) => setSelectedRole(value as AdministratorRoleFilter)}
-            aria-label="Filter by role"
-          >
-            <FormSelectOption value="all" label="By role" />
-            {(showRoleCatalog ? ASSIGNABLE_TENANT_ROLES : ASSIGNABLE_TENANT_ROLES.slice(0, 1)).map(
-              (role) => (
-                <FormSelectOption key={role.id} value={role.id} label={role.label} />
-              ),
-            )}
-          </FormSelect>
           {showAssignmentStatus ? (
             <FormSelect
               className="catalog-status-filter"
@@ -243,11 +229,25 @@ export function TenantAdminAdministratorsPage({
               }
               aria-label="Filter by status"
             >
-              <FormSelectOption value="all" label="By status" />
+              <FormSelectOption value="all" label="All Statuses" />
               <FormSelectOption value="Pending" label="Pending" />
               <FormSelectOption value="Active" label="Active" />
             </FormSelect>
           ) : null}
+          <FormSelect
+            className="catalog-status-filter"
+            id="tenant-administration-role-filter"
+            value={selectedRole}
+            onChange={(_event, value) => setSelectedRole(value as AdministratorRoleFilter)}
+            aria-label="Filter by role"
+          >
+            <FormSelectOption value="all" label="All Roles" />
+            {(showRoleCatalog ? ASSIGNABLE_TENANT_ROLES : ASSIGNABLE_TENANT_ROLES.slice(0, 1)).map(
+              (role) => (
+                <FormSelectOption key={role.id} value={role.id} label={role.label} />
+              ),
+            )}
+          </FormSelect>
           <SearchInput
             className="catalog-search"
             placeholder={showRoleCatalog ? 'Search by name or email' : 'Search administrators'}

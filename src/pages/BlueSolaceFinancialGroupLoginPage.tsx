@@ -13,10 +13,10 @@ import {
   Spinner,
   TextInput,
 } from '@patternfly/react-core'
-import { BluestoneMarkIcon } from '../components/tenant/BluestoneMarkIcon'
 import { DEMO_LOGIN_PREFILLED_PASSWORD } from '../demoTenant'
 
 const BLUESTONE_LOGIN_ILLUSTRATION_SRC = `${import.meta.env.BASE_URL}bluestone-login-illustration.png`
+const BLUE_SOLACE_LOGO_SRC = `${import.meta.env.BASE_URL}bluesolace-financial-group-logo.png`
 
 export type BlueSolaceFinancialGroupLoginPageProps = {
   onLoginSuccess: () => void
@@ -81,14 +81,13 @@ export function BlueSolaceFinancialGroupLoginPage({
         <Card className="evergreen-login__split-card" isCompact={false}>
           <CardBody className="evergreen-login__split-body">
             <div className="evergreen-login__left">
-              <div className="evergreen-login__brand" aria-label="BlueSolace Financial Group">
-                <span className="evergreen-login__brand-mark" aria-hidden>
-                  <BluestoneMarkIcon className="evergreen-login__brand-logo-img" />
-                </span>
-                <span className="evergreen-login__brand-wordstack">
-                  <span className="evergreen-login__brand-word">BlueSolace</span>
-                  <span className="evergreen-login__brand-subword">Financial Group</span>
-                </span>
+              <div className="evergreen-login__brand">
+                <img
+                  src={BLUE_SOLACE_LOGO_SRC}
+                  alt="BlueSolace Financial Group"
+                  className="evergreen-login__brand-lockup"
+                  draggable={false}
+                />
               </div>
 
               <h1 className="evergreen-login__headline">

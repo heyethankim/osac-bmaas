@@ -319,7 +319,7 @@ export function buildProjectFilterParts(
 }
 
 export const TENANT_PROJECTS_TEAMS_DEMO = {
-  lede: 'Carve your organization workspace into isolated projects and grant team members scoped access.',
+  lede: 'Carve your tenant workspace into isolated projects and grant team members scoped access.',
   emptyTitle: 'No projects yet',
   emptyBody: 'Create your first project to carve quota slices and invite developers.',
   createFirstProjectLabel: 'Create first project',

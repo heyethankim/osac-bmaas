@@ -177,7 +177,7 @@ export function ProviderAdminSubnetsPage({
         title="Subnets"
         lede={
           tenantSlug
-            ? 'Subnets within your organization virtual networks for workloads and launch.'
+            ? 'Subnets within your tenant virtual networks for workloads and launch.'
             : 'Define subnets within virtual networks for catalog defaults and tenant selection.'
         }
         action={

@@ -45,7 +45,7 @@ const DEFAULT_CREATE_POOL_FORM: CreatePoolForm = {
 
 const PROVIDER_CREATE_EXTERNAL_IP_POOL_STEPS = [
   { id: 'pool', label: 'External IP pool' },
-  { id: 'organization', label: 'Organization' },
+  { id: 'organization', label: 'Tenant' },
   NETWORK_INVENTORY_CREATE_REVIEW_STEP,
 ] as const
 
@@ -176,7 +176,7 @@ export function CreateExternalIpPoolWizard({
             {isEditMode
               ? 'Update routable address capacity and metadata for this external IP pool.'
               : isProviderCreate
-                ? 'Define routable addresses for tenant edge exposure. You will assign this pool to an organization in the next step.'
+                ? 'Define routable addresses for tenant edge exposure. You will assign this pool to a tenant in the next step.'
                 : 'External IP pools provide routable addresses for workloads that need public exposure.'}
           </Content>
           <Form autoComplete="off" className="provider-admin-network-inventory__form">
@@ -231,30 +231,30 @@ export function CreateExternalIpPoolWizard({
       return (
         <div className="provider-admin-network-inventory__wizard-step">
           <Content component="p" className="provider-admin-network-inventory__wizard-lede">
-            Assign this pool to a tenant organization. Organizations can have multiple pools for
+            Assign this pool to a tenant. Tenants can have multiple pools for
             different regions or environments.
           </Content>
           {assignableOrganizations.length === 0 ? (
             <Alert
               variant="warning"
               isInline
-              title="No registered organizations"
+              title="No registered tenants"
               className="provider-admin-external-ip-pools__assign-alert"
             >
               <Content component="p">
-                Register a tenant organization before creating and assigning an external IP pool.
+                Register a tenant before creating and assigning an external IP pool.
               </Content>
             </Alert>
           ) : (
             <Form autoComplete="off" className="provider-admin-network-inventory__form">
-              <FormGroup label="Organization" fieldId="create-pool-organization" isRequired>
+              <FormGroup label="Tenant" fieldId="create-pool-organization" isRequired>
                 <FormSelect
                   id="create-pool-organization"
                   value={form.organizationId}
                   onChange={(_event, value) =>
                     setForm((current) => ({ ...current, organizationId: value }))
                   }
-                  aria-label="Organization"
+                  aria-label="Tenant"
                 >
                   {assignableOrganizations.map((organization) => (
                     <FormSelectOption
@@ -301,7 +301,7 @@ export function CreateExternalIpPoolWizard({
         </DescriptionListGroup>
         {isProviderCreate && !isEditMode ? (
           <DescriptionListGroup>
-            <DescriptionListTerm>Organization</DescriptionListTerm>
+            <DescriptionListTerm>Tenant</DescriptionListTerm>
             <DescriptionListDescription>
               {selectedOrganization?.name ?? '—'}
             </DescriptionListDescription>

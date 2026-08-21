@@ -899,8 +899,8 @@ export function getClusterDemoPassword(instance: TenantInstance): string {
 
 export function getTenantInstanceScopeFieldLabel(
   instance: TenantInstance,
-): 'Organization' | 'Project' {
-  return getTenantInstanceProjectIds(instance).length > 0 ? 'Project' : 'Organization'
+): 'Tenant' | 'Project' {
+  return getTenantInstanceProjectIds(instance).length > 0 ? 'Project' : 'Tenant'
 }
 
 /** Normalized owning project id (supports legacy single-project instances). */

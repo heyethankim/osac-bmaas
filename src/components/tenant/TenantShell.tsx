@@ -37,6 +37,7 @@ import {
 import type { TenantNavGroup, TenantNavItem } from '../../tenantShell/constants'
 import { flattenTenantNavItems } from '../../tenantShell/constants'
 import { UserPreferencesModal } from '../shared/UserPreferencesModal'
+import { BlueSolaceMastheadLogo } from './BlueSolaceMastheadLogo'
 import { NorthstarBankMastheadLogo } from './NorthstarBankMastheadLogo'
 
 type TenantShellRole = 'tenant-admin' | 'tenant-user' | 'idp-manager'
@@ -156,9 +157,11 @@ export function TenantShell({
             <BarsIcon />
           </PageToggleButton>
         </MastheadToggle>
-        <MastheadLogo className="northstar-masthead-logo">
+        <MastheadLogo
+          className={role === 'idp-manager' ? 'bluesolace-masthead-logo' : 'northstar-masthead-logo'}
+        >
           <MastheadBrand>
-            <NorthstarBankMastheadLogo />
+            {role === 'idp-manager' ? <BlueSolaceMastheadLogo /> : <NorthstarBankMastheadLogo />}
           </MastheadBrand>
         </MastheadLogo>
       </MastheadMain>

@@ -923,7 +923,7 @@ export function patchProviderCatalogItem(
 
 /**
  * Rewrite a catalog item's stable identity (id / template ref / display name) and
- * retarget organization assignments. Used when migrating demo seeds to DNS-1123 names.
+ * retarget tenant assignments. Used when migrating demo seeds to DNS-1123 names.
  */
 export function rewriteProviderCatalogItemIdentity(
   fromCatalogItemId: string,
@@ -970,10 +970,10 @@ export function rewriteProviderCatalogItemIdentity(
   persistProviderCatalogItems(next)
 
   try {
-    const organizations = getProviderRegisteredOrganizations()
-    if (organizations.some((org) => org.catalogItemId === fromCatalogItemId)) {
+    const tenants = getProviderRegisteredOrganizations()
+    if (tenants.some((org) => org.catalogItemId === fromCatalogItemId)) {
       setProviderRegisteredOrganizations(
-        organizations.map((org) =>
+        tenants.map((org) =>
           org.catalogItemId === fromCatalogItemId
             ? {
                 ...org,
@@ -1001,11 +1001,11 @@ export function deleteProviderCatalogItem(catalogItemId: string): boolean {
   persistProviderCatalogItems(next)
 
   try {
-    const organizations = getProviderRegisteredOrganizations()
-    const hasAssigned = organizations.some((org) => org.catalogItemId === catalogItemId)
+    const tenants = getProviderRegisteredOrganizations()
+    const hasAssigned = tenants.some((org) => org.catalogItemId === catalogItemId)
     if (hasAssigned) {
       setProviderRegisteredOrganizations(
-        organizations.map((org) =>
+        tenants.map((org) =>
           org.catalogItemId === catalogItemId
             ? { ...org, catalogItemId: null, catalogDisplayName: null }
             : org,
@@ -1190,7 +1190,9 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
     ...org,
     id: org.id === 'org_northstar_bank' ? 'org-northstar-bank' : org.id,
     name:
-      org.name === 'North Summit Bank' || org.name === 'Northstar Bank'
+      org.name === 'North Summit Bank' ||
+      org.name === 'Northstar Bank' ||
+      (org.slug === 'northstar' && org.name === 'bluesolace-financial-group')
         ? 'north-summit-bank'
         : org.name === 'BlueSolace Financial Group' ||
             org.name === 'Bluestone Financial Group'
@@ -1242,6 +1244,9 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
       org.billingAccountName === 'North Summit Bank — Enterprise Billing' ||
       org.billingAccountName === 'Northstar Bank — Enterprise Billing'
         ? 'north-summit-bank-enterprise-billing'
+        : org.slug === 'northstar' &&
+            org.billingAccountName === 'bluesolace-financial-group-enterprise-billing'
+          ? 'north-summit-bank-enterprise-billing'
         : org.billingAccountName === 'BlueSolace Financial Group — Enterprise Billing' ||
             org.billingAccountName === 'Bluestone Financial Group — Corporate'
           ? org.billingAccountName.includes('Corporate')
@@ -1262,6 +1267,9 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
       org.identityProviderDisplayName === 'North Summit Bank IdP' ||
       org.identityProviderDisplayName === 'Northstar Bank IdP'
         ? 'north-summit-bank-idp'
+        : org.slug === 'northstar' &&
+            org.identityProviderDisplayName === 'bluesolace-financial-group-idp'
+          ? 'north-summit-bank-idp'
         : typeof org.identityProviderDisplayName === 'string' &&
             org.identityProviderDisplayName.trim()
           ? org.identityProviderDisplayName.trim()
@@ -1405,20 +1413,20 @@ export function getProviderRegisteredOrganizations(): RegisteredOrganization[] {
       return []
     }
 
-    const organizations = parsed.filter(isRegisteredOrganization)
-    const normalized = organizations.map(normalizeRegisteredOrganization)
-    const needsPersist = normalized.some((organization, index) => {
-      const original = organizations[index]!
+    const tenants = parsed.filter(isRegisteredOrganization)
+    const normalized = tenants.map(normalizeRegisteredOrganization)
+    const needsPersist = normalized.some((tenant, index) => {
+      const original = tenants[index]!
       return (
-        original.id !== organization.id ||
-        original.name !== organization.name ||
-        original.catalogItemId !== organization.catalogItemId ||
-        original.catalogDisplayName !== organization.catalogDisplayName ||
-        original.externalIpPoolName !== organization.externalIpPoolName ||
-        original.billingAccountName !== organization.billingAccountName ||
-        original.identityProviderDisplayName !== organization.identityProviderDisplayName ||
+        original.id !== tenant.id ||
+        original.name !== tenant.name ||
+        original.catalogItemId !== tenant.catalogItemId ||
+        original.catalogDisplayName !== tenant.catalogDisplayName ||
+        original.externalIpPoolName !== tenant.externalIpPoolName ||
+        original.billingAccountName !== tenant.billingAccountName ||
+        original.identityProviderDisplayName !== tenant.identityProviderDisplayName ||
         JSON.stringify(original.additionalDomains ?? []) !==
-          JSON.stringify(organization.additionalDomains)
+          JSON.stringify(tenant.additionalDomains)
       )
     })
     if (needsPersist) {
@@ -1431,7 +1439,7 @@ export function getProviderRegisteredOrganizations(): RegisteredOrganization[] {
 }
 
 /**
- * Organizations must survive new tabs so IdP manager invite links work.
+ * Tenants must survive new tabs so IdP manager invite links work.
  * Prefer localStorage; migrate any legacy sessionStorage payload once.
  * When both exist, merge by id and keep invite/IdP fields from the richer record.
  */
@@ -1550,7 +1558,7 @@ function removeRegisteredOrganizationsRaw(): void {
 }
 
 /**
- * Seeds North Summit Bank + Harborline Capital as Organizations page baselines:
+ * Seeds North Summit Bank + Harborline Capital as Tenants page baselines:
  * Active, IdP connected, roles defined — two enterprises for VIP multi-select demos.
  */
 export function ensureProviderDemoOrganizations(): RegisteredOrganization[] {
@@ -1592,22 +1600,22 @@ export function ensureProviderDemoOrganizations(): RegisteredOrganization[] {
       externalIpPoolCidr: harborlinePool?.cidr ?? null,
     })
 
-    const replacedOrganizations = current.filter(
-      (organization) =>
-        organization.id === northSummitBase.id ||
-        organization.slug === northSummitBase.slug ||
-        organization.id === harborlineBase.id ||
-        organization.slug === DEMO_HARBORLINE_CAPITAL_SLUG,
+    const replacedTenants = current.filter(
+      (tenant) =>
+        tenant.id === northSummitBase.id ||
+        tenant.slug === northSummitBase.slug ||
+        tenant.id === harborlineBase.id ||
+        tenant.slug === DEMO_HARBORLINE_CAPITAL_SLUG,
     )
-    const replacedIds = new Set(replacedOrganizations.map((organization) => organization.id))
-    const remainingOrganizations = current.filter(
-      (organization) => !replacedIds.has(organization.id),
+    const replacedIds = new Set(replacedTenants.map((tenant) => tenant.id))
+    const remainingTenants = current.filter(
+      (tenant) => !replacedIds.has(tenant.id),
     )
 
-    const pendingInviteSource = replacedOrganizations.find(
-      (organization) =>
-        (organization.id === northSummitBase.id || organization.slug === northSummitBase.slug) &&
-        hasPendingIdpInvite(organization),
+    const pendingInviteSource = replacedTenants.find(
+      (tenant) =>
+        (tenant.id === northSummitBase.id || tenant.slug === northSummitBase.slug) &&
+        hasPendingIdpInvite(tenant),
     )
     const northSummit = pendingInviteSource
       ? {
@@ -1644,7 +1652,7 @@ export function ensureProviderDemoOrganizations(): RegisteredOrganization[] {
     setProviderRegisteredOrganizations([
       northSummit,
       harborlineBase,
-      ...remainingOrganizations,
+      ...remainingTenants,
     ])
 
     if (northSummitPool) {
@@ -1679,7 +1687,7 @@ export function getProviderRegisteredOrganizationByIdpInviteToken(
 
   return (
     getProviderRegisteredOrganizations().find(
-      (organization) => organization.idpInviteToken === normalizedToken,
+      (tenant) => tenant.idpInviteToken === normalizedToken,
     ) ?? null
   )
 }
@@ -1689,15 +1697,15 @@ export function updateProviderRegisteredOrganization(
   patch: Partial<RegisteredOrganization>,
 ): RegisteredOrganization | null {
   try {
-    const organizations = getProviderRegisteredOrganizations()
-    const current = organizations.find((item) => item.id === organizationId)
+    const tenants = getProviderRegisteredOrganizations()
+    const current = tenants.find((item) => item.id === organizationId)
     if (!current) {
       return null
     }
 
     const updated = normalizeRegisteredOrganization({ ...current, ...patch, id: current.id })
     setProviderRegisteredOrganizations(
-      organizations.map((item) => (item.id === organizationId ? updated : item)),
+      tenants.map((item) => (item.id === organizationId ? updated : item)),
     )
     return updated
   } catch {
@@ -1707,9 +1715,9 @@ export function updateProviderRegisteredOrganization(
 
 export function removeProviderRegisteredOrganization(organizationId: string): boolean {
   try {
-    const organizations = getProviderRegisteredOrganizations()
-    const next = organizations.filter((organization) => organization.id !== organizationId)
-    if (next.length === organizations.length) {
+    const tenants = getProviderRegisteredOrganizations()
+    const next = tenants.filter((tenant) => tenant.id !== organizationId)
+    if (next.length === tenants.length) {
       return false
     }
 
@@ -1741,7 +1749,7 @@ export function getOrganizationsAssignedToCatalogItem(
   catalogItemId: string,
 ): RegisteredOrganization[] {
   return getProviderRegisteredOrganizations().filter(
-    (organization) => organization.catalogItemId === catalogItemId,
+    (tenant) => tenant.catalogItemId === catalogItemId,
   )
 }
 
@@ -1750,25 +1758,25 @@ export function assignCatalogToRegisteredOrganization(
   catalog: ProviderCatalogDraft,
 ): boolean {
   try {
-    const organizations = getProviderRegisteredOrganizations()
-    const organization = organizations.find((item) => item.id === organizationId)
-    if (!organization) {
+    const tenants = getProviderRegisteredOrganizations()
+    const tenant = tenants.find((item) => item.id === organizationId)
+    if (!tenant) {
       return false
     }
 
-    if (organization.catalogItemId && organization.catalogItemId !== catalog.catalogItemId) {
+    if (tenant.catalogItemId && tenant.catalogItemId !== catalog.catalogItemId) {
       return false
     }
 
     if (
-      organization.catalogItemId === catalog.catalogItemId &&
-      organization.catalogDisplayName === catalog.displayName
+      tenant.catalogItemId === catalog.catalogItemId &&
+      tenant.catalogDisplayName === catalog.displayName
     ) {
       return true
     }
 
     setProviderRegisteredOrganizations(
-      organizations.map((item) =>
+      tenants.map((item) =>
         item.id === organizationId
           ? {
               ...item,
@@ -1787,11 +1795,11 @@ export function assignCatalogToRegisteredOrganization(
 
 export function activateProviderRegisteredOrganizationBySlug(slug: string): void {
   try {
-    const organizations = getProviderRegisteredOrganizations()
-    const updated = organizations.map((organization) =>
-      organization.slug === slug && organization.status === 'Pending activation'
-        ? { ...organization, status: 'Active' as const }
-        : organization,
+    const tenants = getProviderRegisteredOrganizations()
+    const updated = tenants.map((tenant) =>
+      tenant.slug === slug && tenant.status === 'Pending activation'
+        ? { ...tenant, status: 'Active' as const }
+        : tenant,
     )
 
     writeRegisteredOrganizationsRaw(JSON.stringify(updated))
@@ -1923,9 +1931,9 @@ export function assignExternalIpPoolToOrganization(
   setProviderExternalIpPools(updated)
 }
 
-function setProviderRegisteredOrganizations(organizations: RegisteredOrganization[]): void {
+function setProviderRegisteredOrganizations(tenants: RegisteredOrganization[]): void {
   try {
-    writeRegisteredOrganizationsRaw(JSON.stringify(organizations))
+    writeRegisteredOrganizationsRaw(JSON.stringify(tenants))
   } catch {
     /* demo storage unavailable */
   }
@@ -1942,9 +1950,9 @@ export function assignExternalIpPoolToRegisteredOrganization(
       return false
     }
 
-    const organizations = getProviderRegisteredOrganizations()
-    const organization = organizations.find((item) => item.id === organizationId)
-    if (!organization) {
+    const tenants = getProviderRegisteredOrganizations()
+    const tenant = tenants.find((item) => item.id === organizationId)
+    if (!tenant) {
       return false
     }
 
@@ -1959,11 +1967,11 @@ export function assignExternalIpPoolToRegisteredOrganization(
       return true
     }
 
-    assignExternalIpPoolToOrganization(poolId, organization.id, organization.name)
+    assignExternalIpPoolToOrganization(poolId, tenant.id, tenant.name)
     setProviderRegisteredOrganizations(
-      organizations.map((item) =>
+      tenants.map((item) =>
         item.id === organizationId
-          ? organization.externalIpPoolId
+          ? tenant.externalIpPoolId
             ? item
             : {
                 ...item,

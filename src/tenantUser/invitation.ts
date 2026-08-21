@@ -10,7 +10,7 @@ import {
 export type TenantUserProjectInvitation = {
   scopeKind: TenantUserScopeKind
   scopeLabel: string
-  scopeFieldLabel: 'Organization' | 'Project'
+  scopeFieldLabel: 'Tenant' | 'Project'
   projectEnvironment: string
   workspaceName: string
   role: string

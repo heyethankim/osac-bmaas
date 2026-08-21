@@ -56,14 +56,14 @@ export function AttachExternalIpPoolToProjectModal({
                 <DescriptionListDescription>{project.name}</DescriptionListDescription>
               </DescriptionListGroup>
               <DescriptionListGroup>
-                <DescriptionListTerm>Organization pool</DescriptionListTerm>
+                <DescriptionListTerm>Tenant pool</DescriptionListTerm>
                 <DescriptionListDescription>
                   {organizationPool.name} · <code>{organizationPool.cidr}</code>
                 </DescriptionListDescription>
               </DescriptionListGroup>
             </DescriptionList>
             <Content component="p" className="tenant-admin-quota-distribution__attach-note">
-              This project will use your organization&apos;s assigned external IP pool for routable
+              This project will use your tenant&apos;s assigned external IP pool for routable
               public address exposure. Only the pool inherited from your provider administrator can
               be attached.
             </Content>

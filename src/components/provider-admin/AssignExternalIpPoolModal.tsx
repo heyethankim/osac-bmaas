@@ -66,7 +66,7 @@ export function AssignExternalIpPoolModal({
       aria-labelledby="assign-external-ip-pool-title"
       className="provider-admin-external-ip-pools__assign-modal"
     >
-      <ModalHeader title="Assign to organization" labelId="assign-external-ip-pool-title" />
+      <ModalHeader title="Assign to tenant" labelId="assign-external-ip-pool-title" />
       <ModalBody>
         {pool ? (
           <>
@@ -87,21 +87,21 @@ export function AssignExternalIpPoolModal({
               <Alert
                 variant="warning"
                 isInline
-                title="No registered organizations"
+                title="No registered tenants"
                 className="provider-admin-external-ip-pools__assign-alert"
               >
                 <Content component="p">
-                  Register a tenant organization before assigning this external IP pool.
+                  Register a tenant before assigning this external IP pool.
                 </Content>
               </Alert>
             ) : (
               <Form autoComplete="off" className="provider-admin-external-ip-pools__form">
-                <FormGroup label="Organization" fieldId="assign-pool-organization" isRequired>
+                <FormGroup label="Tenant" fieldId="assign-pool-organization" isRequired>
                   <FormSelect
                     id="assign-pool-organization"
                     value={selectedOrganizationId}
                     onChange={(_event, value) => setSelectedOrganizationId(value)}
-                    aria-label="Organization"
+                    aria-label="Tenant"
                   >
                     {eligibleOrganizations.map((organization) => (
                       <FormSelectOption

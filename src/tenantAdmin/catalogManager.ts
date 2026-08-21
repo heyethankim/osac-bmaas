@@ -74,7 +74,7 @@ export const TENANT_CATALOG_MANAGER_DEMO = {
   lede: "Filter the provider's global catalog down to safe, approved offerings.",
   accessLabel: 'Access',
   accessDetailNote:
-    'Available to all organization members by default. Assign projects or teams if you want to restrict who can launch this item.',
+    'Available to all tenant members by default. Assign projects or teams if you want to restrict who can launch this item.',
   accessDefaultLabel: 'All members',
   accessViewDetailsLabel: 'Details',
   addProjectsLinkLabel: 'Set up projects & teams',

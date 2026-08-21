@@ -130,7 +130,7 @@ export const METERING_RECORDS: MeteringRecord[] = [
 export const PROVIDER_RECENT_ACTIVITIES: ProviderRecentActivity[] = [
   {
     id: 'pa-1',
-    area: 'Tenant organizations',
+    area: 'Tenants',
     labelColor: 'blue',
     timeLabel: '18 min ago',
     title: 'north-summit-bank workspace verified',
@@ -166,7 +166,7 @@ export const PROVIDER_RECENT_ACTIVITIES: ProviderRecentActivity[] = [
   },
   {
     id: 'pa-5',
-    area: 'Tenant organizations',
+    area: 'Tenants',
     labelColor: 'blue',
     timeLabel: '6 hr ago',
     title: 'bluestone-financial-group onboarding checklist',

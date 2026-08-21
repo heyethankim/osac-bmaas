@@ -99,7 +99,7 @@ export function CreateExternalIpPoolModal({
       <ModalBody>
         <Form autoComplete="off" className="provider-admin-external-ip-pools__form">
           <Content component="p" className="provider-admin-external-ip-pools__modal-lede">
-            Define routable addresses and assign the pool to a tenant organization during creation.
+            Define routable addresses and assign the pool to a tenant during creation.
           </Content>
           <FormGroup label="Pool name" fieldId="create-pool-name" isRequired>
             <KubernetesResourceNameField

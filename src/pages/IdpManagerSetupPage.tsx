@@ -39,9 +39,8 @@ function findOrganizationBySlug(slug: string): RegisteredOrganization | null {
   )
 }
 
-function buildNextBreakGlassPassword(currentPassword: string): string {
-  const current = currentPassword.trim() || 'BG-osac-vault'
-  return `${current}-new`
+function buildNextBreakGlassPassword(_currentPassword: string): string {
+  return 'BG-bluesolace-financial-group-vault-2026'
 }
 
 function credentialsMatch(
@@ -49,9 +48,13 @@ function credentialsMatch(
   username: string,
   password: string,
 ): boolean {
-  const expectedUser = organization.breakGlassUsername?.trim().toLowerCase() ?? ''
+  const entered = username.trim().toLowerCase()
+  const expectedUsers = [
+    organization.breakGlassUsername?.trim().toLowerCase() ?? '',
+    organization.breakGlassEmail?.trim().toLowerCase() ?? '',
+  ].filter(Boolean)
   const expectedPass = organization.breakGlassPassword ?? ''
-  return username.trim().toLowerCase() === expectedUser && password === expectedPass
+  return expectedUsers.includes(entered) && password === expectedPass
 }
 
 function resolveIdpManagerGate(
@@ -191,13 +194,13 @@ function IdpManagerSetupSession({
             </Alert>
           ) : (
             <Alert variant="warning" isInline title="OSAC link expired">
-              Ask the provider admin for {gateOrganization?.name ?? 'this organization'} to create
+              Ask the provider admin for {gateOrganization?.name ?? 'this tenant'} to create
               a new break-glass account.
             </Alert>
           )}
           {gateState === 'invalid' && currentInvites.length > 0 ? (
             <Content component="p" className="idp-manager-setup-page__lede">
-              A pending organization is waiting on IdP setup. Return home and open IdP manager
+              A pending tenant is waiting on IdP setup. Return home and open IdP manager
               again, or use the OSAC link the provider admin sent.
             </Content>
           ) : null}
@@ -239,7 +242,7 @@ function IdpManagerSetupSession({
       variant="local-account"
       defaultUsername={gateOrganization.breakGlassUsername ?? ''}
       defaultPassword={gateOrganization.breakGlassPassword ?? ''}
-      helperText="Break-glass local login. Not the organization IdP."
+      helperText="Break-glass local login. Not the tenant IdP."
       errorMessage={signInError ?? undefined}
       isContinuing={isSigningIn}
       onNext={() => undefined}

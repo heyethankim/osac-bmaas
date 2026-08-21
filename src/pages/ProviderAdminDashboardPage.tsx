@@ -55,14 +55,14 @@ export function ProviderAdminDashboardPage({ actionsDisabled = false }: Provider
           Dashboard
         </Title>
         <Content component="p" className="provider-admin-dashboard__header-lede">
-          Manage and monitor all tenant organizations.
+          Manage and monitor all tenants.
         </Content>
       </div>
 
       <div className="provider-admin-dashboard__kpi-grid">
         <Card isFullHeight>
           <CardHeader>
-            <CardTitle>Active organization</CardTitle>
+            <CardTitle>Active tenant</CardTitle>
           </CardHeader>
           <CardBody>
             <Title headingLevel="h2" size="4xl" className="provider-admin-dashboard__kpi-value">
@@ -140,9 +140,9 @@ export function ProviderAdminDashboardPage({ actionsDisabled = false }: Provider
           <Card>
             <CardHeader>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                <CardTitle>Tenant organizations</CardTitle>
+                <CardTitle>Tenants</CardTitle>
                 <FormSelect
-                  aria-label="Filter tenant organizations"
+                  aria-label="Filter tenants"
                   value="recent"
                   isDisabled={actionsDisabled}
                   style={{ width: 'auto', minWidth: '12rem' }}

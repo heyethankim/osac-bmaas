@@ -9,7 +9,7 @@ export type TenantUserLaunchScope = {
   /** Value stored on the instance and shown in details. */
   label: string
   /** Description-list / table column label. */
-  fieldLabel: 'Organization' | 'Project'
+  fieldLabel: 'Tenant' | 'Project'
 }
 
 /**
@@ -38,12 +38,12 @@ export function resolveTenantUserLaunchScope(
   return {
     kind: 'organization',
     label: organizationName,
-    fieldLabel: 'Organization',
+    fieldLabel: 'Tenant',
   }
 }
 
 export function getTenantUserScopeFieldLabel(
   kind: TenantUserScopeKind | undefined,
-): 'Organization' | 'Project' {
-  return kind === 'organization' ? 'Organization' : 'Project'
+): 'Tenant' | 'Project' {
+  return kind === 'organization' ? 'Tenant' : 'Project'
 }

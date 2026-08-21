@@ -47,7 +47,7 @@ export const PROVIDER_SETUP_STEP_FOOTER: Record<
       'Templates package discovered hardware into tenant-requestable instance types in the global catalog.',
     tips: [
       'Instance types map to capacity profiles found during discovery.',
-      'Published templates sync to all tenant organizations automatically.',
+      'Published templates sync to all tenants automatically.',
       'You can create additional templates from Global templates after setup.',
     ],
   },

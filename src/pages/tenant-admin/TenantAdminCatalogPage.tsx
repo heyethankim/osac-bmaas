@@ -85,7 +85,7 @@ type TenantAdminCatalogPageProps = {
 
 function getVisibilityTooltip(scope: TenantCatalogGovernanceItemWithNetworking['scope']): string {
   return scope === 'vip-enterprise'
-    ? 'Only visible to your organization'
+    ? 'Only visible to your tenant'
     : 'Visible to all tenants'
 }
 

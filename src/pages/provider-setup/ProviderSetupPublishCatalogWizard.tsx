@@ -2323,7 +2323,7 @@ export function ProviderSetupPublishCatalogWizard({
             >
               <Content component="p">
                 {isVipUnassigned
-                  ? 'VIP enterprise is selected without a target organization. The catalog item will be saved as unpublished until you register or assign a tenant, then publish it from the catalog.'
+                  ? 'VIP enterprise is selected without a target tenant. The catalog item will be saved as unpublished until you register or assign a tenant, then publish it from the catalog.'
                   : 'New catalog items are saved as unpublished. Publish from the catalog when you are ready for tenants to use this offering.'}
               </Content>
             </Alert>

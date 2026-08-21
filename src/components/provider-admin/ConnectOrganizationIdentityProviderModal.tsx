@@ -247,12 +247,12 @@ export function ConnectOrganizationIdentityProviderModal({
         ) : completionPhase === 'success' ? (
           <OrganizationActionSuccessState
             title="Identity provider connected"
-            body="This organization is now active. You can define roles anytime."
+            body="This tenant is now active. You can define roles anytime."
           />
         ) : mode === 'view' ? (
           <>
             <Content component="p" className="provider-admin-organizations__idp-modal-lede">
-              Review the settings used to authenticate users from the organization email domains.
+              Review the settings used to authenticate users from the tenant email domains.
             </Content>
             <DescriptionList
               isCompact
@@ -299,8 +299,8 @@ export function ConnectOrganizationIdentityProviderModal({
           <>
             <Content component="p" className="provider-admin-organizations__idp-modal-lede">
               {mode === 'connect'
-                ? 'Connect the IdP that issues tokens for this organization.'
-                : 'Changes apply to tenant sign-in for this organization.'}
+                ? 'Connect the IdP that issues tokens for this tenant.'
+                : 'Changes apply to tenant sign-in for this tenant.'}
             </Content>
             <Form autoComplete="off" className="provider-admin-organizations__idp-form">
               <FormGroup label="Primary email domain" fieldId="connect-idp-domain">

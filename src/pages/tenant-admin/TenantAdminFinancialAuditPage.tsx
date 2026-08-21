@@ -7,11 +7,11 @@ export function TenantAdminFinancialAuditPage() {
       <TenantAdminWorkspacePageHeader
         kicker="Compliance"
         title="Financial audit"
-        lede="Review billing events, rate changes, and quota adjustments for your organization."
+        lede="Review billing events, rate changes, and quota adjustments for your tenant."
       />
       <Content component="p" className="tenant-admin-financial-audit__empty">
         Financial audit records will appear here as billing and quota events are recorded for your
-        organization.
+        tenant.
       </Content>
     </div>
   )

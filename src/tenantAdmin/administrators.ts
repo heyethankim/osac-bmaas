@@ -14,13 +14,13 @@ export type TenantAdministrator = {
 
 export const TENANT_ADMINISTRATORS_DEMO = {
   title: 'Administration',
-  lede: 'Manage who has tenant admin access to catalog, networking, and projects for your organization.',
+  lede: 'Manage who has tenant admin access to catalog, networking, and projects for your tenant.',
   addAdministratorLabel: 'Add tenant administrator',
   roleLabel: 'Tenant administrator',
   emptyTitle: 'No administrators match your filters',
   emptyBody: 'Try a different role, status, or search term, or clear filters.',
   emptyOnlyPrimaryBody:
-    'You are the only tenant administrator. Add colleagues who should help manage this organization.',
+    'You are the only tenant administrator. Add colleagues who should help manage this tenant.',
 } as const
 
 export const ASSIGNABLE_TENANT_ROLES = [

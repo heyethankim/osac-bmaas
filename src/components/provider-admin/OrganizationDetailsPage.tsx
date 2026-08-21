@@ -38,10 +38,11 @@ import { OrganizationReadyForLoginLinks } from './OrganizationReadyForLoginLinks
 import { AdditionalEmailDomainsValue } from './AdditionalEmailDomainsField'
 import { AddTenantAdministratorWizard } from '../tenant-admin/AddTenantAdministratorWizard'
 import { OrganizationResourceUsageSection } from './OrganizationResourceUsageSection'
+import { IDP_MANAGER_ROLES_COPY } from '../../idpManager/constants'
 import {
-  listTenantAdministrators,
-  removeAdditionalTenantAdministrator,
-  TENANT_ADMINISTRATORS_DEMO,
+  getAssignableTenantRole,
+  listRoleAssignments,
+  removeRoleAssignment,
   type TenantAdministrator,
 } from '../../tenantAdmin/administrators'
 
@@ -119,11 +120,11 @@ function AccountPersonRow({
           {admin.email}
         </Content>
         <Label
-          color="grey"
+          color={getAssignableTenantRole(admin.roleId).color}
           isCompact
           className="provider-admin-organizations__account-person-role"
         >
-          {TENANT_ADMINISTRATORS_DEMO.roleLabel}
+          {getAssignableTenantRole(admin.roleId).label}
         </Label>
       </div>
       {admin.isPrimary ? null : (
@@ -250,33 +251,26 @@ export function OrganizationDetailsPage({
   onEdit,
   onRemove,
   onReviewIdentityProvider,
-  onReviewRoles,
+  onReviewRoles: _onReviewRoles,
   onOrganizationChange,
 }: OrganizationDetailsPageProps) {
   const activationSteps = getOrganizationActivationSteps(organization)
-  const administrators = organization.rbacConfigured
-    ? listTenantAdministrators(organization)
-    : []
-  const [isAddAdministratorOpen, setIsAddAdministratorOpen] = useState(false)
+  const roleAssignments = listRoleAssignments(organization)
+  const [isAddRolesOpen, setIsAddRolesOpen] = useState(false)
   const [administratorPendingRemove, setAdministratorPendingRemove] =
     useState<TenantAdministrator | null>(null)
-  const canAddAdministrator = organization.identityProviderConnected
-  const canManageAdministrators = organization.rbacConfigured
+  const canAddRoles = organization.identityProviderConnected
 
-  const handleAddAdministrator = () => {
-    if (!canAddAdministrator) {
+  const handleAddRoles = () => {
+    if (!canAddRoles) {
       return
     }
-    if (!canManageAdministrators) {
-      onReviewRoles?.(organization)
-      return
-    }
-    setIsAddAdministratorOpen(true)
+    setIsAddRolesOpen(true)
   }
 
-  const handleAdministratorAdded = (updated: RegisteredOrganization) => {
+  const handleRoleAssigned = (updated: RegisteredOrganization) => {
     onOrganizationChange?.(updated)
-    setIsAddAdministratorOpen(false)
+    setIsAddRolesOpen(false)
   }
 
   const handleConfirmRemoveAdministrator = () => {
@@ -284,24 +278,24 @@ export function OrganizationDetailsPage({
       return
     }
 
-    const updated = removeAdditionalTenantAdministrator(
-      organization,
-      administratorPendingRemove.email,
-    )
+    const updated = removeRoleAssignment(organization, administratorPendingRemove.email)
     if (updated) {
       onOrganizationChange?.(updated)
     }
     setAdministratorPendingRemove(null)
   }
 
-  if (isAddAdministratorOpen) {
+  if (isAddRolesOpen) {
     return (
       <AddTenantAdministratorWizard
         isOpen
         organization={organization}
         parentLabel={organization.name}
-        onClose={() => setIsAddAdministratorOpen(false)}
-        onAdded={handleAdministratorAdded}
+        title={IDP_MANAGER_ROLES_COPY.wizardTitle}
+        submitLabel={IDP_MANAGER_ROLES_COPY.wizardSubmitLabel}
+        showRoleCatalog
+        onClose={() => setIsAddRolesOpen(false)}
+        onAdded={handleRoleAssigned}
       />
     )
   }
@@ -309,11 +303,11 @@ export function OrganizationDetailsPage({
   return (
     <>
     <EntityDetailsPageShell
-      parentLabel="Organizations"
+      parentLabel="Tenants"
       onBack={onBack}
       title={organization.name}
-      titleId="organization-details-title"
-      description="Tenant organization details for billing, identity domain, and workspace access."
+      titleId="tenant-details-title"
+      description="Tenant details for billing, identity domain, and workspace access."
       actions={
         onEdit || onRemove ? (
           <EntityDetailsActionsDropdown onEdit={onEdit} onRemove={onRemove} removeLabel="Remove" />
@@ -330,7 +324,7 @@ export function OrganizationDetailsPage({
               <DescriptionList
                 isCompact
                 className="entity-details-page__dl"
-                aria-label="Organization overview"
+                aria-label="Tenant overview"
               >
                 <DescriptionListGroup>
                   <DescriptionListTerm>Status</DescriptionListTerm>
@@ -395,7 +389,7 @@ export function OrganizationDetailsPage({
                     step={step}
                     organization={organization}
                     onReviewIdentityProvider={onReviewIdentityProvider}
-                    onReviewRoles={onReviewRoles}
+                    onReviewRoles={canAddRoles ? () => handleAddRoles() : undefined}
                   />
                 ))}
               </ol>
@@ -416,32 +410,32 @@ export function OrganizationDetailsPage({
                   size="md"
                   className="entity-details-page__section-title entity-details-page__section-title--config"
                 >
-                  Accounts
+                  Roles
                 </Title>
-                {canAddAdministrator ? (
+                {canAddRoles ? (
                   <Button
                     variant="link"
                     isInline
                     icon={<PlusCircleIcon />}
                     className="provider-admin-organizations__accounts-add"
-                    onClick={handleAddAdministrator}
+                    onClick={handleAddRoles}
                   >
-                    Add administrator
+                    Add roles
                   </Button>
                 ) : null}
               </div>
-              {administrators.length === 0 ? (
+              {roleAssignments.length === 0 ? (
                 <Content component="p" className="provider-admin-organizations__secondary-cell">
-                  {canAddAdministrator
-                    ? 'No tenant administrators yet.'
-                    : 'Connect the identity provider before adding tenant administrators.'}
+                  {canAddRoles
+                    ? IDP_MANAGER_ROLES_COPY.emptyBody
+                    : 'Connect the identity provider before adding roles.'}
                 </Content>
               ) : (
                 <ul
                   className="provider-admin-organizations__account-people"
-                  aria-label="Tenant administrators"
+                  aria-label="Assigned roles"
                 >
-                  {administrators.map((admin) => (
+                  {roleAssignments.map((admin) => (
                     <AccountPersonRow
                       key={admin.email}
                       admin={admin}
@@ -484,7 +478,7 @@ export function OrganizationDetailsPage({
                     component="p"
                     className="provider-admin-organizations__secondary-cell"
                   >
-                    Local login. Does not use the organization IdP.
+                    Local login. Does not use the tenant IdP.
                   </Content>
                 </div>
               ) : organization.breakGlassEmail ? (
@@ -518,11 +512,11 @@ export function OrganizationDetailsPage({
         <Content component="p" id="remove-organization-administrator-description">
           {administratorPendingRemove ? (
             <>
-              <strong>{administratorPendingRemove.name}</strong> will lose tenant admin access to
-              this organization. This cannot be undone.
+              <strong>{administratorPendingRemove.name}</strong> will lose their assigned role on
+              this tenant. This cannot be undone.
             </>
           ) : (
-            'This administrator will lose tenant admin access to this organization.'
+            'This administrator will lose tenant admin access to this tenant.'
           )}
         </Content>
       </ModalBody>

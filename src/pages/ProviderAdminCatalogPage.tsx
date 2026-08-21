@@ -163,14 +163,14 @@ function dedupeCatalogItemsById(items: ProviderCatalogDraft[]): ProviderCatalogD
 
 function catalogItemMatchesOrganization(
   item: ProviderCatalogDraft,
-  organization: RegisteredOrganization,
+  tenant: RegisteredOrganization,
 ): boolean {
   if (item.scope !== 'vip-enterprise') {
     return false
   }
 
   return getCatalogEnterpriseTenantIds(item).some(
-    (tenantId) => tenantId === organization.tenantId || tenantId === organization.id,
+    (tenantId) => tenantId === tenant.tenantId || tenantId === tenant.id,
   )
 }
 
@@ -216,7 +216,7 @@ function CatalogStatusLabel({
 
 function getVisibilityTooltip(scope: ProviderCatalogDraft['scope']): string {
   return scope === 'vip-enterprise'
-    ? 'Visible only to chosen tenant organizations'
+    ? 'Visible only to chosen tenants'
     : 'Visible to all tenants'
 }
 
@@ -453,7 +453,7 @@ export function ProviderAdminCatalogPage({
 
   const filteredCatalogItems = useMemo(() => {
     const query = searchValue.trim().toLowerCase()
-    const selectedOrganization = organizationFilter
+    const selectedTenant = organizationFilter
       ? organizations.find(
           (organization) =>
             organization.tenantId === organizationFilter || organization.id === organizationFilter,
@@ -470,7 +470,7 @@ export function ProviderAdminCatalogPage({
         return false
       }
 
-      if (selectedOrganization && !catalogItemMatchesOrganization(item, selectedOrganization)) {
+      if (selectedTenant && !catalogItemMatchesOrganization(item, selectedTenant)) {
         return false
       }
 
@@ -867,7 +867,7 @@ export function ProviderAdminCatalogPage({
           (organization) =>
             organization.tenantId === organizationFilter || organization.id === organizationFilter,
         )?.name ?? organizationFilter
-      parts.push(`organization: ${organizationName}`)
+      parts.push(`tenant: ${organizationName}`)
     }
     if (searchValue.trim()) {
       parts.push(`search: "${searchValue.trim()}"`)
@@ -911,7 +911,7 @@ export function ProviderAdminCatalogPage({
       return 'Choose one or more services above to filter the catalog.'
     }
     if (searchValue.trim() || organizationFilter) {
-      return 'Try a different search, organization, or clear filters.'
+      return 'Try a different search, tenant, or clear filters.'
     }
     if (selectedStatus !== 'all') {
       return 'Try a different publish status or clear filters.'
@@ -1094,7 +1094,7 @@ export function ProviderAdminCatalogPage({
           </Title>
           <Content component="p" className="provider-admin-catalog-items__lede">
             Create catalog items from master templates across Bare Metal, Clusters, Models, and
-            Virtual machines, then attach them to tenant organizations.
+            Virtual machines, then attach them to tenants.
           </Content>
         </FlexItem>
         <FlexItem alignSelf={{ default: 'alignSelfFlexStart' }}>
@@ -1135,9 +1135,9 @@ export function ProviderAdminCatalogPage({
             id="catalog-organization-filter"
             value={organizationFilter}
             onChange={(_event, value) => setOrganizationFilter(value)}
-            aria-label="Filter catalog items by organization"
+            aria-label="Filter catalog items by tenant"
           >
-            <FormSelectOption value="" label="All organizations" />
+            <FormSelectOption value="" label="All tenants" />
             {organizationOptions.map((organization) => (
               <FormSelectOption
                 key={organization.id}
@@ -1162,7 +1162,7 @@ export function ProviderAdminCatalogPage({
         filterDescriptionParts.length > 0 ? (
           <CatalogFilterEmptyState
             title="No catalog items match your filters"
-            description="Try a different service, publish status, organization, or search term."
+            description="Try a different service, publish status, tenant, or search term."
             onClearFilters={clearAllFilters}
           />
         ) : (

@@ -80,7 +80,7 @@ export function AttachCatalogItemToProjectModal({
             {catalogOptions.length === 0 ? (
               <Content component="p" className="tenant-admin-catalog__attach-note">
                 Create a tenant-scoped catalog item or wait for your provider administrator to
-                assign an organization catalog before attaching items to this project.
+                assign a tenant catalog before attaching items to this project.
               </Content>
             ) : (
               <>

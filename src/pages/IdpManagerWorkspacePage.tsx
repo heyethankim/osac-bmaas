@@ -106,9 +106,7 @@ function IdpManagerWorkspaceSession({ orgSlug }: { orgSlug: string }) {
   return (
     <TenantShell
       role="idp-manager"
-      displayName={
-        organization.breakGlassUsername ?? `breakglass-${organization.slug}`
-      }
+      displayName={organization.breakGlassUsername ?? 'breakglass-bluesolace'}
       navItems={IDP_MANAGER_NAV_ITEMS}
       showNavigation
       activeNavId={activeNavId}

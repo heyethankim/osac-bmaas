@@ -6,7 +6,7 @@ export function TenantAdminOverviewPage() {
       <TenantAdminWorkspacePageHeader
         kicker="Tenant workspace"
         title="Overview"
-        lede="Monitor your organization's instances, catalog access, and project activity."
+        lede="Monitor your tenant's instances, catalog access, and project activity."
       />
     </div>
   )

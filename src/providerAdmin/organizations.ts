@@ -310,7 +310,7 @@ export function getIdpManagerSetupPath(token: string): string {
   return `${normalizedBase}${getIdpManagerSetupRoute(token)}`
 }
 
-/** Org for the landing IdP manager shortcut: pending Path B first, else North Summit. */
+/** Org for the landing IdP manager shortcut: pending Path B first, else the Onboarding demo tenant. */
 export function resolveIdpManagerPrototypeOrganization(
   organizations: RegisteredOrganization[],
   now = Date.now(),
@@ -412,7 +412,7 @@ export function getOrganizationSetupNextAction(
 
 export const ORGANIZATION_SETUP_NEXT_ACTION_LABEL: Record<OrganizationSetupNextAction, string> = {
   idp: 'Set up identity provider',
-  rbac: 'Define roles',
+  rbac: 'Add roles',
 }
 
 export type OrganizationActivationStepId = 'registered' | 'idp' | 'rbac' | 'ready'
@@ -435,7 +435,7 @@ export function getOrganizationActivationSteps(
   return [
     {
       id: 'registered',
-      label: 'Organization registered',
+      label: 'Tenant registered',
       complete: true,
     },
     {
@@ -449,7 +449,7 @@ export function getOrganizationActivationSteps(
     },
     {
       id: 'rbac',
-      label: rbacComplete ? 'Roles defined' : 'Define roles (optional)',
+      label: rbacComplete ? 'Roles defined' : 'Add roles (optional)',
       complete: rbacComplete,
     },
     {
@@ -464,7 +464,7 @@ export function buildDemoIdentityProviderName(
   protocol: 'OIDC' | 'SAML',
   primaryDomain: string,
 ): string {
-  const domain = primaryDomain.trim() || 'organization'
+  const domain = primaryDomain.trim() || 'tenant'
   return `${protocol} · ${domain}`
 }
 
@@ -480,7 +480,7 @@ export const DEMO_HARBORLINE_CAPITAL_NAME = 'harborline-capital'
 export const DEMO_HARBORLINE_CAPITAL_DOMAIN = 'harborlinecapital.com'
 
 export const REGISTER_ORGANIZATION_STEPS = [
-  { id: 'organization', label: 'Organization' },
+  { id: 'organization', label: 'Tenant' },
   { id: 'review', label: 'Review' },
 ] as const
 
@@ -562,7 +562,7 @@ export function createDemoNorthSummitBankOrganization(
     idpInviteExpiresAt: null,
     breakGlassName: 'IdP manager',
     breakGlassEmail: `idp-admin@${primaryDomain}`,
-    breakGlassUsername: generateBreakGlassUsername('northstar'),
+    breakGlassUsername: 'breakglass-bluesolace',
     breakGlassPassword: getDemoBreakGlassPassword('northstar'),
     breakGlassIssuedAt: '2026-06-12T14:30:00.000Z',
     rbacConfigured: true,
@@ -891,7 +891,7 @@ export function formatOrganizationEmailDomainsLabel(
 ): string {
   const domains = getOrganizationEmailDomains(organization).map((domain) => `@${domain}`)
   if (domains.length === 0) {
-    return 'the organization domain'
+    return 'the tenant domain'
   }
   if (domains.length === 1) {
     return domains[0]
@@ -1070,9 +1070,9 @@ export function buildOrganizationFilterParts(
 }
 
 export const PROVIDER_ORGANIZATIONS_DEMO = {
-  lede: 'Register tenant organizations and map billing accounts.',
-  emptyTitle: 'No organizations yet',
-  emptyBody: 'Register your first organization to map billing and get started.',
-  registerFirstOrganizationLabel: 'Register first organization',
-  registerOrganizationLabel: 'Register organization',
+  lede: 'Register tenants and map billing accounts.',
+  emptyTitle: 'No tenants yet',
+  emptyBody: 'Register your first tenant to map billing and get started.',
+  registerFirstOrganizationLabel: 'Register first tenant',
+  registerOrganizationLabel: 'Register tenant',
 } as const

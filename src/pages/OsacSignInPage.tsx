@@ -1,4 +1,6 @@
 import { type ReactNode, useEffect, useState } from 'react'
+import { EyeIcon } from '@patternfly/react-icons/dist/esm/icons/eye-icon'
+import { EyeSlashIcon } from '@patternfly/react-icons/dist/esm/icons/eye-slash-icon'
 import {
   Button,
   Form,
@@ -206,6 +208,48 @@ export function OsacSignInPage({
   )
 }
 
+function OsacPasswordField({
+  id,
+  value,
+  onChange,
+  autoComplete,
+  isDisabled,
+  validated = 'default',
+}: {
+  id: string
+  value: string
+  onChange: (value: string) => void
+  autoComplete: string
+  isDisabled?: boolean
+  validated?: 'default' | 'error'
+}) {
+  const [hidden, setHidden] = useState(true)
+
+  return (
+    <div className="osac-signin__password-field">
+      <TextInput
+        id={id}
+        type={hidden ? 'password' : 'text'}
+        value={value}
+        onChange={(_event, nextValue) => onChange(nextValue)}
+        autoComplete={autoComplete}
+        validated={validated}
+        isDisabled={isDisabled}
+        className="osac-signin__field-input"
+      />
+      <Button
+        variant="plain"
+        type="button"
+        className="osac-signin__password-toggle"
+        onClick={() => setHidden((isHidden) => !isHidden)}
+        aria-label={hidden ? 'Show password' : 'Hide password'}
+        icon={hidden ? <EyeIcon /> : <EyeSlashIcon />}
+        isDisabled={isDisabled}
+      />
+    </div>
+  )
+}
+
 export function OsacChangePasswordPage({
   onSubmit,
   isWorking = false,
@@ -275,15 +319,13 @@ export function OsacChangePasswordPage({
           className="osac-signin__field"
           isRequired
         >
-          <TextInput
+          <OsacPasswordField
             id="osac-new-password"
-            type="password"
             value={newPassword}
-            onChange={(_event, value) => setNewPassword(value)}
+            onChange={setNewPassword}
             autoComplete="new-password"
             validated={sameAsCurrent ? 'error' : 'default'}
             isDisabled={isWorking}
-            className="osac-signin__field-input"
           />
           <FormHelperText>
             <HelperText>
@@ -301,15 +343,13 @@ export function OsacChangePasswordPage({
           className="osac-signin__field"
           isRequired
         >
-          <TextInput
+          <OsacPasswordField
             id="osac-confirm-password"
-            type="password"
             value={confirmPassword}
-            onChange={(_event, value) => setConfirmPassword(value)}
+            onChange={setConfirmPassword}
             autoComplete="new-password"
             validated={mismatch ? 'error' : 'default'}
             isDisabled={isWorking}
-            className="osac-signin__field-input"
           />
           {mismatch ? (
             <FormHelperText>

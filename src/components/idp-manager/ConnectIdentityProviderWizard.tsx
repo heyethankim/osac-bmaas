@@ -161,8 +161,8 @@ export function ConnectIdentityProviderWizard({
         <div className="provider-admin-organizations__wizard-step">
           <Content component="p" className="provider-admin-organizations__wizard-lede">
             {isEditing
-              ? 'Update the identity provider that authenticates users for this organization.'
-              : 'Connect the IdP that issues tokens for this organization.'}
+              ? 'Update the identity provider that authenticates users for this tenant.'
+              : 'Connect the IdP that issues tokens for this tenant.'}
           </Content>
           <Form autoComplete="off" className="provider-admin-organizations__wizard-form">
             <FormGroup label="Primary email domain" fieldId="connect-idp-domain">

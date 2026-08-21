@@ -51,7 +51,7 @@ export const PROVIDER_ADMIN_INFRASTRUCTURE_NAV_ITEMS: ProviderAdminNavItem[] = [
 ]
 
 export const PROVIDER_ADMIN_ADMINISTRATION_NAV_ITEMS: ProviderAdminNavItem[] = [
-  { id: 'administration-organizations', label: 'Organizations' },
+  { id: 'administration-organizations', label: 'Tenants' },
   { id: 'administration-quotas', label: 'Quotas' },
 ]
 

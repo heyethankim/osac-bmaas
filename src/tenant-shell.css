@@ -294,3 +294,41 @@
   letter-spacing: -0.02em;
   color: var(--pf-t--global--text--color--regular);
 }
+
+.pf-v6-c-masthead__main .pf-v6-c-masthead__logo.bluesolace-masthead-logo {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  max-width: min(100%, 20rem);
+  max-height: 2.5rem;
+  height: auto;
+}
+
+.pf-v6-c-masthead__main .pf-v6-c-masthead__logo.bluesolace-masthead-logo .pf-v6-c-masthead__brand {
+  display: flex;
+  align-items: center;
+  align-self: auto;
+  line-height: 0;
+  padding-block-end: 0;
+}
+
+.pf-v6-c-masthead__main .pf-v6-c-masthead__logo.bluesolace-masthead-logo > * {
+  max-height: 2.5rem;
+}
+
+.bluesolace-masthead-brand {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  max-height: 2.5rem;
+}
+
+.bluesolace-masthead-brand__img {
+  display: block;
+  height: 2.5rem;
+  width: auto;
+  max-width: 18rem;
+  object-fit: contain;
+  object-position: left center;
+  background: transparent;
+}

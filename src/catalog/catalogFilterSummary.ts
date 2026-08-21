@@ -46,7 +46,7 @@ function humanizeFilterPart(part: string): string {
     return `results matching ${searchMatch[1].trim()}`
   }
 
-  const organizationMatch = part.match(/^organization:\s*(.+)$/i)
+  const organizationMatch = part.match(/^(?:organization|tenant):\s*(.+)$/i)
   if (organizationMatch) {
     return `items for ${organizationMatch[1].trim()}`
   }
@@ -61,7 +61,7 @@ function humanizeFilterPart(part: string): string {
       return 'active administrators'
     }
     if (status === 'Pending activation') {
-      return 'organizations with pending activation status'
+      return 'tenants with pending activation status'
     }
     return `items with ${status.toLowerCase()} status`
   }
@@ -70,21 +70,21 @@ function humanizeFilterPart(part: string): string {
   if (setupMatch) {
     const setup = setupMatch[1].trim()
     if (setup === 'Ready') {
-      return 'ready organizations'
+      return 'ready tenants'
     }
     if (setup === 'Needs identity provider') {
-      return 'organizations that need an identity provider'
+      return 'tenants that need an identity provider'
     }
     if (setup === 'Waiting on IdP Manager') {
-      return 'organizations waiting on IdP Manager'
+      return 'tenants waiting on IdP Manager'
     }
     if (setup === 'IdP manager link expired') {
-      return 'organizations with an expired IdP manager link'
+      return 'tenants with an expired IdP manager link'
     }
     if (setup === 'Needs roles') {
-      return 'organizations that need roles'
+      return 'tenants that need roles'
     }
-    return `organizations with ${setup.toLowerCase()} setup`
+    return `tenants with ${setup.toLowerCase()} setup`
   }
 
   const osImageMatch = part.match(/^OS image:\s*(.+)$/i)

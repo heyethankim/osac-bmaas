@@ -128,7 +128,7 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
     'Choose the virtual network, subnet, security group, and external IP pool for this instance.',
   networkingAdminLede:
     'Choose a virtual network, subnet, security group, and IP pool. Add objects in Networking.',
-  networkingAssignedHelper: 'Set by your organization',
+  networkingAssignedHelper: 'Set by your tenant',
   reviewTitle: 'Review',
   reviewHardware: 'Dell PowerEdge R750',
   reviewGpu: 'NVIDIA A100 80 GB',
@@ -198,9 +198,9 @@ export const CLUSTER_LAUNCH_INSTANCE_DEMO = {
   defaultNodeCount: 1,
   infrastructureNetworkingTitle: 'Infrastructure networking',
   infrastructureNetworkingLede:
-    'Attach this cluster to your organization network objects.',
+    'Attach this cluster to your tenant network objects.',
   infrastructureNetworkingAdminLede:
-    'Attach this cluster to organization network objects. Add objects in Networking.',
+    'Attach this cluster to tenant network objects. Add objects in Networking.',
   clusterNetworkTitle: 'Cluster network',
   clusterNetworkLede: 'Address ranges used inside the cluster for pods and services.',
   podCidr: '10.128.0.0/24',

@@ -576,7 +576,7 @@ function InstanceInheritedNetworkingSection({
         idPrefix={`instance-networking-${instance.id}`}
         policy={policy}
         locksReadOnly
-        lede="Choose networking resources from your organization's inventory."
+        lede="Choose networking resources from your tenant's inventory."
         ledeDescription="Networking options are managed under Networking in your workspace."
         virtualNetworkOptions={inventory.getVirtualNetworkOptions()}
         subnetOptions={subnetOptions}

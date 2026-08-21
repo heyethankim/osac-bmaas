@@ -88,13 +88,13 @@ export function VipEnterpriseOrganizationField({
       />
       <ModalBody>
         <Content component="p" id={`${fieldIdPrefix}-leave-orgs-description`}>
-          You will leave this catalog flow to register a new organization. Unsaved progress may be
+          You will leave this catalog flow to register a new tenant. Unsaved progress may be
           lost.
         </Content>
       </ModalBody>
       <ModalFooter>
         <Button variant="primary" onClick={confirmGoToOrganizations}>
-          Register an organization
+          Register a tenant
         </Button>
         <Button variant="link" onClick={closeLeaveConfirm}>
           Cancel
@@ -109,19 +109,19 @@ export function VipEnterpriseOrganizationField({
         <Alert
           variant="warning"
           isInline
-          title="No tenant organizations yet"
+          title="No tenants yet"
           className="provider-admin-catalog__vip-empty-alert"
           actionLinks={
             onRegisterOrganization ? (
               <AlertActionLink component="button" onClick={requestGoToOrganizations}>
-                Register an organization
+                Register a tenant
               </AlertActionLink>
             ) : undefined
           }
         >
           <Content component="p">
-            VIP enterprise needs at least one registered organization to target. Register a new
-            organization on the Organizations page, or save this catalog item as unpublished and
+            VIP enterprise needs at least one registered tenant to target. Register a new
+            tenant on the Tenants page, or save this catalog item as unpublished and
             assign tenants later. You can also switch to Global public to publish now.
           </Content>
         </Alert>
@@ -133,14 +133,14 @@ export function VipEnterpriseOrganizationField({
   return (
     <div className="provider-admin-catalog__vip-enterprise-field">
       <FormGroup
-        label="Select one or more enterprise organizations"
+        label="Select one or more enterprise tenants"
         fieldId={`${fieldIdPrefix}-enterprise-organizations`}
         isRequired
       >
         <div
           className="provider-admin-catalog__vip-org-cards"
           role="group"
-          aria-label="Enterprise organizations"
+          aria-label="Enterprise tenants"
         >
           {organizations.map((organization) => {
             const isSelected = selectedIdSet.has(organization.tenantId)
@@ -180,14 +180,14 @@ export function VipEnterpriseOrganizationField({
           </span>
           <div className="provider-admin-catalog__vip-orgs-hint-content">
             <Content component="p" className="provider-admin-catalog__vip-orgs-hint-title">
-              Don&apos;t see the organization you need?{' '}
+              Don&apos;t see the tenant you need?{' '}
               <Button
                 variant="link"
                 isInline
                 className="provider-admin-catalog__vip-orgs-hint-link"
                 onClick={requestGoToOrganizations}
               >
-                Register an organization
+                Register a tenant
               </Button>
             </Content>
           </div>

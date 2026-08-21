@@ -274,7 +274,7 @@ export function DefineOrganizationRolesModal({
         ) : completionPhase === 'success' ? (
           <OrganizationActionSuccessState
             title="Roles assigned"
-            body="This organization is ready for tenant login."
+            body="This tenant is ready for login."
           />
         ) : mode === 'view' ? (
           <DescriptionList

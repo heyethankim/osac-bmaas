@@ -41,7 +41,7 @@ function getDomainRowError(
     return 'This is already the primary email domain.'
   }
   if (takenDomains.has(domain)) {
-    return 'This email domain is already mapped to another organization.'
+    return 'This email domain is already mapped to another tenant.'
   }
   if (
     domains.some(

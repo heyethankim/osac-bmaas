@@ -143,7 +143,7 @@ export function CreateSecurityGroupWizard({
           <Content component="p" className="provider-admin-network-inventory__wizard-lede">
             {isEditMode
               ? 'Update security group rules and virtual network scope.'
-              : 'Security groups control network access for workloads launched in your organization.'}
+              : 'Security groups control network access for workloads launched in your tenant.'}
           </Content>
           <Form autoComplete="off" className="provider-admin-network-inventory__form">
             <FormGroup label="Name" fieldId="create-sg-name" isRequired>

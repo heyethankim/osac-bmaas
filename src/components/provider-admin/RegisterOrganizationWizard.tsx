@@ -205,10 +205,10 @@ export function RegisterOrganizationWizard({
         return (
           <div className="provider-admin-organizations__wizard-step">
             <Content component="p" className="provider-admin-organizations__wizard-lede">
-              Create the tenant organization and map its billing account.
+              Create the tenant and map its billing account.
             </Content>
             <Form autoComplete="off" className="provider-admin-organizations__wizard-form">
-              <FormGroup label="Organization name" fieldId="register-org-name" isRequired>
+              <FormGroup label="Tenant name" fieldId="register-org-name" isRequired>
                 <KubernetesResourceNameField
                   id="register-org-name"
                   value={form.organizationName}
@@ -233,9 +233,9 @@ export function RegisterOrganizationWizard({
                     <HelperText>
                       <HelperTextItem variant="error">
                         {nameTaken
-                          ? 'An organization with this name is already registered.'
+                          ? 'A tenant with this name is already registered.'
                           : slugTaken
-                            ? 'An organization with this login path already exists. Choose a different name.'
+                            ? 'A tenant with this login path already exists. Choose a different name.'
                             : nameFormat.message}
                       </HelperTextItem>
                     </HelperText>
@@ -256,8 +256,8 @@ export function RegisterOrganizationWizard({
                   <HelperText>
                     <HelperTextItem variant={domainTaken ? 'error' : 'default'}>
                       {domainTaken
-                        ? 'This email domain is already mapped to another organization.'
-                        : 'Used to map this organization to an identity provider. Add more domains when you connect the IdP.'}
+                        ? 'This email domain is already mapped to another tenant.'
+                        : 'Used to map this tenant to an identity provider. Add more domains when you connect the IdP.'}
                     </HelperTextItem>
                   </HelperText>
                 </FormHelperText>
@@ -288,7 +288,7 @@ export function RegisterOrganizationWizard({
         return (
           <DescriptionList isCompact className="provider-admin-organizations__wizard-review">
             <DescriptionListGroup>
-              <DescriptionListTerm>Organization</DescriptionListTerm>
+              <DescriptionListTerm>Tenant</DescriptionListTerm>
               <DescriptionListDescription>
                 {form.organizationName.trim() || '—'}
               </DescriptionListDescription>
@@ -331,7 +331,7 @@ export function RegisterOrganizationWizard({
         nextButtonText: (
           <span className="provider-admin-organizations__register-label">
             <UsersIcon aria-hidden />
-            <span>Register organization</span>
+            <span>Register tenant</span>
             <ArrowRightIcon aria-hidden />
           </span>
         ),
@@ -343,7 +343,7 @@ export function RegisterOrganizationWizard({
     return undefined
   }
 
-  const wizardTitle = 'Register organization'
+  const wizardTitle = 'Register tenant'
   const isPage = presentation === 'page'
 
   const wizard = isOpen ? (
@@ -359,7 +359,7 @@ export function RegisterOrganizationWizard({
             title={wizardTitle}
             titleId="register-organization-wizard-title"
             onClose={requestClose}
-            closeButtonAriaLabel="Close register organization wizard"
+            closeButtonAriaLabel="Close register tenant wizard"
           />
         )
       }
@@ -383,7 +383,7 @@ export function RegisterOrganizationWizard({
     }
     return (
       <ResourceCreatePageShell
-        parentLabel="Organizations"
+        parentLabel="Tenants"
         title={wizardTitle}
         titleId="register-organization-wizard-title"
         onBack={requestClose}

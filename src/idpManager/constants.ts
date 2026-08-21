@@ -9,7 +9,7 @@ export const IDP_MANAGER_NAV_ITEMS: TenantNavItem[] = [
 
 export const IDP_MANAGER_IDENTITY_PROVIDER_COPY = {
   title: 'Identity providers',
-  lede: 'Manage identity providers for this organization.',
+  lede: 'Manage identity providers for this tenant.',
   emptyTitle: 'No identity providers yet',
   emptyBody: 'Add your first identity provider to get started.',
   connectFirstLabel: 'Connect first identity provider',
@@ -20,12 +20,12 @@ export const IDP_MANAGER_IDENTITY_PROVIDER_COPY = {
 
 export const IDP_MANAGER_ROLES_COPY = {
   title: 'Roles',
-  lede: 'Assign tenant administrator, reader, and user roles for this organization.',
+  lede: 'Assign tenant administrator, reader, and user roles for this tenant.',
   addAdministratorLabel: 'Assign role',
   wizardTitle: 'Assign role',
   wizardSubmitLabel: 'Assign role',
   emptyTitle: 'No roles assigned',
-  emptyBody: 'Assign a tenant administrator, reader, or user for this organization.',
+  emptyBody: 'Assign a tenant administrator, reader, or user for this tenant.',
 } as const
 
 export function isIdpManagerNavId(value: string | null): value is IdpManagerNavId {

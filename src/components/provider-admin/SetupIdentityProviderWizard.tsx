@@ -533,7 +533,7 @@ export function SetupIdentityProviderWizard({
         })}
       >
         <Content component="p" className="provider-admin-organizations__wizard-lede">
-          Connect the IdP that issues tokens for this organization.
+          Connect the IdP that issues tokens for this tenant.
         </Content>
         <Form autoComplete="off" className="provider-admin-organizations__wizard-form">
           <FormGroup label="Primary email domain" fieldId="setup-idp-domain">
@@ -628,7 +628,7 @@ export function SetupIdentityProviderWizard({
             <FormHelperText>
               <HelperText>
                 <HelperTextItem>
-                  Any mailbox can receive the credentials. This login does not use the organization
+                  Any mailbox can receive the credentials. This login does not use the tenant
                   IdP.
                 </HelperTextItem>
               </HelperText>
@@ -698,7 +698,7 @@ export function SetupIdentityProviderWizard({
             <Content component="p" className="provider-admin-organizations__wizard-lede">
               Confirm the identity provider and who receives break-glass credentials.
             </Content>
-            <DescriptionBlock label="Organization" value={organization.name} />
+            <DescriptionBlock label="Tenant" value={organization.name} />
             <DescriptionBlock label="Protocol" value={connectForm.protocol} />
             <DescriptionBlock
               label="Display name"
@@ -754,7 +754,7 @@ export function SetupIdentityProviderWizard({
               label="IdP manager"
               value={organization.idpManagerEmail || managerEmail || '—'}
             />
-            <DescriptionBlock label="Organization" value={organization.name} />
+            <DescriptionBlock label="Tenant" value={organization.name} />
             {inviteAbsoluteUrl ? (
               <FormGroup label="OSAC link" fieldId="idp-invite-link">
                 <div className="provider-admin-organizations__idp-invite-link-row">
@@ -786,7 +786,7 @@ export function SetupIdentityProviderWizard({
             <Content component="p" className="provider-admin-organizations__wizard-lede">
               Confirm who you will send credentials to, then create them to copy.
             </Content>
-            <DescriptionBlock label="Organization" value={organization.name} />
+            <DescriptionBlock label="Tenant" value={organization.name} />
             <DescriptionBlock label="IdP manager email" value={managerEmail || '—'} />
             <DescriptionBlock
               label="Primary email domain"
@@ -808,7 +808,7 @@ export function SetupIdentityProviderWizard({
     }
     return (
       <ResourceCreatePageShell
-        parentLabel="Organizations"
+        parentLabel="Tenants"
         title={wizardTitle}
         titleId="setup-idp-wizard-title"
         onBack={requestClose}
@@ -875,7 +875,7 @@ function BreakGlassCredentialsPanel({
         Break-glass account
       </Content>
       <Content component="p" className="provider-admin-organizations__roles-section-help">
-        {sentLabel} This local login does not use the organization IdP.
+        {sentLabel} This local login does not use the tenant IdP.
       </Content>
       <FormGroup label="Username" fieldId="break-glass-username">
         <ClipboardCopy

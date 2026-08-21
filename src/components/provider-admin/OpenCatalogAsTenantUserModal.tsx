@@ -88,16 +88,16 @@ export function OpenCatalogAsTenantUserModal({
             </DescriptionList>
             {organizations.length === 0 ? (
               <Content component="p">
-                No registered organizations yet. Preview will use north-summit-bank as a demo tenant.
+                No registered tenants yet. Preview will use north-summit-bank as a demo tenant.
               </Content>
             ) : (
               <Form autoComplete="off" className="provider-admin-catalog-items__assign-form">
-                <FormGroup label="Organization" fieldId="open-as-tenant-user-org" isRequired>
+                <FormGroup label="Tenant" fieldId="open-as-tenant-user-org" isRequired>
                   <FormSelect
                     id="open-as-tenant-user-org"
                     value={selectedOrganizationId}
                     onChange={(_event, value) => setSelectedOrganizationId(value)}
-                    aria-label="Organization"
+                    aria-label="Tenant"
                   >
                     {organizations.map((organization) => (
                       <FormSelectOption

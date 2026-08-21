@@ -223,7 +223,7 @@ export function TenantUserLaunchInstanceWizard({
   const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? null
   const launchScopeKind: TenantUserScopeKind = selectedProject ? 'project' : 'organization'
   const launchScopeLabel = selectedProject?.name ?? organization?.name ?? tenantSlug
-  const launchScopeFieldLabel = selectedProject ? 'Project' : 'Organization'
+  const launchScopeFieldLabel = selectedProject ? 'Project' : 'Tenant'
   const selectedProjectLabel = selectedProject?.name ?? 'Select a project'
   const projectToggleLabel = isCreatingProject
     ? TENANT_PROJECTS_TEAMS_DEMO.createProjectLabel
@@ -885,7 +885,7 @@ export function TenantUserLaunchInstanceWizard({
         <FormHelperText>
           <HelperText>
             <HelperTextItem>
-              Create a project to launch into, or this instance will use the organization.
+              Create a project to launch into, or this instance will use the tenant.
             </HelperTextItem>
           </HelperText>
         </FormHelperText>

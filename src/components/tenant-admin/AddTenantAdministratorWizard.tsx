@@ -136,7 +136,7 @@ export function AddTenantAdministratorWizard({
           <Content component="p" className="tenant-admin-administrators__wizard-lede">
             {showRoleCatalog
               ? 'Select a role, then enter the person to assign it to.'
-              : 'Tenant administrators can manage catalog, networking, projects, and team access for this organization.'}
+              : 'Tenant administrators can manage catalog, networking, projects, and team access for this tenant.'}
           </Content>
           <Form autoComplete="off" className="tenant-admin-administrators__wizard-form">
             {showRoleCatalog ? (

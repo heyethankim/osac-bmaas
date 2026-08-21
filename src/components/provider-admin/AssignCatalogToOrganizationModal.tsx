@@ -83,7 +83,7 @@ export function AssignCatalogToOrganizationModal({
       aria-labelledby="assign-catalog-item-title"
       className="provider-admin-catalog-items__assign-modal"
     >
-      <ModalHeader title="Assign to organization" labelId="assign-catalog-item-title" />
+      <ModalHeader title="Assign to tenant" labelId="assign-catalog-item-title" />
       <ModalBody>
         {catalog ? (
           <>
@@ -110,22 +110,22 @@ export function AssignCatalogToOrganizationModal({
               <Alert
                 variant="warning"
                 isInline
-                title="No eligible organizations"
+                title="No eligible tenants"
                 className="provider-admin-catalog-items__assign-alert"
               >
                 <Content component="p">
-                  Register a tenant organization first, or remove an existing catalog assignment
+                  Register a tenant first, or remove an existing catalog assignment
                   before attaching this item to another tenant.
                 </Content>
               </Alert>
             ) : (
               <Form autoComplete="off" className="provider-admin-catalog-items__form">
-                <FormGroup label="Organization" fieldId="assign-catalog-organization" isRequired>
+                <FormGroup label="Tenant" fieldId="assign-catalog-organization" isRequired>
                   <FormSelect
                     id="assign-catalog-organization"
                     value={selectedOrganizationId}
                     onChange={(_event, value) => setSelectedOrganizationId(value)}
-                    aria-label="Organization"
+                    aria-label="Tenant"
                   >
                     {eligibleOrganizations.map((organization) => (
                       <FormSelectOption

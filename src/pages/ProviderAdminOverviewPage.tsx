@@ -6,7 +6,7 @@ export function ProviderAdminOverviewPage() {
       <ProviderAdminWorkspacePageHeader
         kicker="Provider workspace"
         title="Overview"
-        lede="Publish catalog items from master templates and attach them to tenant organizations."
+        lede="Publish catalog items from master templates and attach them to tenants."
       />
     </div>
   )

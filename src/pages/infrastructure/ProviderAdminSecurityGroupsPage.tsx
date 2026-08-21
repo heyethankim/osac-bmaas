@@ -180,7 +180,7 @@ export function ProviderAdminSecurityGroupsPage({
         title="Security groups"
         lede={
           tenantSlug
-            ? 'Security groups that control network access for your organization workloads.'
+            ? 'Security groups that control network access for your tenant workloads.'
             : 'Manage security groups that catalog offerings can lock or expose to tenant admins.'
         }
         action={

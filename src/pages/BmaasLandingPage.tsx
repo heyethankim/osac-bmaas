@@ -58,8 +58,12 @@ function RoleBlock({ id, title, description, icon, actions, prototypeLinks = [] 
       <Title id={id} headingLevel="h2" size="lg">
         {title}
       </Title>
-      <Content component="p">{description}</Content>
-      <FlexItem fullWidth={{ default: 'fullWidth' }}>{actions}</FlexItem>
+      <div className="bmaas-role-landing__cta">
+        <Content component="p" className="bmaas-role-landing__description">
+          {description}
+        </Content>
+        {actions}
+      </div>
       <FlexItem>
         {prototypeLinks.length > 0 ? (
           <Stack hasGutter>
@@ -150,7 +154,7 @@ export function BmaasLandingPage() {
     {
       id: 'bmaas-landing-role-tenant-admin-title',
       title: 'Tenant Admin',
-      description: 'Configure organization resources, users, quotas, and shared services.',
+      description: 'Configure tenant resources, users, quotas, and shared services.',
       icon: <UserIcon />,
       actions: (
         <SingleEnterActions to="/tenant-admin/northstar" ariaLabel="Enter Tenant Admin demo" />
@@ -252,32 +256,34 @@ export function BmaasLandingPage() {
             >
               OSAC Delivery Overview
             </Button>
-            <Content component="p">
-              Created by{' '}
-              <Button
-                variant="link"
-                component="a"
-                isInline
-                href="https://redhat.enterprise.slack.com/archives/D021Q4YKTBR"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Ethan Kim
-              </Button>
-              {' & '}
-              <Button
-                variant="link"
-                component="a"
-                isInline
-                href="https://redhat.enterprise.slack.com/archives/D08ABCFSWGW"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Kyle Baker
-              </Button>
-              {' - OpenShift UXD'}
-            </Content>
-            <Content component="p">Last updated: {BMAAS_LANDING_LAST_UPDATED}</Content>
+            <div className="bmaas-role-landing__credits">
+              <Content component="p">
+                Created by{' '}
+                <Button
+                  variant="link"
+                  component="a"
+                  isInline
+                  href="https://redhat.enterprise.slack.com/archives/D021Q4YKTBR"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Ethan Kim
+                </Button>
+                {' & '}
+                <Button
+                  variant="link"
+                  component="a"
+                  isInline
+                  href="https://redhat.enterprise.slack.com/archives/D08ABCFSWGW"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Kyle Baker
+                </Button>
+                {' - OpenShift UXD'}
+              </Content>
+              <Content component="p">Last updated: {BMAAS_LANDING_LAST_UPDATED}</Content>
+            </div>
           </Flex>
         </FlexItem>
       </Flex>

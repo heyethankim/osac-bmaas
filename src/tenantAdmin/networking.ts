@@ -306,7 +306,7 @@ export function getTenantNetworkResourceMeta(
       return {
         title: 'Virtual networks',
         fieldLabel: 'Virtual network',
-        lede: 'Virtual networks available to your organization for project workloads.',
+        lede: 'Virtual networks available to your tenant for project workloads.',
         fieldKey: 'virtualNetwork',
         overrideKey: 'virtualNetworkId',
         options: inventory.getVirtualNetworkOptions(),
@@ -315,7 +315,7 @@ export function getTenantNetworkResourceMeta(
       return {
         title: 'Subnets',
         fieldLabel: 'Subnet',
-        lede: 'Subnets within your organization virtual networks.',
+        lede: 'Subnets within your tenant virtual networks.',
         fieldKey: 'subnet',
         overrideKey: 'subnetId',
         options: inventory.getSubnetOptions(virtualNetworkId),

@@ -195,7 +195,7 @@ export function ProviderAdminExternalIpPoolsPage({
         title="External IP pools"
         lede={
           isTenantScope
-            ? 'External IP pools available for workloads that need public addressing in your organization.'
+            ? 'External IP pools available for workloads that need public addressing in your tenant.'
             : 'Define routable address pools for tenant edge exposure and assign them during creation.'
         }
         action={
@@ -253,7 +253,7 @@ export function ProviderAdminExternalIpPoolsPage({
           </Title>
           <EmptyStateBody>
             {isTenantScope
-              ? 'Your provider has not published any external IP pools for this organization yet.'
+              ? 'Your provider has not published any external IP pools for this tenant yet.'
               : 'Create a pool to define routable address ranges for tenant edge exposure.'}
           </EmptyStateBody>
         </EmptyState>

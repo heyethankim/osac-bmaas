@@ -91,7 +91,7 @@ export function OrganizationResourceUsageSection({
         Resource usage
       </Title>
       <Content component="p" className="provider-admin-organizations__usage-lede">
-        Catalog items, instance quota, and project consumption for this organization.
+        Catalog items, instance quota, and project consumption for this tenant.
       </Content>
 
       <div className="provider-admin-organizations__usage-kpis">

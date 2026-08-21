@@ -90,7 +90,7 @@ function getCatalogPublishingExtras(
     return (
       <DescriptionListGroup>
         <DescriptionListTerm>
-          {enterpriseTenantIds.length > 1 ? 'Enterprise organizations' : 'Enterprise organization'}
+          {enterpriseTenantIds.length > 1 ? 'Enterprise tenants' : 'Enterprise tenant'}
         </DescriptionListTerm>
         <DescriptionListDescription>
           {formatVipEnterpriseVisibilityLabel(organizations, enterpriseTenantIds).replace(
@@ -104,7 +104,7 @@ function getCatalogPublishingExtras(
 
   return (
     <DescriptionListGroup>
-      <DescriptionListTerm>Enterprise organizations</DescriptionListTerm>
+      <DescriptionListTerm>Enterprise tenants</DescriptionListTerm>
       <DescriptionListDescription>Restricted — unassigned</DescriptionListDescription>
     </DescriptionListGroup>
   )
@@ -430,8 +430,8 @@ export function CatalogItemDetailsPage({
                   <DescriptionListGroup>
                     <DescriptionListTerm>
                       {getCatalogEnterpriseTenantIds(catalog).length > 1
-                        ? 'Enterprise organizations'
-                        : 'Enterprise organization'}
+                        ? 'Enterprise tenants'
+                        : 'Enterprise tenant'}
                     </DescriptionListTerm>
                     <DescriptionListDescription>
                       {formatVipEnterpriseVisibilityLabel(
@@ -442,7 +442,7 @@ export function CatalogItemDetailsPage({
                   </DescriptionListGroup>
                 ) : catalog.scope === 'vip-enterprise' ? (
                   <DescriptionListGroup>
-                    <DescriptionListTerm>Enterprise organizations</DescriptionListTerm>
+                    <DescriptionListTerm>Enterprise tenants</DescriptionListTerm>
                     <DescriptionListDescription>Restricted — unassigned</DescriptionListDescription>
                   </DescriptionListGroup>
                 ) : null}

@@ -840,6 +840,56 @@
   box-shadow: 0 0 0 1px #ee0000;
 }
 
+.osac-signin__password-field {
+  position: relative;
+  width: 100%;
+}
+
+.osac-signin__password-field .osac-signin__field-input.pf-v6-c-form-control {
+  padding-inline-end: 2.5rem;
+}
+
+.osac-signin__password-toggle.pf-v6-c-button.pf-m-plain {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  min-width: 2.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: rgb(255 255 255 / 72%);
+}
+
+.osac-signin__password-toggle.pf-v6-c-button.pf-m-plain:hover,
+.osac-signin__password-toggle.pf-v6-c-button.pf-m-plain:focus,
+.osac-signin__password-toggle.pf-v6-c-button.pf-m-plain:focus-visible {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  outline: none;
+  color: #fff;
+}
+
+.osac-signin__password-toggle.pf-v6-c-button.pf-m-plain::before,
+.osac-signin__password-toggle.pf-v6-c-button.pf-m-plain::after {
+  display: none;
+  content: none;
+  border: 0;
+  box-shadow: none;
+}
+
+.osac-signin__password-toggle.pf-v6-c-button.pf-m-plain .pf-v6-c-button__icon,
+.osac-signin__password-toggle.pf-v6-c-button.pf-m-plain .pf-v6-c-button__icon svg {
+  color: inherit;
+  fill: currentColor;
+}
+
 .osac-signin__submit.pf-v6-c-button.pf-m-primary {
   --pf-v6-c-button--m-primary--BackgroundColor: #ee0000;
   --pf-v6-c-button--m-primary--Color: #fff;
@@ -1025,43 +1075,16 @@
 .evergreen-login__brand {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
 }
 
-.evergreen-login__brand-mark {
-  display: flex;
-  align-items: center;
-}
-
-.evergreen-login__brand-logo-img {
+.evergreen-login__brand-lockup {
   display: block;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.35rem;
-  object-fit: cover;
-  box-shadow: 0 2px 8px rgb(29 78 143 / 12%);
-}
-
-.evergreen-login__brand-wordstack {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.05rem;
-  line-height: 1.1;
-}
-
-.evergreen-login__brand-word {
-  font-size: 1.125rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: #1f6feb;
-}
-
-.evergreen-login__brand-subword {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: #3d5a80;
+  height: 4rem;
+  width: auto;
+  max-width: min(100%, 19rem);
+  object-fit: contain;
+  object-position: left center;
+  background: transparent;
 }
 
 .evergreen-login__headline {
