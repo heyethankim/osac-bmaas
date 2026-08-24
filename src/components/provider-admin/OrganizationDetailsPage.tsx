@@ -36,7 +36,6 @@ import {
   isOrganizationReadyForLogin,
   resolveBreakGlassUsername,
   resolveOrganizationCompanyLogo,
-  rewriteBreakGlassPassword,
   type OrganizationActivationStep,
   type RegisteredOrganization,
 } from '../../providerAdmin/organizations'
@@ -234,10 +233,6 @@ function isNorthSummitBankTenant(organization: RegisteredOrganization): boolean 
   return slug === 'northsummit' || slug === 'northstar' || name === 'north-summit-bank'
 }
 
-function isHarborlineCapitalTenant(organization: RegisteredOrganization): boolean {
-  return organization.slug.trim().toLowerCase() === 'harborline'
-}
-
 function getDetailsBreakGlassUsername(organization: RegisteredOrganization): string | null {
   const username = resolveBreakGlassUsername(organization)
   if (
@@ -250,18 +245,6 @@ function getDetailsBreakGlassUsername(organization: RegisteredOrganization): str
     return null
   }
   return username
-}
-
-function getDetailsBreakGlassPassword(organization: RegisteredOrganization): string | null {
-  const password = organization.breakGlassPassword?.trim() || null
-  if (!password) {
-    return null
-  }
-  const rewritten = rewriteBreakGlassPassword(password)
-  if (isHarborlineCapitalTenant(organization) && rewritten === 'BG-harborline-vault') {
-    return null
-  }
-  return rewritten
 }
 
 export function OrganizationDetailsPage({
@@ -277,8 +260,7 @@ export function OrganizationDetailsPage({
   const roleAssignments = listRoleAssignments(organization)
   const companyLogoSrc = resolveOrganizationCompanyLogo(organization)
   const breakGlassUsername = getDetailsBreakGlassUsername(organization)
-  const breakGlassPassword = getDetailsBreakGlassPassword(organization)
-  const showBreakGlassAccount = Boolean(breakGlassUsername || breakGlassPassword)
+  const showBreakGlassAccount = Boolean(breakGlassUsername)
   const [isAssignRolesOpen, setIsAssignRolesOpen] = useState(false)
   const [administratorPendingRemove, setAdministratorPendingRemove] =
     useState<TenantAdministrator | null>(null)
@@ -509,36 +491,20 @@ export function OrganizationDetailsPage({
               >
                 Break-glass account
               </Title>
-              {showBreakGlassAccount ? (
+              {showBreakGlassAccount && breakGlassUsername ? (
                 <div className="provider-admin-organizations__break-glass">
-                  {breakGlassUsername ? (
-                    <FormGroup label="Username" fieldId="tenant-break-glass-username">
-                      <ClipboardCopy
-                        id="tenant-break-glass-username"
-                        isReadOnly
-                        isCode
-                        hoverTip="Copy username"
-                        clickTip="Username copied"
-                        textAriaLabel="Break-glass username"
-                      >
-                        {breakGlassUsername}
-                      </ClipboardCopy>
-                    </FormGroup>
-                  ) : null}
-                  {breakGlassPassword ? (
-                    <FormGroup label="Password" fieldId="tenant-break-glass-password">
-                      <ClipboardCopy
-                        id="tenant-break-glass-password"
-                        isReadOnly
-                        isCode
-                        hoverTip="Copy password"
-                        clickTip="Password copied"
-                        textAriaLabel="Break-glass password"
-                      >
-                        {breakGlassPassword}
-                      </ClipboardCopy>
-                    </FormGroup>
-                  ) : null}
+                  <FormGroup label="Username" fieldId="tenant-break-glass-username">
+                    <ClipboardCopy
+                      id="tenant-break-glass-username"
+                      isReadOnly
+                      isCode
+                      hoverTip="Copy username"
+                      clickTip="Username copied"
+                      textAriaLabel="Break-glass username"
+                    >
+                      {breakGlassUsername}
+                    </ClipboardCopy>
+                  </FormGroup>
                   <Content
                     component="p"
                     className="provider-admin-organizations__secondary-cell"
