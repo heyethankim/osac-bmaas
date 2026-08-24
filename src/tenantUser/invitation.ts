@@ -52,7 +52,7 @@ export function getTenantUserProjectInvitation(
     instanceQuota: DEMO_TENANT_USER_PROJECT_INVITATION.instanceQuota,
     resourcesLabel: DEMO_TENANT_USER_PROJECT_INVITATION.resourcesLabel,
     ipPoolCidr: organizationPool?.cidr ?? '203.0.113.0/26',
-    ipPoolName: organizationPool?.name ?? 'northstar-public-edge',
+    ipPoolName: organizationPool?.name ?? 'northsummit-public-edge',
     permissionsSummary: isOrganizationScope
       ? DEMO_TENANT_USER_PROJECT_INVITATION.organizationPermissionsSummary
       : DEMO_TENANT_USER_PROJECT_INVITATION.projectPermissionsSummary,

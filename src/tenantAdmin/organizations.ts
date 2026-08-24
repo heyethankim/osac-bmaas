@@ -92,13 +92,13 @@ export function getWorkspaceOrganization(slug: string): RegisteredOrganization {
     logoSrc:
       slug === 'evergreen'
         ? getDemoBluesolaceCompanyLogoSrc()
-        : slug === 'northstar'
+        : slug === 'northsummit' || slug === 'northstar'
           ? getDemoNorthSummitBankCompanyLogoSrc()
           : null,
     logoFileName:
       slug === 'evergreen'
         ? DEMO_BLUESOLACE_COMPANY_LOGO_FILE_NAME
-        : slug === 'northstar'
+        : slug === 'northsummit' || slug === 'northstar'
           ? DEMO_NORTH_SUMMIT_BANK_COMPANY_LOGO_FILE_NAME
           : null,
     catalogItemId: catalogDraft?.catalogItemId ?? null,

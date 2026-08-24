@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
-import { NorthstarBankLoginPage } from './NorthstarBankLoginPage'
+import { NorthsummitBankLoginPage } from './NorthsummitBankLoginPage'
 import { OsacSignInPage } from './OsacSignInPage'
 import {
   DEMO_TENANT_LOGIN_EMAIL_ADMIN,
@@ -17,7 +17,7 @@ type TenantLoginPageProps = {
   role: 'tenant-admin' | 'tenant-user'
 }
 
-type LoginStep = 'osac' | 'northstar'
+type LoginStep = 'osac' | 'northsummit'
 
 const OSAC_CONTINUE_DELAY_MS = 1500
 
@@ -26,7 +26,7 @@ export function TenantLoginPage({ role }: TenantLoginPageProps) {
   const { tenant } = useParams<{ tenant: string }>()
   const [step, setStep] = useState<LoginStep>('osac')
   const [isOsacContinuing, setIsOsacContinuing] = useState(false)
-  const [isNorthstarLoading, setIsNorthstarLoading] = useState(false)
+  const [isNorthsummitLoading, setIsNorthsummitLoading] = useState(false)
 
   useEffect(() => {
     if (!isOsacContinuing) {
@@ -35,21 +35,21 @@ export function TenantLoginPage({ role }: TenantLoginPageProps) {
 
     const timeoutId = window.setTimeout(() => {
       setIsOsacContinuing(false)
-      setStep('northstar')
+      setStep('northsummit')
     }, OSAC_CONTINUE_DELAY_MS)
 
     return () => window.clearTimeout(timeoutId)
   }, [isOsacContinuing])
 
-  if (!tenant || !isDemoTenantId(tenant) || tenant !== 'northstar') {
+  if (!tenant || !isDemoTenantId(tenant) || tenant !== 'northsummit') {
     return <Navigate to="/" replace />
   }
 
   const organization = getRegisteredOrganizationBySlug(tenant)
   const defaultEmail =
     role === 'tenant-admin'
-      ? (organization?.tenantAdminEmail ?? DEMO_TENANT_LOGIN_EMAIL_ADMIN.northstar)
-      : DEMO_TENANT_LOGIN_EMAIL_USER.northstar
+      ? (organization?.tenantAdminEmail ?? DEMO_TENANT_LOGIN_EMAIL_ADMIN.northsummit)
+      : DEMO_TENANT_LOGIN_EMAIL_USER.northsummit
 
   if (step === 'osac') {
     return (
@@ -62,9 +62,9 @@ export function TenantLoginPage({ role }: TenantLoginPageProps) {
   }
 
   return (
-    <NorthstarBankLoginPage
+    <NorthsummitBankLoginPage
       defaultUsername={defaultEmail}
-      isLandingPageLoading={isNorthstarLoading}
+      isLandingPageLoading={isNorthsummitLoading}
       onLoginSuccess={() => {
         activateProviderRegisteredOrganizationBySlug(tenant)
         if (role === 'tenant-admin') {
@@ -73,8 +73,8 @@ export function TenantLoginPage({ role }: TenantLoginPageProps) {
           setTenantUserOnboardingComplete(tenant)
           clearProviderViewingAsTenantUser()
         }
-        setIsNorthstarLoading(true)
-        window.setTimeout(() => navigate(`/${role}/northstar/workspace`), 600)
+        setIsNorthsummitLoading(true)
+        window.setTimeout(() => navigate(`/${role}/northsummit/workspace`), 600)
       }}
       onChooseAnotherInstitution={() => navigate('/')}
     />

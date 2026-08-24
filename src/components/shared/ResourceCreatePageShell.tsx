@@ -6,7 +6,14 @@ import {
   Title,
 } from '@patternfly/react-core'
 
+export type ResourceCreateBreadcrumbAncestor = {
+  label: string
+  onClick?: () => void
+}
+
 export type ResourceCreatePageShellProps = {
+  /** Optional crumbs before the immediate parent (e.g. Tenants > tenant name). */
+  ancestors?: readonly ResourceCreateBreadcrumbAncestor[]
   /** List page label in the breadcrumb (e.g. Catalog, Organizations). */
   parentLabel: string
   /** Current create title shown as the page H1 and active breadcrumb crumb. */
@@ -28,6 +35,7 @@ export type ResourceCreatePageShellProps = {
  * Breadcrumb parent always returns to the resource landing list.
  */
 export function ResourceCreatePageShell({
+  ancestors,
   parentLabel,
   title,
   titleId = 'resource-create-page-title',
@@ -48,6 +56,22 @@ export function ResourceCreatePageShell({
         .join(' ')}
     >
       <Breadcrumb aria-label={`${title} breadcrumb`}>
+        {ancestors?.map((item) => (
+          <BreadcrumbItem
+            key={item.label}
+            to={item.onClick ? '#' : undefined}
+            onClick={
+              item.onClick
+                ? (event) => {
+                    event.preventDefault()
+                    item.onClick?.()
+                  }
+                : undefined
+            }
+          >
+            {item.label}
+          </BreadcrumbItem>
+        ))}
         <BreadcrumbItem
           to="#"
           onClick={(event) => {

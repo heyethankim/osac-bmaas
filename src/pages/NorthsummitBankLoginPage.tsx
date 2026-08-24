@@ -16,19 +16,19 @@ import {
 } from '@patternfly/react-core'
 import { DEMO_LOGIN_PREFILLED_PASSWORD } from '../demoTenant'
 
-export type NorthstarBankLoginPageProps = {
+export type NorthsummitBankLoginPageProps = {
   onLoginSuccess: () => void
   defaultUsername: string
   isLandingPageLoading?: boolean
   onChooseAnotherInstitution?: () => void
 }
 
-export function NorthstarBankLoginPage({
+export function NorthsummitBankLoginPage({
   onLoginSuccess,
   defaultUsername,
   isLandingPageLoading = false,
   onChooseAnotherInstitution,
-}: NorthstarBankLoginPageProps) {
+}: NorthsummitBankLoginPageProps) {
   const [username, setUsername] = useState(defaultUsername)
   const [password, setPassword] = useState(DEMO_LOGIN_PREFILLED_PASSWORD)
   const [passwordHidden, setPasswordHidden] = useState(true)
@@ -67,63 +67,63 @@ export function NorthstarBankLoginPage({
   }, [])
 
   return (
-    <div className="northstar-login">
-      <div className="northstar-login__bokeh" aria-hidden>
-        <span className="northstar-login__bokeh-dot northstar-login__bokeh-dot--a" />
-        <span className="northstar-login__bokeh-dot northstar-login__bokeh-dot--b" />
-        <span className="northstar-login__bokeh-dot northstar-login__bokeh-dot--c" />
-        <span className="northstar-login__bokeh-dot northstar-login__bokeh-dot--d" />
-        <span className="northstar-login__bokeh-dot northstar-login__bokeh-dot--e" />
+    <div className="northsummit-login">
+      <div className="northsummit-login__bokeh" aria-hidden>
+        <span className="northsummit-login__bokeh-dot northsummit-login__bokeh-dot--a" />
+        <span className="northsummit-login__bokeh-dot northsummit-login__bokeh-dot--b" />
+        <span className="northsummit-login__bokeh-dot northsummit-login__bokeh-dot--c" />
+        <span className="northsummit-login__bokeh-dot northsummit-login__bokeh-dot--d" />
+        <span className="northsummit-login__bokeh-dot northsummit-login__bokeh-dot--e" />
       </div>
 
-      <div className="northstar-login__shell">
-        <aside className="northstar-login__brand">
-          <div className="northstar-login__brand-top">
-            <div className="northstar-login__logo" aria-label="North Summit Bank">
-              <span className="northstar-login__logo-line1">North Summit</span>
-              <span className="northstar-login__logo-line2">
-                <span className="northstar-login__logo-ring" aria-hidden>
-                  <svg viewBox="0 0 48 48" className="northstar-login__logo-star">
+      <div className="northsummit-login__shell">
+        <aside className="northsummit-login__brand">
+          <div className="northsummit-login__brand-top">
+            <div className="northsummit-login__logo" aria-label="North Summit Bank">
+              <span className="northsummit-login__logo-line1">North Summit</span>
+              <span className="northsummit-login__logo-line2">
+                <span className="northsummit-login__logo-ring" aria-hidden>
+                  <svg viewBox="0 0 48 48" className="northsummit-login__logo-star">
                     <path
                       fill="currentColor"
                       d="M24 4l4.2 12.9h13.6L32.3 25.8l4.2 12.9L24 33.7l-12.5 5 4.2-12.9L6.2 16.9h13.6L24 4z"
                     />
                   </svg>
                 </span>
-                <span className="northstar-login__logo-bank">Bank</span>
+                <span className="northsummit-login__logo-bank">Bank</span>
               </span>
             </div>
-            <p className="northstar-login__tagline">Smart banking starts here.</p>
+            <p className="northsummit-login__tagline">Smart banking starts here.</p>
           </div>
-          <div className="northstar-login__brand-bottom">
-            <p className="northstar-login__support">
+          <div className="northsummit-login__brand-bottom">
+            <p className="northsummit-login__support">
               For support, contact{' '}
               <a href="mailto:support@northsummitbank.com">support@northsummitbank.com</a>
             </p>
-            <p className="northstar-login__copyright">© 2026 North Summit Bank. All rights reserved.</p>
+            <p className="northsummit-login__copyright">© 2026 North Summit Bank. All rights reserved.</p>
           </div>
         </aside>
 
-        <main className="northstar-login__panel">
-          <Card className="northstar-login__card" isCompact={false}>
+        <main className="northsummit-login__panel">
+          <Card className="northsummit-login__card" isCompact={false}>
             <CardBody>
-              <Title headingLevel="h1" size="2xl" className="northstar-login__card-title">
+              <Title headingLevel="h1" size="2xl" className="northsummit-login__card-title">
                 Login
               </Title>
-              <p className="northstar-login__card-subtitle">
+              <p className="northsummit-login__card-subtitle">
                 Enter your credentials to access your account.
               </p>
 
               <Form
                 autoComplete="off"
-                className="northstar-login__form"
+                className="northsummit-login__form"
                 onSubmit={(e) => {
                   e.preventDefault()
                   if (isLandingPageLoading) return
                   onLoginSuccess()
                 }}
               >
-                <FormGroup fieldId="ns-username" className="northstar-login__field">
+                <FormGroup fieldId="ns-username" className="northsummit-login__field">
                   <TextInput
                     id="ns-username"
                     name="username"
@@ -137,14 +137,14 @@ export function NorthstarBankLoginPage({
                     isDisabled={isLandingPageLoading}
                   />
                 </FormGroup>
-                <FormGroup fieldId="ns-password" className="northstar-login__field">
-                  <InputGroup className="northstar-login__password-group">
+                <FormGroup fieldId="ns-password" className="northsummit-login__field">
+                  <InputGroup className="northsummit-login__password-group">
                     <InputGroupItem isFill>{passwordInput}</InputGroupItem>
                     <InputGroupItem>
                       <Button
                         variant="control"
                         type="button"
-                        className="northstar-login__password-toggle"
+                        className="northsummit-login__password-toggle"
                         onClick={() => setPasswordHidden((h) => !h)}
                         aria-label={passwordHidden ? 'Show password' : 'Hide password'}
                         icon={passwordHidden ? <EyeIcon /> : <EyeSlashIcon />}
@@ -154,7 +154,7 @@ export function NorthstarBankLoginPage({
                   </InputGroup>
                 </FormGroup>
 
-                <div className="northstar-login__form-row">
+                <div className="northsummit-login__form-row">
                   <Checkbox
                     id="ns-remember"
                     label="Remember me?"
@@ -166,7 +166,7 @@ export function NorthstarBankLoginPage({
                     variant="link"
                     isInline
                     type="button"
-                    className="northstar-login__forgot-link"
+                    className="northsummit-login__forgot-link"
                     onClick={(e) => e.preventDefault()}
                     isDisabled={isLandingPageLoading}
                   >
@@ -178,18 +178,18 @@ export function NorthstarBankLoginPage({
                   type="submit"
                   variant="primary"
                   isBlock
-                  className="northstar-login__submit"
+                  className="northsummit-login__submit"
                   isDisabled={isLandingPageLoading}
                 >
                   Login
                 </Button>
                 {onChooseAnotherInstitution ? (
-                  <div className="northstar-login__back-row">
+                  <div className="northsummit-login__back-row">
                     <Button
                       variant="link"
                       isInline
                       type="button"
-                      className="northstar-login__back-link"
+                      className="northsummit-login__back-link"
                       onClick={() => onChooseAnotherInstitution()}
                       isDisabled={isLandingPageLoading}
                     >
@@ -201,13 +201,13 @@ export function NorthstarBankLoginPage({
             </CardBody>
             {isLandingPageLoading ? (
               <div
-                className="northstar-login__landing-overlay"
+                className="northsummit-login__landing-overlay"
                 role="status"
                 aria-live="polite"
                 aria-busy="true"
               >
                 <Spinner size="lg" aria-label="Loading" aria-valuetext="Loading the landing page" />
-                <p className="northstar-login__landing-overlay-text">Loading the landing page…</p>
+                <p className="northsummit-login__landing-overlay-text">Loading the landing page…</p>
               </div>
             ) : null}
           </Card>

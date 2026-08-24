@@ -124,7 +124,7 @@ type ProviderAdminCatalogPageProps = {
 const CATALOG_ITEM_CREATE_REVEAL_MS = 1600
 /** Intentional publish latency before revealing the live state. */
 const CATALOG_ITEM_PUBLISH_REVEAL_MS = 1500
-const PROVIDER_LAUNCH_DEMO_TENANT = 'northstar'
+const PROVIDER_LAUNCH_DEMO_TENANT = 'northsummit'
 
 function getDraftServiceId(catalogDraft: ProviderCatalogDraft): CatalogServiceId {
   return catalogDraft.serviceId ?? 'baremetal'

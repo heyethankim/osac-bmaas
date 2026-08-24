@@ -110,7 +110,7 @@ function isCatalogVisibleToTenant(
   // VIP Dense GPU Node is curated for North Summit Bank tenant admin/user.
   if (
     item.catalogItemId === BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID &&
-    organization.slug === 'northstar'
+    (organization.slug === 'northsummit' || organization.slug === 'northstar')
   ) {
     return true
   }

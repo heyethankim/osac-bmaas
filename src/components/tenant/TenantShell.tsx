@@ -38,7 +38,7 @@ import type { TenantNavGroup, TenantNavItem } from '../../tenantShell/constants'
 import { flattenTenantNavItems } from '../../tenantShell/constants'
 import { UserPreferencesModal } from '../shared/UserPreferencesModal'
 import { BlueSolaceMastheadLogo } from './BlueSolaceMastheadLogo'
-import { NorthstarBankMastheadLogo } from './NorthstarBankMastheadLogo'
+import { NorthsummitBankMastheadLogo } from './NorthsummitBankMastheadLogo'
 
 type TenantShellRole = 'tenant-admin' | 'tenant-user' | 'idp-manager'
 
@@ -165,7 +165,7 @@ export function TenantShell({
           className={
             companyLogoSrc || role === 'idp-manager'
               ? 'bluesolace-masthead-logo'
-              : 'northstar-masthead-logo'
+              : 'northsummit-masthead-logo'
           }
         >
           <MastheadBrand>
@@ -185,14 +185,14 @@ export function TenantShell({
             ) : role === 'idp-manager' ? (
               <BlueSolaceMastheadLogo />
             ) : (
-              <NorthstarBankMastheadLogo />
+              <NorthsummitBankMastheadLogo />
             )}
           </MastheadBrand>
         </MastheadLogo>
       </MastheadMain>
 
-      <MastheadContent className="northstar-masthead-content">
-        <Toolbar ouiaId="tenant-masthead-utilities-toolbar" className="northstar-masthead-utilities-toolbar">
+      <MastheadContent className="northsummit-masthead-content">
+        <Toolbar ouiaId="tenant-masthead-utilities-toolbar" className="northsummit-masthead-utilities-toolbar">
           <ToolbarContent alignItems="center">
             <ToolbarGroup
               align={{ default: 'alignEnd' }}

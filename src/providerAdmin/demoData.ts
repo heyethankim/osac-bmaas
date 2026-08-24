@@ -59,13 +59,13 @@ export const PLATFORM_QUOTA_LIMITS: PlatformQuotaLimit[] = [
 
 export const TENANT_QUOTA_ALLOCATIONS: TenantQuotaAllocation[] = [
   {
-    orgId: 'northstar',
+    orgId: 'northsummit',
     orgName: 'north-summit-bank',
     maxInstances: 20,
     usedInstances: 12,
     maxVcpus: 500,
     usedVcpus: 310,
-    externalIpPoolName: 'northstar-public-edge',
+    externalIpPoolName: 'northsummit-public-edge',
     externalIpPoolCidr: '203.0.113.0/24',
   },
   {
@@ -177,7 +177,7 @@ export const PROVIDER_RECENT_ACTIVITIES: ProviderRecentActivity[] = [
 
 export const PROVIDER_TENANT_ORGS: ProviderTenantOrg[] = [
   {
-    id: 'northstar',
+    id: 'northsummit',
     name: 'north-summit-bank',
     tenantId: 'tenant-001',
     status: 'Active',

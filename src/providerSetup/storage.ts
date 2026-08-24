@@ -15,12 +15,12 @@ import {
   DEMO_NORTH_SUMMIT_BANK_ORG_ID,
   DEMO_NORTH_SUMMIT_BANK_ORG_NAME,
   DEMO_NORTH_SUMMIT_BANK_PRIMARY_DOMAIN,
-  DEMO_NORTHSTAR_ADDITIONAL_DOMAIN,
-  DEMO_NORTHSTAR_BILLING_ACCOUNT_NAME,
-  DEMO_NORTHSTAR_IDP_CLIENT_ID,
-  DEMO_NORTHSTAR_IDP_DISPLAY_NAME,
-  DEMO_NORTHSTAR_ORG_NAME,
-  DEMO_NORTHSTAR_PRIMARY_DOMAIN,
+  DEMO_BLUESOLACE_ADDITIONAL_DOMAIN,
+  DEMO_BLUESOLACE_BILLING_ACCOUNT_NAME,
+  DEMO_BLUESOLACE_IDP_CLIENT_ID,
+  DEMO_BLUESOLACE_IDP_DISPLAY_NAME,
+  DEMO_BLUESOLACE_ORG_NAME,
+  DEMO_BLUESOLACE_PRIMARY_DOMAIN,
   DEFAULT_REGISTER_ORGANIZATION_FORM,
   DEFAULT_REGISTER_ORGANIZATION_TENANT_ADMIN,
   hasBreakGlassAccount,
@@ -30,6 +30,7 @@ import {
   rewriteBreakGlassPassword,
   isOrganizationAssignedRoleId,
   migrateLegacyIdentityProviderClientId,
+  hydrateIdentityProvidersFromOrganizationFields,
   normalizeAdditionalDomains,
   normalizeOrganizationIdentityProviders,
   type OrganizationRoleAssignment,
@@ -416,7 +417,9 @@ const NETWORK_RESOURCE_DNS1123_NAME_MIGRATIONS: Record<string, string> = {
   'Tenant workload VNet': 'tenant-workload',
   'Shared services VNet': 'shared-services',
   'Demo workload VNet': 'demo-workload',
-  'Northstar public edge': 'northstar-public-edge',
+  'Northstar public edge': 'northsummit-public-edge',
+  'Northsummit public edge': 'northsummit-public-edge',
+  'northstar-public-edge': 'northsummit-public-edge',
   'Standby pool A': 'standby-pool-a',
 }
 
@@ -1199,7 +1202,7 @@ export function clearProviderSavedTemplate(): void {
   }
 }
 
-function migrateNorthstarIssuerUrl(issuerUrl: string): string {
+function migrateNorthsummitIssuerUrl(issuerUrl: string): string {
   return issuerUrl
     .replace(/bluesolacefinancial\.com/gi, DEMO_NORTH_SUMMIT_BANK_PRIMARY_DOMAIN)
     .replace(/northsummitbank\.com/gi, DEMO_NORTH_SUMMIT_BANK_PRIMARY_DOMAIN)
@@ -1209,39 +1212,47 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
   const emailDomain = org.tenantAdminEmail.includes('@')
     ? org.tenantAdminEmail.split('@')[1]?.toLowerCase() ?? ''
     : ''
-  const isNorthstar = org.slug === 'northstar'
+  const isNorthsummit =
+    org.slug === 'northstar' ||
+    org.slug === 'northsummit' ||
+    org.id === 'org-northstar-bank' ||
+    org.id === 'org_northstar_bank' ||
+    org.id === 'org-northsummit-bank' ||
+    org.id === 'org_northsummit_bank'
   const rawPrimaryDomain =
     typeof org.primaryDomain === 'string' && org.primaryDomain.trim()
       ? org.primaryDomain.trim().toLowerCase()
       : emailDomain
   const primaryDomain =
-    isNorthstar &&
+    isNorthsummit &&
     (rawPrimaryDomain === DEMO_NORTH_SUMMIT_BANK_PRIMARY_DOMAIN ||
-      rawPrimaryDomain === DEMO_NORTHSTAR_PRIMARY_DOMAIN ||
+      rawPrimaryDomain === DEMO_BLUESOLACE_PRIMARY_DOMAIN ||
       !rawPrimaryDomain)
       ? DEMO_NORTH_SUMMIT_BANK_PRIMARY_DOMAIN
       : rawPrimaryDomain
   const additionalDomains = normalizeAdditionalDomains(
     (Array.isArray(org.additionalDomains) ? org.additionalDomains : []).map((domain) =>
-      isNorthstar &&
+      isNorthsummit &&
       (domain === DEMO_NORTH_SUMMIT_BANK_ADDITIONAL_DOMAIN ||
         domain === `subsidiary.${DEMO_NORTH_SUMMIT_BANK_PRIMARY_DOMAIN}` ||
-        domain === DEMO_NORTHSTAR_ADDITIONAL_DOMAIN ||
-        domain === `subsidiary.${DEMO_NORTHSTAR_PRIMARY_DOMAIN}`)
+        domain === DEMO_BLUESOLACE_ADDITIONAL_DOMAIN ||
+        domain === `subsidiary.${DEMO_BLUESOLACE_PRIMARY_DOMAIN}`)
         ? DEMO_NORTH_SUMMIT_BANK_ADDITIONAL_DOMAIN
         : domain,
     ),
     primaryDomain,
   )
   const identityProviderDisplayName =
-    isNorthstar &&
+    isNorthsummit &&
     (org.identityProviderDisplayName === 'North Summit Bank IdP' ||
       org.identityProviderDisplayName === 'Northstar Bank IdP' ||
+      org.identityProviderDisplayName === 'Northsummit Bank IdP' ||
       org.identityProviderDisplayName === DEMO_NORTH_SUMMIT_BANK_IDP_DISPLAY_NAME ||
-      org.identityProviderDisplayName === DEMO_NORTHSTAR_IDP_DISPLAY_NAME)
+      org.identityProviderDisplayName === DEMO_BLUESOLACE_IDP_DISPLAY_NAME)
       ? DEMO_NORTH_SUMMIT_BANK_IDP_DISPLAY_NAME
       : org.identityProviderDisplayName === 'North Summit Bank IdP' ||
-          org.identityProviderDisplayName === 'Northstar Bank IdP'
+          org.identityProviderDisplayName === 'Northstar Bank IdP' ||
+          org.identityProviderDisplayName === 'Northsummit Bank IdP'
         ? DEMO_NORTH_SUMMIT_BANK_IDP_DISPLAY_NAME
         : typeof org.identityProviderDisplayName === 'string' &&
             org.identityProviderDisplayName.trim()
@@ -1249,62 +1260,80 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
           : null
   const identityProviderIssuerUrl =
     typeof org.identityProviderIssuerUrl === 'string' && org.identityProviderIssuerUrl.trim()
-      ? isNorthstar
-        ? migrateNorthstarIssuerUrl(org.identityProviderIssuerUrl.trim())
+      ? isNorthsummit
+        ? migrateNorthsummitIssuerUrl(org.identityProviderIssuerUrl.trim())
         : org.identityProviderIssuerUrl.trim()
       : null
   const identityProviderName =
     typeof org.identityProviderName === 'string' && org.identityProviderName.trim()
-      ? isNorthstar
-        ? migrateNorthstarIssuerUrl(org.identityProviderName.trim())
+      ? isNorthsummit
+        ? migrateNorthsummitIssuerUrl(org.identityProviderName.trim())
         : org.identityProviderName.trim()
       : null
   const identityProviderClientId =
     typeof org.identityProviderClientId === 'string' && org.identityProviderClientId.trim()
-      ? isNorthstar &&
-        (org.identityProviderClientId.trim() === DEMO_NORTHSTAR_IDP_CLIENT_ID ||
+      ? isNorthsummit &&
+        (org.identityProviderClientId.trim() === DEMO_BLUESOLACE_IDP_CLIENT_ID ||
           org.identityProviderClientId.trim() === 'bmaas-northstar' ||
+          org.identityProviderClientId.trim() === 'bmaas-northsummit' ||
           org.identityProviderClientId.trim() === DEMO_NORTH_SUMMIT_BANK_IDP_CLIENT_ID)
         ? DEMO_NORTH_SUMMIT_BANK_IDP_CLIENT_ID
         : migrateLegacyIdentityProviderClientId(org.identityProviderClientId.trim())
       : null
-  const identityProviders = normalizeOrganizationIdentityProviders(org.identityProviders).map(
-    (provider) =>
-      isNorthstar
-        ? {
-            ...provider,
-            displayName:
-              provider.displayName === DEMO_NORTH_SUMMIT_BANK_IDP_DISPLAY_NAME ||
-              provider.displayName === DEMO_NORTHSTAR_IDP_DISPLAY_NAME ||
-              provider.displayName === 'North Summit Bank IdP' ||
-              provider.displayName === 'Northstar Bank IdP'
-                ? DEMO_NORTH_SUMMIT_BANK_IDP_DISPLAY_NAME
-                : provider.displayName,
-            issuerUrl: migrateNorthstarIssuerUrl(provider.issuerUrl),
-            clientId:
-              provider.clientId === DEMO_NORTHSTAR_IDP_CLIENT_ID ||
-              provider.clientId === 'bmaas-northstar'
-                ? DEMO_NORTH_SUMMIT_BANK_IDP_CLIENT_ID
-                : migrateLegacyIdentityProviderClientId(provider.clientId),
-            name: migrateNorthstarIssuerUrl(provider.name),
-          }
-        : provider,
-  )
+  const identityProviders = hydrateIdentityProvidersFromOrganizationFields({
+    id: org.id,
+    primaryDomain,
+    identityProviderConnected: Boolean(org.identityProviderConnected),
+    identityProviderName,
+    identityProviderDisplayName,
+    identityProviderProtocol:
+      org.identityProviderProtocol === 'OIDC' || org.identityProviderProtocol === 'SAML'
+        ? org.identityProviderProtocol
+        : null,
+    identityProviderIssuerUrl,
+    identityProviderClientId,
+    identityProviders: normalizeOrganizationIdentityProviders(org.identityProviders).map(
+      (provider) =>
+        isNorthsummit
+          ? {
+              ...provider,
+              displayName:
+                provider.displayName === DEMO_NORTH_SUMMIT_BANK_IDP_DISPLAY_NAME ||
+                provider.displayName === DEMO_BLUESOLACE_IDP_DISPLAY_NAME ||
+                provider.displayName === 'North Summit Bank IdP' ||
+                provider.displayName === 'Northstar Bank IdP' ||
+                provider.displayName === 'Northsummit Bank IdP'
+                  ? DEMO_NORTH_SUMMIT_BANK_IDP_DISPLAY_NAME
+                  : provider.displayName,
+              issuerUrl: migrateNorthsummitIssuerUrl(provider.issuerUrl),
+              clientId:
+                provider.clientId === DEMO_BLUESOLACE_IDP_CLIENT_ID ||
+                provider.clientId === 'bmaas-northstar' ||
+                provider.clientId === 'bmaas-northsummit'
+                  ? DEMO_NORTH_SUMMIT_BANK_IDP_CLIENT_ID
+                  : migrateLegacyIdentityProviderClientId(provider.clientId),
+              name: migrateNorthsummitIssuerUrl(provider.name),
+            }
+          : provider,
+    ),
+  })
   const billingAccountName =
-    isNorthstar &&
+    isNorthsummit &&
     (org.billingAccountName === 'North Summit Bank — Enterprise Billing' ||
       org.billingAccountName === 'Northstar Bank — Enterprise Billing' ||
+      org.billingAccountName === 'Northsummit Bank — Enterprise Billing' ||
       org.billingAccountName === DEMO_NORTH_SUMMIT_BANK_BILLING_ACCOUNT_NAME ||
-      org.billingAccountName === DEMO_NORTHSTAR_BILLING_ACCOUNT_NAME)
+      org.billingAccountName === DEMO_BLUESOLACE_BILLING_ACCOUNT_NAME)
       ? DEMO_NORTH_SUMMIT_BANK_BILLING_ACCOUNT_NAME
       : org.billingAccountName === 'North Summit Bank — Enterprise Billing' ||
-          org.billingAccountName === 'Northstar Bank — Enterprise Billing'
+          org.billingAccountName === 'Northstar Bank — Enterprise Billing' ||
+          org.billingAccountName === 'Northsummit Bank — Enterprise Billing'
         ? DEMO_NORTH_SUMMIT_BANK_BILLING_ACCOUNT_NAME
         : org.billingAccountName === 'BlueSolace Financial Group — Enterprise Billing' ||
             org.billingAccountName === 'Bluestone Financial Group — Corporate'
           ? org.billingAccountName.includes('Corporate')
             ? 'bluestone-financial-group-corporate'
-            : DEMO_NORTHSTAR_BILLING_ACCOUNT_NAME
+            : DEMO_BLUESOLACE_BILLING_ACCOUNT_NAME
           : org.billingAccountName === 'Harborline Capital — Enterprise Billing'
             ? 'harborline-capital-enterprise-billing'
             : org.billingAccountName === 'Silverpine Trust — Enterprise Billing'
@@ -1315,11 +1344,11 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
   const placeholderTenantAdminEmail =
     DEFAULT_REGISTER_ORGANIZATION_TENANT_ADMIN.email.toLowerCase()
   const shouldClearPlaceholderTenantAdmin =
-    !isNorthstar && org.tenantAdminEmail.trim().toLowerCase() === placeholderTenantAdminEmail
+    !isNorthsummit && org.tenantAdminEmail.trim().toLowerCase() === placeholderTenantAdminEmail
 
   const breakGlassEmail =
     typeof org.breakGlassEmail === 'string' && org.breakGlassEmail.trim()
-      ? isNorthstar
+      ? isNorthsummit
         ? org.breakGlassEmail
             .trim()
             .toLowerCase()
@@ -1330,11 +1359,21 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
 
   const normalized: RegisteredOrganization = {
     ...org,
-    id: org.id === 'org_northstar_bank' ? 'org-northstar-bank' : org.id,
+    id:
+      org.id === 'org_northstar_bank' ||
+      org.id === 'org-northstar-bank' ||
+      org.id === 'org_northsummit_bank'
+        ? DEMO_NORTH_SUMMIT_BANK_ORG_ID
+        : org.id,
+    slug: isNorthsummit ? 'northsummit' : org.slug,
     name:
-      org.slug === 'northstar'
+      isNorthsummit ||
+      org.slug === 'northstar' ||
+      org.slug === 'northsummit'
         ? DEMO_NORTH_SUMMIT_BANK_ORG_NAME
-        : org.name === 'North Summit Bank' || org.name === 'Northstar Bank'
+        : org.name === 'North Summit Bank' ||
+            org.name === 'Northstar Bank' ||
+            org.name === 'Northsummit Bank'
           ? DEMO_NORTH_SUMMIT_BANK_ORG_NAME
           : org.name === 'BlueSolace Financial Group' ||
               org.name === 'Bluestone Financial Group'
@@ -1369,7 +1408,10 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
             : org.catalogDisplayName === 'VM with Configurable Network Attachments'
               ? 'vm-configurable-network-attachments'
               : (org.catalogDisplayName ?? null),
-    externalIpPoolId: org.externalIpPoolId ?? null,
+    externalIpPoolId:
+      org.externalIpPoolId === 'eipool-northstar-edge'
+        ? 'eipool-northsummit-edge'
+        : (org.externalIpPoolId ?? null),
     externalIpPoolName: org.externalIpPoolName
       ? migrateDns1123ResourceName(org.externalIpPoolName)
       : null,
@@ -1424,7 +1466,9 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
         ? org.slug === 'evergreen' &&
           org.breakGlassUsername.trim().toLowerCase() === 'breakglass-evergreen'
           ? generateBreakGlassUsername(org.slug)
-          : org.breakGlassUsername.trim()
+          : org.breakGlassUsername.trim().toLowerCase() === 'breakglass-northstar'
+            ? generateBreakGlassUsername('northsummit')
+            : org.breakGlassUsername.trim()
         : typeof org.breakGlassEmail === 'string' && org.breakGlassEmail.trim()
           ? generateBreakGlassUsername(org.slug)
           : null,
@@ -1785,7 +1829,7 @@ export function ensureBlueSolaceOnboardingOrganization(): RegisteredOrganization
   const existing =
     current.find((tenant) => tenant.id === DEMO_BLUESOLACE_ORG_ID) ??
     current.find((tenant) => tenant.slug === DEMO_IDP_MANAGER_ORG_SLUG) ??
-    current.find((tenant) => tenant.name === DEMO_NORTHSTAR_ORG_NAME)
+    current.find((tenant) => tenant.name === DEMO_BLUESOLACE_ORG_NAME)
 
   if (existing) {
     const usesNorthSummitDomain =
@@ -1799,20 +1843,20 @@ export function ensureBlueSolaceOnboardingOrganization(): RegisteredOrganization
     if (!hasBreakGlassAccount(existing)) {
       patch.breakGlassName = existing.breakGlassName?.trim() || 'IdP manager'
       patch.breakGlassEmail =
-        existing.breakGlassEmail?.trim() || `idp-admin@${DEMO_NORTHSTAR_PRIMARY_DOMAIN}`
+        existing.breakGlassEmail?.trim() || `idp-admin@${DEMO_BLUESOLACE_PRIMARY_DOMAIN}`
       patch.breakGlassUsername = generateBreakGlassUsername(DEMO_IDP_MANAGER_ORG_SLUG)
       patch.breakGlassPassword = getDemoBreakGlassPassword(DEMO_IDP_MANAGER_ORG_SLUG)
       patch.breakGlassIssuedAt = existing.breakGlassIssuedAt ?? new Date().toISOString()
     }
 
     if (usesNorthSummitDomain || !existing.primaryDomain.trim()) {
-      patch.name = DEMO_NORTHSTAR_ORG_NAME
-      patch.primaryDomain = DEMO_NORTHSTAR_PRIMARY_DOMAIN
-      patch.billingAccountName = DEMO_NORTHSTAR_BILLING_ACCOUNT_NAME
+      patch.name = DEMO_BLUESOLACE_ORG_NAME
+      patch.primaryDomain = DEMO_BLUESOLACE_PRIMARY_DOMAIN
+      patch.billingAccountName = DEMO_BLUESOLACE_BILLING_ACCOUNT_NAME
     }
 
     if (additionalLooksEmptyOrNorthSummit) {
-      patch.additionalDomains = [DEMO_NORTHSTAR_ADDITIONAL_DOMAIN]
+      patch.additionalDomains = [DEMO_BLUESOLACE_ADDITIONAL_DOMAIN]
     }
 
     if (Object.keys(patch).length === 0) {
@@ -1998,18 +2042,29 @@ function isExternalIpPool(value: unknown): value is ExternalIpPool {
 function normalizeExternalIpPool(pool: ExternalIpPool): ExternalIpPool {
   const assignedOrganizationName =
     pool.assignedOrganizationId === DEMO_NORTH_SUMMIT_BANK_ORG_ID ||
+    pool.assignedOrganizationId === 'org-northstar-bank' ||
+    pool.assignedOrganizationId === 'org_northstar_bank' ||
     pool.assignedOrganizationName === 'North Summit Bank' ||
-    pool.assignedOrganizationName === 'Northstar Bank'
+    pool.assignedOrganizationName === 'Northstar Bank' ||
+    pool.assignedOrganizationName === 'Northsummit Bank'
       ? DEMO_NORTH_SUMMIT_BANK_ORG_NAME
       : pool.assignedOrganizationName === 'BlueSolace Financial Group' ||
           pool.assignedOrganizationName === 'Bluestone Financial Group'
         ? 'bluesolace-financial-group'
         : pool.assignedOrganizationName
 
+  const assignedOrganizationId =
+    pool.assignedOrganizationId === 'org-northstar-bank' ||
+    pool.assignedOrganizationId === 'org_northstar_bank'
+      ? DEMO_NORTH_SUMMIT_BANK_ORG_ID
+      : pool.assignedOrganizationId
+
   return {
     ...pool,
+    id: pool.id === 'eipool-northstar-edge' ? 'eipool-northsummit-edge' : pool.id,
     name: migrateDns1123ResourceName(pool.name),
     dataCenter: migrateDns1123DataCenter(pool.dataCenter),
+    assignedOrganizationId,
     assignedOrganizationName,
   }
 }

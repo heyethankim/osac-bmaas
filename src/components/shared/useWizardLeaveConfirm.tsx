@@ -9,6 +9,7 @@ export type WizardStepFooterConfig = {
 
 export type UseWizardLeaveConfirmOptions = {
   onLeave: () => void
+  onDismiss?: () => void
   isLeaveDisabled?: boolean
   primaryActionLabel?: string
   description?: string
@@ -17,6 +18,7 @@ export type UseWizardLeaveConfirmOptions = {
 
 export function useWizardLeaveConfirm({
   onLeave,
+  onDismiss,
   isLeaveDisabled = false,
   primaryActionLabel = 'Leave',
   description = 'Your progress will not be saved.',
@@ -33,7 +35,8 @@ export function useWizardLeaveConfirm({
 
   const closeLeaveConfirm = useCallback(() => {
     setIsLeaveConfirmOpen(false)
-  }, [])
+    onDismiss?.()
+  }, [onDismiss])
 
   const confirmLeave = useCallback(() => {
     setIsLeaveConfirmOpen(false)

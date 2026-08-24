@@ -226,10 +226,10 @@ export function getTenantUserInstances(slug: string): TenantInstance[] {
 }
 
 function getDemoOrganizationName(slug: string): string {
-  if (slug === 'northstar' || slug === 'evergreen') {
-    return DEMO_TENANT_LABEL[slug]
+  if (slug === 'evergreen') {
+    return DEMO_TENANT_LABEL.evergreen
   }
-  return DEMO_TENANT_LABEL.northstar
+  return DEMO_TENANT_LABEL.northsummit
 }
 
 /**

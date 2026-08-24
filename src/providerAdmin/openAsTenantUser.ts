@@ -11,8 +11,8 @@ import {
 
 const VIEWING_AS_TENANT_USER_KEY = 'bmaas-provider-viewing-as-tenant-user'
 
-/** Demo tenant-user workspace is wired for North Summit Bank (`northstar`). */
-const DEMO_TENANT_USER_WORKSPACE_SLUG = 'northstar' as const
+/** Demo tenant-user workspace is wired for North Summit Bank (`northsummit`). */
+const DEMO_TENANT_USER_WORKSPACE_SLUG = 'northsummit' as const
 
 export type ViewingAsTenantUserSource = 'provider' | 'tenant-admin'
 
@@ -176,7 +176,7 @@ export function returnFromTenantUserPreview(): string {
   clearProviderViewingAsTenantUser()
 
   if (preview?.source === 'tenant-admin') {
-    const tenantSlug = preview.returnTenantSlug ?? 'northstar'
+    const tenantSlug = preview.returnTenantSlug ?? 'northsummit'
     const returnNav = preview.returnTenantAdminNav ?? 'catalog'
     setTenantActiveNav(tenantSlug, returnNav)
     return `/tenant-admin/${tenantSlug}/workspace`

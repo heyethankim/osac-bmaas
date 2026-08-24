@@ -3212,14 +3212,6 @@
 }
 
 .entity-details-page__icon-wrap img,
-.entity-details-page__company-logo {
-  display: block;
-  width: auto;
-  height: 2.25rem;
-  max-width: 14rem;
-  object-fit: contain;
-}
-
 .provider-admin-organizations__logo-preview {
   display: flex;
   align-items: center;
@@ -5021,6 +5013,10 @@
   display: flex;
   justify-content: center;
   padding-block: var(--pf-t--global--spacer--xl);
+}
+
+.idp-manager-identity-provider__breadcrumb {
+  margin-block-end: 0;
 }
 
 .idp-manager-identity-provider__lede.pf-v6-c-content--p {

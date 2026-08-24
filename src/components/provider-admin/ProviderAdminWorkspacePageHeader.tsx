@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Content, Flex, FlexItem, Label, Title } from '@patternfly/react-core'
 
 type ProviderAdminWorkspacePageHeaderProps = {
-  kicker: string
+  kicker?: string
   title: string
   lede?: string
   action?: ReactNode
@@ -22,9 +22,11 @@ export function ProviderAdminWorkspacePageHeader({
       gap={{ default: 'gapMd' }}
     >
       <FlexItem>
-        <Label color="grey" className="provider-admin-workspace-page__kicker">
-          {kicker}
-        </Label>
+        {kicker ? (
+          <Label color="grey" className="provider-admin-workspace-page__kicker">
+            {kicker}
+          </Label>
+        ) : null}
         <Title headingLevel="h1" size="3xl" className="provider-admin-workspace-page__title">
           {title}
         </Title>

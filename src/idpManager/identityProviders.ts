@@ -2,6 +2,7 @@ import {
   buildDemoIdentityProviderName,
   buildDefaultIdentityProviderClientId,
   normalizeAdditionalDomains,
+  resolveOrganizationIdentityProviders,
   type OrganizationIdentityProvider,
   type RegisteredOrganization,
 } from '../providerAdmin/organizations'
@@ -16,6 +17,14 @@ export type IdentityProviderDraft = {
 
 function buildIdentityProviderId(): string {
   return `idp-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
+}
+
+export function identityProviderFromDraft(
+  draft: IdentityProviderDraft,
+  primaryDomain: string,
+  existingId?: string,
+): OrganizationIdentityProvider {
+  return toIdentityProvider(draft, primaryDomain, existingId)
 }
 
 function toIdentityProvider(
@@ -39,7 +48,14 @@ function primaryIdentityProviderPatch(
 ): Partial<RegisteredOrganization> {
   const primary = providers[0]
   if (!primary) {
-    return {}
+    return {
+      identityProviderConnected: false,
+      identityProviderName: null,
+      identityProviderDisplayName: null,
+      identityProviderProtocol: null,
+      identityProviderIssuerUrl: null,
+      identityProviderClientId: null,
+    }
   }
 
   return {
@@ -60,7 +76,7 @@ export function addOrganizationIdentityProvider(
   additionalDomains: string[],
 ): RegisteredOrganization | null {
   const nextProviders = [
-    ...organization.identityProviders,
+    ...resolveOrganizationIdentityProviders(organization),
     toIdentityProvider(draft, organization.primaryDomain),
   ]
 
@@ -77,13 +93,14 @@ export function updateOrganizationIdentityProvider(
   draft: IdentityProviderDraft,
   additionalDomains: string[],
 ): RegisteredOrganization | null {
-  const nextProviders = organization.identityProviders.map((provider) =>
+  const currentProviders = resolveOrganizationIdentityProviders(organization)
+  const nextProviders = currentProviders.map((provider) =>
     provider.id === providerId
       ? toIdentityProvider(draft, organization.primaryDomain, provider.id)
       : provider,
   )
 
-  if (nextProviders.every((provider, index) => provider === organization.identityProviders[index])) {
+  if (nextProviders.every((provider, index) => provider === currentProviders[index])) {
     return null
   }
 
@@ -98,8 +115,9 @@ export function removeOrganizationIdentityProvider(
   organization: RegisteredOrganization,
   providerId: string,
 ): RegisteredOrganization | null {
-  const nextProviders = organization.identityProviders.filter((provider) => provider.id !== providerId)
-  if (nextProviders.length === organization.identityProviders.length) {
+  const currentProviders = resolveOrganizationIdentityProviders(organization)
+  const nextProviders = currentProviders.filter((provider) => provider.id !== providerId)
+  if (nextProviders.length === currentProviders.length) {
     return null
   }
 
@@ -114,8 +132,9 @@ export function buildDefaultIdentityProviderDraft(
 ): IdentityProviderDraft {
   const domain = organization.primaryDomain || 'example.com'
   const baseName = `${organization.name}-idp`
+  const currentProviders = resolveOrganizationIdentityProviders(organization)
   const takenNames = new Set(
-    organization.identityProviders.map((provider) => provider.displayName.toLowerCase()),
+    currentProviders.map((provider) => provider.displayName.toLowerCase()),
   )
   let displayName = baseName
   let suffix = 2
@@ -130,7 +149,7 @@ export function buildDefaultIdentityProviderDraft(
     issuerUrl: `https://login.${domain}/oauth2`,
     clientId: buildDefaultIdentityProviderClientId(
       organization,
-      organization.identityProviders.map((provider) => provider.clientId),
+      currentProviders.map((provider) => provider.clientId),
     ),
   }
 }

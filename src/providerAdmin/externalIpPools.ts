@@ -13,8 +13,8 @@ export const EXTERNAL_IP_POOL_DATA_CENTERS = ['eu-west-1-dc-a', 'us-east-1-dc-b'
 
 export const DEFAULT_EXTERNAL_IP_POOLS: ExternalIpPool[] = [
   {
-    id: 'eipool-northstar-edge',
-    name: 'northstar-public-edge',
+    id: 'eipool-northsummit-edge',
+    name: 'northsummit-public-edge',
     cidr: '203.0.113.0/24',
     dataCenter: 'eu-west-1-dc-a',
     totalAddresses: 254,

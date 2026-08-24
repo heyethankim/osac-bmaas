@@ -24,11 +24,11 @@ import {
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
 import { CatalogFilterEmptyState } from '../components/catalog/CatalogFilterEmptyState'
 import { CatalogFilterResultsSummary } from '../components/catalog/CatalogFilterResultsSummary'
-import { ConnectOrganizationIdentityProviderModal } from '../components/provider-admin/ConnectOrganizationIdentityProviderModal'
 import { OrganizationDetailsPage } from '../components/provider-admin/OrganizationDetailsPage'
 import { RegisterOrganizationWizard } from '../components/provider-admin/RegisterOrganizationWizard'
 import { SetupIdentityProviderWizard } from '../components/provider-admin/SetupIdentityProviderWizard'
 import { AddTenantAdministratorWizard } from '../components/tenant-admin/AddTenantAdministratorWizard'
+import { IdpManagerIdentityProviderPage } from './idp-manager/IdpManagerIdentityProviderPage'
 import { IDP_MANAGER_ROLES_COPY } from '../idpManager/constants'
 import {
   getOrganizationSetupNextAction,
@@ -70,6 +70,7 @@ function getOrganizationActions(
   onViewDetails: (organization: RegisteredOrganization) => void,
   onEdit: (organization: RegisteredOrganization) => void,
   onRemove: (organization: RegisteredOrganization) => void,
+  onOpenIdpInformation: (organization: RegisteredOrganization) => void,
 ): IAction[] {
   return [
     {
@@ -80,6 +81,14 @@ function getOrganizationActions(
       title: 'Edit',
       onClick: () => onEdit(organization),
     },
+    ...(organization.identityProviderConnected
+      ? [
+          {
+            title: 'View IdP information',
+            onClick: () => onOpenIdpInformation(organization),
+          },
+        ]
+      : []),
     {
       isSeparator: true,
     },
@@ -108,8 +117,9 @@ export function ProviderAdminOrganizationsPage({
     null,
   )
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
-  const [idpOrganization, setIdpOrganization] = useState<RegisteredOrganization | null>(null)
   const [idpDelegationOrganization, setIdpDelegationOrganization] =
+    useState<RegisteredOrganization | null>(null)
+  const [idpDirectoryOrganization, setIdpDirectoryOrganization] =
     useState<RegisteredOrganization | null>(null)
   const [rolesOrganization, setRolesOrganization] = useState<RegisteredOrganization | null>(null)
   const [organizationPendingRemove, setOrganizationPendingRemove] =
@@ -184,6 +194,13 @@ export function ProviderAdminOrganizationsPage({
     const next = getProviderRegisteredOrganizations()
     setOrganizations(next)
 
+    setIdpDirectoryOrganization((current) => {
+      if (!current) {
+        return current
+      }
+      return next.find((organization) => organization.id === current.id) ?? null
+    })
+
     if (nextSelectedId) {
       setSelectedOrganization(next.find((organization) => organization.id === nextSelectedId) ?? null)
       return
@@ -212,13 +229,27 @@ export function ProviderAdminOrganizationsPage({
 
   const handleIdpModalClose = () => {
     setIdpDelegationOrganization(null)
-    setIdpOrganization(null)
     const organizationId = pendingActivationAfterIdpCloseRef.current
     if (!organizationId) {
       return
     }
     pendingActivationAfterIdpCloseRef.current = null
     startOrganizationActivation(organizationId)
+  }
+
+  const openIdpDirectory = (organization: RegisteredOrganization) => {
+    setSelectedOrganization(organization)
+    setIdpDirectoryOrganization(organization)
+  }
+
+  const closeIdpDirectoryToTenants = () => {
+    setIdpDirectoryOrganization(null)
+    setIsDetailsOpen(false)
+  }
+
+  const closeIdpDirectoryToTenantDetails = () => {
+    setIdpDirectoryOrganization(null)
+    setIsDetailsOpen(true)
   }
 
   const openRegisterWizard = () => {
@@ -269,11 +300,11 @@ export function ProviderAdminOrganizationsPage({
         setIsDetailsOpen(false)
         setSelectedOrganization(null)
       }
-      if (idpOrganization?.id === removedId) {
-        setIdpOrganization(null)
-      }
       if (idpDelegationOrganization?.id === removedId) {
         setIdpDelegationOrganization(null)
+      }
+      if (idpDirectoryOrganization?.id === removedId) {
+        setIdpDirectoryOrganization(null)
       }
       if (rolesOrganization?.id === removedId) {
         setRolesOrganization(null)
@@ -327,7 +358,7 @@ export function ProviderAdminOrganizationsPage({
   ) => {
     if (action === 'idp') {
       if (organization.identityProviderConnected) {
-        setIdpOrganization(organization)
+        openIdpDirectory(organization)
         return
       }
       setIdpDelegationOrganization(organization)
@@ -350,7 +381,7 @@ export function ProviderAdminOrganizationsPage({
     setIdpDelegationOrganization((current) =>
       current != null && current.id === organization.id ? organization : current,
     )
-    setIdpOrganization((current) =>
+    setIdpDirectoryOrganization((current) =>
       current != null && current.id === organization.id ? organization : current,
     )
   }
@@ -400,6 +431,19 @@ export function ProviderAdminOrganizationsPage({
           onUpdated={handleIdpSetupUpdated}
           onConnected={handleIdentityProviderConnected}
         />
+      ) : idpDirectoryOrganization !== null ? (
+        <IdpManagerIdentityProviderPage
+          organization={idpDirectoryOrganization}
+          onOrganizationChange={(organization) => {
+            refreshOrganizations(organization.id)
+            setIdpDirectoryOrganization(organization)
+            setSelectedOrganization((current) =>
+              current?.id === organization.id ? organization : current,
+            )
+          }}
+          onBackToTenants={closeIdpDirectoryToTenants}
+          onBackToTenantDetails={closeIdpDirectoryToTenantDetails}
+        />
       ) : isDetailsOpen && selectedOrganization ? (
         <OrganizationDetailsPage
           organization={selectedOrganization}
@@ -408,7 +452,7 @@ export function ProviderAdminOrganizationsPage({
           onRemove={() => openRemove(selectedOrganization)}
           onReviewIdentityProvider={(organization) => {
             if (organization.identityProviderConnected) {
-              setIdpOrganization(organization)
+              openIdpDirectory(organization)
               return
             }
             setIdpDelegationOrganization(organization)
@@ -632,7 +676,13 @@ export function ProviderAdminOrganizationsPage({
                     </Td>
                     <Td isActionCell>
                       <ActionsColumn
-                        items={getOrganizationActions(org, openDetails, openEdit, openRemove)}
+                        items={getOrganizationActions(
+                          org,
+                          openDetails,
+                          openEdit,
+                          openRemove,
+                          (organization) => openIdpDirectory(organization),
+                        )}
                       />
                     </Td>
                   </Tr>
@@ -645,12 +695,6 @@ export function ProviderAdminOrganizationsPage({
       </div>
       )}
 
-      <ConnectOrganizationIdentityProviderModal
-        isOpen={idpOrganization !== null}
-        organization={idpOrganization}
-        onClose={handleIdpModalClose}
-        onConnected={handleIdentityProviderConnected}
-      />
       <Modal
         variant={ModalVariant.small}
         isOpen={organizationPendingRemove !== null}

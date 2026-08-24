@@ -156,12 +156,12 @@ export function BmaasLandingPage() {
       description: 'Configure tenant resources, users, quotas, and shared services.',
       icon: <UserIcon />,
       actions: (
-        <SingleEnterActions to="/tenant-admin/northstar" ariaLabel="Enter Tenant Admin demo" />
+        <SingleEnterActions to="/tenant-admin/northsummit" ariaLabel="Enter Tenant Admin demo" />
       ),
       prototypeLinks: [
         {
           label: 'Catalog',
-          to: '/tenant-admin/northstar/workspace?nav=catalog',
+          to: '/tenant-admin/northsummit/workspace?nav=catalog',
           statusLabel: 'Not approved yet',
         },
       ],
@@ -172,12 +172,12 @@ export function BmaasLandingPage() {
       description: 'Provision and manage Bare Metal, Cluster, VM, and Models workloads.',
       icon: <UsersIcon />,
       actions: (
-        <SingleEnterActions to="/tenant-user/northstar" ariaLabel="Enter Tenant User demo" />
+        <SingleEnterActions to="/tenant-user/northsummit" ariaLabel="Enter Tenant User demo" />
       ),
       prototypeLinks: [
         {
           label: 'Catalog',
-          to: '/tenant-user/northstar/workspace?nav=catalog',
+          to: '/tenant-user/northsummit/workspace?nav=catalog',
           statusLabel: 'Not approved yet',
         },
       ],

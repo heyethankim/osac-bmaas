@@ -98,6 +98,7 @@ function IdpManagerWorkspaceSession({ orgSlug }: { orgSlug: string }) {
           wizardSubmitLabel={IDP_MANAGER_ROLES_COPY.wizardSubmitLabel}
           emptyUnfilteredTitle={IDP_MANAGER_ROLES_COPY.emptyTitle}
           emptyUnfilteredBody={IDP_MANAGER_ROLES_COPY.emptyBody}
+          emptyFirstActionLabel={IDP_MANAGER_ROLES_COPY.assignFirstLabel}
           showAssignmentStatus
           showRoleCatalog
         />

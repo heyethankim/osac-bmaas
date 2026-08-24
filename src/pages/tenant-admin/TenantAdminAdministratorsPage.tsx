@@ -4,7 +4,9 @@ import {
   Button,
   Content,
   EmptyState,
+  EmptyStateActions,
   EmptyStateBody,
+  EmptyStateFooter,
   FormSelect,
   FormSelectOption,
   Label,
@@ -46,6 +48,7 @@ type TenantAdminAdministratorsPageProps = {
   wizardSubmitLabel?: string
   emptyUnfilteredTitle?: string
   emptyUnfilteredBody?: string
+  emptyFirstActionLabel?: string
   showAssignmentStatus?: boolean
   showRoleCatalog?: boolean
 }
@@ -60,6 +63,7 @@ export function TenantAdminAdministratorsPage({
   wizardSubmitLabel = TENANT_ADMINISTRATORS_DEMO.addAdministratorLabel,
   emptyUnfilteredTitle = 'No tenant administrators',
   emptyUnfilteredBody = TENANT_ADMINISTRATORS_DEMO.emptyOnlyPrimaryBody,
+  emptyFirstActionLabel,
   showAssignmentStatus = false,
   showRoleCatalog = false,
 }: TenantAdminAdministratorsPageProps) {
@@ -113,10 +117,8 @@ export function TenantAdminAdministratorsPage({
     [searchValue, selectedRole, selectedStatus, showAssignmentStatus],
   )
 
-  const hasActiveFilters =
-    Boolean(searchValue.trim()) ||
-    selectedRole !== 'all' ||
-    (showAssignmentStatus && selectedStatus !== 'all')
+  const isUnfilteredEmpty = administrators.length === 0
+  const firstActionLabel = emptyFirstActionLabel ?? addAdministratorLabel
 
   const clearAllFilters = () => {
     setSearchValue('')
@@ -206,127 +208,142 @@ export function TenantAdminAdministratorsPage({
         title={title}
         lede={lede}
         action={
-          <Button
-            variant="primary"
-            icon={<PlusIcon />}
-            className="provider-admin-workspace-page__action"
-            onClick={() => setIsWizardOpen(true)}
-          >
-            {addAdministratorLabel}
-          </Button>
+          isUnfilteredEmpty ? undefined : (
+            <Button
+              variant="primary"
+              icon={<PlusIcon />}
+              className="provider-admin-workspace-page__action"
+              onClick={() => setIsWizardOpen(true)}
+            >
+              {addAdministratorLabel}
+            </Button>
+          )
         }
       />
 
-      <div className="catalog-view-toolbar">
-        <div className="catalog-view-toolbar__start">
-          {showAssignmentStatus ? (
-            <FormSelect
-              className="catalog-status-filter"
-              id="tenant-administration-status-filter"
-              value={selectedStatus}
-              onChange={(_event, value) =>
-                setSelectedStatus(value as AdministratorStatusFilter)
-              }
-              aria-label="Filter by status"
-            >
-              <FormSelectOption value="all" label="All Statuses" />
-              <FormSelectOption value="Pending" label="Pending" />
-              <FormSelectOption value="Active" label="Active" />
-            </FormSelect>
-          ) : null}
-          <FormSelect
-            className="catalog-status-filter"
-            id="tenant-administration-role-filter"
-            value={selectedRole}
-            onChange={(_event, value) => setSelectedRole(value as AdministratorRoleFilter)}
-            aria-label="Filter by role"
-          >
-            <FormSelectOption value="all" label="All Roles" />
-            {(showRoleCatalog ? ASSIGNABLE_TENANT_ROLES : ASSIGNABLE_TENANT_ROLES.slice(0, 1)).map(
-              (role) => (
-                <FormSelectOption key={role.id} value={role.id} label={role.label} />
-              ),
-            )}
-          </FormSelect>
-          <SearchInput
-            className="catalog-search"
-            placeholder={showRoleCatalog ? 'Search by name or email' : 'Search administrators'}
-            value={searchValue}
-            onChange={(_event, value) => setSearchValue(value)}
-            onClear={() => setSearchValue('')}
-            aria-label="Search administrators"
-          />
-        </div>
-      </div>
-
-      {filteredAdministrators.length === 0 ? (
-        hasActiveFilters ? (
-          <CatalogFilterEmptyState
-            title={
-              showRoleCatalog
-                ? 'No assignments match your filters'
-                : TENANT_ADMINISTRATORS_DEMO.emptyTitle
-            }
-            description={TENANT_ADMINISTRATORS_DEMO.emptyBody}
-            onClearFilters={clearAllFilters}
-          />
-        ) : (
-        <EmptyState>
+      {isUnfilteredEmpty ? (
+        <EmptyState className="catalog-filter-empty provider-admin-organizations__empty">
           <Title headingLevel="h2" size="lg">
-            {administrators.length === 0 ? emptyUnfilteredTitle : TENANT_ADMINISTRATORS_DEMO.emptyTitle}
+            {emptyUnfilteredTitle}
           </Title>
-          <EmptyStateBody>
-            {administrators.length === 0
-              ? emptyUnfilteredBody
-              : TENANT_ADMINISTRATORS_DEMO.emptyBody}
+          <EmptyStateBody className="catalog-filter-empty__body">
+            {emptyUnfilteredBody}
           </EmptyStateBody>
+          <EmptyStateFooter>
+            <EmptyStateActions>
+              <Button
+                variant="primary"
+                icon={<PlusIcon />}
+                onClick={() => setIsWizardOpen(true)}
+              >
+                {firstActionLabel}
+              </Button>
+            </EmptyStateActions>
+          </EmptyStateFooter>
         </EmptyState>
-        )
       ) : (
-        <div className="catalog-table-panel">
-          <CatalogFilterResultsSummary
-            filteredCount={filteredAdministrators.length}
-            totalCount={administrators.length}
-            singular={showRoleCatalog ? 'assignment' : 'administrator'}
-            filterParts={filterDescriptionParts}
-            onClearFilters={clearAllFilters}
-          />
-          <Table
-            aria-label="Tenant administrators"
-            className={[
-              'catalog-data-table',
-              'tenant-admin-administration__table',
-              showAssignmentStatus ? 'tenant-admin-administration__table--with-status' : undefined,
-            ]
-              .filter(Boolean)
-              .join(' ')}
-          >
-            <Thead>
-              <Tr>
-                <Th className="tenant-admin-administration__col-name">Name</Th>
-                {showAssignmentStatus ? (
-                  <Th className="tenant-admin-administration__col-status">Status</Th>
-                ) : null}
-                <Th className="tenant-admin-administration__col-role">Role</Th>
-                {showAssignmentStatus ? (
-                  <Th className="tenant-admin-administration__col-description">Description</Th>
-                ) : null}
-                <Th screenReaderText="Actions" />
-              </Tr>
-            </Thead>
-            <Tbody>
-              {filteredAdministrators.map((admin) => (
-                <AdministratorRow
-                  key={`${admin.roleId}:${admin.email}`}
-                  admin={admin}
-                  assignmentStatus={showAssignmentStatus ? assignmentStatus : null}
-                  allowRemovePrimary={showRoleCatalog}
-                  onRequestRemove={setAdministratorPendingRemove}
-                />
-              ))}
-            </Tbody>
-          </Table>
-        </div>
+        <>
+          <div className="catalog-view-toolbar">
+            <div className="catalog-view-toolbar__start">
+              {showAssignmentStatus ? (
+                <FormSelect
+                  className="catalog-status-filter"
+                  id="tenant-administration-status-filter"
+                  value={selectedStatus}
+                  onChange={(_event, value) =>
+                    setSelectedStatus(value as AdministratorStatusFilter)
+                  }
+                  aria-label="Filter by status"
+                >
+                  <FormSelectOption value="all" label="All Statuses" />
+                  <FormSelectOption value="Pending" label="Pending" />
+                  <FormSelectOption value="Active" label="Active" />
+                </FormSelect>
+              ) : null}
+              <FormSelect
+                className="catalog-status-filter"
+                id="tenant-administration-role-filter"
+                value={selectedRole}
+                onChange={(_event, value) => setSelectedRole(value as AdministratorRoleFilter)}
+                aria-label="Filter by role"
+              >
+                <FormSelectOption value="all" label="All Roles" />
+                {(showRoleCatalog ? ASSIGNABLE_TENANT_ROLES : ASSIGNABLE_TENANT_ROLES.slice(0, 1)).map(
+                  (role) => (
+                    <FormSelectOption key={role.id} value={role.id} label={role.label} />
+                  ),
+                )}
+              </FormSelect>
+              <SearchInput
+                className="catalog-search"
+                placeholder={showRoleCatalog ? 'Search by name or email' : 'Search administrators'}
+                value={searchValue}
+                onChange={(_event, value) => setSearchValue(value)}
+                onClear={() => setSearchValue('')}
+                aria-label="Search administrators"
+              />
+            </div>
+          </div>
+
+          {filteredAdministrators.length === 0 ? (
+            <CatalogFilterEmptyState
+              title={
+                showRoleCatalog
+                  ? 'No assignments match your filters'
+                  : TENANT_ADMINISTRATORS_DEMO.emptyTitle
+              }
+              description={TENANT_ADMINISTRATORS_DEMO.emptyBody}
+              onClearFilters={clearAllFilters}
+            />
+          ) : (
+            <div className="catalog-table-panel">
+              <CatalogFilterResultsSummary
+                filteredCount={filteredAdministrators.length}
+                totalCount={administrators.length}
+                singular={showRoleCatalog ? 'assignment' : 'administrator'}
+                filterParts={filterDescriptionParts}
+                onClearFilters={clearAllFilters}
+              />
+              <Table
+                aria-label="Tenant administrators"
+                className={[
+                  'catalog-data-table',
+                  'tenant-admin-administration__table',
+                  showAssignmentStatus
+                    ? 'tenant-admin-administration__table--with-status'
+                    : undefined,
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              >
+                <Thead>
+                  <Tr>
+                    <Th className="tenant-admin-administration__col-name">Name</Th>
+                    {showAssignmentStatus ? (
+                      <Th className="tenant-admin-administration__col-status">Status</Th>
+                    ) : null}
+                    <Th className="tenant-admin-administration__col-role">Role</Th>
+                    {showAssignmentStatus ? (
+                      <Th className="tenant-admin-administration__col-description">Description</Th>
+                    ) : null}
+                    <Th screenReaderText="Actions" />
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {filteredAdministrators.map((admin) => (
+                    <AdministratorRow
+                      key={`${admin.roleId}:${admin.email}`}
+                      admin={admin}
+                      assignmentStatus={showAssignmentStatus ? assignmentStatus : null}
+                      allowRemovePrimary={showRoleCatalog}
+                      onRequestRemove={setAdministratorPendingRemove}
+                    />
+                  ))}
+                </Tbody>
+              </Table>
+            </div>
+          )}
+        </>
       )}
       {removeAdministratorModal}
     </div>

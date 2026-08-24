@@ -152,7 +152,7 @@ function isCatalogVisibleToTenantUser(
 
   if (
     item.catalogItemId === BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID &&
-    organization.slug === 'northstar'
+    (organization.slug === 'northsummit' || organization.slug === 'northstar')
   ) {
     return true
   }

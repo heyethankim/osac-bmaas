@@ -39,6 +39,7 @@ import {
   type RegisteredOrganization,
 } from '../../providerAdmin/organizations'
 import { getProviderRegisteredOrganizations, updateProviderRegisteredOrganization } from '../../providerSetup/storage'
+import { identityProviderFromDraft } from '../../idpManager/identityProviders'
 import {
   ORGANIZATION_ACTION_WORKING_MS,
   OrganizationActionSuccessState,
@@ -163,8 +164,8 @@ export function SetupIdentityProviderWizard({
 
     const pending = hasPendingIdpInvite(organization)
     setSetupPath(pending ? 'invite' : null)
-    // choice=1, connect=2, review=3 (hidden steps still count)
-    setStartIndex(pending ? 3 : 1)
+    // Invite path omits Connect, so Review is step 2.
+    setStartIndex(pending ? 2 : 1)
     setWizardKey((current) => current + 1)
   }, [isOpen, organization])
 
@@ -255,6 +256,17 @@ export function SetupIdentityProviderWizard({
       identityProviderProtocol: connectForm.protocol,
       identityProviderIssuerUrl: connectForm.issuerUrl.trim(),
       identityProviderClientId: connectForm.clientId.trim(),
+      identityProviders: [
+        identityProviderFromDraft(
+          {
+            displayName: connectForm.displayName.trim(),
+            protocol: connectForm.protocol === 'SAML' ? 'SAML' : 'OIDC',
+            issuerUrl: connectForm.issuerUrl.trim(),
+            clientId: connectForm.clientId.trim(),
+          },
+          organization.primaryDomain,
+        ),
+      ],
       additionalDomains: normalizeAdditionalDomains(
         additionalDomains,
         organization.primaryDomain,
@@ -336,7 +348,7 @@ export function SetupIdentityProviderWizard({
 
   const wizard = (
     <Wizard
-      key={`setup-idp-wizard-${organization.id}-${wizardKey}`}
+      key={`setup-idp-wizard-${organization.id}-${wizardKey}-${setupPath ?? 'none'}`}
       className="provider-admin-organizations__wizard"
       height={isPage ? '100%' : '40rem'}
       isPlain={isPage}
@@ -466,10 +478,10 @@ export function SetupIdentityProviderWizard({
         </div>
       </WizardStep>
 
+      {setupPath === 'myself' ? (
       <WizardStep
         id={STEP_CONNECT}
         name="Connect identity provider"
-        isHidden={setupPath !== 'myself'}
         footer={wrapStepFooter({
           isNextDisabled: isConnectDisabled,
         })}
@@ -538,6 +550,7 @@ export function SetupIdentityProviderWizard({
           </FormGroup>
         </Form>
       </WizardStep>
+      ) : null}
 
       <WizardStep
         id={STEP_REVIEW}

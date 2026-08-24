@@ -129,8 +129,8 @@ export function TenantUserWorkspacePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { tenant } = useParams<{ tenant: string }>()
   const tenantSlug =
-    tenant && isDemoTenantId(tenant) && tenant === 'northstar' ? tenant : 'northstar'
-  const isValidTenant = Boolean(tenant && isDemoTenantId(tenant) && tenant === 'northstar')
+    tenant && isDemoTenantId(tenant) && tenant === 'northsummit' ? tenant : 'northsummit'
+  const isValidTenant = Boolean(tenant && isDemoTenantId(tenant) && tenant === 'northsummit')
 
   const [previewSession] = useState(() => getProviderViewingAsTenantUser())
   const [activeNavId, setActiveNavId] = useState<TenantUserNavId>(() =>

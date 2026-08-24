@@ -80,7 +80,7 @@ function getServicesNavId(serviceId: CatalogServiceId): ProviderAdminNavId {
 
 const PUBLISH_PHASE_MS = 900
 const ENTER_PHASE_MS = 700
-const PROVIDER_SERVICES_DEMO_TENANT = 'northstar'
+const PROVIDER_SERVICES_DEMO_TENANT = 'northsummit'
 
 function normalizeProviderNavParam(value: string | null): ProviderAdminNavId | null {
   const normalizedNav =

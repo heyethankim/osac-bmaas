@@ -360,7 +360,7 @@ export type PublishCatalogStepId = (typeof PUBLISH_CATALOG_STEPS)[number]['id']
 export type PublishCatalogScope = 'global-public' | 'vip-enterprise'
 
 /** Demo default for VIP enterprise visibility. */
-export const DEFAULT_ENTERPRISE_TENANT_ID = 'tenant-northstar'
+export const DEFAULT_ENTERPRISE_TENANT_ID = 'tenant-northsummit'
 
 export type PublishedTemplatePayload = {
   serviceId: CatalogServiceId

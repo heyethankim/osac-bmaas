@@ -1,4 +1,4 @@
-.northstar-login {
+.northsummit-login {
   position: relative;
   margin-inline: 0;
   max-width: none;
@@ -16,20 +16,20 @@
   color: #fff;
 }
 
-.northstar-login__bokeh {
+.northsummit-login__bokeh {
   position: absolute;
   inset: 0;
   pointer-events: none;
   overflow: hidden;
 }
 
-.northstar-login__bokeh-dot {
+.northsummit-login__bokeh-dot {
   position: absolute;
   border-radius: 50%;
   background: rgb(255 255 255 / 18%);
 }
 
-.northstar-login__bokeh-dot--a {
+.northsummit-login__bokeh-dot--a {
   width: min(42vw, 22rem);
   height: min(42vw, 22rem);
   left: -8%;
@@ -37,7 +37,7 @@
   filter: blur(2px);
 }
 
-.northstar-login__bokeh-dot--b {
+.northsummit-login__bokeh-dot--b {
   width: min(28vw, 14rem);
   height: min(28vw, 14rem);
   left: 22%;
@@ -45,7 +45,7 @@
   background: rgb(255 255 255 / 12%);
 }
 
-.northstar-login__bokeh-dot--c {
+.northsummit-login__bokeh-dot--c {
   width: min(20vw, 10rem);
   height: min(20vw, 10rem);
   right: 8%;
@@ -53,7 +53,7 @@
   background: rgb(255 220 200 / 22%);
 }
 
-.northstar-login__bokeh-dot--d {
+.northsummit-login__bokeh-dot--d {
   width: min(36vw, 18rem);
   height: min(36vw, 18rem);
   right: -5%;
@@ -62,7 +62,7 @@
   filter: blur(4px);
 }
 
-.northstar-login__bokeh-dot--e {
+.northsummit-login__bokeh-dot--e {
   width: min(14vw, 7rem);
   height: min(14vw, 7rem);
   left: 45%;
@@ -70,7 +70,7 @@
   background: rgb(255 255 255 / 14%);
 }
 
-.northstar-login__shell {
+.northsummit-login__shell {
   position: relative;
   z-index: 1;
   display: flex;
@@ -79,7 +79,7 @@
   min-height: 100dvh;
 }
 
-.northstar-login__brand {
+.northsummit-login__brand {
   flex: 1 1 42%;
   max-width: 36rem;
   display: flex;
@@ -89,13 +89,13 @@
   box-sizing: border-box;
 }
 
-.northstar-login__brand-top {
+.northsummit-login__brand-top {
   display: flex;
   flex-direction: column;
   gap: clamp(1.25rem, 3vw, 2rem);
 }
 
-.northstar-login__logo {
+.northsummit-login__logo {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -104,7 +104,7 @@
   text-shadow: 0 2px 20px rgb(0 0 0 / 15%);
 }
 
-.northstar-login__logo-line1 {
+.northsummit-login__logo-line1 {
   font-size: clamp(0.75rem, 1.4vw, 0.875rem);
   font-weight: 300;
   letter-spacing: 0.35em;
@@ -112,14 +112,14 @@
   opacity: 0.95;
 }
 
-.northstar-login__logo-line2 {
+.northsummit-login__logo-line2 {
   display: flex;
   align-items: center;
   gap: 0.35rem;
   line-height: 1;
 }
 
-.northstar-login__logo-ring {
+.northsummit-login__logo-ring {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -131,7 +131,7 @@
   flex-shrink: 0;
 }
 
-.northstar-login__logo-star {
+.northsummit-login__logo-star {
   width: 55%;
   height: 55%;
   display: block;
@@ -139,13 +139,13 @@
   fill: currentColor;
 }
 
-.northstar-login__logo-bank {
+.northsummit-login__logo-bank {
   font-size: clamp(2.75rem, 9vw, 4.5rem);
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
-.northstar-login__tagline {
+.northsummit-login__tagline {
   margin: 0;
   max-width: 22rem;
   font-size: clamp(1rem, 2vw, 1.125rem);
@@ -154,36 +154,36 @@
   color: rgb(255 255 255 / 92%);
 }
 
-.northstar-login__brand-bottom {
+.northsummit-login__brand-bottom {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
 }
 
-.northstar-login__support {
+.northsummit-login__support {
   margin: 0;
   font-size: 0.8125rem;
   line-height: 1.5;
   color: rgb(255 255 255 / 78%);
 }
 
-.northstar-login__support a {
+.northsummit-login__support a {
   color: #fff;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
-.northstar-login__support a:hover {
+.northsummit-login__support a:hover {
   color: rgb(255 255 255 / 95%);
 }
 
-.northstar-login__copyright {
+.northsummit-login__copyright {
   margin: 0;
   font-size: 0.75rem;
   color: rgb(255 255 255 / 55%);
 }
 
-.northstar-login__panel {
+.northsummit-login__panel {
   flex: 1 1 58%;
   display: flex;
   align-items: center;
@@ -192,7 +192,7 @@
   box-sizing: border-box;
 }
 
-.northstar-login__card.pf-v6-c-card {
+.northsummit-login__card.pf-v6-c-card {
   position: relative;
   width: 100%;
   max-width: 26rem;
@@ -204,7 +204,7 @@
     0 2px 12px rgb(0 0 0 / 8%);
 }
 
-.northstar-login__landing-overlay {
+.northsummit-login__landing-overlay {
   position: absolute;
   inset: 0;
   z-index: 2;
@@ -220,7 +220,7 @@
   background: rgb(255 255 255 / 94%);
 }
 
-.northstar-login__landing-overlay-text {
+.northsummit-login__landing-overlay-text {
   margin: 0;
   font-size: 0.9375rem;
   line-height: 1.5;
@@ -228,35 +228,35 @@
   color: #3d3d3d;
 }
 
-.northstar-login__card .pf-v6-c-card__body {
+.northsummit-login__card .pf-v6-c-card__body {
   padding: clamp(2rem, 4vw, 2.5rem);
 }
 
-.northstar-login__card-title {
+.northsummit-login__card-title {
   margin: 0 0 0.5rem !important;
   color: #3d3d3d !important;
   font-weight: 600 !important;
 }
 
-.northstar-login__card-subtitle {
+.northsummit-login__card-subtitle {
   margin: 0 0 1.75rem;
   font-size: 0.9375rem;
   line-height: 1.5;
   color: #8a8a8a;
 }
 
-.northstar-login__form {
+.northsummit-login__form {
   display: flex;
   flex-direction: column;
   gap: 1.125rem;
 }
 
-.northstar-login__field.pf-v6-c-form__group {
+.northsummit-login__field.pf-v6-c-form__group {
   margin: 0;
 }
 
 /* One light grey for text fields + password addon so edges match */
-.northstar-login__form .pf-v6-c-form-control {
+.northsummit-login__form .pf-v6-c-form-control {
   --pf-v6-c-form-control--BackgroundColor: #fafafa;
   --pf-v6-c-form-control--Color: #1a1a1a;
   --pf-v6-c-form-control--m-placeholder--Color: #9a9a9a;
@@ -266,12 +266,12 @@
   border-radius: 0.5rem;
 }
 
-.northstar-login__password-group.pf-v6-c-input-group {
+.northsummit-login__password-group.pf-v6-c-input-group {
   --pf-v6-c-input-group--item--BorderWidth: 0;
   --pf-v6-c-input-group__item--BorderColor--base: #e8e8e8;
 }
 
-.northstar-login__password-toggle.pf-v6-c-button.pf-m-control {
+.northsummit-login__password-toggle.pf-v6-c-button.pf-m-control {
   --pf-v6-c-button--m-control--BackgroundColor: #fafafa;
   --pf-v6-c-button--m-control--BorderColor: #e8e8e8;
   --pf-v6-c-button--m-control--Color: #1a1a1a;
@@ -289,13 +289,13 @@
   border-radius: 0 0.5rem 0.5rem 0;
 }
 
-.northstar-login__password-toggle.pf-v6-c-button.pf-m-control .pf-v6-c-button__icon,
-.northstar-login__password-toggle.pf-v6-c-button.pf-m-control .pf-v6-c-button__icon svg {
+.northsummit-login__password-toggle.pf-v6-c-button.pf-m-control .pf-v6-c-button__icon,
+.northsummit-login__password-toggle.pf-v6-c-button.pf-m-control .pf-v6-c-button__icon svg {
   color: #1a1a1a;
   fill: currentColor;
 }
 
-.northstar-login__form-row {
+.northsummit-login__form-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -304,7 +304,7 @@
   margin-top: -0.25rem;
 }
 
-.northstar-login__card .pf-v6-c-check__input {
+.northsummit-login__card .pf-v6-c-check__input {
   appearance: none;
   -webkit-appearance: none;
   width: 1rem;
@@ -319,12 +319,12 @@
   box-sizing: border-box;
 }
 
-.northstar-login__card .pf-v6-c-check__input:checked {
+.northsummit-login__card .pf-v6-c-check__input:checked {
   background-color: #eb0000;
   border-color: #c40000;
 }
 
-.northstar-login__card .pf-v6-c-check__input:checked::after {
+.northsummit-login__card .pf-v6-c-check__input:checked::after {
   content: '';
   position: absolute;
   left: 0.28rem;
@@ -337,17 +337,17 @@
   box-sizing: border-box;
 }
 
-.northstar-login__card .pf-v6-c-check__input:focus-visible {
+.northsummit-login__card .pf-v6-c-check__input:focus-visible {
   outline: 2px solid #eb0000;
   outline-offset: 2px;
 }
 
-.northstar-login__card .pf-v6-c-check__label {
+.northsummit-login__card .pf-v6-c-check__label {
   color: #3d3d3d !important;
   font-size: 0.875rem;
 }
 
-.northstar-login__forgot-link.pf-v6-c-button.pf-m-link {
+.northsummit-login__forgot-link.pf-v6-c-button.pf-m-link {
   color: #eb0000 !important;
   padding: 0 !important;
   font-size: 0.875rem;
@@ -355,17 +355,17 @@
   font-style: normal !important;
 }
 
-.northstar-login__forgot-link.pf-v6-c-button.pf-m-link .pf-v6-c-button__text {
+.northsummit-login__forgot-link.pf-v6-c-button.pf-m-link .pf-v6-c-button__text {
   font-weight: 400 !important;
   font-style: normal !important;
 }
 
-.northstar-login__forgot-link.pf-v6-c-button.pf-m-link:hover {
+.northsummit-login__forgot-link.pf-v6-c-button.pf-m-link:hover {
   color: #c40000 !important;
 }
 
-/* Login only — Northstar red primary (tenant shell keeps default PatternFly primary) */
-.northstar-login__submit.pf-v6-c-button.pf-m-primary {
+/* Login only — Northsummit red primary (tenant shell keeps default PatternFly primary) */
+.northsummit-login__submit.pf-v6-c-button.pf-m-primary {
   margin-top: 0.5rem;
   --pf-v6-c-button--m-primary--BackgroundColor: transparent;
   --pf-v6-c-button--m-primary--Color: #fff;
@@ -378,7 +378,7 @@
 }
 
 /* Hover: same white text and shadow; mirror gradient left ↔ right */
-.northstar-login__submit.pf-v6-c-button.pf-m-primary:hover {
+.northsummit-login__submit.pf-v6-c-button.pf-m-primary:hover {
   --pf-v6-c-button--m-primary--Color: #fff;
   color: #fff !important;
   background: linear-gradient(270deg, #d40000 0%, #eb0000 45%, #ff3d2e 100%) !important;
@@ -386,7 +386,7 @@
   filter: none;
 }
 
-.northstar-login__submit.pf-v6-c-button.pf-m-primary:active {
+.northsummit-login__submit.pf-v6-c-button.pf-m-primary:active {
   --pf-v6-c-button--m-primary--Color: #fff;
   color: #fff !important;
   background: linear-gradient(90deg, #d40000 0%, #eb0000 45%, #ff3d2e 100%) !important;
@@ -395,35 +395,35 @@
 
 /* Vertexa Cloud Solutions — centered glass login (blue → violet → magenta + flowing lines) */
 
-.northstar-login__back-row {
+.northsummit-login__back-row {
   margin-top: var(--pf-t--global--spacer--md);
   text-align: center;
 }
 
-/* Same light gray as `.northstar-login__card-subtitle` */
-.northstar-login__back-link.pf-v6-c-button.pf-m-link {
+/* Same light gray as `.northsummit-login__card-subtitle` */
+.northsummit-login__back-link.pf-v6-c-button.pf-m-link {
   color: #8a8a8a !important;
   padding: 0 !important;
   font-size: 0.9375rem;
   font-weight: 400;
 }
 
-.northstar-login__back-link.pf-v6-c-button.pf-m-link:hover:not(:disabled) {
+.northsummit-login__back-link.pf-v6-c-button.pf-m-link:hover:not(:disabled) {
   color: #6e6e6e !important;
 }
 
 @media (max-width: 62rem) {
-  .northstar-login__shell {
+  .northsummit-login__shell {
     flex-direction: column;
   }
 
-  .northstar-login__brand {
+  .northsummit-login__brand {
     max-width: none;
     min-height: 0;
     padding-bottom: 1.5rem;
   }
 
-  .northstar-login__panel {
+  .northsummit-login__panel {
     flex: 1 1 auto;
     padding-top: 0;
   }

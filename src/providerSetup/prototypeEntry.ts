@@ -271,15 +271,16 @@ function syncBareMetalAiInferenceCatalogItem(): void {
 
   // Keep North Summit Bank pointed at this VIP offering so tenant personas resolve it.
   const denseGpu = synced
-  const northstar = getProviderRegisteredOrganizations().find(
-    (organization) => organization.slug === 'northstar',
+  const northsummit = getProviderRegisteredOrganizations().find(
+    (organization) =>
+      organization.slug === 'northsummit' || organization.slug === 'northstar',
   )
   if (
-    northstar &&
-    (northstar.catalogItemId !== denseGpu.catalogItemId ||
-      northstar.catalogDisplayName !== denseGpu.displayName)
+    northsummit &&
+    (northsummit.catalogItemId !== denseGpu.catalogItemId ||
+      northsummit.catalogDisplayName !== denseGpu.displayName)
   ) {
-    updateProviderRegisteredOrganization(northstar.id, {
+    updateProviderRegisteredOrganization(northsummit.id, {
       catalogItemId: denseGpu.catalogItemId,
       catalogDisplayName: denseGpu.displayName,
     })

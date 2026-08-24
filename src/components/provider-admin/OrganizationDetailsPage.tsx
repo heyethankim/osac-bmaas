@@ -28,7 +28,6 @@ import { EntityDetailsActionsDropdown } from '../shared/EntityDetailsActionsDrop
 import {
   formatOrganizationRolesAssignmentSummary,
   getOrganizationActivationSteps,
-  hasBreakGlassAccount,
   hasPendingIdpInvite,
   isOrganizationReadyForLogin,
   resolveBreakGlassUsername,
@@ -230,6 +229,38 @@ function ActivationStepRow({
   )
 }
 
+function isNorthSummitBankTenant(organization: RegisteredOrganization): boolean {
+  const slug = organization.slug.trim().toLowerCase()
+  const name = organization.name.trim().toLowerCase()
+  return slug === 'northsummit' || slug === 'northstar' || name === 'north-summit-bank'
+}
+
+function isHarborlineCapitalTenant(organization: RegisteredOrganization): boolean {
+  return organization.slug.trim().toLowerCase() === 'harborline'
+}
+
+function getDetailsBreakGlassUsername(organization: RegisteredOrganization): string | null {
+  const username = resolveBreakGlassUsername(organization)
+  if (
+    isNorthSummitBankTenant(organization) &&
+    username.trim().toLowerCase() === 'breakglass-bluesolace'
+  ) {
+    return null
+  }
+  return username
+}
+
+function getDetailsBreakGlassPassword(organization: RegisteredOrganization): string | null {
+  const password = organization.breakGlassPassword?.trim() || null
+  if (
+    !password ||
+    (isHarborlineCapitalTenant(organization) && password === 'BG-harborline-vault')
+  ) {
+    return null
+  }
+  return password
+}
+
 export function OrganizationDetailsPage({
   organization,
   onBack,
@@ -242,6 +273,9 @@ export function OrganizationDetailsPage({
   const activationSteps = getOrganizationActivationSteps(organization)
   const roleAssignments = listRoleAssignments(organization)
   const companyLogoSrc = resolveOrganizationCompanyLogo(organization)
+  const breakGlassUsername = getDetailsBreakGlassUsername(organization)
+  const breakGlassPassword = getDetailsBreakGlassPassword(organization)
+  const showBreakGlassAccount = Boolean(breakGlassUsername || breakGlassPassword)
   const [isAddRolesOpen, setIsAddRolesOpen] = useState(false)
   const [administratorPendingRemove, setAdministratorPendingRemove] =
     useState<TenantAdministrator | null>(null)
@@ -294,11 +328,6 @@ export function OrganizationDetailsPage({
       title={organization.name}
       titleId="tenant-details-title"
       description="Tenant details for billing, identity domain, and workspace access."
-      icon={
-        companyLogoSrc ? (
-          <img src={companyLogoSrc} alt="" className="entity-details-page__company-logo" />
-        ) : undefined
-      }
       actions={
         onEdit || onRemove ? (
           <EntityDetailsActionsDropdown onEdit={onEdit} onRemove={onRemove} removeLabel="Remove" />
@@ -459,18 +488,20 @@ export function OrganizationDetailsPage({
               >
                 Break-glass account
               </Title>
-              {hasBreakGlassAccount(organization) ? (
+              {showBreakGlassAccount ? (
                 <div className="provider-admin-organizations__break-glass">
-                  <ClipboardCopy
-                    isReadOnly
-                    isCode
-                    hoverTip="Copy username"
-                    clickTip="Username copied"
-                    textAriaLabel="Break-glass username"
-                  >
-                    {resolveBreakGlassUsername(organization)}
-                  </ClipboardCopy>
-                  {organization.breakGlassPassword ? (
+                  {breakGlassUsername ? (
+                    <ClipboardCopy
+                      isReadOnly
+                      isCode
+                      hoverTip="Copy username"
+                      clickTip="Username copied"
+                      textAriaLabel="Break-glass username"
+                    >
+                      {breakGlassUsername}
+                    </ClipboardCopy>
+                  ) : null}
+                  {breakGlassPassword ? (
                     <ClipboardCopy
                       isReadOnly
                       isCode
@@ -478,15 +509,14 @@ export function OrganizationDetailsPage({
                       clickTip="Password copied"
                       textAriaLabel="Break-glass password"
                     >
-                      {organization.breakGlassPassword}
+                      {breakGlassPassword}
                     </ClipboardCopy>
                   ) : null}
                   <Content
                     component="p"
                     className="provider-admin-organizations__secondary-cell"
                   >
-                    Local login for the IdP manager. Does not use the tenant IdP. Send the
-                    username, password, and OSAC URL out of band.
+                    Local login for the IdP manager. Does not use the tenant IdP.
                   </Content>
                 </div>
               ) : (

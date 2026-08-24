@@ -116,7 +116,7 @@ export function identityProviderProtocolLabel(protocol: IdentityProviderProtocol
 }
 
 export function migrateLegacyIdentityProviderClientId(clientId: string): string {
-  if (clientId === 'bmaas-northstar') {
+  if (clientId === 'bmaas-northstar' || clientId === 'bmaas-northsummit') {
     return 'north-summit-bank'
   }
   if (clientId === 'bmaas-harborline') {
@@ -187,6 +187,56 @@ export function normalizeOrganizationIdentityProviders(
       },
     ]
   })
+}
+
+export function hydrateIdentityProvidersFromOrganizationFields(organization: {
+  id: string
+  primaryDomain: string
+  identityProviderConnected: boolean
+  identityProviderName: string | null
+  identityProviderDisplayName: string | null
+  identityProviderProtocol: IdentityProviderProtocol | null
+  identityProviderIssuerUrl: string | null
+  identityProviderClientId: string | null
+  identityProviders?: OrganizationIdentityProvider[]
+}): OrganizationIdentityProvider[] {
+  const existing = organization.identityProviders ?? []
+  if (existing.length > 0) {
+    return existing
+  }
+
+  const displayName = organization.identityProviderDisplayName?.trim()
+  const issuerUrl = organization.identityProviderIssuerUrl?.trim()
+  const clientId = organization.identityProviderClientId?.trim()
+  const protocol = organization.identityProviderProtocol
+  if (
+    !organization.identityProviderConnected ||
+    !displayName ||
+    !issuerUrl ||
+    !clientId ||
+    !protocol
+  ) {
+    return []
+  }
+
+  return [
+    {
+      id: `idp-${organization.id}-primary`,
+      name:
+        organization.identityProviderName?.trim() ||
+        buildDemoIdentityProviderName(protocol, organization.primaryDomain),
+      displayName,
+      protocol,
+      issuerUrl,
+      clientId,
+    },
+  ]
+}
+
+export function resolveOrganizationIdentityProviders(
+  organization: RegisteredOrganization,
+): OrganizationIdentityProvider[] {
+  return hydrateIdentityProvidersFromOrganizationFields(organization)
 }
 
 export function createIdpInviteTimestamps(now = Date.now()): {
@@ -263,7 +313,11 @@ export function resolveOrganizationCompanyLogo(
     return getDemoBluesolaceCompanyLogoSrc()
   }
 
-  if (slug === 'northstar' || slug === 'north-summit-bank') {
+  if (
+    slug === 'northsummit' ||
+    slug === 'northstar' ||
+    slug === 'north-summit-bank'
+  ) {
     return getDemoNorthSummitBankCompanyLogoSrc()
   }
 
@@ -279,6 +333,9 @@ export function generateBreakGlassUsername(slug: string): string {
   ) {
     return 'breakglass-bluesolace'
   }
+  if (normalized === 'northstar' || normalized === 'northsummit') {
+    return 'breakglass-northsummit'
+  }
   return `breakglass-${normalized}`
 }
 
@@ -291,12 +348,17 @@ function breakGlassPasswordLabel(slug: string): string {
   ) {
     return 'bluesolace'
   }
+  if (normalized === 'northstar') {
+    return 'northsummit'
+  }
   return normalized
 }
 
-/** Rewrite leftover demo passwords that used the stored evergreen slug. */
+/** Rewrite leftover demo passwords that used stored evergreen or northstar slugs. */
 export function rewriteBreakGlassPassword(password: string): string {
-  return password.replace(/^BG-evergreen-/i, 'BG-bluesolace-')
+  return password
+    .replace(/^BG-evergreen-/i, 'BG-bluesolace-')
+    .replace(/^BG-northstar-/i, 'BG-northsummit-')
 }
 
 /** Stable demo password for seeded orgs; new issues use a one-time token. */
@@ -313,7 +375,11 @@ export function resolveBreakGlassUsername(
   organization: Pick<RegisteredOrganization, 'slug' | 'breakGlassUsername'>,
 ): string {
   const existing = organization.breakGlassUsername?.trim()
-  if (!existing || existing.toLowerCase() === 'breakglass-evergreen') {
+  if (
+    !existing ||
+    existing.toLowerCase() === 'breakglass-evergreen' ||
+    existing.toLowerCase() === 'breakglass-northstar'
+  ) {
     return generateBreakGlassUsername(organization.slug)
   }
   return existing
@@ -364,6 +430,7 @@ export function resolveRegisterBreakGlassPassword(
     normalized === 'evergreen' ||
     normalized === 'bluesolace' ||
     normalized === 'bluesolace-financial-group' ||
+    normalized === 'northsummit' ||
     normalized === 'northstar' ||
     normalized === 'harborline'
   ) {
@@ -495,7 +562,11 @@ export function resolveIdpManagerPrototypeOrganization(
   const pending = getPendingIdpManagerInvites(organizations, now)
   const onboardingPending =
     pending.find((item) => item.organization.slug === DEMO_IDP_MANAGER_ORG_SLUG) ?? pending[0]
-  if (onboardingPending && onboardingPending.organization.slug !== 'northstar') {
+  if (
+    onboardingPending &&
+    onboardingPending.organization.slug !== 'northstar' &&
+    onboardingPending.organization.slug !== 'northsummit'
+  ) {
     return onboardingPending.organization
   }
 
@@ -649,9 +720,10 @@ export function buildDemoIdentityProviderName(
 }
 
 /** Stable id for the Organizations page baseline row. */
-export const DEMO_NORTH_SUMMIT_BANK_ORG_ID = 'org-northstar-bank'
-export const DEMO_NORTH_SUMMIT_BANK_TENANT_ID = 'tenant-northstar'
-export const DEMO_NORTH_SUMMIT_BANK_ORG_NAME = DEMO_TENANT_LABEL.northstar
+export const DEMO_NORTH_SUMMIT_BANK_ORG_ID = 'org-northsummit-bank'
+export const DEMO_NORTH_SUMMIT_BANK_TENANT_ID = 'tenant-northsummit'
+export const DEMO_NORTH_SUMMIT_BANK_SLUG = 'northsummit'
+export const DEMO_NORTH_SUMMIT_BANK_ORG_NAME = DEMO_TENANT_LABEL.northsummit
 export const DEMO_NORTH_SUMMIT_BANK_PRIMARY_DOMAIN = 'northsummitbank.com'
 export const DEMO_NORTH_SUMMIT_BANK_ADDITIONAL_DOMAIN = 'northsummitbank.net'
 export const DEMO_NORTH_SUMMIT_BANK_IDP_DISPLAY_NAME = `${DEMO_NORTH_SUMMIT_BANK_ORG_NAME}-idp`
@@ -685,20 +757,20 @@ export type RegisterOrganizationForm = {
 }
 
 /** BlueSolace values for the register-tenant wizard / Onboarding prefill. */
-export const DEMO_NORTHSTAR_ORG_NAME = DEMO_TENANT_LABEL.evergreen
-export const DEMO_NORTHSTAR_PRIMARY_DOMAIN = 'bluesolacefinancial.com'
-export const DEMO_NORTHSTAR_ADDITIONAL_DOMAIN = 'bluesolacefinancial.net'
-export const DEMO_NORTHSTAR_IDP_DISPLAY_NAME = `${DEMO_NORTHSTAR_ORG_NAME}-idp`
-export const DEMO_NORTHSTAR_IDP_CLIENT_ID = DEMO_NORTHSTAR_ORG_NAME
-export const DEMO_NORTHSTAR_BILLING_ACCOUNT_NAME =
+export const DEMO_BLUESOLACE_ORG_NAME = DEMO_TENANT_LABEL.evergreen
+export const DEMO_BLUESOLACE_PRIMARY_DOMAIN = 'bluesolacefinancial.com'
+export const DEMO_BLUESOLACE_ADDITIONAL_DOMAIN = 'bluesolacefinancial.net'
+export const DEMO_BLUESOLACE_IDP_DISPLAY_NAME = `${DEMO_BLUESOLACE_ORG_NAME}-idp`
+export const DEMO_BLUESOLACE_IDP_CLIENT_ID = DEMO_BLUESOLACE_ORG_NAME
+export const DEMO_BLUESOLACE_BILLING_ACCOUNT_NAME =
   'bluesolace-financial-group-enterprise-billing'
 
 export const DEFAULT_REGISTER_ORGANIZATION_FORM: RegisterOrganizationForm = {
-  organizationName: DEMO_NORTHSTAR_ORG_NAME,
-  primaryDomain: DEMO_NORTHSTAR_PRIMARY_DOMAIN,
+  organizationName: DEMO_BLUESOLACE_ORG_NAME,
+  primaryDomain: DEMO_BLUESOLACE_PRIMARY_DOMAIN,
   billingAccountId: '',
-  billingAccountName: DEMO_NORTHSTAR_BILLING_ACCOUNT_NAME,
-  externalIpPoolId: 'eipool-northstar-edge',
+  billingAccountName: DEMO_BLUESOLACE_BILLING_ACCOUNT_NAME,
+  externalIpPoolId: 'eipool-northsummit-edge',
   maxInstances: '20',
   logoSrc: getDemoBluesolaceCompanyLogoSrc(),
   logoFileName: DEMO_BLUESOLACE_COMPANY_LOGO_FILE_NAME,
@@ -706,17 +778,17 @@ export const DEFAULT_REGISTER_ORGANIZATION_FORM: RegisterOrganizationForm = {
 
 /** Pending BlueSolace tenant for IdP manager onboarding. Provider-admin NSB seed is separate. */
 export function createDemoBlueSolaceOnboardingOrganization(): RegisteredOrganization {
-  const primaryDomain = DEMO_NORTHSTAR_PRIMARY_DOMAIN
+  const primaryDomain = DEMO_BLUESOLACE_PRIMARY_DOMAIN
 
   return {
     id: DEMO_BLUESOLACE_ORG_ID,
-    name: DEMO_NORTHSTAR_ORG_NAME,
+    name: DEMO_BLUESOLACE_ORG_NAME,
     tenantId: DEMO_BLUESOLACE_TENANT_ID,
     slug: DEMO_IDP_MANAGER_ORG_SLUG,
     primaryDomain,
-    additionalDomains: [DEMO_NORTHSTAR_ADDITIONAL_DOMAIN],
+    additionalDomains: [DEMO_BLUESOLACE_ADDITIONAL_DOMAIN],
     billingAccountId: 'ACCT-BSFG-2026',
-    billingAccountName: DEMO_NORTHSTAR_BILLING_ACCOUNT_NAME,
+    billingAccountName: DEMO_BLUESOLACE_BILLING_ACCOUNT_NAME,
     logoSrc: getDemoBluesolaceCompanyLogoSrc(),
     logoFileName: DEMO_BLUESOLACE_COMPANY_LOGO_FILE_NAME,
     catalogItemId: null,
@@ -768,7 +840,7 @@ export function createDemoNorthSummitBankOrganization(
     id: DEMO_NORTH_SUMMIT_BANK_ORG_ID,
     name: DEMO_NORTH_SUMMIT_BANK_ORG_NAME,
     tenantId: DEMO_NORTH_SUMMIT_BANK_TENANT_ID,
-    slug: 'northstar',
+    slug: DEMO_NORTH_SUMMIT_BANK_SLUG,
     primaryDomain,
     additionalDomains: [DEMO_NORTH_SUMMIT_BANK_ADDITIONAL_DOMAIN],
     billingAccountId: 'ACCT-NSB-2048',
@@ -781,8 +853,8 @@ export function createDemoNorthSummitBankOrganization(
     externalIpPoolName: options.externalIpPoolName ?? null,
     externalIpPoolCidr: options.externalIpPoolCidr ?? null,
     maxInstances: 20,
-    tenantAdminName: DEMO_TENANT_DISPLAY_ADMIN.northstar,
-    tenantAdminEmail: DEMO_TENANT_LOGIN_EMAIL_ADMIN.northstar,
+    tenantAdminName: DEMO_TENANT_DISPLAY_ADMIN.northsummit,
+    tenantAdminEmail: DEMO_TENANT_LOGIN_EMAIL_ADMIN.northsummit,
     additionalTenantAdmins: [
       { name: 'Jordan Hale', email: 'jhale@northsummitbank.com' },
       { name: 'Sam Okonkwo', email: 'sokonkowo@northsummitbank.com' },
@@ -793,7 +865,7 @@ export function createDemoNorthSummitBankOrganization(
       },
     ],
     invitedTenantUserEmails: [
-      DEMO_TENANT_LOGIN_EMAIL_USER.northstar,
+      DEMO_TENANT_LOGIN_EMAIL_USER.northsummit,
       'akim@northsummitbank.com',
       'rchen@northsummitbank.com',
       'tbrooks@northsummitbank.com',
@@ -804,7 +876,16 @@ export function createDemoNorthSummitBankOrganization(
     identityProviderProtocol: 'OIDC',
     identityProviderIssuerUrl: `https://login.${primaryDomain}/oauth2`,
     identityProviderClientId: DEMO_NORTH_SUMMIT_BANK_IDP_CLIENT_ID,
-    identityProviders: [],
+    identityProviders: [
+      {
+        id: 'idp-northsummit-primary',
+        name: buildDemoIdentityProviderName('OIDC', primaryDomain),
+        displayName: DEMO_NORTH_SUMMIT_BANK_IDP_DISPLAY_NAME,
+        protocol: 'OIDC',
+        issuerUrl: `https://login.${primaryDomain}/oauth2`,
+        clientId: DEMO_NORTH_SUMMIT_BANK_IDP_CLIENT_ID,
+      },
+    ],
     idpManagerEmail: null,
     idpInviteToken: null,
     idpInviteStatus: 'none',
@@ -813,7 +894,7 @@ export function createDemoNorthSummitBankOrganization(
     breakGlassName: 'IdP manager',
     breakGlassEmail: `idp-admin@${primaryDomain}`,
     breakGlassUsername: 'breakglass-bluesolace',
-    breakGlassPassword: getDemoBreakGlassPassword('northstar'),
+    breakGlassPassword: getDemoBreakGlassPassword(DEMO_NORTH_SUMMIT_BANK_SLUG),
     breakGlassIssuedAt: '2026-06-12T14:30:00.000Z',
     rbacConfigured: true,
     status: 'Active',
@@ -877,7 +958,16 @@ export function createDemoHarborlineCapitalOrganization(
     identityProviderProtocol: 'SAML',
     identityProviderIssuerUrl: `https://idp.${primaryDomain}/saml`,
     identityProviderClientId: 'harborline-capital',
-    identityProviders: [],
+    identityProviders: [
+      {
+        id: 'idp-harborline-primary',
+        name: buildDemoIdentityProviderName('SAML', primaryDomain),
+        displayName: 'harborline-capital-idp',
+        protocol: 'SAML',
+        issuerUrl: `https://idp.${primaryDomain}/saml`,
+        clientId: 'harborline-capital',
+      },
+    ],
     idpManagerEmail: null,
     idpInviteToken: null,
     idpInviteStatus: 'none',
@@ -901,14 +991,14 @@ const REGISTER_ORGANIZATION_DEMO_PRESETS: Array<{
   billingAccountName: string
 }> = [
   {
-    organizationName: DEMO_TENANT_LABEL.northstar,
+    organizationName: DEMO_TENANT_LABEL.northsummit,
     primaryDomain: 'northsummitbank.com',
     billingAccountName: 'north-summit-bank-enterprise-billing',
   },
   {
-    organizationName: DEMO_NORTHSTAR_ORG_NAME,
-    primaryDomain: DEMO_NORTHSTAR_PRIMARY_DOMAIN,
-    billingAccountName: DEMO_NORTHSTAR_BILLING_ACCOUNT_NAME,
+    organizationName: DEMO_BLUESOLACE_ORG_NAME,
+    primaryDomain: DEMO_BLUESOLACE_PRIMARY_DOMAIN,
+    billingAccountName: DEMO_BLUESOLACE_BILLING_ACCOUNT_NAME,
   },
   {
     organizationName: 'harborline-capital',
@@ -929,8 +1019,8 @@ const REGISTER_ORGANIZATION_DEMO_PRESETS: Array<{
 
 /** Prefill for the optional Roles step after IdP. Not assigned at registration. */
 export const DEFAULT_REGISTER_ORGANIZATION_TENANT_ADMIN = {
-  name: DEMO_TENANT_DISPLAY_ADMIN.northstar,
-  email: DEMO_TENANT_LOGIN_EMAIL_ADMIN.northstar,
+  name: DEMO_TENANT_DISPLAY_ADMIN.northsummit,
+  email: DEMO_TENANT_LOGIN_EMAIL_ADMIN.northsummit,
 } as const
 
 export function generateOrganizationId(): string {
@@ -1065,9 +1155,10 @@ export function slugifyOrganizationName(name: string): string {
   if (
     normalized === 'north summit bank' ||
     normalized === 'north-summit-bank' ||
+    normalized === 'northsummit bank' ||
     normalized === 'northstar bank'
   ) {
-    return 'northstar'
+    return DEMO_NORTH_SUMMIT_BANK_SLUG
   }
 
   if (
@@ -1196,7 +1287,7 @@ function registerFormLogoFields(organizationName: string): Pick<
   RegisterOrganizationForm,
   'logoSrc' | 'logoFileName'
 > {
-  if (organizationName.trim().toLowerCase() === DEMO_NORTHSTAR_ORG_NAME) {
+  if (organizationName.trim().toLowerCase() === DEMO_BLUESOLACE_ORG_NAME) {
     return {
       logoSrc: getDemoBluesolaceCompanyLogoSrc(),
       logoFileName: DEMO_BLUESOLACE_COMPANY_LOGO_FILE_NAME,

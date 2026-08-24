@@ -131,9 +131,9 @@ export function TenantAdminWorkspacePage() {
   const { tenant: tenantParam } = useParams<{ tenant: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const isValidTenant = Boolean(
-    tenantParam && isDemoTenantId(tenantParam) && tenantParam === 'northstar',
+    tenantParam && isDemoTenantId(tenantParam) && tenantParam === 'northsummit',
   )
-  const tenant = 'northstar' as const
+  const tenant = 'northsummit' as const
 
   const [organization, setOrganization] = useState(() => getWorkspaceOrganization(tenant))
   const [activeNavId, setActiveNavId] = useState<TenantAdminNavId>(() =>
@@ -187,7 +187,7 @@ export function TenantAdminWorkspacePage() {
   }
 
   const catalogDraft = getProviderCatalogDraft()
-  const displayName = organization.tenantAdminName ?? DEMO_TENANT_DISPLAY_ADMIN.northstar
+  const displayName = organization.tenantAdminName ?? DEMO_TENANT_DISPLAY_ADMIN.northsummit
   const lockedServiceId = getLockedServiceIdFromNav(activeNavId)
 
   const handleProjectScopeChange = (scopeId: ProjectScopeId) => {

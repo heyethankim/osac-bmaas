@@ -23,6 +23,16 @@ function RedirectNorthstarIdpManager() {
   )
 }
 
+function RedirectNorthstarTenant() {
+  const location = useLocation()
+  return (
+    <Navigate
+      to={`${location.pathname.replace(/\/northstar\b/, '/northsummit')}${location.search}${location.hash}`}
+      replace
+    />
+  )
+}
+
 export default function App() {
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
@@ -41,6 +51,10 @@ export default function App() {
         <Route path="/provider/setup" element={<Navigate to="/provider/workspace" replace />} />
         <Route path="/provider/workspace" element={<ProviderAdminWorkspacePage />} />
         <Route path="/tenant-admin/catalog-sample" element={<TenantAdminSampleCatalogPage />} />
+        <Route path="/tenant-admin/northstar/workspace" element={<RedirectNorthstarTenant />} />
+        <Route path="/tenant-admin/northstar" element={<RedirectNorthstarTenant />} />
+        <Route path="/tenant-user/northstar/workspace" element={<RedirectNorthstarTenant />} />
+        <Route path="/tenant-user/northstar" element={<RedirectNorthstarTenant />} />
         <Route path="/tenant-admin/:tenant" element={<TenantLoginPage role="tenant-admin" />} />
         <Route
           path="/tenant-admin/:tenant/workspace"
