@@ -54,7 +54,6 @@ import {
   getKubernetesResourceNameValidation,
   isValidKubernetesResourceName,
 } from '../../shared/kubernetesResourceName'
-import { BreakGlassCredentialsPanel } from './BreakGlassCredentialsPanel'
 import { TenantCompanyLogoField } from './TenantCompanyLogoField'
 
 type RegisterOrganizationWizardProps = {
@@ -424,21 +423,6 @@ export function RegisterOrganizationWizard({
                 ) : null}
               </DescriptionListDescription>
             </DescriptionListGroup>
-            {!isEditMode &&
-            form.breakGlassUsername.trim() &&
-            form.breakGlassPassword.trim() ? (
-              <DescriptionListGroup>
-                <DescriptionListTerm>Break-glass account</DescriptionListTerm>
-                <DescriptionListDescription>
-                  <BreakGlassCredentialsPanel
-                    credentials={{
-                      username: form.breakGlassUsername,
-                      password: form.breakGlassPassword,
-                    }}
-                  />
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-            ) : null}
           </DescriptionList>
         )
       default:

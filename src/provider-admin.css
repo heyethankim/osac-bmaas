@@ -4465,13 +4465,15 @@
 }
 
 .provider-admin-organizations__status-step-label,
-.provider-admin-organizations__status-step-link.pf-v6-c-button {
+.provider-admin-organizations__status-step-link.pf-v6-c-button.pf-m-link.pf-m-inline {
   font-size: var(--pf-t--global--font--size--body--default);
   font-weight: var(--pf-t--global--font--weight--body--default);
 }
 
-.provider-admin-organizations__status-step-link.pf-v6-c-button {
+.provider-admin-organizations__status-step-link.pf-v6-c-button.pf-m-link.pf-m-inline {
   padding: 0;
+  --pf-v6-c-button--FontSize: var(--pf-t--global--font--size--body--default);
+  --pf-v6-c-button--FontWeight: var(--pf-t--global--font--weight--body--default);
 }
 
 .provider-admin-organizations__status-step-meta.pf-v6-c-content--p {
@@ -4578,6 +4580,14 @@
   margin: 0;
   color: var(--pf-t--global--text--color--subtle);
   font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.provider-admin-organizations__setup-signal-link.pf-v6-c-button.pf-m-link.pf-m-inline {
+  margin: 0;
+  padding: 0;
+  font-size: var(--pf-t--global--font--size--body--sm);
+  font-weight: var(--pf-t--global--font--weight--body--default);
+  --pf-v6-c-button--FontSize: var(--pf-t--global--font--size--body--sm);
 }
 
 .provider-admin-organizations__osac-url {
