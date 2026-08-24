@@ -54,6 +54,8 @@ type TenantShellProps = {
   onNavChange?: (navId: string) => void
   disabledNavIds?: string[]
   isOnboardingLayout?: boolean
+  companyLogoSrc?: string | null
+  companyLogoAlt?: string
 }
 
 const roleLabels: Record<TenantShellRole, string> = {
@@ -74,6 +76,8 @@ export function TenantShell({
   onNavChange,
   disabledNavIds = [],
   isOnboardingLayout = false,
+  companyLogoSrc = null,
+  companyLogoAlt,
 }: TenantShellProps) {
   const navigate = useNavigate()
   const flattenedNavItems =
@@ -158,10 +162,31 @@ export function TenantShell({
           </PageToggleButton>
         </MastheadToggle>
         <MastheadLogo
-          className={role === 'idp-manager' ? 'bluesolace-masthead-logo' : 'northstar-masthead-logo'}
+          className={
+            companyLogoSrc || role === 'idp-manager'
+              ? 'bluesolace-masthead-logo'
+              : 'northstar-masthead-logo'
+          }
         >
           <MastheadBrand>
-            {role === 'idp-manager' ? <BlueSolaceMastheadLogo /> : <NorthstarBankMastheadLogo />}
+            {companyLogoSrc ? (
+              <div
+                className="bluesolace-masthead-brand"
+                role="img"
+                aria-label={companyLogoAlt || 'Tenant'}
+              >
+                <img
+                  src={companyLogoSrc}
+                  alt=""
+                  className="bluesolace-masthead-brand__img"
+                  draggable={false}
+                />
+              </div>
+            ) : role === 'idp-manager' ? (
+              <BlueSolaceMastheadLogo />
+            ) : (
+              <NorthstarBankMastheadLogo />
+            )}
           </MastheadBrand>
         </MastheadLogo>
       </MastheadMain>

@@ -54,6 +54,9 @@ export type RegisteredOrganization = {
   additionalDomains: string[]
   billingAccountId: string
   billingAccountName: string
+  /** Tenant company mark (data URL or public path). Shown on tenant login and workspace. */
+  logoSrc: string | null
+  logoFileName: string | null
   catalogItemId: string | null
   catalogDisplayName: string | null
   externalIpPoolId: string | null
@@ -230,6 +233,43 @@ export type BreakGlassIssuePatch = Pick<
   | 'breakGlassIssuedAt'
 >
 
+export const DEMO_BLUESOLACE_COMPANY_LOGO_FILE_NAME = 'bluesolace-financial-group-logo.png'
+export const DEMO_NORTH_SUMMIT_BANK_COMPANY_LOGO_FILE_NAME = 'north-summit-bank-logo.svg'
+
+export function getDemoBluesolaceCompanyLogoSrc(): string {
+  return `${import.meta.env.BASE_URL}${DEMO_BLUESOLACE_COMPANY_LOGO_FILE_NAME}`
+}
+
+export function getDemoNorthSummitBankCompanyLogoSrc(): string {
+  return `${import.meta.env.BASE_URL}${DEMO_NORTH_SUMMIT_BANK_COMPANY_LOGO_FILE_NAME}`
+}
+
+export function resolveOrganizationCompanyLogo(
+  organization: Pick<RegisteredOrganization, 'slug'> & {
+    name?: string
+    logoSrc?: string | null
+  },
+): string | null {
+  if (organization.logoSrc?.trim()) {
+    return organization.logoSrc.trim()
+  }
+
+  const slug = organization.slug.trim().toLowerCase()
+  if (
+    slug === 'evergreen' ||
+    slug === 'bluesolace' ||
+    slug === 'bluesolace-financial-group'
+  ) {
+    return getDemoBluesolaceCompanyLogoSrc()
+  }
+
+  if (slug === 'northstar' || slug === 'north-summit-bank') {
+    return getDemoNorthSummitBankCompanyLogoSrc()
+  }
+
+  return null
+}
+
 export function generateBreakGlassUsername(slug: string): string {
   const normalized = slug.trim().toLowerCase() || 'org'
   if (
@@ -242,16 +282,31 @@ export function generateBreakGlassUsername(slug: string): string {
   return `breakglass-${normalized}`
 }
 
+function breakGlassPasswordLabel(slug: string): string {
+  const normalized = slug.trim().toLowerCase() || 'org'
+  if (
+    normalized === 'evergreen' ||
+    normalized === 'bluesolace' ||
+    normalized === 'bluesolace-financial-group'
+  ) {
+    return 'bluesolace'
+  }
+  return normalized
+}
+
+/** Rewrite leftover demo passwords that used the stored evergreen slug. */
+export function rewriteBreakGlassPassword(password: string): string {
+  return password.replace(/^BG-evergreen-/i, 'BG-bluesolace-')
+}
+
 /** Stable demo password for seeded orgs; new issues use a one-time token. */
 export function getDemoBreakGlassPassword(slug: string): string {
-  const normalized = slug.trim().toLowerCase() || 'org'
-  return `BG-${normalized}-vault`
+  return `BG-${breakGlassPasswordLabel(slug)}-vault`
 }
 
 export function generateBreakGlassPassword(slug: string): string {
-  const normalized = slug.trim().toLowerCase() || 'org'
   const token = Math.random().toString(36).slice(2, 8)
-  return `BG-${normalized}-${token}`
+  return `BG-${breakGlassPasswordLabel(slug)}-${token}`
 }
 
 export function resolveBreakGlassUsername(
@@ -272,19 +327,76 @@ export function buildBreakGlassIssuePatch(
   organization: Pick<
     RegisteredOrganization,
     'slug' | 'breakGlassUsername' | 'breakGlassPassword' | 'breakGlassIssuedAt'
-  >,
-  custodian: BreakGlassCustodian,
+  > &
+    Partial<Pick<RegisteredOrganization, 'breakGlassName' | 'breakGlassEmail'>>,
+  custodian?: BreakGlassCustodian,
 ): BreakGlassIssuePatch {
   const username = resolveBreakGlassUsername(organization)
-  const password =
-    organization.breakGlassPassword?.trim() || generateBreakGlassPassword(organization.slug)
+  const password = rewriteBreakGlassPassword(
+    organization.breakGlassPassword?.trim() || generateBreakGlassPassword(organization.slug),
+  )
+  const email = custodian?.email.trim() || organization.breakGlassEmail?.trim() || ''
 
   return {
-    breakGlassName: custodian.name.trim() || 'IdP manager',
-    breakGlassEmail: custodian.email.trim().toLowerCase(),
+    breakGlassName:
+      custodian?.name.trim() || organization.breakGlassName?.trim() || null,
+    breakGlassEmail: email ? email.toLowerCase() : null,
     breakGlassUsername: username,
     breakGlassPassword: password,
     breakGlassIssuedAt: organization.breakGlassIssuedAt ?? new Date().toISOString(),
+  }
+}
+
+export function defaultBreakGlassCustodianEmail(primaryDomain: string): string {
+  return `idp-admin@${normalizePrimaryDomain(primaryDomain) || 'example.com'}`
+}
+
+export function resolveRegisterBreakGlassPassword(
+  slug: string,
+  existingPassword?: string | null,
+): string {
+  if (existingPassword?.trim()) {
+    return rewriteBreakGlassPassword(existingPassword.trim())
+  }
+
+  const normalized = slug.trim().toLowerCase()
+  if (
+    normalized === 'evergreen' ||
+    normalized === 'bluesolace' ||
+    normalized === 'bluesolace-financial-group' ||
+    normalized === 'northstar' ||
+    normalized === 'harborline'
+  ) {
+    return getDemoBreakGlassPassword(normalized)
+  }
+
+  return generateBreakGlassPassword(slug)
+}
+
+export function buildRegisterBreakGlassFields(
+  organizationName: string,
+  primaryDomain: string,
+  existing?: {
+    breakGlassName?: string | null
+    breakGlassEmail?: string | null
+    breakGlassUsername?: string | null
+    breakGlassPassword?: string | null
+    slug?: string | null
+  } | null,
+): {
+  breakGlassName: string
+  breakGlassEmail: string
+  breakGlassUsername: string
+  breakGlassPassword: string
+} {
+  const slug = slugifyOrganizationName(organizationName) || existing?.slug?.trim() || 'org'
+
+  return {
+    breakGlassName: existing?.breakGlassName?.trim() || 'IdP manager',
+    breakGlassEmail:
+      existing?.breakGlassEmail?.trim() || defaultBreakGlassCustodianEmail(primaryDomain),
+    breakGlassUsername: existing?.breakGlassUsername?.trim() || generateBreakGlassUsername(slug),
+    breakGlassPassword: resolveRegisterBreakGlassPassword(slug, existing?.breakGlassPassword),
   }
 }
 
@@ -310,7 +422,9 @@ export function getIdpManagerSetupRoute(token: string): string {
 export const DEMO_IDP_MANAGER_URL_SLUG = 'bluesolace'
 
 /** Stored organization slug that backs the BlueSolace IdP manager demo. */
-export const DEMO_IDP_MANAGER_ORG_SLUG = 'northstar'
+export const DEMO_IDP_MANAGER_ORG_SLUG = 'evergreen'
+export const DEMO_BLUESOLACE_ORG_ID = 'org-bluesolace-financial-group'
+export const DEMO_BLUESOLACE_TENANT_ID = 'tenant-evergreen'
 
 export function getIdpManagerUrlSlug(slug = DEMO_IDP_MANAGER_URL_SLUG): string {
   const normalized = slug.trim().toLowerCase()
@@ -319,6 +433,7 @@ export function getIdpManagerUrlSlug(slug = DEMO_IDP_MANAGER_URL_SLUG): string {
     normalized === DEMO_IDP_MANAGER_ORG_SLUG ||
     normalized === DEMO_IDP_MANAGER_URL_SLUG ||
     normalized === 'evergreen' ||
+    normalized === 'northstar' ||
     normalized === 'bluesolace-financial-group'
   ) {
     return DEMO_IDP_MANAGER_URL_SLUG
@@ -372,24 +487,27 @@ export function getIdpManagerSetupPath(token: string): string {
   return `${normalizedBase}${getIdpManagerSetupRoute(token)}`
 }
 
-/** Org for the landing IdP manager shortcut: pending Path B first, else the Onboarding demo tenant. */
+/** Org for the landing IdP manager shortcut: pending Path B first, else BlueSolace onboarding. */
 export function resolveIdpManagerPrototypeOrganization(
   organizations: RegisteredOrganization[],
   now = Date.now(),
 ): RegisteredOrganization | null {
   const pending = getPendingIdpManagerInvites(organizations, now)
-  if (pending[0]) {
-    return pending[0].organization
+  const onboardingPending =
+    pending.find((item) => item.organization.slug === DEMO_IDP_MANAGER_ORG_SLUG) ?? pending[0]
+  if (onboardingPending && onboardingPending.organization.slug !== 'northstar') {
+    return onboardingPending.organization
   }
 
-  return (
-    organizations.find(
-      (organization) =>
-        organization.id === DEMO_NORTH_SUMMIT_BANK_ORG_ID && hasBreakGlassAccount(organization),
-    ) ??
-    organizations.find((organization) => hasBreakGlassAccount(organization)) ??
-    null
+  const onboardingOrg = findOrganizationForIdpManagerUrlSlug(
+    organizations,
+    DEMO_IDP_MANAGER_URL_SLUG,
   )
+  if (onboardingOrg && hasBreakGlassAccount(onboardingOrg)) {
+    return onboardingOrg
+  }
+
+  return null
 }
 
 /** Under-Status line: next incomplete step while setup is incomplete. */
@@ -562,6 +680,8 @@ export type RegisterOrganizationForm = {
   billingAccountName: string
   externalIpPoolId: string
   maxInstances: string
+  logoSrc: string
+  logoFileName: string
 }
 
 /** BlueSolace values for the register-tenant wizard / Onboarding prefill. */
@@ -580,6 +700,56 @@ export const DEFAULT_REGISTER_ORGANIZATION_FORM: RegisterOrganizationForm = {
   billingAccountName: DEMO_NORTHSTAR_BILLING_ACCOUNT_NAME,
   externalIpPoolId: 'eipool-northstar-edge',
   maxInstances: '20',
+  logoSrc: getDemoBluesolaceCompanyLogoSrc(),
+  logoFileName: DEMO_BLUESOLACE_COMPANY_LOGO_FILE_NAME,
+}
+
+/** Pending BlueSolace tenant for IdP manager onboarding. Provider-admin NSB seed is separate. */
+export function createDemoBlueSolaceOnboardingOrganization(): RegisteredOrganization {
+  const primaryDomain = DEMO_NORTHSTAR_PRIMARY_DOMAIN
+
+  return {
+    id: DEMO_BLUESOLACE_ORG_ID,
+    name: DEMO_NORTHSTAR_ORG_NAME,
+    tenantId: DEMO_BLUESOLACE_TENANT_ID,
+    slug: DEMO_IDP_MANAGER_ORG_SLUG,
+    primaryDomain,
+    additionalDomains: [DEMO_NORTHSTAR_ADDITIONAL_DOMAIN],
+    billingAccountId: 'ACCT-BSFG-2026',
+    billingAccountName: DEMO_NORTHSTAR_BILLING_ACCOUNT_NAME,
+    logoSrc: getDemoBluesolaceCompanyLogoSrc(),
+    logoFileName: DEMO_BLUESOLACE_COMPANY_LOGO_FILE_NAME,
+    catalogItemId: null,
+    catalogDisplayName: null,
+    externalIpPoolId: null,
+    externalIpPoolName: null,
+    externalIpPoolCidr: null,
+    maxInstances: 20,
+    tenantAdminName: '',
+    tenantAdminEmail: '',
+    additionalTenantAdmins: [],
+    invitedTenantUserEmails: [],
+    identityProviderConnected: false,
+    identityProviderName: null,
+    identityProviderDisplayName: null,
+    identityProviderProtocol: null,
+    identityProviderIssuerUrl: null,
+    identityProviderClientId: null,
+    identityProviders: [],
+    idpManagerEmail: null,
+    idpInviteToken: null,
+    idpInviteStatus: 'none',
+    idpInviteSentAt: null,
+    idpInviteExpiresAt: null,
+    breakGlassName: 'IdP manager',
+    breakGlassEmail: `idp-admin@${primaryDomain}`,
+    breakGlassUsername: generateBreakGlassUsername(DEMO_IDP_MANAGER_ORG_SLUG),
+    breakGlassPassword: getDemoBreakGlassPassword(DEMO_IDP_MANAGER_ORG_SLUG),
+    breakGlassIssuedAt: new Date().toISOString(),
+    rbacConfigured: false,
+    status: 'Pending activation',
+    createdAt: new Date().toISOString(),
+  }
 }
 
 /** Fully activated North Summit Bank — IdP connected, roles defined, Active. */
@@ -603,6 +773,8 @@ export function createDemoNorthSummitBankOrganization(
     additionalDomains: [DEMO_NORTH_SUMMIT_BANK_ADDITIONAL_DOMAIN],
     billingAccountId: 'ACCT-NSB-2048',
     billingAccountName: DEMO_NORTH_SUMMIT_BANK_BILLING_ACCOUNT_NAME,
+    logoSrc: getDemoNorthSummitBankCompanyLogoSrc(),
+    logoFileName: DEMO_NORTH_SUMMIT_BANK_COMPANY_LOGO_FILE_NAME,
     catalogItemId: options.catalogItemId ?? null,
     catalogDisplayName: options.catalogDisplayName ?? null,
     externalIpPoolId: options.externalIpPoolId ?? DEFAULT_REGISTER_ORGANIZATION_FORM.externalIpPoolId,
@@ -670,6 +842,8 @@ export function createDemoHarborlineCapitalOrganization(
     additionalDomains: ['harborline.com'],
     billingAccountId: 'ACCT-HLC-3910',
     billingAccountName: 'harborline-capital-enterprise-billing',
+    logoSrc: null,
+    logoFileName: null,
     catalogItemId: options.catalogItemId ?? null,
     catalogDisplayName: options.catalogDisplayName ?? null,
     externalIpPoolId: options.externalIpPoolId ?? 'eipool-standby-a',
@@ -927,13 +1101,18 @@ function getTakenOrganizationKeys(existingOrganizations: RegisteredOrganization[
 export function isOrganizationNameTaken(
   organizationName: string,
   existingOrganizations: RegisteredOrganization[],
+  excludeOrganizationId?: string,
 ): boolean {
   const name = organizationName.trim().toLowerCase()
   if (!name) {
     return false
   }
 
-  return getTakenOrganizationKeys(existingOrganizations).names.has(name)
+  const organizations = excludeOrganizationId
+    ? existingOrganizations.filter((organization) => organization.id !== excludeOrganizationId)
+    : existingOrganizations
+
+  return getTakenOrganizationKeys(organizations).names.has(name)
 }
 
 export function isOrganizationDomainTaken(
@@ -984,13 +1163,47 @@ export function formatOrganizationEmailDomainsLabel(
 export function isOrganizationSlugTaken(
   organizationName: string,
   existingOrganizations: RegisteredOrganization[],
+  excludeOrganizationId?: string,
 ): boolean {
   const slug = slugifyOrganizationName(organizationName)
   if (!slug) {
     return false
   }
 
-  return getTakenOrganizationKeys(existingOrganizations).slugs.has(slug)
+  const organizations = excludeOrganizationId
+    ? existingOrganizations.filter((organization) => organization.id !== excludeOrganizationId)
+    : existingOrganizations
+
+  return getTakenOrganizationKeys(organizations).slugs.has(slug)
+}
+
+export function formFromRegisteredOrganization(
+  organization: RegisteredOrganization,
+): RegisterOrganizationForm {
+  return {
+    organizationName: organization.name,
+    primaryDomain: organization.primaryDomain,
+    billingAccountId: organization.billingAccountId,
+    billingAccountName: organization.billingAccountName,
+    externalIpPoolId: organization.externalIpPoolId ?? '',
+    maxInstances: String(organization.maxInstances),
+    logoSrc: organization.logoSrc?.trim() || '',
+    logoFileName: organization.logoFileName?.trim() || '',
+  }
+}
+
+function registerFormLogoFields(organizationName: string): Pick<
+  RegisterOrganizationForm,
+  'logoSrc' | 'logoFileName'
+> {
+  if (organizationName.trim().toLowerCase() === DEMO_NORTHSTAR_ORG_NAME) {
+    return {
+      logoSrc: getDemoBluesolaceCompanyLogoSrc(),
+      logoFileName: DEMO_BLUESOLACE_COMPANY_LOGO_FILE_NAME,
+    }
+  }
+
+  return { logoSrc: '', logoFileName: '' }
 }
 
 /** Prefill the next unused demo org so the same organization cannot be registered twice. */
@@ -1016,6 +1229,7 @@ export function buildNextRegisterOrganizationForm(
       primaryDomain: preset.primaryDomain,
       billingAccountName: preset.billingAccountName,
       billingAccountId: generateBillingAccountId(),
+      ...registerFormLogoFields(preset.organizationName),
     }
   }
 
@@ -1035,18 +1249,22 @@ export function buildNextRegisterOrganizationForm(
         primaryDomain,
         billingAccountName: `${organizationName}-enterprise-billing`,
         billingAccountId: generateBillingAccountId(),
+        ...registerFormLogoFields(organizationName),
       }
     }
     suffix += 1
   }
 
   const unique = Math.random().toString(36).slice(2, 6)
+  const organizationName = `vertexa-tenant-${unique}`
+  const primaryDomain = `tenant-${unique}.example.com`
   return {
     ...DEFAULT_REGISTER_ORGANIZATION_FORM,
-    organizationName: `vertexa-tenant-${unique}`,
-    primaryDomain: `tenant-${unique}.example.com`,
+    organizationName,
+    primaryDomain,
     billingAccountName: `vertexa-tenant-${unique}-enterprise-billing`,
     billingAccountId: generateBillingAccountId(),
+    ...registerFormLogoFields(organizationName),
   }
 }
 

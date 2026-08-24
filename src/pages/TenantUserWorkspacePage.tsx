@@ -11,6 +11,7 @@ import { getProviderRegisteredOrganizations, activateProviderRegisteredOrganizat
 import { getProviderCatalogDraft, getProviderCatalogItems } from '../providerSetup/storage'
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
 import { getRegisteredOrganizationBySlug } from '../tenantAdmin/organizations'
+import { resolveOrganizationCompanyLogo } from '../providerAdmin/organizations'
 import {
   getTenantInstanceServiceId,
   isStickyDemoProvisioningInstance,
@@ -500,6 +501,8 @@ export function TenantUserWorkspacePage() {
       showNavigation
       activeNavId={activeNavId}
       onNavChange={handleNavChange}
+      companyLogoSrc={organization ? resolveOrganizationCompanyLogo(organization) : null}
+      companyLogoAlt={organization?.name}
     >
       <div key={navContentKey}>{renderWorkspaceContent()}</div>
     </TenantShell>

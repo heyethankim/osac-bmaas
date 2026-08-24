@@ -15,9 +15,12 @@ import {
   getIdpManagerUrlSlug,
   getIdpManagerWorkspaceRoute,
   hasBreakGlassAccount,
+  resolveBreakGlassUsername,
+  resolveOrganizationCompanyLogo,
   type RegisteredOrganization,
 } from '../providerAdmin/organizations'
 import {
+  ensureBlueSolaceOnboardingOrganization,
   ensureProviderDemoOrganizations,
   getProviderRegisteredOrganizations,
 } from '../providerSetup/storage'
@@ -29,6 +32,7 @@ function findOrganizationBySlug(slug: string): RegisteredOrganization | null {
 
 function loadWorkspaceOrganization(orgSlug: string): RegisteredOrganization | null {
   ensureProviderDemoOrganizations()
+  ensureBlueSolaceOnboardingOrganization()
   const match = findOrganizationBySlug(orgSlug)
   return match && hasBreakGlassAccount(match) ? match : null
 }
@@ -112,11 +116,13 @@ function IdpManagerWorkspaceSession({ orgSlug }: { orgSlug: string }) {
   return (
     <TenantShell
       role="idp-manager"
-      displayName={organization.breakGlassUsername ?? 'breakglass-bluesolace'}
+      displayName={resolveBreakGlassUsername(organization)}
       navItems={IDP_MANAGER_NAV_ITEMS}
       showNavigation
       activeNavId={activeNavId}
       onNavChange={handleNavChange}
+      companyLogoSrc={resolveOrganizationCompanyLogo(organization)}
+      companyLogoAlt={organization.name}
     >
       <div key={navContentKey}>{renderWorkspaceContent()}</div>
     </TenantShell>

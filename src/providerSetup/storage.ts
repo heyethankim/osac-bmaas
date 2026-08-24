@@ -1,10 +1,13 @@
 import type { ProviderServiceId } from './constants'
 import type { ProviderAdminNavId } from '../providerAdmin/constants'
 import {
+  createDemoBlueSolaceOnboardingOrganization,
   createDemoHarborlineCapitalOrganization,
   createDemoNorthSummitBankOrganization,
+  DEMO_BLUESOLACE_ORG_ID,
   DEMO_HARBORLINE_CAPITAL_ORG_ID,
   DEMO_HARBORLINE_CAPITAL_SLUG,
+  DEMO_IDP_MANAGER_ORG_SLUG,
   DEMO_NORTH_SUMMIT_BANK_ADDITIONAL_DOMAIN,
   DEMO_NORTH_SUMMIT_BANK_BILLING_ACCOUNT_NAME,
   DEMO_NORTH_SUMMIT_BANK_IDP_CLIENT_ID,
@@ -16,12 +19,15 @@ import {
   DEMO_NORTHSTAR_BILLING_ACCOUNT_NAME,
   DEMO_NORTHSTAR_IDP_CLIENT_ID,
   DEMO_NORTHSTAR_IDP_DISPLAY_NAME,
+  DEMO_NORTHSTAR_ORG_NAME,
   DEMO_NORTHSTAR_PRIMARY_DOMAIN,
   DEFAULT_REGISTER_ORGANIZATION_FORM,
   DEFAULT_REGISTER_ORGANIZATION_TENANT_ADMIN,
+  hasBreakGlassAccount,
   hasPendingIdpInvite,
   generateBreakGlassUsername,
   getDemoBreakGlassPassword,
+  rewriteBreakGlassPassword,
   isOrganizationAssignedRoleId,
   migrateLegacyIdentityProviderClientId,
   normalizeAdditionalDomains,
@@ -1369,6 +1375,12 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
       : null,
     externalIpPoolCidr: org.externalIpPoolCidr ?? null,
     billingAccountName,
+    logoSrc:
+      typeof org.logoSrc === 'string' && org.logoSrc.trim() ? org.logoSrc.trim() : null,
+    logoFileName:
+      typeof org.logoFileName === 'string' && org.logoFileName.trim()
+        ? org.logoFileName.trim()
+        : null,
     tenantAdminName: shouldClearPlaceholderTenantAdmin ? '' : org.tenantAdminName,
     tenantAdminEmail: shouldClearPlaceholderTenantAdmin ? '' : org.tenantAdminEmail,
     identityProviderName,
@@ -1418,7 +1430,7 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
           : null,
     breakGlassPassword:
       typeof org.breakGlassPassword === 'string' && org.breakGlassPassword.trim()
-        ? org.breakGlassPassword.trim()
+        ? rewriteBreakGlassPassword(org.breakGlassPassword.trim())
         : typeof org.breakGlassEmail === 'string' && org.breakGlassEmail.trim()
           ? getDemoBreakGlassPassword(org.slug)
           : null,
@@ -1765,6 +1777,56 @@ export function ensureProviderDemoOrganizations(): RegisteredOrganization[] {
   } catch {
     return getProviderRegisteredOrganizations()
   }
+}
+
+/** BlueSolace onboarding tenant for IdP manager. Does not replace seeded NSB/Harborline. */
+export function ensureBlueSolaceOnboardingOrganization(): RegisteredOrganization {
+  const current = getProviderRegisteredOrganizations()
+  const existing =
+    current.find((tenant) => tenant.id === DEMO_BLUESOLACE_ORG_ID) ??
+    current.find((tenant) => tenant.slug === DEMO_IDP_MANAGER_ORG_SLUG) ??
+    current.find((tenant) => tenant.name === DEMO_NORTHSTAR_ORG_NAME)
+
+  if (existing) {
+    const usesNorthSummitDomain =
+      existing.primaryDomain === DEMO_NORTH_SUMMIT_BANK_PRIMARY_DOMAIN
+    const additionalLooksEmptyOrNorthSummit =
+      existing.identityProviders.length === 0 &&
+      (existing.additionalDomains.length === 0 ||
+        existing.additionalDomains.includes(DEMO_NORTH_SUMMIT_BANK_ADDITIONAL_DOMAIN))
+    const patch: Partial<RegisteredOrganization> = {}
+
+    if (!hasBreakGlassAccount(existing)) {
+      patch.breakGlassName = existing.breakGlassName?.trim() || 'IdP manager'
+      patch.breakGlassEmail =
+        existing.breakGlassEmail?.trim() || `idp-admin@${DEMO_NORTHSTAR_PRIMARY_DOMAIN}`
+      patch.breakGlassUsername = generateBreakGlassUsername(DEMO_IDP_MANAGER_ORG_SLUG)
+      patch.breakGlassPassword = getDemoBreakGlassPassword(DEMO_IDP_MANAGER_ORG_SLUG)
+      patch.breakGlassIssuedAt = existing.breakGlassIssuedAt ?? new Date().toISOString()
+    }
+
+    if (usesNorthSummitDomain || !existing.primaryDomain.trim()) {
+      patch.name = DEMO_NORTHSTAR_ORG_NAME
+      patch.primaryDomain = DEMO_NORTHSTAR_PRIMARY_DOMAIN
+      patch.billingAccountName = DEMO_NORTHSTAR_BILLING_ACCOUNT_NAME
+    }
+
+    if (additionalLooksEmptyOrNorthSummit) {
+      patch.additionalDomains = [DEMO_NORTHSTAR_ADDITIONAL_DOMAIN]
+    }
+
+    if (Object.keys(patch).length === 0) {
+      return existing
+    }
+
+    return updateProviderRegisteredOrganization(existing.id, patch) ?? existing
+  }
+
+  const created = createDemoBlueSolaceOnboardingOrganization()
+  addProviderRegisteredOrganization(created)
+  return (
+    getProviderRegisteredOrganizations().find((tenant) => tenant.id === created.id) ?? created
+  )
 }
 
 export function addProviderRegisteredOrganization(org: RegisteredOrganization): void {

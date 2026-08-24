@@ -246,6 +246,14 @@
   max-height: var(--pf-v6-c-masthead__logo--MaxHeight, 2.375rem);
 }
 
+.northstar-masthead-brand__img {
+  display: block;
+  height: 2.5rem;
+  width: auto;
+  max-width: min(100%, 16rem);
+  object-fit: contain;
+}
+
 .northstar-masthead-brand__mark {
   display: flex;
   align-items: center;

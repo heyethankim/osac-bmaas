@@ -32,6 +32,7 @@ import {
   hasPendingIdpInvite,
   isOrganizationReadyForLogin,
   resolveBreakGlassUsername,
+  resolveOrganizationCompanyLogo,
   type OrganizationActivationStep,
   type RegisteredOrganization,
 } from '../../providerAdmin/organizations'
@@ -69,8 +70,10 @@ function formatRegisteredAt(iso: string): string {
 
 function getIdentityProviderStepMeta(organization: RegisteredOrganization): string | null {
   if (!organization.identityProviderConnected) {
-    if (hasPendingIdpInvite(organization) && organization.idpManagerEmail) {
-      return `Invite sent to ${organization.idpManagerEmail}`
+    if (hasPendingIdpInvite(organization)) {
+      return organization.idpManagerEmail
+        ? `Invite sent to ${organization.idpManagerEmail}`
+        : 'Waiting on IdP manager'
     }
     return null
   }
@@ -81,25 +84,6 @@ function getIdentityProviderStepMeta(organization: RegisteredOrganization): stri
   ].filter(Boolean)
 
   return parts.length > 0 ? parts.join(' · ') : organization.identityProviderName
-}
-
-function PersonField({
-  name,
-  email,
-}: {
-  name: string
-  email: string
-}) {
-  return (
-    <>
-      <Content component="p" className="provider-admin-organizations__primary-cell">
-        {name}
-      </Content>
-      <Content component="p" className="provider-admin-organizations__secondary-cell">
-        <code>{email}</code>
-      </Content>
-    </>
-  )
 }
 
 function AccountPersonRow({
@@ -257,6 +241,7 @@ export function OrganizationDetailsPage({
 }: OrganizationDetailsPageProps) {
   const activationSteps = getOrganizationActivationSteps(organization)
   const roleAssignments = listRoleAssignments(organization)
+  const companyLogoSrc = resolveOrganizationCompanyLogo(organization)
   const [isAddRolesOpen, setIsAddRolesOpen] = useState(false)
   const [administratorPendingRemove, setAdministratorPendingRemove] =
     useState<TenantAdministrator | null>(null)
@@ -309,6 +294,11 @@ export function OrganizationDetailsPage({
       title={organization.name}
       titleId="tenant-details-title"
       description="Tenant details for billing, identity domain, and workspace access."
+      icon={
+        companyLogoSrc ? (
+          <img src={companyLogoSrc} alt="" className="entity-details-page__company-logo" />
+        ) : undefined
+      }
       actions={
         onEdit || onRemove ? (
           <EntityDetailsActionsDropdown onEdit={onEdit} onRemove={onRemove} removeLabel="Remove" />
@@ -342,6 +332,21 @@ export function OrganizationDetailsPage({
                         Ready for login
                       </Content>
                     ) : null}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Company logo</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {companyLogoSrc ? (
+                      <div className="provider-admin-organizations__logo-preview">
+                        <img
+                          src={companyLogoSrc}
+                          alt={organization.logoFileName || organization.name}
+                        />
+                      </div>
+                    ) : (
+                      '—'
+                    )}
                   </DescriptionListDescription>
                 </DescriptionListGroup>
                 <DescriptionListGroup>
@@ -465,28 +470,25 @@ export function OrganizationDetailsPage({
                   >
                     {resolveBreakGlassUsername(organization)}
                   </ClipboardCopy>
+                  {organization.breakGlassPassword ? (
+                    <ClipboardCopy
+                      isReadOnly
+                      isCode
+                      hoverTip="Copy password"
+                      clickTip="Password copied"
+                      textAriaLabel="Break-glass password"
+                    >
+                      {organization.breakGlassPassword}
+                    </ClipboardCopy>
+                  ) : null}
                   <Content
                     component="p"
                     className="provider-admin-organizations__secondary-cell"
                   >
-                    Custodian:{' '}
-                    {organization.breakGlassName || 'IdP manager'}
-                    {organization.breakGlassEmail
-                      ? ` · ${organization.breakGlassEmail}`
-                      : ''}
-                  </Content>
-                  <Content
-                    component="p"
-                    className="provider-admin-organizations__secondary-cell"
-                  >
-                    Local login. Does not use the tenant IdP.
+                    Local login for the IdP manager. Does not use the tenant IdP. Send the
+                    username, password, and OSAC URL out of band.
                   </Content>
                 </div>
-              ) : organization.breakGlassEmail ? (
-                <PersonField
-                  name={organization.breakGlassName || '—'}
-                  email={organization.breakGlassEmail}
-                />
               ) : (
                 <Content component="p" className="provider-admin-organizations__secondary-cell">
                   —

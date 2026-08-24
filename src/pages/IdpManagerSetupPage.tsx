@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Alert, Content, Title } from '@patternfly/react-core'
 import {
+  ensureBlueSolaceOnboardingOrganization,
   ensureProviderDemoOrganizations,
   getProviderRegisteredOrganizationByIdpInviteToken,
   getProviderRegisteredOrganizations,
@@ -16,6 +17,7 @@ import {
   getPendingIdpManagerInvites,
   hasBreakGlassAccount,
   isIdpInviteExpired,
+  resolveBreakGlassUsername,
   resolveIdpManagerPrototypeOrganization,
   type RegisteredOrganization,
 } from '../providerAdmin/organizations'
@@ -38,8 +40,9 @@ function findOrganizationBySlug(slug: string): RegisteredOrganization | null {
   return findOrganizationForIdpManagerUrlSlug(getProviderRegisteredOrganizations(), slug)
 }
 
-function buildNextBreakGlassPassword(_currentPassword: string): string {
-  return 'BG-bluesolace-financial-group-vault-2026'
+function buildNextBreakGlassPassword(currentPassword: string): string {
+  const next = 'BG-bluesolace-financial-group-vault-2026'
+  return currentPassword === next ? `${next}-rotated` : next
 }
 
 function credentialsMatch(
@@ -49,6 +52,7 @@ function credentialsMatch(
 ): boolean {
   const entered = username.trim().toLowerCase()
   const expectedUsers = [
+    resolveBreakGlassUsername(organization).toLowerCase(),
     organization.breakGlassUsername?.trim().toLowerCase() ?? '',
     organization.breakGlassEmail?.trim().toLowerCase() ?? '',
   ].filter(Boolean)
@@ -74,6 +78,7 @@ function resolveIdpManagerGate(
   }
 
   ensureProviderDemoOrganizations()
+  ensureBlueSolaceOnboardingOrganization()
   if (orgSlug?.trim()) {
     const slugOrg = findOrganizationBySlug(orgSlug)
     if (!slugOrg || !hasBreakGlassAccount(slugOrg)) {
@@ -252,6 +257,7 @@ function IdpManagerSetupSession({
       <OsacChangePasswordPage
         defaultCurrentPassword={gateOrganization.breakGlassPassword ?? ''}
         defaultNewPassword={buildNextBreakGlassPassword(gateOrganization.breakGlassPassword ?? '')}
+        requireDifferentFromCurrent={false}
         errorMessage={passwordError ?? undefined}
         isWorking={isSavingPassword}
         onSubmit={handleChangePassword}
@@ -262,7 +268,7 @@ function IdpManagerSetupSession({
   return (
     <OsacSignInPage
       variant="local-account"
-      defaultUsername={gateOrganization.breakGlassUsername ?? ''}
+      defaultUsername={resolveBreakGlassUsername(gateOrganization)}
       defaultPassword={gateOrganization.breakGlassPassword ?? ''}
       helperText="Break-glass local login. Not the tenant IdP."
       errorMessage={signInError ?? undefined}

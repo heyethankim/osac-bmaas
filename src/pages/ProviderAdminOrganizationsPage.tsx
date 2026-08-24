@@ -68,6 +68,7 @@ function formatRegisteredAt(iso: string): string {
 function getOrganizationActions(
   organization: RegisteredOrganization,
   onViewDetails: (organization: RegisteredOrganization) => void,
+  onEdit: (organization: RegisteredOrganization) => void,
   onRemove: (organization: RegisteredOrganization) => void,
 ): IAction[] {
   return [
@@ -77,9 +78,7 @@ function getOrganizationActions(
     },
     {
       title: 'Edit',
-      onClick: () => {
-        /* demo */
-      },
+      onClick: () => onEdit(organization),
     },
     {
       isSeparator: true,
@@ -101,6 +100,10 @@ export function ProviderAdminOrganizationsPage({
     ensureProviderDemoOrganizations(),
   )
   const [isWizardOpen, setIsWizardOpen] = useState(false)
+  const [editingOrganization, setEditingOrganization] = useState<RegisteredOrganization | null>(
+    null,
+  )
+  const [editReturnToDetails, setEditReturnToDetails] = useState(false)
   const [selectedOrganization, setSelectedOrganization] = useState<RegisteredOrganization | null>(
     null,
   )
@@ -164,6 +167,8 @@ export function ProviderAdminOrganizationsPage({
 
   useEffect(() => {
     if (consumeProviderOpenRegisterOrgWizard()) {
+      setEditingOrganization(null)
+      setEditReturnToDetails(false)
       setIsWizardOpen(true)
     }
   }, [])
@@ -216,6 +221,29 @@ export function ProviderAdminOrganizationsPage({
     startOrganizationActivation(organizationId)
   }
 
+  const openRegisterWizard = () => {
+    setEditingOrganization(null)
+    setEditReturnToDetails(false)
+    setIsWizardOpen(true)
+  }
+
+  const openEdit = (organization: RegisteredOrganization, returnToDetails = false) => {
+    setSelectedOrganization(organization)
+    setEditingOrganization(organization)
+    setEditReturnToDetails(returnToDetails)
+    setIsDetailsOpen(false)
+    setIsWizardOpen(true)
+  }
+
+  const closeWizard = () => {
+    setIsWizardOpen(false)
+    setEditingOrganization(null)
+    if (editReturnToDetails && selectedOrganization) {
+      setIsDetailsOpen(true)
+    }
+    setEditReturnToDetails(false)
+  }
+
   const openDetails = (organization: RegisteredOrganization) => {
     setSelectedOrganization(organization)
     setIsDetailsOpen(true)
@@ -264,7 +292,7 @@ export function ProviderAdminOrganizationsPage({
       assignCatalogToRegisteredOrganization(organization.id, catalogDraft)
     }
     setOrganizations(getProviderRegisteredOrganizations())
-    setIsWizardOpen(false)
+    closeWizard()
 
     if (peekProviderVipCatalogResumeIntent()) {
       onNavigate?.('catalog')
@@ -277,6 +305,20 @@ export function ProviderAdminOrganizationsPage({
       setRegisteringOrganizationId(null)
       registeringTimerRef.current = null
     }, 1500)
+  }
+
+  const handleSave = (organization: RegisteredOrganization) => {
+    updateProviderRegisteredOrganization(organization.id, {
+      name: organization.name,
+      slug: organization.slug,
+      primaryDomain: organization.primaryDomain,
+      additionalDomains: organization.additionalDomains,
+      billingAccountName: organization.billingAccountName,
+      logoSrc: organization.logoSrc,
+      logoFileName: organization.logoFileName,
+    })
+    refreshOrganizations(organization.id)
+    closeWizard()
   }
 
   const handleSetupNextAction = (
@@ -340,11 +382,14 @@ export function ProviderAdminOrganizationsPage({
         />
       ) : isWizardOpen ? (
         <RegisterOrganizationWizard
+          key={editingOrganization?.id ?? 'register-tenant'}
           presentation="page"
           isOpen={isWizardOpen}
           catalogDraft={catalogDraft}
-          onClose={() => setIsWizardOpen(false)}
+          editingOrganization={editingOrganization}
+          onClose={closeWizard}
           onRegister={handleRegister}
+          onSave={handleSave}
         />
       ) : idpDelegationOrganization !== null ? (
         <SetupIdentityProviderWizard
@@ -359,7 +404,7 @@ export function ProviderAdminOrganizationsPage({
         <OrganizationDetailsPage
           organization={selectedOrganization}
           onBack={closeDetails}
-          onEdit={() => undefined}
+          onEdit={() => openEdit(selectedOrganization, true)}
           onRemove={() => openRemove(selectedOrganization)}
           onReviewIdentityProvider={(organization) => {
             if (organization.identityProviderConnected) {
@@ -389,7 +434,7 @@ export function ProviderAdminOrganizationsPage({
               </Content>
             </FlexItem>
             <FlexItem alignSelf={{ default: 'alignSelfFlexStart' }}>
-              <Button variant="primary" icon={<PlusIcon />} onClick={() => setIsWizardOpen(true)}>
+              <Button variant="primary" icon={<PlusIcon />} onClick={openRegisterWizard}>
                 {PROVIDER_ORGANIZATIONS_DEMO.registerOrganizationLabel}
               </Button>
             </FlexItem>
@@ -456,7 +501,7 @@ export function ProviderAdminOrganizationsPage({
             </EmptyStateBody>
             <EmptyStateFooter>
               <EmptyStateActions>
-                <Button variant="primary" icon={<PlusIcon />} onClick={() => setIsWizardOpen(true)}>
+                <Button variant="primary" icon={<PlusIcon />} onClick={openRegisterWizard}>
                   {PROVIDER_ORGANIZATIONS_DEMO.registerFirstOrganizationLabel}
                 </Button>
               </EmptyStateActions>
@@ -587,7 +632,7 @@ export function ProviderAdminOrganizationsPage({
                     </Td>
                     <Td isActionCell>
                       <ActionsColumn
-                        items={getOrganizationActions(org, openDetails, openRemove)}
+                        items={getOrganizationActions(org, openDetails, openEdit, openRemove)}
                       />
                     </Td>
                   </Tr>

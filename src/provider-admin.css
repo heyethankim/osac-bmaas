@@ -3211,6 +3211,28 @@
   fill: currentcolor;
 }
 
+.entity-details-page__icon-wrap img,
+.entity-details-page__company-logo {
+  display: block;
+  width: auto;
+  height: 2.25rem;
+  max-width: 14rem;
+  object-fit: contain;
+}
+
+.provider-admin-organizations__logo-preview {
+  display: flex;
+  align-items: center;
+  max-width: 16rem;
+}
+
+.provider-admin-organizations__logo-preview img {
+  display: block;
+  max-height: 2.5rem;
+  max-width: 16rem;
+  object-fit: contain;
+}
+
 .entity-details-page__title.pf-v6-c-title {
   margin: 0;
   word-break: break-word;

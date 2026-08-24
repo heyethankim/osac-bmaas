@@ -14,9 +14,29 @@ import {
   TextInput,
 } from '@patternfly/react-core'
 import { DEMO_LOGIN_PREFILLED_PASSWORD } from '../demoTenant'
+import {
+  resolveOrganizationCompanyLogo,
+} from '../providerAdmin/organizations'
+import { getProviderRegisteredOrganizations } from '../providerSetup/storage'
 
 const BLUESTONE_LOGIN_ILLUSTRATION_SRC = `${import.meta.env.BASE_URL}bluestone-login-illustration.png`
 const BLUE_SOLACE_LOGO_SRC = `${import.meta.env.BASE_URL}bluesolace-financial-group-logo.png`
+
+function getBlueSolaceLoginLogoSrc(): string {
+  const organization = getProviderRegisteredOrganizations().find(
+    (item) => item.slug === 'evergreen' || item.name === 'bluesolace-financial-group',
+  )
+
+  return (
+    resolveOrganizationCompanyLogo(
+      organization ?? {
+        slug: 'evergreen',
+        name: 'bluesolace-financial-group',
+        logoSrc: null,
+      },
+    ) ?? BLUE_SOLACE_LOGO_SRC
+  )
+}
 
 export type BlueSolaceFinancialGroupLoginPageProps = {
   onLoginSuccess: () => void
@@ -83,7 +103,7 @@ export function BlueSolaceFinancialGroupLoginPage({
             <div className="evergreen-login__left">
               <div className="evergreen-login__brand">
                 <img
-                  src={BLUE_SOLACE_LOGO_SRC}
+                  src={getBlueSolaceLoginLogoSrc()}
                   alt="BlueSolace Financial Group"
                   className="evergreen-login__brand-lockup"
                   draggable={false}

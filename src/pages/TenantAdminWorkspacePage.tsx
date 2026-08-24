@@ -19,6 +19,7 @@ import {
   type TenantAdminNavId,
 } from '../tenantAdmin/constants'
 import { getWorkspaceOrganization } from '../tenantAdmin/organizations'
+import { resolveOrganizationCompanyLogo } from '../providerAdmin/organizations'
 import {
   getTenantActiveNav,
   ensureTenantDemoProjects,
@@ -404,6 +405,8 @@ export function TenantAdminWorkspacePage() {
       showNavigation
       activeNavId={activeNavId}
       onNavChange={handleNavChange}
+      companyLogoSrc={resolveOrganizationCompanyLogo(organization)}
+      companyLogoAlt={organization.name}
     >
       <div key={navContentKey}>{renderWorkspaceContent()}</div>
     </TenantShell>

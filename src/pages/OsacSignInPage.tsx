@@ -257,12 +257,14 @@ export function OsacChangePasswordPage({
   errorMessage,
   defaultCurrentPassword = '',
   defaultNewPassword = '',
+  requireDifferentFromCurrent = true,
 }: {
   onSubmit: (currentPassword: string, newPassword: string) => void
   isWorking?: boolean
   errorMessage?: string
   defaultCurrentPassword?: string
   defaultNewPassword?: string
+  requireDifferentFromCurrent?: boolean
 }) {
   const [currentPassword, setCurrentPassword] = useState(defaultCurrentPassword)
   const [newPassword, setNewPassword] = useState(defaultNewPassword)
@@ -275,7 +277,8 @@ export function OsacChangePasswordPage({
   }, [defaultCurrentPassword, defaultNewPassword])
 
   const mismatch = Boolean(confirmPassword) && newPassword !== confirmPassword
-  const sameAsCurrent = Boolean(newPassword) && newPassword === currentPassword
+  const sameAsCurrent =
+    requireDifferentFromCurrent && Boolean(newPassword) && newPassword === currentPassword
   const canSubmit =
     Boolean(currentPassword.trim() && newPassword.trim() && confirmPassword.trim()) &&
     !mismatch &&

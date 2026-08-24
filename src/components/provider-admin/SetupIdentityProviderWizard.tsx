@@ -11,11 +11,8 @@ import {
   Divider,
   Form,
   FormGroup,
-  FormHelperText,
   FormSelect,
   FormSelectOption,
-  HelperText,
-  HelperTextItem,
   Icon,
   Label,
   Modal,
@@ -39,7 +36,6 @@ import {
   hasBreakGlassAccount,
   hasPendingIdpInvite,
   normalizeAdditionalDomains,
-  resolveBreakGlassUsername,
   type RegisteredOrganization,
 } from '../../providerAdmin/organizations'
 import { getProviderRegisteredOrganizations, updateProviderRegisteredOrganization } from '../../providerSetup/storage'
@@ -52,6 +48,11 @@ import {
 import { ResourceCreatePageShell } from '../shared/ResourceCreatePageShell'
 import { useWizardLeaveConfirm } from '../shared/useWizardLeaveConfirm'
 import { AdditionalEmailDomainsField } from './AdditionalEmailDomainsField'
+import {
+  BreakGlassCredentialsPanel,
+  issuedBreakGlassFromOrganization,
+  type IssuedBreakGlass,
+} from './BreakGlassCredentialsPanel'
 
 type SetupIdentityProviderWizardProps = {
   isOpen: boolean
@@ -76,55 +77,7 @@ type ConnectForm = {
 
 const STEP_CHOICE = 'setup-idp-choice'
 const STEP_CONNECT = 'setup-idp-connect'
-const STEP_BREAK_GLASS = 'setup-idp-break-glass'
-const STEP_INVITE = 'setup-idp-invite'
 const STEP_REVIEW = 'setup-idp-review'
-
-type IssuedBreakGlass = {
-  username: string
-  password: string
-  custodianName: string
-  custodianEmail: string
-}
-
-function isValidEmail(value: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
-}
-
-function buildDefaultManagerEmail(organization: RegisteredOrganization): string {
-  if (organization.idpManagerEmail?.trim()) {
-    return organization.idpManagerEmail.trim().toLowerCase()
-  }
-  if (organization.breakGlassEmail?.trim()) {
-    return organization.breakGlassEmail.trim().toLowerCase()
-  }
-  const domain = organization.primaryDomain?.trim().toLowerCase() || 'example.com'
-  return `idp-admin@${domain}`
-}
-
-function buildDefaultCustodian(organization: RegisteredOrganization): {
-  name: string
-  email: string
-} {
-  const domain = organization.primaryDomain?.trim().toLowerCase() || 'example.com'
-  return {
-    name: organization.breakGlassName?.trim() || 'IdP recovery officer',
-    email: organization.breakGlassEmail?.trim() || `idp-admin@${domain}`,
-  }
-}
-
-function toIssuedBreakGlass(organization: RegisteredOrganization): IssuedBreakGlass | null {
-  if (!hasBreakGlassAccount(organization) || !organization.breakGlassEmail) {
-    return null
-  }
-
-  return {
-    username: resolveBreakGlassUsername(organization),
-    password: organization.breakGlassPassword as string,
-    custodianName: organization.breakGlassName?.trim() || 'IdP manager',
-    custodianEmail: organization.breakGlassEmail,
-  }
-}
 
 function buildIdpManagerHandoffText(
   link: string | null,
@@ -150,7 +103,7 @@ function buildDefaultConnectForm(organization: RegisteredOrganization): ConnectF
   }
 }
 
-/** PatternFly wizard for IdP choice: provider connects, or hands off credentials. */
+/** PatternFly wizard for IdP choice: provider connects, or hands off an OSAC link. */
 export function SetupIdentityProviderWizard({
   isOpen,
   presentation = 'modal',
@@ -160,9 +113,6 @@ export function SetupIdentityProviderWizard({
   onConnected,
 }: SetupIdentityProviderWizardProps) {
   const [setupPath, setSetupPath] = useState<SetupPath | null>(null)
-  const [managerEmail, setManagerEmail] = useState('')
-  const [custodianName, setCustodianName] = useState('')
-  const [custodianEmail, setCustodianEmail] = useState('')
   const [issuedBreakGlass, setIssuedBreakGlass] = useState<IssuedBreakGlass | null>(null)
   const [copyAllState, setCopyAllState] = useState<'idle' | 'copied'>('idle')
   const [justSent, setJustSent] = useState(false)
@@ -197,8 +147,8 @@ export function SetupIdentityProviderWizard({
       return
     }
 
-    // Keep live org updates (e.g. after send) without remounting mid-flow.
     if (organizationIdRef.current === organization.id) {
+      setIssuedBreakGlass(issuedBreakGlassFromOrganization(organization))
       return
     }
 
@@ -207,18 +157,14 @@ export function SetupIdentityProviderWizard({
     setCompletionPhase('idle')
     setCopyAllState('idle')
     setJustSent(false)
-    setIssuedBreakGlass(toIssuedBreakGlass(organization))
-    setManagerEmail(buildDefaultManagerEmail(organization))
-    const custodian = buildDefaultCustodian(organization)
-    setCustodianName(custodian.name)
-    setCustodianEmail(custodian.email)
+    setIssuedBreakGlass(issuedBreakGlassFromOrganization(organization))
     setConnectForm(buildDefaultConnectForm(organization))
     setAdditionalDomains(buildDefaultAdditionalDomains(organization))
 
     const pending = hasPendingIdpInvite(organization)
     setSetupPath(pending ? 'invite' : null)
-    // choice=1, connect=2, break-glass=3, invite=4, review=5 (hidden steps still count)
-    setStartIndex(pending ? 5 : 1)
+    // choice=1, connect=2, review=3 (hidden steps still count)
+    setStartIndex(pending ? 3 : 1)
     setWizardKey((current) => current + 1)
   }, [isOpen, organization])
 
@@ -235,9 +181,6 @@ export function SetupIdentityProviderWizard({
       ? `${window.location.origin}${invitePath}`
       : invitePath
 
-  const canSendInvite = isValidEmail(managerEmail)
-  const canContinueBreakGlass =
-    Boolean(custodianName.trim()) && isValidEmail(custodianEmail)
   const takenEmailDomains = getTakenEmailDomains(
     getProviderRegisteredOrganizations(),
     organization.id,
@@ -257,15 +200,13 @@ export function SetupIdentityProviderWizard({
   const clientLabel = connectForm.protocol === 'SAML' ? 'Entity ID' : 'Client ID'
   const showInviteReview = justSent || hasPendingIdpInvite(organization)
 
-  const persistInvite = (email: string, options?: { rotateToken?: boolean }) => {
+  const persistInvite = (options?: { rotateToken?: boolean }) => {
     const timestamps = createIdpInviteTimestamps()
     const shouldRotateToken = options?.rotateToken === true || !organization.idpInviteToken
-    const breakGlass = buildBreakGlassIssuePatch(organization, {
-      name: organization.breakGlassName?.trim() || 'IdP manager',
-      email,
-    })
+    const breakGlass = hasBreakGlassAccount(organization)
+      ? {}
+      : buildBreakGlassIssuePatch(organization)
     const updated = updateProviderRegisteredOrganization(organization.id, {
-      idpManagerEmail: email.trim().toLowerCase(),
       idpInviteToken: shouldRotateToken
         ? generateIdpInviteToken()
         : organization.idpInviteToken,
@@ -278,25 +219,11 @@ export function SetupIdentityProviderWizard({
       return null
     }
 
-    setIssuedBreakGlass(toIssuedBreakGlass(updated))
-    onUpdated(updated)
-    return updated
-  }
-
-  const handleCreateCredentials = () => {
-    if (!canSendInvite) {
-      return
-    }
-
-    const updated = persistInvite(managerEmail, {
-      rotateToken: !organization.idpInviteToken,
-    })
-    if (!updated) {
-      return
-    }
-
+    setIssuedBreakGlass(issuedBreakGlassFromOrganization(updated))
     setJustSent(true)
     setCopyAllState('idle')
+    onUpdated(updated)
+    return updated
   }
 
   const handleCopyAll = async () => {
@@ -318,10 +245,6 @@ export function SetupIdentityProviderWizard({
       return
     }
 
-    const breakGlass = buildBreakGlassIssuePatch(organization, {
-      name: custodianName,
-      email: custodianEmail,
-    })
     const updated = updateProviderRegisteredOrganization(organization.id, {
       identityProviderConnected: true,
       identityProviderName: buildDemoIdentityProviderName(
@@ -336,18 +259,22 @@ export function SetupIdentityProviderWizard({
         additionalDomains,
         organization.primaryDomain,
       ),
-      idpInviteStatus: organization.idpInviteToken ? 'accepted' : 'none',
+      idpInviteStatus: 'none',
       idpInviteToken: null,
       idpInviteSentAt: null,
       idpInviteExpiresAt: null,
-      ...breakGlass,
+      breakGlassName: null,
+      breakGlassEmail: null,
+      breakGlassUsername: null,
+      breakGlassPassword: null,
+      breakGlassIssuedAt: null,
     })
 
     if (!updated) {
       return
     }
 
-    setIssuedBreakGlass(toIssuedBreakGlass(updated))
+    setIssuedBreakGlass(issuedBreakGlassFromOrganization(updated))
     clearCompletionTimers()
     setCompletionPhase('working')
     onConnected(updated)
@@ -374,11 +301,11 @@ export function SetupIdentityProviderWizard({
 
   const requestClose = isCompleting ? handleClose : showLeaveConfirm
 
-  const selectPath = (path: SetupPath) => {
-    setSetupPath(path)
-    if (path === 'invite') {
-      setManagerEmail(buildDefaultManagerEmail(organization))
+  const persistInviteIfNeeded = () => {
+    if (hasPendingIdpInvite(organization) && organization.idpInviteToken) {
+      return organization
     }
+    return persistInvite({ rotateToken: !organization.idpInviteToken })
   }
 
   const wizardTitle = 'Set up identity provider'
@@ -389,20 +316,14 @@ export function SetupIdentityProviderWizard({
       {completionPhase === 'working' ? (
         <OrganizationActionWorkingState
           title="Connecting identity provider"
-          body="Validating configuration and issuing a break-glass account…"
+          body="Validating configuration…"
         />
       ) : (
         <>
           <OrganizationActionSuccessState
             title="Identity provider connected"
-            body="A platform break-glass account was sent to the custodian. Store these credentials in their vault."
+            body="This tenant can use the connected identity provider for sign-in."
           />
-          {issuedBreakGlass ? (
-            <BreakGlassCredentialsPanel
-              credentials={issuedBreakGlass}
-              sentLabel={`Sent to ${issuedBreakGlass.custodianEmail}`}
-            />
-          ) : null}
           <div className="provider-admin-organizations__idp-break-glass-done">
             <Button variant="primary" onClick={handleClose}>
               Done
@@ -421,6 +342,11 @@ export function SetupIdentityProviderWizard({
       isPlain={isPage}
       startIndex={startIndex}
       isVisitRequired
+      onStepChange={(_event, currentStep) => {
+        if (String(currentStep.id) === STEP_REVIEW && setupPath === 'invite') {
+          persistInviteIfNeeded()
+        }
+      }}
       onClose={isPage ? undefined : requestClose}
       header={
         isPage ? undefined : (
@@ -441,8 +367,8 @@ export function SetupIdentityProviderWizard({
         })}
       >
         <Content component="p" className="provider-admin-organizations__wizard-lede">
-          Connect the IdP for {organization.name} yourself, or create credentials for the IdP
-          manager to send yourself.
+          Connect the IdP for {organization.name} yourself, or copy an OSAC link for the IdP
+          manager.
         </Content>
         <div
           className="provider-setup-template__service-cards"
@@ -454,11 +380,11 @@ export function SetupIdentityProviderWizard({
             isSelected={setupPath === 'myself'}
             className="provider-setup-template__service-card"
             aria-labelledby="setup-idp-path-myself-title"
-            onClick={() => selectPath('myself')}
+            onClick={() => setSetupPath('myself')}
             onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault()
-                selectPath('myself')
+                setSetupPath('myself')
               }
             }}
           >
@@ -489,7 +415,7 @@ export function SetupIdentityProviderWizard({
                 component="p"
                 className="provider-setup-template__service-card-description"
               >
-                Enter OIDC or SAML settings, then issue a break-glass account.
+                Enter OIDC or SAML settings for this tenant.
               </Content>
             </CardBody>
           </Card>
@@ -498,11 +424,11 @@ export function SetupIdentityProviderWizard({
             isSelected={setupPath === 'invite'}
             className="provider-setup-template__service-card"
             aria-labelledby="setup-idp-path-invite-title"
-            onClick={() => selectPath('invite')}
+            onClick={() => setSetupPath('invite')}
             onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault()
-                selectPath('invite')
+                setSetupPath('invite')
               }
             }}
           >
@@ -533,7 +459,7 @@ export function SetupIdentityProviderWizard({
                 component="p"
                 className="provider-setup-template__service-card-description"
               >
-                Create a break-glass account and copy an OSAC link to send yourself.
+                Copy an OSAC URL and a local login for the IdP manager.
               </Content>
             </CardBody>
           </Card>
@@ -614,79 +540,6 @@ export function SetupIdentityProviderWizard({
       </WizardStep>
 
       <WizardStep
-        id={STEP_BREAK_GLASS}
-        name="Break-glass recovery"
-        isHidden={setupPath !== 'myself'}
-        footer={wrapStepFooter({
-          isNextDisabled: !canContinueBreakGlass,
-        })}
-      >
-        <Content component="p" className="provider-admin-organizations__wizard-lede">
-          Create a platform-local emergency account and send it to a custodian. It still works if
-          this identity provider is down.
-        </Content>
-        <Form autoComplete="off" className="provider-admin-organizations__wizard-form">
-          <FormGroup label="Custodian name" fieldId="setup-idp-break-glass-name" isRequired>
-            <TextInput
-              id="setup-idp-break-glass-name"
-              value={custodianName}
-              onChange={(_event, value) => setCustodianName(value)}
-            />
-          </FormGroup>
-          <FormGroup label="Custodian email" fieldId="setup-idp-break-glass-email" isRequired>
-            <TextInput
-              id="setup-idp-break-glass-email"
-              type="email"
-              value={custodianEmail}
-              onChange={(_event, value) => setCustodianEmail(value)}
-              placeholder={`e.g. idp-admin@${organization.primaryDomain || 'example.com'}`}
-            />
-            <FormHelperText>
-              <HelperText>
-                <HelperTextItem>
-                  Any mailbox can receive the credentials. This login does not use the tenant
-                  IdP.
-                </HelperTextItem>
-              </HelperText>
-            </FormHelperText>
-          </FormGroup>
-        </Form>
-      </WizardStep>
-
-      <WizardStep
-        id={STEP_INVITE}
-        name="Create credentials"
-        isHidden={setupPath !== 'invite'}
-        footer={wrapStepFooter({
-          isNextDisabled: !canSendInvite,
-        })}
-      >
-        <Content component="p" className="provider-admin-organizations__wizard-lede">
-          OSAC cannot send this. Create a break-glass account, then copy all and send it to the
-          IdP manager.
-        </Content>
-        <Form autoComplete="off" className="provider-admin-organizations__wizard-form">
-          <FormGroup label="IdP manager email" fieldId="idp-manager-email" isRequired>
-            <TextInput
-              id="idp-manager-email"
-              type="email"
-              value={managerEmail}
-              onChange={(_event, value) => setManagerEmail(value)}
-              placeholder={`e.g. idp-admin@${organization.primaryDomain || 'example.com'}`}
-            />
-            <FormHelperText>
-              <HelperText>
-                <HelperTextItem>
-                  Who you will send these to. After you create credentials, copy them from the
-                  next step.
-                </HelperTextItem>
-              </HelperText>
-            </FormHelperText>
-          </FormGroup>
-        </Form>
-      </WizardStep>
-
-      <WizardStep
         id={STEP_REVIEW}
         name="Review"
         isHidden={setupPath === null}
@@ -694,25 +547,22 @@ export function SetupIdentityProviderWizard({
           setupPath === 'myself'
             ? {
                 nextButtonText: 'Connect identity provider',
-                isNextDisabled: isConnectDisabled || !canContinueBreakGlass,
+                isNextDisabled: isConnectDisabled,
                 onNext: handleConnectSave,
               }
-            : showInviteReview
-              ? {
-                  nextButtonText: 'Done',
-                  onNext: handleClose,
-                }
-              : {
-                  nextButtonText: 'Create credentials',
-                  isNextDisabled: !canSendInvite,
-                  onNext: handleCreateCredentials,
+            : {
+                nextButtonText: 'Done',
+                onNext: () => {
+                  persistInviteIfNeeded()
+                  handleClose()
                 },
+              },
         )}
       >
         {setupPath === 'myself' ? (
           <>
             <Content component="p" className="provider-admin-organizations__wizard-lede">
-              Confirm the identity provider and who receives break-glass credentials.
+              Confirm the identity provider for this tenant.
             </Content>
             <DescriptionBlock label="Tenant" value={organization.name} />
             <DescriptionBlock label="Protocol" value={connectForm.protocol} />
@@ -732,43 +582,31 @@ export function SetupIdentityProviderWizard({
                 ) || 'None'
               }
             />
-            <DescriptionBlock
-              label={issuerLabel}
-              value={connectForm.issuerUrl.trim() || '—'}
-            />
-            <DescriptionBlock
-              label="Break-glass custodian"
-              value={`${custodianName.trim() || '—'} · ${custodianEmail.trim() || '—'}`}
-            />
+            <DescriptionBlock label={issuerLabel} value={connectForm.issuerUrl.trim() || '—'} />
           </>
-        ) : showInviteReview ? (
+        ) : (
           <div className="provider-admin-organizations__idp-pending">
-            {justSent ? (
+            {justSent || showInviteReview ? (
               <Alert
-                variant="success"
+                variant={justSent ? 'success' : 'info'}
                 isInline
-                title="Credentials created"
+                title={justSent ? 'OSAC link ready' : 'Waiting on IdP manager'}
                 className="provider-admin-organizations__idp-pending-alert"
               >
-                Send the OSAC link and break-glass account to the IdP manager — OSAC does not
+                Send the OSAC URL, username, and password to the IdP manager. OSAC does not
                 email them.
               </Alert>
             ) : (
               <Alert
                 variant="info"
                 isInline
-                title="Credentials ready to copy"
+                title="Copy the handoff for the IdP manager"
                 className="provider-admin-organizations__idp-pending-alert"
               >
-                Send the OSAC link and break-glass account to the IdP manager. OSAC does not
-                send this email.
+                A local login is created on this step so the IdP manager can sign in to OSAC.
               </Alert>
             )}
 
-            <DescriptionBlock
-              label="IdP manager"
-              value={organization.idpManagerEmail || managerEmail || '—'}
-            />
             <DescriptionBlock label="Tenant" value={organization.name} />
             <div className="provider-admin-organizations__idp-handoff">
               <Divider className="provider-admin-organizations__idp-handoff-divider" />
@@ -799,25 +637,13 @@ export function SetupIdentityProviderWizard({
               ) : null}
               {issuedBreakGlass ? (
                 <BreakGlassCredentialsPanel credentials={issuedBreakGlass} />
-              ) : null}
+              ) : (
+                <Content component="p" className="provider-admin-organizations__roles-section-help">
+                  Issuing a local login for the IdP manager…
+                </Content>
+              )}
             </div>
           </div>
-        ) : (
-          <>
-            <Content component="p" className="provider-admin-organizations__wizard-lede">
-              Confirm who you will send credentials to, then create them to copy.
-            </Content>
-            <DescriptionBlock label="Tenant" value={organization.name} />
-            <DescriptionBlock label="IdP manager email" value={managerEmail || '—'} />
-            <DescriptionBlock
-              label="Primary email domain"
-              value={organization.primaryDomain || '—'}
-            />
-            <DescriptionBlock
-              label="Break-glass"
-              value="A local account and OSAC link will be created for you to copy and send."
-            />
-          </>
         )}
       </WizardStep>
     </Wizard>
@@ -879,49 +705,6 @@ function DescriptionBlock({ label, value }: { label: string; value: string }) {
       <Content component="p" className="provider-admin-organizations__idp-pending-value">
         {value}
       </Content>
-    </div>
-  )
-}
-
-function BreakGlassCredentialsPanel({
-  credentials,
-  sentLabel,
-}: {
-  credentials: IssuedBreakGlass
-  sentLabel?: string
-}) {
-  return (
-    <div className="provider-admin-organizations__idp-break-glass">
-      <Content component="p" className="provider-admin-organizations__idp-pending-label">
-        Break-glass account
-      </Content>
-      {sentLabel ? (
-        <Content component="p" className="provider-admin-organizations__roles-section-help">
-          {sentLabel}
-        </Content>
-      ) : null}
-      <FormGroup label="Username" fieldId="break-glass-username">
-        <ClipboardCopy
-          id="break-glass-username"
-          isReadOnly
-          hoverTip="Copy username"
-          clickTip="Username copied"
-          textAriaLabel="Break-glass username"
-        >
-          {credentials.username}
-        </ClipboardCopy>
-      </FormGroup>
-      <FormGroup label="Password" fieldId="break-glass-password">
-        <ClipboardCopy
-          id="break-glass-password"
-          isReadOnly
-          hoverTip="Copy password"
-          clickTip="Password copied"
-          textAriaLabel="Break-glass password"
-        >
-          {credentials.password}
-        </ClipboardCopy>
-      </FormGroup>
     </div>
   )
 }

@@ -2,6 +2,10 @@ import type { RegisteredOrganization } from '../providerAdmin/organizations'
 import {
   DEFAULT_REGISTER_ORGANIZATION_FORM,
   DEFAULT_REGISTER_ORGANIZATION_TENANT_ADMIN,
+  DEMO_BLUESOLACE_COMPANY_LOGO_FILE_NAME,
+  DEMO_NORTH_SUMMIT_BANK_COMPANY_LOGO_FILE_NAME,
+  getDemoBluesolaceCompanyLogoSrc,
+  getDemoNorthSummitBankCompanyLogoSrc,
 } from '../providerAdmin/organizations'
 import { getExternalIpPoolById } from '../providerAdmin/externalIpPools'
 import { getProviderCatalogDraft, getProviderExternalIpPools, getProviderRegisteredOrganizations } from '../providerSetup/storage'
@@ -85,6 +89,18 @@ export function getWorkspaceOrganization(slug: string): RegisteredOrganization {
     additionalDomains: [],
     billingAccountId: 'ACCT-NSB-0042',
     billingAccountName: DEFAULT_REGISTER_ORGANIZATION_FORM.billingAccountName,
+    logoSrc:
+      slug === 'evergreen'
+        ? getDemoBluesolaceCompanyLogoSrc()
+        : slug === 'northstar'
+          ? getDemoNorthSummitBankCompanyLogoSrc()
+          : null,
+    logoFileName:
+      slug === 'evergreen'
+        ? DEMO_BLUESOLACE_COMPANY_LOGO_FILE_NAME
+        : slug === 'northstar'
+          ? DEMO_NORTH_SUMMIT_BANK_COMPANY_LOGO_FILE_NAME
+          : null,
     catalogItemId: catalogDraft?.catalogItemId ?? null,
     catalogDisplayName: catalogDraft?.displayName ?? defaultCatalogDisplayName,
     ...defaultExternalIpPool,
