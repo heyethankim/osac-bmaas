@@ -4816,6 +4816,7 @@
   gap: var(--pf-t--global--spacer--lg);
 }
 
+.provider-admin-organizations__idp-handoff,
 .provider-admin-organizations__idp-break-glass {
   width: min(32rem, 100%);
 }
@@ -4842,6 +4843,14 @@
   margin-block-end: var(--pf-t--global--spacer--md);
 }
 
+.provider-admin-organizations__idp-copy-all {
+  margin-block-end: var(--pf-t--global--spacer--md);
+}
+
+.provider-admin-organizations__idp-handoff-divider {
+  margin-block-end: var(--pf-t--global--spacer--md);
+}
+
 .provider-admin-organizations__idp-pending-field {
   margin-block-end: var(--pf-t--global--spacer--md);
 }
@@ -4855,24 +4864,6 @@
 .provider-admin-organizations__idp-pending-value.pf-v6-c-content--p {
   margin: 0;
   font-weight: var(--pf-t--global--font--weight--body--bold);
-}
-
-.provider-admin-organizations__idp-invite-link-row {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: var(--pf-t--global--spacer--sm);
-  align-items: center;
-}
-
-.provider-admin-organizations__idp-invite-link-row .pf-v6-c-form-control,
-.provider-admin-organizations__idp-invite-link-row .pf-v6-c-text-input-group,
-.provider-admin-organizations__idp-invite-link-row input {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.provider-admin-organizations__idp-invite-link-row .pf-v6-c-button {
-  flex: 0 0 auto;
 }
 
 .idp-manager-setup-page {

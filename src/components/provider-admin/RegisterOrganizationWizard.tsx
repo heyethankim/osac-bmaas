@@ -32,7 +32,6 @@ import {
 } from '../../providerSetup/storage'
 import {
   DEFAULT_REGISTER_ORGANIZATION_FORM,
-  DEFAULT_REGISTER_ORGANIZATION_TENANT_ADMIN,
   buildNextRegisterOrganizationForm,
   generateOrganizationId,
   generateTenantId,
@@ -169,8 +168,8 @@ export function RegisterOrganizationWizard({
       externalIpPoolName: selectedPool?.name ?? null,
       externalIpPoolCidr: selectedPool?.cidr ?? null,
       maxInstances,
-      tenantAdminName: DEFAULT_REGISTER_ORGANIZATION_TENANT_ADMIN.name,
-      tenantAdminEmail: DEFAULT_REGISTER_ORGANIZATION_TENANT_ADMIN.email,
+      tenantAdminName: '',
+      tenantAdminEmail: '',
       additionalTenantAdmins: [],
       invitedTenantUserEmails: [],
       identityProviderConnected: false,

@@ -18,6 +18,7 @@ import {
   DEMO_NORTHSTAR_IDP_DISPLAY_NAME,
   DEMO_NORTHSTAR_PRIMARY_DOMAIN,
   DEFAULT_REGISTER_ORGANIZATION_FORM,
+  DEFAULT_REGISTER_ORGANIZATION_TENANT_ADMIN,
   hasPendingIdpInvite,
   generateBreakGlassUsername,
   getDemoBreakGlassPassword,
@@ -1305,6 +1306,11 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
               : org.billingAccountName === 'Redwood Mutual — Enterprise Billing'
                 ? 'redwood-mutual-enterprise-billing'
                 : org.billingAccountName
+  const placeholderTenantAdminEmail =
+    DEFAULT_REGISTER_ORGANIZATION_TENANT_ADMIN.email.toLowerCase()
+  const shouldClearPlaceholderTenantAdmin =
+    !isNorthstar && org.tenantAdminEmail.trim().toLowerCase() === placeholderTenantAdminEmail
+
   const breakGlassEmail =
     typeof org.breakGlassEmail === 'string' && org.breakGlassEmail.trim()
       ? isNorthstar
@@ -1363,6 +1369,8 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
       : null,
     externalIpPoolCidr: org.externalIpPoolCidr ?? null,
     billingAccountName,
+    tenantAdminName: shouldClearPlaceholderTenantAdmin ? '' : org.tenantAdminName,
+    tenantAdminEmail: shouldClearPlaceholderTenantAdmin ? '' : org.tenantAdminEmail,
     identityProviderName,
     identityProviderDisplayName,
     identityProviderProtocol:
@@ -1510,6 +1518,8 @@ export function getProviderRegisteredOrganizations(): RegisteredOrganization[] {
         original.identityProviderDisplayName !== tenant.identityProviderDisplayName ||
         original.identityProviderIssuerUrl !== tenant.identityProviderIssuerUrl ||
         original.identityProviderClientId !== tenant.identityProviderClientId ||
+        original.tenantAdminName !== tenant.tenantAdminName ||
+        original.tenantAdminEmail !== tenant.tenantAdminEmail ||
         JSON.stringify(original.additionalDomains ?? []) !==
           JSON.stringify(tenant.additionalDomains)
       )

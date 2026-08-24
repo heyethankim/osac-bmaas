@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { CheckIcon } from '@patternfly/react-icons/dist/esm/icons/check-icon'
 import { UserCogIcon } from '@patternfly/react-icons/dist/esm/icons/user-cog-icon'
 import { UserPlusIcon } from '@patternfly/react-icons/dist/esm/icons/user-plus-icon'
 import {
@@ -9,6 +8,7 @@ import {
   CardBody,
   ClipboardCopy,
   Content,
+  Divider,
   Form,
   FormGroup,
   FormHelperText,
@@ -125,6 +125,20 @@ function toIssuedBreakGlass(organization: RegisteredOrganization): IssuedBreakGl
   }
 }
 
+function buildIdpManagerHandoffText(
+  link: string | null,
+  credentials: IssuedBreakGlass | null,
+): string {
+  const lines: string[] = []
+  if (link) {
+    lines.push(`OSAC link: ${link}`)
+  }
+  if (credentials) {
+    lines.push(`Username: ${credentials.username}`, `Password: ${credentials.password}`)
+  }
+  return lines.join('\n')
+}
+
 function buildDefaultConnectForm(organization: RegisteredOrganization): ConnectForm {
   const domain = organization.primaryDomain || 'example.com'
   return {
@@ -149,7 +163,7 @@ export function SetupIdentityProviderWizard({
   const [custodianName, setCustodianName] = useState('')
   const [custodianEmail, setCustodianEmail] = useState('')
   const [issuedBreakGlass, setIssuedBreakGlass] = useState<IssuedBreakGlass | null>(null)
-  const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle')
+  const [copyAllState, setCopyAllState] = useState<'idle' | 'copied'>('idle')
   const [justSent, setJustSent] = useState(false)
   const [connectForm, setConnectForm] = useState<ConnectForm>({
     protocol: 'OIDC',
@@ -190,7 +204,7 @@ export function SetupIdentityProviderWizard({
     organizationIdRef.current = organization.id
     clearCompletionTimers()
     setCompletionPhase('idle')
-    setCopyState('idle')
+    setCopyAllState('idle')
     setJustSent(false)
     setIssuedBreakGlass(toIssuedBreakGlass(organization))
     setManagerEmail(buildDefaultManagerEmail(organization))
@@ -281,19 +295,20 @@ export function SetupIdentityProviderWizard({
     }
 
     setJustSent(true)
-    setCopyState('idle')
+    setCopyAllState('idle')
   }
 
-  const handleCopyLink = async () => {
-    if (!inviteAbsoluteUrl) {
+  const handleCopyAll = async () => {
+    const text = buildIdpManagerHandoffText(inviteAbsoluteUrl, issuedBreakGlass)
+    if (!text) {
       return
     }
 
     try {
-      await navigator.clipboard.writeText(inviteAbsoluteUrl)
-      setCopyState('copied')
+      await navigator.clipboard.writeText(text)
+      setCopyAllState('copied')
     } catch {
-      setCopyState('idle')
+      setCopyAllState('idle')
     }
   }
 
@@ -646,8 +661,8 @@ export function SetupIdentityProviderWizard({
         })}
       >
         <Content component="p" className="provider-admin-organizations__wizard-lede">
-          OSAC cannot send this. Create a break-glass account, then copy the username, password,
-          and OSAC link to send to the IdP manager.
+          OSAC cannot send this. Create a break-glass account, then copy all and send it to the
+          IdP manager.
         </Content>
         <Form autoComplete="off" className="provider-admin-organizations__wizard-form">
           <FormGroup label="IdP manager email" fieldId="idp-manager-email" isRequired>
@@ -734,9 +749,8 @@ export function SetupIdentityProviderWizard({
                 title="Credentials created"
                 className="provider-admin-organizations__idp-pending-alert"
               >
-                Copy the OSAC link and break-glass account, then send them to the IdP manager.
-                OSAC does not send this email. To continue as that person, open IdP manager
-                under Provider Admin on the landing page.
+                Send the OSAC link and break-glass account to the IdP manager — OSAC does not
+                email them.
               </Alert>
             ) : (
               <Alert
@@ -755,31 +769,37 @@ export function SetupIdentityProviderWizard({
               value={organization.idpManagerEmail || managerEmail || '—'}
             />
             <DescriptionBlock label="Tenant" value={organization.name} />
-            {inviteAbsoluteUrl ? (
-              <FormGroup label="OSAC link" fieldId="idp-invite-link">
-                <div className="provider-admin-organizations__idp-invite-link-row">
-                  <TextInput
+            <div className="provider-admin-organizations__idp-handoff">
+              <Divider className="provider-admin-organizations__idp-handoff-divider" />
+              <Button
+                variant="secondary"
+                className="provider-admin-organizations__idp-copy-all"
+                isDisabled={!inviteAbsoluteUrl && !issuedBreakGlass}
+                onClick={() => void handleCopyAll()}
+              >
+                {copyAllState === 'copied' ? 'Copied' : 'Copy all'}
+              </Button>
+              {inviteAbsoluteUrl ? (
+                <FormGroup
+                  label="OSAC link"
+                  fieldId="idp-invite-link"
+                  className="provider-admin-organizations__idp-pending-field"
+                >
+                  <ClipboardCopy
                     id="idp-invite-link"
-                    value={inviteAbsoluteUrl}
-                    readOnly
-                    aria-label="OSAC link for IdP manager"
-                  />
-                  <Button
-                    variant="secondary"
-                    onClick={() => void handleCopyLink()}
-                    icon={copyState === 'copied' ? <CheckIcon /> : undefined}
+                    isReadOnly
+                    hoverTip="Copy OSAC link"
+                    clickTip="OSAC link copied"
+                    textAriaLabel="OSAC link for IdP manager"
                   >
-                    {copyState === 'copied' ? 'Copied' : 'Copy'}
-                  </Button>
-                </div>
-              </FormGroup>
-            ) : null}
-            {issuedBreakGlass ? (
-              <BreakGlassCredentialsPanel
-                credentials={issuedBreakGlass}
-                sentLabel={`Send these with the OSAC link to ${issuedBreakGlass.custodianEmail}.`}
-              />
-            ) : null}
+                    {inviteAbsoluteUrl}
+                  </ClipboardCopy>
+                </FormGroup>
+              ) : null}
+              {issuedBreakGlass ? (
+                <BreakGlassCredentialsPanel credentials={issuedBreakGlass} />
+              ) : null}
+            </div>
           </div>
         ) : (
           <>
@@ -867,16 +887,18 @@ function BreakGlassCredentialsPanel({
   sentLabel,
 }: {
   credentials: IssuedBreakGlass
-  sentLabel: string
+  sentLabel?: string
 }) {
   return (
     <div className="provider-admin-organizations__idp-break-glass">
       <Content component="p" className="provider-admin-organizations__idp-pending-label">
         Break-glass account
       </Content>
-      <Content component="p" className="provider-admin-organizations__roles-section-help">
-        {sentLabel} This local login does not use the tenant IdP.
-      </Content>
+      {sentLabel ? (
+        <Content component="p" className="provider-admin-organizations__roles-section-help">
+          {sentLabel}
+        </Content>
+      ) : null}
       <FormGroup label="Username" fieldId="break-glass-username">
         <ClipboardCopy
           id="break-glass-username"

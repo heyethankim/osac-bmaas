@@ -1,6 +1,8 @@
-import { DEMO_NORTH_SUMMIT_BANK_ORG_ID } from './organizations'
+import {
+  DEMO_NORTH_SUMMIT_BANK_ORG_ID,
+  isOrganizationReadyForLogin,
+} from './organizations'
 import type { RegisteredOrganization } from './organizations'
-import { isDemoTenantId } from '../demoTenant'
 import {
   CATALOG_SERVICE_FILTER_LABELS,
   type CatalogServiceId,
@@ -55,9 +57,28 @@ export type OrganizationResourceUsage = {
 const SERVICE_ORDER: CatalogServiceId[] = ['baremetal', 'cluster', 'virtual-machine']
 
 function shouldSeedDemoInventory(organization: RegisteredOrganization): boolean {
-  return (
-    organization.id === DEMO_NORTH_SUMMIT_BANK_ORG_ID || isDemoTenantId(organization.slug)
-  )
+  return organization.id === DEMO_NORTH_SUMMIT_BANK_ORG_ID
+}
+
+function emptyOrganizationResourceUsage(
+  organization: RegisteredOrganization,
+): OrganizationResourceUsage {
+  const maxInstances = Math.max(organization.maxInstances, 0)
+
+  return {
+    instanceCount: 0,
+    maxInstances,
+    instancePercent: 0,
+    projectCount: 0,
+    catalogItems: [],
+    pools: [],
+    byService: SERVICE_ORDER.map((id) => ({
+      id,
+      label: CATALOG_SERVICE_FILTER_LABELS[id],
+      count: 0,
+    })),
+    projects: [],
+  }
 }
 
 function listOrganizationInstances(organization: RegisteredOrganization): TenantInstance[] {
@@ -77,6 +98,10 @@ function listOrganizationProjects(organization: RegisteredOrganization): TenantP
 export function getOrganizationResourceUsage(
   organization: RegisteredOrganization,
 ): OrganizationResourceUsage {
+  if (!isOrganizationReadyForLogin(organization)) {
+    return emptyOrganizationResourceUsage(organization)
+  }
+
   const instances = listOrganizationInstances(organization)
   const projects = listOrganizationProjects(organization)
   const maxInstances = Math.max(organization.maxInstances, 0)

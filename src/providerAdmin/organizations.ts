@@ -737,7 +737,7 @@ const REGISTER_ORGANIZATION_DEMO_PRESETS: Array<{
   },
 ]
 
-/** Demo placeholders until Roles assigns the first tenant admin. */
+/** Prefill for the optional Roles step after IdP. Not assigned at registration. */
 export const DEFAULT_REGISTER_ORGANIZATION_TENANT_ADMIN = {
   name: DEMO_TENANT_DISPLAY_ADMIN.northstar,
   email: DEMO_TENANT_LOGIN_EMAIL_ADMIN.northstar,
