@@ -113,8 +113,8 @@ export function identityProviderProtocolLabel(protocol: IdentityProviderProtocol
 }
 
 export function migrateLegacyIdentityProviderClientId(clientId: string): string {
-  if (clientId === 'bmaas-northstar' || clientId === 'north-summit-bank') {
-    return 'bluesolace-financial-group'
+  if (clientId === 'bmaas-northstar') {
+    return 'north-summit-bank'
   }
   if (clientId === 'bmaas-harborline') {
     return 'harborline-capital'
@@ -517,6 +517,13 @@ export function buildDemoIdentityProviderName(
 /** Stable id for the Organizations page baseline row. */
 export const DEMO_NORTH_SUMMIT_BANK_ORG_ID = 'org-northstar-bank'
 export const DEMO_NORTH_SUMMIT_BANK_TENANT_ID = 'tenant-northstar'
+export const DEMO_NORTH_SUMMIT_BANK_ORG_NAME = DEMO_TENANT_LABEL.northstar
+export const DEMO_NORTH_SUMMIT_BANK_PRIMARY_DOMAIN = 'northsummitbank.com'
+export const DEMO_NORTH_SUMMIT_BANK_ADDITIONAL_DOMAIN = 'northsummitbank.net'
+export const DEMO_NORTH_SUMMIT_BANK_IDP_DISPLAY_NAME = `${DEMO_NORTH_SUMMIT_BANK_ORG_NAME}-idp`
+export const DEMO_NORTH_SUMMIT_BANK_IDP_CLIENT_ID = DEMO_NORTH_SUMMIT_BANK_ORG_NAME
+export const DEMO_NORTH_SUMMIT_BANK_BILLING_ACCOUNT_NAME =
+  'north-summit-bank-enterprise-billing'
 
 /** Second demo enterprise for VIP visibility multi-select (not BlueSolace). */
 export const DEMO_HARBORLINE_CAPITAL_ORG_ID = 'org-harborline-capital'
@@ -541,6 +548,7 @@ export type RegisterOrganizationForm = {
   maxInstances: string
 }
 
+/** BlueSolace values for the register-tenant wizard / Onboarding prefill. */
 export const DEMO_NORTHSTAR_ORG_NAME = DEMO_TENANT_LABEL.evergreen
 export const DEMO_NORTHSTAR_PRIMARY_DOMAIN = 'bluesolacefinancial.com'
 export const DEMO_NORTHSTAR_ADDITIONAL_DOMAIN = 'bluesolacefinancial.net'
@@ -558,7 +566,7 @@ export const DEFAULT_REGISTER_ORGANIZATION_FORM: RegisterOrganizationForm = {
   maxInstances: '20',
 }
 
-/** Fully activated BlueSolace Financial Group — IdP connected, roles defined, Active. */
+/** Fully activated North Summit Bank — IdP connected, roles defined, Active. */
 export function createDemoNorthSummitBankOrganization(
   options: {
     catalogItemId?: string | null
@@ -568,17 +576,17 @@ export function createDemoNorthSummitBankOrganization(
     externalIpPoolCidr?: string | null
   } = {},
 ): RegisteredOrganization {
-  const primaryDomain = DEMO_NORTHSTAR_PRIMARY_DOMAIN
+  const primaryDomain = DEMO_NORTH_SUMMIT_BANK_PRIMARY_DOMAIN
 
   return {
     id: DEMO_NORTH_SUMMIT_BANK_ORG_ID,
-    name: DEMO_NORTHSTAR_ORG_NAME,
+    name: DEMO_NORTH_SUMMIT_BANK_ORG_NAME,
     tenantId: DEMO_NORTH_SUMMIT_BANK_TENANT_ID,
     slug: 'northstar',
     primaryDomain,
-    additionalDomains: [DEMO_NORTHSTAR_ADDITIONAL_DOMAIN],
+    additionalDomains: [DEMO_NORTH_SUMMIT_BANK_ADDITIONAL_DOMAIN],
     billingAccountId: 'ACCT-NSB-2048',
-    billingAccountName: DEMO_NORTHSTAR_BILLING_ACCOUNT_NAME,
+    billingAccountName: DEMO_NORTH_SUMMIT_BANK_BILLING_ACCOUNT_NAME,
     catalogItemId: options.catalogItemId ?? null,
     catalogDisplayName: options.catalogDisplayName ?? null,
     externalIpPoolId: options.externalIpPoolId ?? DEFAULT_REGISTER_ORGANIZATION_FORM.externalIpPoolId,
@@ -604,10 +612,10 @@ export function createDemoNorthSummitBankOrganization(
     ],
     identityProviderConnected: true,
     identityProviderName: buildDemoIdentityProviderName('OIDC', primaryDomain),
-    identityProviderDisplayName: DEMO_NORTHSTAR_IDP_DISPLAY_NAME,
+    identityProviderDisplayName: DEMO_NORTH_SUMMIT_BANK_IDP_DISPLAY_NAME,
     identityProviderProtocol: 'OIDC',
     identityProviderIssuerUrl: `https://login.${primaryDomain}/oauth2`,
-    identityProviderClientId: DEMO_NORTHSTAR_IDP_CLIENT_ID,
+    identityProviderClientId: DEMO_NORTH_SUMMIT_BANK_IDP_CLIENT_ID,
     identityProviders: [],
     idpManagerEmail: null,
     idpInviteToken: null,

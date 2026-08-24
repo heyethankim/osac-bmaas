@@ -60,7 +60,7 @@ export const PLATFORM_QUOTA_LIMITS: PlatformQuotaLimit[] = [
 export const TENANT_QUOTA_ALLOCATIONS: TenantQuotaAllocation[] = [
   {
     orgId: 'northstar',
-    orgName: 'bluesolace-financial-group',
+    orgName: 'north-summit-bank',
     maxInstances: 20,
     usedInstances: 12,
     maxVcpus: 500,
@@ -103,7 +103,7 @@ export const TENANT_QUOTA_ALLOCATIONS: TenantQuotaAllocation[] = [
 export const METERING_RECORDS: MeteringRecord[] = [
   {
     id: 'meter-1',
-    orgName: 'bluesolace-financial-group',
+    orgName: 'north-summit-bank',
     catalogItem: 'bare-metal-gpu-training-server',
     hoursMetered: 744,
     estimatedCost: 3114,
@@ -133,7 +133,7 @@ export const PROVIDER_RECENT_ACTIVITIES: ProviderRecentActivity[] = [
     area: 'Tenants',
     labelColor: 'blue',
     timeLabel: '18 min ago',
-    title: 'bluesolace-financial-group workspace verified',
+    title: 'north-summit-bank workspace verified',
     detail:
       'Post-migration health checks completed for the tenant admin console; SSO metadata rollover is scheduled for tonight.',
   },
@@ -178,11 +178,11 @@ export const PROVIDER_RECENT_ACTIVITIES: ProviderRecentActivity[] = [
 export const PROVIDER_TENANT_ORGS: ProviderTenantOrg[] = [
   {
     id: 'northstar',
-    name: 'bluesolace-financial-group',
+    name: 'north-summit-bank',
     tenantId: 'tenant-001',
     status: 'Active',
     billingAccountId: 'ACCT-NSB-0042',
-    billingAccountName: 'bluesolace-financial-group-enterprise-billing',
+    billingAccountName: 'north-summit-bank-enterprise-billing',
     usedVms: 12,
     users: 8,
     utilizationPct: 62,

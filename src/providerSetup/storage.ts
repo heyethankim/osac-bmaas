@@ -5,9 +5,16 @@ import {
   createDemoNorthSummitBankOrganization,
   DEMO_HARBORLINE_CAPITAL_ORG_ID,
   DEMO_HARBORLINE_CAPITAL_SLUG,
+  DEMO_NORTH_SUMMIT_BANK_ADDITIONAL_DOMAIN,
+  DEMO_NORTH_SUMMIT_BANK_BILLING_ACCOUNT_NAME,
+  DEMO_NORTH_SUMMIT_BANK_IDP_CLIENT_ID,
+  DEMO_NORTH_SUMMIT_BANK_IDP_DISPLAY_NAME,
   DEMO_NORTH_SUMMIT_BANK_ORG_ID,
+  DEMO_NORTH_SUMMIT_BANK_ORG_NAME,
+  DEMO_NORTH_SUMMIT_BANK_PRIMARY_DOMAIN,
   DEMO_NORTHSTAR_ADDITIONAL_DOMAIN,
   DEMO_NORTHSTAR_BILLING_ACCOUNT_NAME,
+  DEMO_NORTHSTAR_IDP_CLIENT_ID,
   DEMO_NORTHSTAR_IDP_DISPLAY_NAME,
   DEMO_NORTHSTAR_PRIMARY_DOMAIN,
   DEFAULT_REGISTER_ORGANIZATION_FORM,
@@ -1186,7 +1193,9 @@ export function clearProviderSavedTemplate(): void {
 }
 
 function migrateNorthstarIssuerUrl(issuerUrl: string): string {
-  return issuerUrl.replace(/northsummitbank\.com/gi, DEMO_NORTHSTAR_PRIMARY_DOMAIN)
+  return issuerUrl
+    .replace(/bluesolacefinancial\.com/gi, DEMO_NORTH_SUMMIT_BANK_PRIMARY_DOMAIN)
+    .replace(/northsummitbank\.com/gi, DEMO_NORTH_SUMMIT_BANK_PRIMARY_DOMAIN)
 }
 
 function normalizeRegisteredOrganization(org: RegisteredOrganization): RegisteredOrganization {
@@ -1199,14 +1208,20 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
       ? org.primaryDomain.trim().toLowerCase()
       : emailDomain
   const primaryDomain =
-    isNorthstar && (rawPrimaryDomain === 'northsummitbank.com' || !rawPrimaryDomain)
-      ? DEMO_NORTHSTAR_PRIMARY_DOMAIN
+    isNorthstar &&
+    (rawPrimaryDomain === DEMO_NORTH_SUMMIT_BANK_PRIMARY_DOMAIN ||
+      rawPrimaryDomain === DEMO_NORTHSTAR_PRIMARY_DOMAIN ||
+      !rawPrimaryDomain)
+      ? DEMO_NORTH_SUMMIT_BANK_PRIMARY_DOMAIN
       : rawPrimaryDomain
   const additionalDomains = normalizeAdditionalDomains(
     (Array.isArray(org.additionalDomains) ? org.additionalDomains : []).map((domain) =>
       isNorthstar &&
-      (domain === 'northsummitbank.net' || domain === 'subsidiary.northsummitbank.com')
-        ? DEMO_NORTHSTAR_ADDITIONAL_DOMAIN
+      (domain === DEMO_NORTH_SUMMIT_BANK_ADDITIONAL_DOMAIN ||
+        domain === `subsidiary.${DEMO_NORTH_SUMMIT_BANK_PRIMARY_DOMAIN}` ||
+        domain === DEMO_NORTHSTAR_ADDITIONAL_DOMAIN ||
+        domain === `subsidiary.${DEMO_NORTHSTAR_PRIMARY_DOMAIN}`)
+        ? DEMO_NORTH_SUMMIT_BANK_ADDITIONAL_DOMAIN
         : domain,
     ),
     primaryDomain,
@@ -1215,12 +1230,12 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
     isNorthstar &&
     (org.identityProviderDisplayName === 'North Summit Bank IdP' ||
       org.identityProviderDisplayName === 'Northstar Bank IdP' ||
-      org.identityProviderDisplayName === 'north-summit-bank-idp' ||
+      org.identityProviderDisplayName === DEMO_NORTH_SUMMIT_BANK_IDP_DISPLAY_NAME ||
       org.identityProviderDisplayName === DEMO_NORTHSTAR_IDP_DISPLAY_NAME)
-      ? DEMO_NORTHSTAR_IDP_DISPLAY_NAME
+      ? DEMO_NORTH_SUMMIT_BANK_IDP_DISPLAY_NAME
       : org.identityProviderDisplayName === 'North Summit Bank IdP' ||
           org.identityProviderDisplayName === 'Northstar Bank IdP'
-        ? 'north-summit-bank-idp'
+        ? DEMO_NORTH_SUMMIT_BANK_IDP_DISPLAY_NAME
         : typeof org.identityProviderDisplayName === 'string' &&
             org.identityProviderDisplayName.trim()
           ? org.identityProviderDisplayName.trim()
@@ -1239,7 +1254,12 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
       : null
   const identityProviderClientId =
     typeof org.identityProviderClientId === 'string' && org.identityProviderClientId.trim()
-      ? migrateLegacyIdentityProviderClientId(org.identityProviderClientId.trim())
+      ? isNorthstar &&
+        (org.identityProviderClientId.trim() === DEMO_NORTHSTAR_IDP_CLIENT_ID ||
+          org.identityProviderClientId.trim() === 'bmaas-northstar' ||
+          org.identityProviderClientId.trim() === DEMO_NORTH_SUMMIT_BANK_IDP_CLIENT_ID)
+        ? DEMO_NORTH_SUMMIT_BANK_IDP_CLIENT_ID
+        : migrateLegacyIdentityProviderClientId(org.identityProviderClientId.trim())
       : null
   const identityProviders = normalizeOrganizationIdentityProviders(org.identityProviders).map(
     (provider) =>
@@ -1247,13 +1267,18 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
         ? {
             ...provider,
             displayName:
-              provider.displayName === 'north-summit-bank-idp' ||
+              provider.displayName === DEMO_NORTH_SUMMIT_BANK_IDP_DISPLAY_NAME ||
+              provider.displayName === DEMO_NORTHSTAR_IDP_DISPLAY_NAME ||
               provider.displayName === 'North Summit Bank IdP' ||
               provider.displayName === 'Northstar Bank IdP'
-                ? DEMO_NORTHSTAR_IDP_DISPLAY_NAME
+                ? DEMO_NORTH_SUMMIT_BANK_IDP_DISPLAY_NAME
                 : provider.displayName,
             issuerUrl: migrateNorthstarIssuerUrl(provider.issuerUrl),
-            clientId: migrateLegacyIdentityProviderClientId(provider.clientId),
+            clientId:
+              provider.clientId === DEMO_NORTHSTAR_IDP_CLIENT_ID ||
+              provider.clientId === 'bmaas-northstar'
+                ? DEMO_NORTH_SUMMIT_BANK_IDP_CLIENT_ID
+                : migrateLegacyIdentityProviderClientId(provider.clientId),
             name: migrateNorthstarIssuerUrl(provider.name),
           }
         : provider,
@@ -1262,12 +1287,12 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
     isNorthstar &&
     (org.billingAccountName === 'North Summit Bank — Enterprise Billing' ||
       org.billingAccountName === 'Northstar Bank — Enterprise Billing' ||
-      org.billingAccountName === 'north-summit-bank-enterprise-billing' ||
+      org.billingAccountName === DEMO_NORTH_SUMMIT_BANK_BILLING_ACCOUNT_NAME ||
       org.billingAccountName === DEMO_NORTHSTAR_BILLING_ACCOUNT_NAME)
-      ? DEMO_NORTHSTAR_BILLING_ACCOUNT_NAME
+      ? DEMO_NORTH_SUMMIT_BANK_BILLING_ACCOUNT_NAME
       : org.billingAccountName === 'North Summit Bank — Enterprise Billing' ||
           org.billingAccountName === 'Northstar Bank — Enterprise Billing'
-        ? 'north-summit-bank-enterprise-billing'
+        ? DEMO_NORTH_SUMMIT_BANK_BILLING_ACCOUNT_NAME
         : org.billingAccountName === 'BlueSolace Financial Group — Enterprise Billing' ||
             org.billingAccountName === 'Bluestone Financial Group — Corporate'
           ? org.billingAccountName.includes('Corporate')
@@ -1286,7 +1311,8 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
         ? org.breakGlassEmail
             .trim()
             .toLowerCase()
-            .replace(/northsummitbank\.com$/i, DEMO_NORTHSTAR_PRIMARY_DOMAIN)
+            .replace(/bluesolacefinancial\.com$/i, DEMO_NORTH_SUMMIT_BANK_PRIMARY_DOMAIN)
+            .replace(/northsummitbank\.com$/i, DEMO_NORTH_SUMMIT_BANK_PRIMARY_DOMAIN)
         : org.breakGlassEmail.trim().toLowerCase()
       : null
 
@@ -1294,16 +1320,10 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
     ...org,
     id: org.id === 'org_northstar_bank' ? 'org-northstar-bank' : org.id,
     name:
-      org.slug === 'northstar' &&
-      (org.name === 'North Summit Bank' ||
-        org.name === 'Northstar Bank' ||
-        org.name === 'north-summit-bank' ||
-        org.name === 'BlueSolace Financial Group' ||
-        org.name === 'Bluestone Financial Group' ||
-        org.name === 'bluestone-financial-group')
-        ? 'bluesolace-financial-group'
+      org.slug === 'northstar'
+        ? DEMO_NORTH_SUMMIT_BANK_ORG_NAME
         : org.name === 'North Summit Bank' || org.name === 'Northstar Bank'
-          ? 'north-summit-bank'
+          ? DEMO_NORTH_SUMMIT_BANK_ORG_NAME
           : org.name === 'BlueSolace Financial Group' ||
               org.name === 'Bluestone Financial Group'
             ? 'bluesolace-financial-group'
@@ -1901,10 +1921,10 @@ function isExternalIpPool(value: unknown): value is ExternalIpPool {
 
 function normalizeExternalIpPool(pool: ExternalIpPool): ExternalIpPool {
   const assignedOrganizationName =
+    pool.assignedOrganizationId === DEMO_NORTH_SUMMIT_BANK_ORG_ID ||
     pool.assignedOrganizationName === 'North Summit Bank' ||
-    pool.assignedOrganizationName === 'Northstar Bank' ||
-    pool.assignedOrganizationName === 'north-summit-bank'
-      ? 'bluesolace-financial-group'
+    pool.assignedOrganizationName === 'Northstar Bank'
+      ? DEMO_NORTH_SUMMIT_BANK_ORG_NAME
       : pool.assignedOrganizationName === 'BlueSolace Financial Group' ||
           pool.assignedOrganizationName === 'Bluestone Financial Group'
         ? 'bluesolace-financial-group'
