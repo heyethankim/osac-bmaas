@@ -9,12 +9,16 @@ import {
 } from '../demoTenant'
 import { clearProviderViewingAsTenantUser } from '../providerAdmin/openAsTenantUser'
 import { activateProviderRegisteredOrganizationBySlug } from '../providerSetup/storage'
+import { resolveTenantWorkspaceRoleForEmail } from '../tenantAdmin/administrators'
 import { getRegisteredOrganizationBySlug } from '../tenantAdmin/organizations'
 import { setTenantOnboardingComplete } from '../tenantAdmin/storage'
 import { setTenantUserOnboardingComplete } from '../tenantUser/storage'
 
+type TenantWorkspaceRole = 'tenant-admin' | 'tenant-user'
+
 type TenantLoginPageProps = {
-  role: 'tenant-admin' | 'tenant-user'
+  /** When set, this is a demo shortcut. OSAC login infers workspace from assigned roles. */
+  role?: TenantWorkspaceRole
 }
 
 type LoginStep = 'osac' | 'northsummit'
@@ -46,10 +50,29 @@ export function TenantLoginPage({ role }: TenantLoginPageProps) {
   }
 
   const organization = getRegisteredOrganizationBySlug(tenant)
-  const defaultEmail =
-    role === 'tenant-admin'
+  const defaultEmail = role
+    ? role === 'tenant-admin'
       ? (organization?.tenantAdminEmail ?? DEMO_TENANT_LOGIN_EMAIL_ADMIN.northsummit)
       : DEMO_TENANT_LOGIN_EMAIL_USER.northsummit
+    : ''
+
+  const completeLogin = (username: string) => {
+    const workspaceRole: TenantWorkspaceRole =
+      role ??
+      (organization
+        ? resolveTenantWorkspaceRoleForEmail(organization, username)
+        : 'tenant-user')
+
+    activateProviderRegisteredOrganizationBySlug(tenant)
+    if (workspaceRole === 'tenant-admin') {
+      setTenantOnboardingComplete(tenant)
+    } else {
+      setTenantUserOnboardingComplete(tenant)
+      clearProviderViewingAsTenantUser()
+    }
+    setIsNorthsummitLoading(true)
+    window.setTimeout(() => navigate(`/${workspaceRole}/northsummit/workspace`), 600)
+  }
 
   if (step === 'osac') {
     return (
@@ -65,17 +88,7 @@ export function TenantLoginPage({ role }: TenantLoginPageProps) {
     <NorthsummitBankLoginPage
       defaultUsername={defaultEmail}
       isLandingPageLoading={isNorthsummitLoading}
-      onLoginSuccess={() => {
-        activateProviderRegisteredOrganizationBySlug(tenant)
-        if (role === 'tenant-admin') {
-          setTenantOnboardingComplete(tenant)
-        } else {
-          setTenantUserOnboardingComplete(tenant)
-          clearProviderViewingAsTenantUser()
-        }
-        setIsNorthsummitLoading(true)
-        window.setTimeout(() => navigate(`/${role}/northsummit/workspace`), 600)
-      }}
+      onLoginSuccess={completeLogin}
       onChooseAnotherInstitution={() => navigate('/')}
     />
   )

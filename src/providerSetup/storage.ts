@@ -1580,6 +1580,7 @@ export function getProviderRegisteredOrganizations(): RegisteredOrganization[] {
         original.tenantAdminName !== tenant.tenantAdminName ||
         original.tenantAdminEmail !== tenant.tenantAdminEmail ||
         original.breakGlassUsername !== tenant.breakGlassUsername ||
+        original.breakGlassPassword !== tenant.breakGlassPassword ||
         JSON.stringify(original.additionalDomains ?? []) !==
           JSON.stringify(tenant.additionalDomains)
       )

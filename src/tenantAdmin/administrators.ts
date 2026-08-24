@@ -129,6 +129,18 @@ export function listTenantAdministrators(
   )
 }
 
+/** Workspace after OSAC login: administrators get the admin console; everyone else gets the user workspace. */
+export function resolveTenantWorkspaceRoleForEmail(
+  organization: RegisteredOrganization,
+  email: string,
+): 'tenant-admin' | 'tenant-user' {
+  const normalized = email.trim().toLowerCase()
+  const assignment = listRoleAssignments(organization).find(
+    (admin) => admin.email.trim().toLowerCase() === normalized,
+  )
+  return assignment?.roleId === 'tenant-administrator' ? 'tenant-admin' : 'tenant-user'
+}
+
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase()
 }

@@ -33,7 +33,10 @@ import {
   TENANT_ADMINISTRATORS_DEMO,
   type AssignableTenantRoleId,
 } from '../../tenantAdmin/administrators'
-import { NetworkInventoryCreateWizardShell } from '../networking/NetworkInventoryCreateWizardShell'
+import {
+  NetworkInventoryCreateWizardShell,
+  type NetworkInventoryCreateBreadcrumbAncestor,
+} from '../networking/NetworkInventoryCreateWizardShell'
 import { NETWORK_INVENTORY_CREATE_REVIEW_STEP } from '../../networking/networkInventoryCreateWizard'
 
 type AddTenantAdministratorForm = {
@@ -53,6 +56,7 @@ type AddTenantAdministratorWizardProps = {
   organization: RegisteredOrganization
   onClose: () => void
   onAdded: (organization: RegisteredOrganization) => void
+  breadcrumbAncestors?: readonly NetworkInventoryCreateBreadcrumbAncestor[]
   parentLabel?: string
   title?: string
   submitLabel?: string
@@ -64,7 +68,8 @@ export function AddTenantAdministratorWizard({
   organization,
   onClose,
   onAdded,
-  parentLabel = TENANT_ADMINISTRATORS_DEMO.title,
+  breadcrumbAncestors,
+  parentLabel,
   title = 'Add tenant administrator',
   submitLabel = TENANT_ADMINISTRATORS_DEMO.addAdministratorLabel,
   showRoleCatalog = false,
@@ -314,7 +319,11 @@ export function AddTenantAdministratorWizard({
   return (
     <NetworkInventoryCreateWizardShell
       isOpen={isOpen}
-      parentLabel={parentLabel}
+      ancestors={breadcrumbAncestors}
+      parentLabel={
+        parentLabel ??
+        (breadcrumbAncestors?.length ? undefined : TENANT_ADMINISTRATORS_DEMO.title)
+      }
       title={title}
       titleId="add-tenant-administrator-wizard-title"
       steps={steps}

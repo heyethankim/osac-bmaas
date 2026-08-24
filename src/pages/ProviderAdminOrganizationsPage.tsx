@@ -395,13 +395,32 @@ export function ProviderAdminOrganizationsPage({
     refreshOrganizations(organization.id)
   }
 
+  const closeRolesToTenants = () => {
+    setRolesOrganization(null)
+    setIsDetailsOpen(false)
+  }
+
+  const closeRolesToTenantDetails = () => {
+    if (rolesOrganization) {
+      setSelectedOrganization(rolesOrganization)
+      setIsDetailsOpen(true)
+    }
+    setRolesOrganization(null)
+  }
+
   return (
     <>
       {rolesOrganization !== null ? (
         <AddTenantAdministratorWizard
           isOpen
           organization={rolesOrganization}
-          parentLabel="Tenants"
+          breadcrumbAncestors={[
+            { label: 'Tenants', onNavigate: closeRolesToTenants },
+            {
+              label: rolesOrganization.name,
+              onNavigate: closeRolesToTenantDetails,
+            },
+          ]}
           title={IDP_MANAGER_ROLES_COPY.wizardTitle}
           submitLabel={IDP_MANAGER_ROLES_COPY.wizardSubmitLabel}
           showRoleCatalog

@@ -275,11 +275,6 @@ export function SetupIdentityProviderWizard({
       idpInviteToken: null,
       idpInviteSentAt: null,
       idpInviteExpiresAt: null,
-      breakGlassName: null,
-      breakGlassEmail: null,
-      breakGlassUsername: null,
-      breakGlassPassword: null,
-      breakGlassIssuedAt: null,
     })
 
     if (!updated) {
@@ -616,7 +611,7 @@ export function SetupIdentityProviderWizard({
                 title="Copy the handoff for the IdP manager"
                 className="provider-admin-organizations__idp-pending-alert"
               >
-                A local login is created on this step so the IdP manager can sign in to OSAC.
+                The IdP manager signs in with the break-glass account created at registration.
               </Alert>
             )}
 
@@ -652,7 +647,7 @@ export function SetupIdentityProviderWizard({
                 <BreakGlassCredentialsPanel credentials={issuedBreakGlass} />
               ) : (
                 <Content component="p" className="provider-admin-organizations__roles-section-help">
-                  Issuing a local login for the IdP manager…
+                  No break-glass account is stored on this tenant yet.
                 </Content>
               )}
             </div>

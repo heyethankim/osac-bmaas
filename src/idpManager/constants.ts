@@ -23,7 +23,7 @@ export const IDP_MANAGER_ROLES_COPY = {
   lede: 'Assign tenant administrator, reader, and user roles for this tenant.',
   addAdministratorLabel: 'Assign role',
   assignFirstLabel: 'Assign first role',
-  wizardTitle: 'Assign role',
+  wizardTitle: 'Assign roles',
   wizardSubmitLabel: 'Assign role',
   emptyTitle: 'No roles assigned',
   emptyBody: 'Assign a tenant administrator, reader, or user for this tenant.',

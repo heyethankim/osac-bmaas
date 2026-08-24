@@ -4580,34 +4580,19 @@
   font-size: var(--pf-t--global--font--size--body--sm);
 }
 
-.provider-admin-organizations__ready-login {
-  display: flex;
-  flex-direction: column;
-  gap: var(--pf-t--global--spacer--xs);
-}
-
-.provider-admin-organizations__ready-login-paths {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-}
-
-.provider-admin-organizations__ready-login-link {
+.provider-admin-organizations__osac-url {
   display: inline-flex;
   font-size: var(--pf-t--global--font--size--body--sm);
   color: var(--pf-t--global--text--color--link--default);
   text-decoration: none;
 }
 
-.provider-admin-organizations__ready-login-link:hover {
+.provider-admin-organizations__osac-url:hover {
   color: var(--pf-t--global--text--color--link--hover);
   text-decoration: underline;
 }
 
-.provider-admin-organizations__ready-login-link code {
+.provider-admin-organizations__osac-url code {
   font-family: var(--pf-t--global--font--family--monospace);
   font-size: inherit;
 }
@@ -4620,11 +4605,7 @@
   margin-block: var(--pf-t--global--spacer--md);
 }
 
-.provider-admin-organizations__status-step .provider-admin-organizations__ready-login {
-  margin-block-start: var(--pf-t--global--spacer--xs);
-}
-
-.provider-admin-organizations__setup-signal-link.pf-v6-c-button {
+.provider-admin-organizations__drawer-section-divider {
   padding: 0;
   font-size: var(--pf-t--global--font--size--body--sm);
 }

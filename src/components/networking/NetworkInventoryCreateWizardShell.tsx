@@ -20,7 +20,7 @@ type WizardStepFooter = {
 type NetworkInventoryCreateWizardShellProps = {
   isOpen: boolean
   ancestors?: readonly NetworkInventoryCreateBreadcrumbAncestor[]
-  parentLabel: string
+  parentLabel?: string
   title: string
   titleId: string
   steps: readonly NetworkInventoryCreateStep[]

@@ -9,7 +9,10 @@ import {
 import { EntityDetailsPageShell } from "../shared/EntityDetailsPageShell";
 import { EntityDetailsActionsDropdown } from "../shared/EntityDetailsActionsDropdown";
 import type { ExternalIpPool } from "../../providerAdmin/externalIpPools";
-import type { RegisteredOrganization } from "../../providerAdmin/organizations";
+import {
+  getOrganizationOsacLoginPath,
+  type RegisteredOrganization,
+} from "../../providerAdmin/organizations";
 import { resolveOrganizationExternalIpPools } from "../../tenantAdmin/projects";
 
 type ExternalIpPoolDetailsPageProps = {
@@ -240,9 +243,9 @@ export function ExternalIpPoolDetailsPage({
                       </DescriptionListDescription>
                     </DescriptionListGroup>
                     <DescriptionListGroup>
-                      <DescriptionListTerm>Login path</DescriptionListTerm>
+                      <DescriptionListTerm>OSAC URL</DescriptionListTerm>
                       <DescriptionListDescription>
-                        <code>/tenant-admin/{organization.slug}</code>
+                        <code>{getOrganizationOsacLoginPath(organization.slug)}</code>
                       </DescriptionListDescription>
                     </DescriptionListGroup>
                   </>

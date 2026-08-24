@@ -3,6 +3,7 @@ import { PendingIcon } from '@patternfly/react-icons/dist/esm/icons/pending-icon
 import { EllipsisVIcon } from '@patternfly/react-icons/dist/esm/icons/ellipsis-v-icon'
 import { PlusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/plus-circle-icon'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Button,
   ClipboardCopy,
@@ -14,6 +15,7 @@ import {
   Dropdown,
   DropdownItem,
   DropdownList,
+  FormGroup,
   Label,
   MenuToggle,
   Modal,
@@ -28,14 +30,16 @@ import { EntityDetailsActionsDropdown } from '../shared/EntityDetailsActionsDrop
 import {
   formatOrganizationRolesAssignmentSummary,
   getOrganizationActivationSteps,
+  getOrganizationOsacLoginPath,
+  getOrganizationOsacLoginRoute,
   hasPendingIdpInvite,
   isOrganizationReadyForLogin,
   resolveBreakGlassUsername,
   resolveOrganizationCompanyLogo,
+  rewriteBreakGlassPassword,
   type OrganizationActivationStep,
   type RegisteredOrganization,
 } from '../../providerAdmin/organizations'
-import { OrganizationReadyForLoginLinks } from './OrganizationReadyForLoginLinks'
 import { AdditionalEmailDomainsValue } from './AdditionalEmailDomainsField'
 import { AddTenantAdministratorWizard } from '../tenant-admin/AddTenantAdministratorWizard'
 import { OrganizationResourceUsageSection } from './OrganizationResourceUsageSection'
@@ -159,8 +163,6 @@ function ActivationStepRow({
     step.id === 'rbac' && step.complete
       ? formatOrganizationRolesAssignmentSummary(organization)
       : null
-  const showLoginPaths =
-    step.id === 'ready' && step.complete && organization.identityProviderConnected
   const canReviewIdp = step.id === 'idp' && typeof onReviewIdentityProvider === 'function'
   const canReviewRoles =
     step.id === 'rbac' &&
@@ -221,9 +223,6 @@ function ActivationStepRow({
             {rolesMeta}
           </Content>
         ) : null}
-        {showLoginPaths ? (
-          <OrganizationReadyForLoginLinks organization={organization} showHeading={false} />
-        ) : null}
       </div>
     </li>
   )
@@ -247,18 +246,22 @@ function getDetailsBreakGlassUsername(organization: RegisteredOrganization): str
   ) {
     return null
   }
+  if (/^BG-bluesolace-[a-z0-9]{6}$/i.test(username.trim())) {
+    return null
+  }
   return username
 }
 
 function getDetailsBreakGlassPassword(organization: RegisteredOrganization): string | null {
   const password = organization.breakGlassPassword?.trim() || null
-  if (
-    !password ||
-    (isHarborlineCapitalTenant(organization) && password === 'BG-harborline-vault')
-  ) {
+  if (!password) {
     return null
   }
-  return password
+  const rewritten = rewriteBreakGlassPassword(password)
+  if (isHarborlineCapitalTenant(organization) && rewritten === 'BG-harborline-vault') {
+    return null
+  }
+  return rewritten
 }
 
 export function OrganizationDetailsPage({
@@ -267,7 +270,7 @@ export function OrganizationDetailsPage({
   onEdit,
   onRemove,
   onReviewIdentityProvider,
-  onReviewRoles: _onReviewRoles,
+  onReviewRoles,
   onOrganizationChange,
 }: OrganizationDetailsPageProps) {
   const activationSteps = getOrganizationActivationSteps(organization)
@@ -276,21 +279,25 @@ export function OrganizationDetailsPage({
   const breakGlassUsername = getDetailsBreakGlassUsername(organization)
   const breakGlassPassword = getDetailsBreakGlassPassword(organization)
   const showBreakGlassAccount = Boolean(breakGlassUsername || breakGlassPassword)
-  const [isAddRolesOpen, setIsAddRolesOpen] = useState(false)
+  const [isAssignRolesOpen, setIsAssignRolesOpen] = useState(false)
   const [administratorPendingRemove, setAdministratorPendingRemove] =
     useState<TenantAdministrator | null>(null)
-  const canAddRoles = organization.identityProviderConnected
+  const canAssignRoles = organization.identityProviderConnected
 
-  const handleAddRoles = () => {
-    if (!canAddRoles) {
+  const handleAssignRoles = () => {
+    if (!canAssignRoles) {
       return
     }
-    setIsAddRolesOpen(true)
+    if (onReviewRoles) {
+      onReviewRoles(organization)
+      return
+    }
+    setIsAssignRolesOpen(true)
   }
 
   const handleRoleAssigned = (updated: RegisteredOrganization) => {
     onOrganizationChange?.(updated)
-    setIsAddRolesOpen(false)
+    setIsAssignRolesOpen(false)
   }
 
   const handleConfirmRemoveAdministrator = () => {
@@ -305,16 +312,19 @@ export function OrganizationDetailsPage({
     setAdministratorPendingRemove(null)
   }
 
-  if (isAddRolesOpen) {
+  if (isAssignRolesOpen) {
     return (
       <AddTenantAdministratorWizard
         isOpen
         organization={organization}
-        parentLabel={organization.name}
+        breadcrumbAncestors={[
+          { label: 'Tenants', onNavigate: onBack },
+          { label: organization.name, onNavigate: () => setIsAssignRolesOpen(false) },
+        ]}
         title={IDP_MANAGER_ROLES_COPY.wizardTitle}
         submitLabel={IDP_MANAGER_ROLES_COPY.wizardSubmitLabel}
         showRoleCatalog
-        onClose={() => setIsAddRolesOpen(false)}
+        onClose={() => setIsAssignRolesOpen(false)}
         onAdded={handleRoleAssigned}
       />
     )
@@ -391,6 +401,17 @@ export function OrganizationDetailsPage({
                   </DescriptionListDescription>
                 </DescriptionListGroup>
                 <DescriptionListGroup>
+                  <DescriptionListTerm>OSAC URL</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    <Link
+                      to={getOrganizationOsacLoginRoute(organization.slug)}
+                      className="provider-admin-organizations__osac-url"
+                    >
+                      <code>{getOrganizationOsacLoginPath(organization.slug)}</code>
+                    </Link>
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
                   <DescriptionListTerm>Billing account</DescriptionListTerm>
                   <DescriptionListDescription>
                     <Content component="p" className="provider-admin-organizations__primary-cell">
@@ -424,7 +445,7 @@ export function OrganizationDetailsPage({
                     step={step}
                     organization={organization}
                     onReviewIdentityProvider={onReviewIdentityProvider}
-                    onReviewRoles={canAddRoles ? () => handleAddRoles() : undefined}
+                    onReviewRoles={canAssignRoles ? () => handleAssignRoles() : undefined}
                   />
                 ))}
               </ol>
@@ -447,23 +468,23 @@ export function OrganizationDetailsPage({
                 >
                   Roles
                 </Title>
-                {canAddRoles ? (
+                {canAssignRoles ? (
                   <Button
                     variant="link"
                     isInline
                     icon={<PlusCircleIcon />}
                     className="provider-admin-organizations__accounts-add"
-                    onClick={handleAddRoles}
+                    onClick={handleAssignRoles}
                   >
-                    Add roles
+                    Assign roles
                   </Button>
                 ) : null}
               </div>
               {roleAssignments.length === 0 ? (
                 <Content component="p" className="provider-admin-organizations__secondary-cell">
-                  {canAddRoles
+                  {canAssignRoles
                     ? IDP_MANAGER_ROLES_COPY.emptyBody
-                    : 'Connect the identity provider before adding roles.'}
+                    : 'Connect the identity provider before assigning roles.'}
                 </Content>
               ) : (
                 <ul
@@ -491,26 +512,32 @@ export function OrganizationDetailsPage({
               {showBreakGlassAccount ? (
                 <div className="provider-admin-organizations__break-glass">
                   {breakGlassUsername ? (
-                    <ClipboardCopy
-                      isReadOnly
-                      isCode
-                      hoverTip="Copy username"
-                      clickTip="Username copied"
-                      textAriaLabel="Break-glass username"
-                    >
-                      {breakGlassUsername}
-                    </ClipboardCopy>
+                    <FormGroup label="Username" fieldId="tenant-break-glass-username">
+                      <ClipboardCopy
+                        id="tenant-break-glass-username"
+                        isReadOnly
+                        isCode
+                        hoverTip="Copy username"
+                        clickTip="Username copied"
+                        textAriaLabel="Break-glass username"
+                      >
+                        {breakGlassUsername}
+                      </ClipboardCopy>
+                    </FormGroup>
                   ) : null}
                   {breakGlassPassword ? (
-                    <ClipboardCopy
-                      isReadOnly
-                      isCode
-                      hoverTip="Copy password"
-                      clickTip="Password copied"
-                      textAriaLabel="Break-glass password"
-                    >
-                      {breakGlassPassword}
-                    </ClipboardCopy>
+                    <FormGroup label="Password" fieldId="tenant-break-glass-password">
+                      <ClipboardCopy
+                        id="tenant-break-glass-password"
+                        isReadOnly
+                        isCode
+                        hoverTip="Copy password"
+                        clickTip="Password copied"
+                        textAriaLabel="Break-glass password"
+                      >
+                        {breakGlassPassword}
+                      </ClipboardCopy>
+                    </FormGroup>
                   ) : null}
                   <Content
                     component="p"

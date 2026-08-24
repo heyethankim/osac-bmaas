@@ -17,7 +17,7 @@ import {
 import { DEMO_LOGIN_PREFILLED_PASSWORD } from '../demoTenant'
 
 export type NorthsummitBankLoginPageProps = {
-  onLoginSuccess: () => void
+  onLoginSuccess: (username: string) => void
   defaultUsername: string
   isLandingPageLoading?: boolean
   onChooseAnotherInstitution?: () => void
@@ -120,7 +120,7 @@ export function NorthsummitBankLoginPage({
                 onSubmit={(e) => {
                   e.preventDefault()
                   if (isLandingPageLoading) return
-                  onLoginSuccess()
+                  onLoginSuccess(username)
                 }}
               >
                 <FormGroup fieldId="ns-username" className="northsummit-login__field">

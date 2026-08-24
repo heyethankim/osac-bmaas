@@ -55,6 +55,7 @@ export default function App() {
         <Route path="/tenant-admin/northstar" element={<RedirectNorthstarTenant />} />
         <Route path="/tenant-user/northstar/workspace" element={<RedirectNorthstarTenant />} />
         <Route path="/tenant-user/northstar" element={<RedirectNorthstarTenant />} />
+        <Route path="/osac/:tenant" element={<TenantLoginPage />} />
         <Route path="/tenant-admin/:tenant" element={<TenantLoginPage role="tenant-admin" />} />
         <Route
           path="/tenant-admin/:tenant/workspace"

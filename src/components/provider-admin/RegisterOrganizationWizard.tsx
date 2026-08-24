@@ -33,6 +33,7 @@ import {
 import {
   DEFAULT_REGISTER_ORGANIZATION_FORM,
   buildNextRegisterOrganizationForm,
+  buildRegisterBreakGlassFields,
   formFromRegisteredOrganization,
   generateOrganizationId,
   generateTenantId,
@@ -53,6 +54,7 @@ import {
   getKubernetesResourceNameValidation,
   isValidKubernetesResourceName,
 } from '../../shared/kubernetesResourceName'
+import { BreakGlassCredentialsPanel } from './BreakGlassCredentialsPanel'
 import { TenantCompanyLogoField } from './TenantCompanyLogoField'
 
 type RegisterOrganizationWizardProps = {
@@ -252,11 +254,12 @@ export function RegisterOrganizationWizard({
       idpInviteStatus: 'none',
       idpInviteSentAt: null,
       idpInviteExpiresAt: null,
-      breakGlassName: null,
-      breakGlassEmail: null,
-      breakGlassUsername: null,
-      breakGlassPassword: null,
-      breakGlassIssuedAt: null,
+      ...buildRegisterBreakGlassFields(form.organizationName.trim(), primaryDomain, {
+        breakGlassUsername: form.breakGlassUsername,
+        breakGlassPassword: form.breakGlassPassword,
+        slug: slugifyOrganizationName(form.organizationName),
+      }),
+      breakGlassIssuedAt: new Date().toISOString(),
       rbacConfigured: false,
       status: 'Pending activation',
       createdAt: new Date().toISOString(),
@@ -294,10 +297,20 @@ export function RegisterOrganizationWizard({
                       if (isEditMode) {
                         return { ...current, organizationName: value, billingAccountName }
                       }
+                      const previousSlug = slugifyOrganizationName(current.organizationName)
+                      const nextSlug = slugifyOrganizationName(value)
+                      const issued = buildRegisterBreakGlassFields(value, current.primaryDomain, {
+                        breakGlassUsername:
+                          previousSlug === nextSlug ? current.breakGlassUsername : null,
+                        breakGlassPassword:
+                          previousSlug === nextSlug ? current.breakGlassPassword : null,
+                      })
                       return {
                         ...current,
                         organizationName: value,
                         billingAccountName,
+                        breakGlassUsername: issued.breakGlassUsername,
+                        breakGlassPassword: issued.breakGlassPassword,
                       }
                     })
                   }
@@ -411,6 +424,21 @@ export function RegisterOrganizationWizard({
                 ) : null}
               </DescriptionListDescription>
             </DescriptionListGroup>
+            {!isEditMode &&
+            form.breakGlassUsername.trim() &&
+            form.breakGlassPassword.trim() ? (
+              <DescriptionListGroup>
+                <DescriptionListTerm>Break-glass account</DescriptionListTerm>
+                <DescriptionListDescription>
+                  <BreakGlassCredentialsPanel
+                    credentials={{
+                      username: form.breakGlassUsername,
+                      password: form.breakGlassPassword,
+                    }}
+                  />
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+            ) : null}
           </DescriptionList>
         )
       default:

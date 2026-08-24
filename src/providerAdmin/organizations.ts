@@ -356,9 +356,16 @@ function breakGlassPasswordLabel(slug: string): string {
 
 /** Rewrite leftover demo passwords that used stored evergreen or northstar slugs. */
 export function rewriteBreakGlassPassword(password: string): string {
-  return password
+  const rewritten = password
     .replace(/^BG-evergreen-/i, 'BG-bluesolace-')
     .replace(/^BG-northstar-/i, 'BG-northsummit-')
+
+  // One-time IdP-wizard tokens (e.g. BG-bluesolace-yy6mbv) are not a second account.
+  if (/^BG-bluesolace-[a-z0-9]{6}$/i.test(rewritten)) {
+    return getDemoBreakGlassPassword('bluesolace')
+  }
+
+  return rewritten
 }
 
 /** Stable demo password for seeded orgs; new issues use a one-time token. */
@@ -398,8 +405,9 @@ export function buildBreakGlassIssuePatch(
   custodian?: BreakGlassCustodian,
 ): BreakGlassIssuePatch {
   const username = resolveBreakGlassUsername(organization)
-  const password = rewriteBreakGlassPassword(
-    organization.breakGlassPassword?.trim() || generateBreakGlassPassword(organization.slug),
+  const password = resolveRegisterBreakGlassPassword(
+    organization.slug,
+    organization.breakGlassPassword,
   )
   const email = custodian?.email.trim() || organization.breakGlassEmail?.trim() || ''
 
@@ -626,24 +634,16 @@ export function formatOrganizationRolesAssignmentSummary(
   return `${adminLabel} · Tenant users by email domain`
 }
 
-export type OrganizationTenantLoginRole = 'tenant-admin' | 'tenant-user'
-
-/** In-app route for tenant login (Router `to` value). */
-export function getOrganizationTenantLoginRoute(
-  role: OrganizationTenantLoginRole,
-  slug: string,
-): string {
-  return `/${role}/${slug}`
+/** In-app OSAC login route for a tenant (Router `to` value). */
+export function getOrganizationOsacLoginRoute(slug: string): string {
+  return `/osac/${slug}`
 }
 
-/** Full browser path including the app basename (e.g. GitHub Pages). */
-export function getOrganizationTenantLoginPath(
-  role: OrganizationTenantLoginRole,
-  slug: string,
-): string {
+/** Full browser OSAC login path including the app basename (e.g. GitHub Pages). */
+export function getOrganizationOsacLoginPath(slug: string): string {
   const base = import.meta.env.BASE_URL || '/'
   const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base
-  return `${normalizedBase}/${role}/${slug}`
+  return `${normalizedBase}/osac/${slug}`
 }
 
 /** Single next kebab / Status-link action while setup is incomplete. */
@@ -663,7 +663,7 @@ export function getOrganizationSetupNextAction(
 
 export const ORGANIZATION_SETUP_NEXT_ACTION_LABEL: Record<OrganizationSetupNextAction, string> = {
   idp: 'Set up identity provider',
-  rbac: 'Add roles',
+  rbac: 'Assign roles',
 }
 
 export type OrganizationActivationStepId = 'registered' | 'idp' | 'rbac' | 'ready'
@@ -700,7 +700,7 @@ export function getOrganizationActivationSteps(
     },
     {
       id: 'rbac',
-      label: rbacComplete ? 'Roles defined' : 'Add roles (optional)',
+      label: rbacComplete ? 'Roles defined' : 'Assign roles (optional)',
       complete: rbacComplete,
     },
     {
@@ -754,6 +754,8 @@ export type RegisterOrganizationForm = {
   maxInstances: string
   logoSrc: string
   logoFileName: string
+  breakGlassUsername: string
+  breakGlassPassword: string
 }
 
 /** BlueSolace values for the register-tenant wizard / Onboarding prefill. */
@@ -765,6 +767,18 @@ export const DEMO_BLUESOLACE_IDP_CLIENT_ID = DEMO_BLUESOLACE_ORG_NAME
 export const DEMO_BLUESOLACE_BILLING_ACCOUNT_NAME =
   'bluesolace-financial-group-enterprise-billing'
 
+function registerFormBreakGlassFields(
+  organizationName: string,
+  primaryDomain: string,
+  existing?: Parameters<typeof buildRegisterBreakGlassFields>[2],
+): Pick<RegisterOrganizationForm, 'breakGlassUsername' | 'breakGlassPassword'> {
+  const issued = buildRegisterBreakGlassFields(organizationName, primaryDomain, existing)
+  return {
+    breakGlassUsername: issued.breakGlassUsername,
+    breakGlassPassword: issued.breakGlassPassword,
+  }
+}
+
 export const DEFAULT_REGISTER_ORGANIZATION_FORM: RegisterOrganizationForm = {
   organizationName: DEMO_BLUESOLACE_ORG_NAME,
   primaryDomain: DEMO_BLUESOLACE_PRIMARY_DOMAIN,
@@ -774,6 +788,7 @@ export const DEFAULT_REGISTER_ORGANIZATION_FORM: RegisterOrganizationForm = {
   maxInstances: '20',
   logoSrc: getDemoBluesolaceCompanyLogoSrc(),
   logoFileName: DEMO_BLUESOLACE_COMPANY_LOGO_FILE_NAME,
+  ...registerFormBreakGlassFields(DEMO_BLUESOLACE_ORG_NAME, DEMO_BLUESOLACE_PRIMARY_DOMAIN),
 }
 
 /** Pending BlueSolace tenant for IdP manager onboarding. Provider-admin NSB seed is separate. */
@@ -1280,6 +1295,10 @@ export function formFromRegisteredOrganization(
     maxInstances: String(organization.maxInstances),
     logoSrc: organization.logoSrc?.trim() || '',
     logoFileName: organization.logoFileName?.trim() || '',
+    breakGlassUsername: organization.breakGlassUsername?.trim() || '',
+    breakGlassPassword: organization.breakGlassPassword?.trim()
+      ? rewriteBreakGlassPassword(organization.breakGlassPassword.trim())
+      : '',
   }
 }
 
@@ -1321,6 +1340,7 @@ export function buildNextRegisterOrganizationForm(
       billingAccountName: preset.billingAccountName,
       billingAccountId: generateBillingAccountId(),
       ...registerFormLogoFields(preset.organizationName),
+      ...registerFormBreakGlassFields(preset.organizationName, preset.primaryDomain),
     }
   }
 
@@ -1341,6 +1361,7 @@ export function buildNextRegisterOrganizationForm(
         billingAccountName: `${organizationName}-enterprise-billing`,
         billingAccountId: generateBillingAccountId(),
         ...registerFormLogoFields(organizationName),
+        ...registerFormBreakGlassFields(organizationName, primaryDomain),
       }
     }
     suffix += 1
@@ -1356,6 +1377,7 @@ export function buildNextRegisterOrganizationForm(
     billingAccountName: `vertexa-tenant-${unique}-enterprise-billing`,
     billingAccountId: generateBillingAccountId(),
     ...registerFormLogoFields(organizationName),
+    ...registerFormBreakGlassFields(organizationName, primaryDomain),
   }
 }
 

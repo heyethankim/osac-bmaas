@@ -14,8 +14,8 @@ export type ResourceCreateBreadcrumbAncestor = {
 export type ResourceCreatePageShellProps = {
   /** Optional crumbs before the immediate parent (e.g. Tenants > tenant name). */
   ancestors?: readonly ResourceCreateBreadcrumbAncestor[]
-  /** List page label in the breadcrumb (e.g. Catalog, Organizations). */
-  parentLabel: string
+  /** List page label in the breadcrumb (e.g. Catalog, Organizations). Omit when ancestors already include the parent. */
+  parentLabel?: string
   /** Current create title shown as the page H1 and active breadcrumb crumb. */
   title: string
   titleId?: string
@@ -72,15 +72,17 @@ export function ResourceCreatePageShell({
             {item.label}
           </BreadcrumbItem>
         ))}
-        <BreadcrumbItem
-          to="#"
-          onClick={(event) => {
-            event.preventDefault()
-            onBack()
-          }}
-        >
-          {parentLabel}
-        </BreadcrumbItem>
+        {parentLabel ? (
+          <BreadcrumbItem
+            to="#"
+            onClick={(event) => {
+              event.preventDefault()
+              onBack()
+            }}
+          >
+            {parentLabel}
+          </BreadcrumbItem>
+        ) : null}
         <BreadcrumbItem isActive>{title}</BreadcrumbItem>
       </Breadcrumb>
 
