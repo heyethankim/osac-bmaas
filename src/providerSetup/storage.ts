@@ -1409,7 +1409,10 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
     breakGlassEmail,
     breakGlassUsername:
       typeof org.breakGlassUsername === 'string' && org.breakGlassUsername.trim()
-        ? org.breakGlassUsername.trim()
+        ? org.slug === 'evergreen' &&
+          org.breakGlassUsername.trim().toLowerCase() === 'breakglass-evergreen'
+          ? generateBreakGlassUsername(org.slug)
+          : org.breakGlassUsername.trim()
         : typeof org.breakGlassEmail === 'string' && org.breakGlassEmail.trim()
           ? generateBreakGlassUsername(org.slug)
           : null,
@@ -1520,6 +1523,7 @@ export function getProviderRegisteredOrganizations(): RegisteredOrganization[] {
         original.identityProviderClientId !== tenant.identityProviderClientId ||
         original.tenantAdminName !== tenant.tenantAdminName ||
         original.tenantAdminEmail !== tenant.tenantAdminEmail ||
+        original.breakGlassUsername !== tenant.breakGlassUsername ||
         JSON.stringify(original.additionalDomains ?? []) !==
           JSON.stringify(tenant.additionalDomains)
       )

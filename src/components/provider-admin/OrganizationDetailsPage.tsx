@@ -31,6 +31,7 @@ import {
   hasBreakGlassAccount,
   hasPendingIdpInvite,
   isOrganizationReadyForLogin,
+  resolveBreakGlassUsername,
   type OrganizationActivationStep,
   type RegisteredOrganization,
 } from '../../providerAdmin/organizations'
@@ -462,7 +463,7 @@ export function OrganizationDetailsPage({
                     clickTip="Username copied"
                     textAriaLabel="Break-glass username"
                   >
-                    {organization.breakGlassUsername as string}
+                    {resolveBreakGlassUsername(organization)}
                   </ClipboardCopy>
                   <Content
                     component="p"

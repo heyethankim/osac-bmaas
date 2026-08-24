@@ -232,6 +232,13 @@ export type BreakGlassIssuePatch = Pick<
 
 export function generateBreakGlassUsername(slug: string): string {
   const normalized = slug.trim().toLowerCase() || 'org'
+  if (
+    normalized === 'evergreen' ||
+    normalized === 'bluesolace' ||
+    normalized === 'bluesolace-financial-group'
+  ) {
+    return 'breakglass-bluesolace'
+  }
   return `breakglass-${normalized}`
 }
 
@@ -247,6 +254,16 @@ export function generateBreakGlassPassword(slug: string): string {
   return `BG-${normalized}-${token}`
 }
 
+export function resolveBreakGlassUsername(
+  organization: Pick<RegisteredOrganization, 'slug' | 'breakGlassUsername'>,
+): string {
+  const existing = organization.breakGlassUsername?.trim()
+  if (!existing || existing.toLowerCase() === 'breakglass-evergreen') {
+    return generateBreakGlassUsername(organization.slug)
+  }
+  return existing
+}
+
 export function hasBreakGlassAccount(organization: RegisteredOrganization): boolean {
   return Boolean(organization.breakGlassUsername?.trim() && organization.breakGlassPassword?.trim())
 }
@@ -258,8 +275,7 @@ export function buildBreakGlassIssuePatch(
   >,
   custodian: BreakGlassCustodian,
 ): BreakGlassIssuePatch {
-  const username =
-    organization.breakGlassUsername?.trim() || generateBreakGlassUsername(organization.slug)
+  const username = resolveBreakGlassUsername(organization)
   const password =
     organization.breakGlassPassword?.trim() || generateBreakGlassPassword(organization.slug)
 

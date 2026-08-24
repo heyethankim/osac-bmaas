@@ -39,6 +39,7 @@ import {
   hasBreakGlassAccount,
   hasPendingIdpInvite,
   normalizeAdditionalDomains,
+  resolveBreakGlassUsername,
   type RegisteredOrganization,
 } from '../../providerAdmin/organizations'
 import { getProviderRegisteredOrganizations, updateProviderRegisteredOrganization } from '../../providerSetup/storage'
@@ -118,7 +119,7 @@ function toIssuedBreakGlass(organization: RegisteredOrganization): IssuedBreakGl
   }
 
   return {
-    username: organization.breakGlassUsername as string,
+    username: resolveBreakGlassUsername(organization),
     password: organization.breakGlassPassword as string,
     custodianName: organization.breakGlassName?.trim() || 'IdP manager',
     custodianEmail: organization.breakGlassEmail,
