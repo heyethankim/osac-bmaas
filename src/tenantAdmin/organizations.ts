@@ -112,6 +112,7 @@ export function getWorkspaceOrganization(slug: string): RegisteredOrganization {
     additionalTenantAdmins: [],
     invitedTenantUserEmails: [],
     identityProviderConnected: false,
+    identityProviderConnectedBy: null,
     identityProviderName: null,
     identityProviderDisplayName: null,
     identityProviderProtocol: null,

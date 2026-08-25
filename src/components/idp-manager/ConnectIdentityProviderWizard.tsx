@@ -33,6 +33,7 @@ import {
   buildDefaultAdditionalDomains,
   getTakenEmailDomains,
   identityProviderProtocolLabel,
+  type IdentityProviderConnectedBy,
   type OrganizationIdentityProvider,
   type RegisteredOrganization,
 } from '../../providerAdmin/organizations'
@@ -54,6 +55,7 @@ type ConnectIdentityProviderWizardProps = {
   isOpen: boolean
   organization: RegisteredOrganization
   editingProvider: OrganizationIdentityProvider | null
+  connectedBy: IdentityProviderConnectedBy
   breadcrumbAncestors?: readonly NetworkInventoryCreateBreadcrumbAncestor[]
   onClose: () => void
   onSaved: (organization: RegisteredOrganization) => void
@@ -63,6 +65,7 @@ export function ConnectIdentityProviderWizard({
   isOpen,
   organization,
   editingProvider,
+  connectedBy,
   breadcrumbAncestors,
   onClose,
   onSaved,
@@ -125,7 +128,7 @@ export function ConnectIdentityProviderWizard({
           form,
           additionalDomains,
         )
-      : addOrganizationIdentityProvider(organization, form, additionalDomains)
+      : addOrganizationIdentityProvider(organization, form, additionalDomains, connectedBy)
   }
 
   const handleSave = () => {

@@ -5,10 +5,6 @@ import {
   BreadcrumbItem,
   Button,
   Content,
-  DescriptionList,
-  DescriptionListDescription,
-  DescriptionListGroup,
-  DescriptionListTerm,
   EmptyState,
   EmptyStateActions,
   EmptyStateBody,
@@ -39,6 +35,7 @@ import {
 import {
   identityProviderProtocolLabel,
   resolveOrganizationIdentityProviders,
+  type IdentityProviderConnectedBy,
   type OrganizationIdentityProvider,
   type RegisteredOrganization,
 } from '../../providerAdmin/organizations'
@@ -48,6 +45,7 @@ type IdpManagerIdentityProviderPageProps = {
   onOrganizationChange: (organization: RegisteredOrganization) => void
   onBackToTenants?: () => void
   onBackToTenantDetails?: () => void
+  identityProviderConnectedBy: IdentityProviderConnectedBy
 }
 
 export function IdpManagerIdentityProviderPage({
@@ -55,14 +53,13 @@ export function IdpManagerIdentityProviderPage({
   onOrganizationChange,
   onBackToTenants,
   onBackToTenantDetails,
+  identityProviderConnectedBy,
 }: IdpManagerIdentityProviderPageProps) {
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [editingProvider, setEditingProvider] = useState<OrganizationIdentityProvider | null>(
     null,
   )
   const [providerPendingRemove, setProviderPendingRemove] =
-    useState<OrganizationIdentityProvider | null>(null)
-  const [providerPendingView, setProviderPendingView] =
     useState<OrganizationIdentityProvider | null>(null)
   const [searchValue, setSearchValue] = useState('')
   const [selectedProtocol, setSelectedProtocol] =
@@ -137,10 +134,6 @@ export function IdpManagerIdentityProviderPage({
 
   const getProviderActions = (provider: OrganizationIdentityProvider): IAction[] => [
     {
-      title: 'View IdP information',
-      onClick: () => setProviderPendingView(provider),
-    },
-    {
       title: 'Edit',
       onClick: () => openEditWizard(provider),
     },
@@ -160,6 +153,7 @@ export function IdpManagerIdentityProviderPage({
         isOpen
         organization={organization}
         editingProvider={editingProvider}
+        connectedBy={identityProviderConnectedBy}
         breadcrumbAncestors={
           onBackToTenants
             ? [
@@ -365,84 +359,6 @@ export function IdpManagerIdentityProviderPage({
           )}
         </>
       )}
-
-      <Modal
-        variant={ModalVariant.medium}
-        isOpen={providerPendingView !== null}
-        onClose={() => setProviderPendingView(null)}
-        aria-labelledby="identity-provider-information-title"
-        aria-describedby="identity-provider-information-description"
-      >
-        <ModalHeader
-          title="IdP information"
-          labelId="identity-provider-information-title"
-        />
-        <ModalBody>
-          {providerPendingView ? (
-            <DescriptionList
-              isCompact
-              className="idp-manager-identity-provider__details"
-              aria-labelledby="identity-provider-information-title"
-              id="identity-provider-information-description"
-            >
-              <DescriptionListGroup>
-                <DescriptionListTerm>Display name</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {providerPendingView.displayName}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Status</DescriptionListTerm>
-                <DescriptionListDescription>
-                  <Label color="green" isCompact>
-                    Connected
-                  </Label>
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Protocol</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {identityProviderProtocolLabel(providerPendingView.protocol)}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>
-                  {providerPendingView.protocol === 'SAML' ? 'Metadata URL' : 'Issuer URL'}
-                </DescriptionListTerm>
-                <DescriptionListDescription>
-                  {providerPendingView.issuerUrl}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>
-                  {providerPendingView.protocol === 'SAML' ? 'Entity ID' : 'Client ID'}
-                </DescriptionListTerm>
-                <DescriptionListDescription>
-                  {providerPendingView.clientId}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-            </DescriptionList>
-          ) : null}
-        </ModalBody>
-        <ModalFooter>
-          <Button variant="primary" onClick={() => setProviderPendingView(null)}>
-            Close
-          </Button>
-          <Button
-            variant="link"
-            onClick={() => {
-              if (!providerPendingView) {
-                return
-              }
-              const provider = providerPendingView
-              setProviderPendingView(null)
-              openEditWizard(provider)
-            }}
-          >
-            Edit
-          </Button>
-        </ModalFooter>
-      </Modal>
 
       <Modal
         variant={ModalVariant.small}

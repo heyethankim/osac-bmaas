@@ -3,6 +3,7 @@ import {
   buildDefaultIdentityProviderClientId,
   normalizeAdditionalDomains,
   resolveOrganizationIdentityProviders,
+  type IdentityProviderConnectedBy,
   type OrganizationIdentityProvider,
   type RegisteredOrganization,
 } from '../providerAdmin/organizations'
@@ -45,11 +46,16 @@ function toIdentityProvider(
 
 function primaryIdentityProviderPatch(
   providers: OrganizationIdentityProvider[],
+  options?: {
+    existingConnectedBy?: IdentityProviderConnectedBy | null
+    connectedBy?: IdentityProviderConnectedBy
+  },
 ): Partial<RegisteredOrganization> {
   const primary = providers[0]
   if (!primary) {
     return {
       identityProviderConnected: false,
+      identityProviderConnectedBy: null,
       identityProviderName: null,
       identityProviderDisplayName: null,
       identityProviderProtocol: null,
@@ -60,6 +66,8 @@ function primaryIdentityProviderPatch(
 
   return {
     identityProviderConnected: true,
+    identityProviderConnectedBy:
+      options?.existingConnectedBy ?? options?.connectedBy ?? 'provider-admin',
     identityProviderName: primary.name,
     identityProviderDisplayName: primary.displayName,
     identityProviderProtocol: primary.protocol,
@@ -74,6 +82,7 @@ export function addOrganizationIdentityProvider(
   organization: RegisteredOrganization,
   draft: IdentityProviderDraft,
   additionalDomains: string[],
+  connectedBy: IdentityProviderConnectedBy,
 ): RegisteredOrganization | null {
   const nextProviders = [
     ...resolveOrganizationIdentityProviders(organization),
@@ -83,7 +92,10 @@ export function addOrganizationIdentityProvider(
   return updateProviderRegisteredOrganization(organization.id, {
     identityProviders: nextProviders,
     additionalDomains: normalizeAdditionalDomains(additionalDomains, organization.primaryDomain),
-    ...primaryIdentityProviderPatch(nextProviders),
+    ...primaryIdentityProviderPatch(nextProviders, {
+      existingConnectedBy: organization.identityProviderConnectedBy,
+      connectedBy,
+    }),
   })
 }
 
@@ -107,7 +119,9 @@ export function updateOrganizationIdentityProvider(
   return updateProviderRegisteredOrganization(organization.id, {
     identityProviders: nextProviders,
     additionalDomains: normalizeAdditionalDomains(additionalDomains, organization.primaryDomain),
-    ...primaryIdentityProviderPatch(nextProviders),
+    ...primaryIdentityProviderPatch(nextProviders, {
+      existingConnectedBy: organization.identityProviderConnectedBy,
+    }),
   })
 }
 
@@ -123,7 +137,9 @@ export function removeOrganizationIdentityProvider(
 
   return updateProviderRegisteredOrganization(organization.id, {
     identityProviders: nextProviders,
-    ...primaryIdentityProviderPatch(nextProviders),
+    ...primaryIdentityProviderPatch(nextProviders, {
+      existingConnectedBy: organization.identityProviderConnectedBy,
+    }),
   })
 }
 

@@ -242,6 +242,7 @@ export function RegisterOrganizationWizard({
       additionalTenantAdmins: [],
       invitedTenantUserEmails: [],
       identityProviderConnected: false,
+      identityProviderConnectedBy: null,
       identityProviderName: null,
       identityProviderDisplayName: null,
       identityProviderProtocol: null,

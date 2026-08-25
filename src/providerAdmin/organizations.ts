@@ -43,6 +43,10 @@ export type OrganizationIdentityProvider = {
   clientId: string
 }
 
+export type IdpInviteStatus = 'none' | 'pending' | 'accepted' | 'expired'
+
+export type IdentityProviderConnectedBy = 'provider-admin' | 'idp-manager'
+
 export type RegisteredOrganization = {
   id: string
   name: string
@@ -72,6 +76,8 @@ export type RegisteredOrganization = {
   invitedTenantUserEmails: string[]
   /** Org-scoped IdP connected after registration. */
   identityProviderConnected: boolean
+  /** Who completed the first IdP connection. Null until connected. */
+  identityProviderConnectedBy: IdentityProviderConnectedBy | null
   identityProviderName: string | null
   identityProviderDisplayName: string | null
   identityProviderProtocol: 'OIDC' | 'SAML' | null
@@ -101,7 +107,28 @@ export type RegisteredOrganization = {
   createdAt: string
 }
 
-export type IdpInviteStatus = 'none' | 'pending' | 'accepted' | 'expired'
+export function resolveIdentityProviderConnectedBy(organization: {
+  identityProviderConnected: boolean
+  identityProviderConnectedBy?: IdentityProviderConnectedBy | null
+  idpInviteStatus: IdpInviteStatus
+}): IdentityProviderConnectedBy | null {
+  if (!organization.identityProviderConnected) {
+    return null
+  }
+  if (
+    organization.identityProviderConnectedBy === 'provider-admin' ||
+    organization.identityProviderConnectedBy === 'idp-manager'
+  ) {
+    return organization.identityProviderConnectedBy
+  }
+  return organization.idpInviteStatus === 'accepted' ? 'idp-manager' : 'provider-admin'
+}
+
+export function identityProviderConnectedByLabel(
+  connectedBy: IdentityProviderConnectedBy,
+): string {
+  return connectedBy === 'idp-manager' ? 'IdP manager' : 'Provider admin'
+}
 
 export const IDP_INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -666,7 +693,7 @@ export const ORGANIZATION_SETUP_NEXT_ACTION_LABEL: Record<OrganizationSetupNextA
   rbac: 'Assign roles',
 }
 
-export type OrganizationActivationStepId = 'registered' | 'idp' | 'rbac' | 'ready'
+export type OrganizationActivationStepId = 'registered' | 'idp' | 'rbac'
 
 export type OrganizationActivationStep = {
   id: OrganizationActivationStepId
@@ -680,8 +707,6 @@ export function getOrganizationActivationSteps(
 ): OrganizationActivationStep[] {
   const idpComplete = organization.identityProviderConnected
   const rbacComplete = organization.rbacConfigured
-  // Org is ready for tenant login once IdP is connected; roles are optional.
-  const readyComplete = organization.status === 'Active' || idpComplete
 
   return [
     {
@@ -702,11 +727,6 @@ export function getOrganizationActivationSteps(
       id: 'rbac',
       label: rbacComplete ? 'Roles defined' : 'Assign roles (optional)',
       complete: rbacComplete,
-    },
-    {
-      id: 'ready',
-      label: 'Ready for tenant login',
-      complete: readyComplete,
     },
   ]
 }
@@ -817,6 +837,7 @@ export function createDemoBlueSolaceOnboardingOrganization(): RegisteredOrganiza
     additionalTenantAdmins: [],
     invitedTenantUserEmails: [],
     identityProviderConnected: false,
+    identityProviderConnectedBy: null,
     identityProviderName: null,
     identityProviderDisplayName: null,
     identityProviderProtocol: null,
@@ -886,6 +907,7 @@ export function createDemoNorthSummitBankOrganization(
       'tbrooks@northsummitbank.com',
     ],
     identityProviderConnected: true,
+    identityProviderConnectedBy: 'provider-admin',
     identityProviderName: buildDemoIdentityProviderName('OIDC', primaryDomain),
     identityProviderDisplayName: DEMO_NORTH_SUMMIT_BANK_IDP_DISPLAY_NAME,
     identityProviderProtocol: 'OIDC',
@@ -968,6 +990,7 @@ export function createDemoHarborlineCapitalOrganization(
       `jwu@${primaryDomain}`,
     ],
     identityProviderConnected: true,
+    identityProviderConnectedBy: 'provider-admin',
     identityProviderName: buildDemoIdentityProviderName('SAML', primaryDomain),
     identityProviderDisplayName: 'harborline-capital-idp',
     identityProviderProtocol: 'SAML',

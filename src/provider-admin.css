@@ -4595,11 +4595,7 @@
   font-size: var(--pf-t--global--font--size--body--sm);
   color: var(--pf-t--global--text--color--link--default);
   text-decoration: none;
-}
-
-.provider-admin-organizations__osac-url:hover {
-  color: var(--pf-t--global--text--color--link--hover);
-  text-decoration: underline;
+  cursor: default;
 }
 
 .provider-admin-organizations__osac-url code {

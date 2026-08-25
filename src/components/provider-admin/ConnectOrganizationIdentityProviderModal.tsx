@@ -167,6 +167,8 @@ export function ConnectOrganizationIdentityProviderModal({
 
     const updated = updateProviderRegisteredOrganization(organization.id, {
       identityProviderConnected: true,
+      identityProviderConnectedBy:
+        organization.identityProviderConnectedBy ?? 'provider-admin',
       identityProviderName: buildDemoIdentityProviderName(
         form.protocol,
         organization.primaryDomain,

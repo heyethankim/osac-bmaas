@@ -248,6 +248,8 @@ export function SetupIdentityProviderWizard({
 
     const updated = updateProviderRegisteredOrganization(organization.id, {
       identityProviderConnected: true,
+      identityProviderConnectedBy:
+        organization.identityProviderConnectedBy ?? 'provider-admin',
       identityProviderName: buildDemoIdentityProviderName(
         connectForm.protocol,
         organization.primaryDomain,

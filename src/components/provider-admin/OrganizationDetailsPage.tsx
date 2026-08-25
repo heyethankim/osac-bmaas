@@ -3,7 +3,6 @@ import { PendingIcon } from '@patternfly/react-icons/dist/esm/icons/pending-icon
 import { EllipsisVIcon } from '@patternfly/react-icons/dist/esm/icons/ellipsis-v-icon'
 import { PlusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/plus-circle-icon'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import {
   Button,
   ClipboardCopy,
@@ -31,10 +30,11 @@ import {
   formatOrganizationRolesAssignmentSummary,
   getOrganizationActivationSteps,
   getOrganizationOsacLoginPath,
-  getOrganizationOsacLoginRoute,
   hasPendingIdpInvite,
+  identityProviderConnectedByLabel,
   isOrganizationReadyForLogin,
   resolveBreakGlassUsername,
+  resolveIdentityProviderConnectedBy,
   resolveOrganizationCompanyLogo,
   type OrganizationActivationStep,
   type RegisteredOrganization,
@@ -114,8 +114,7 @@ function AccountPersonRow({
           {getAssignableTenantRole(admin.roleId).label}
         </Label>
       </div>
-      {admin.isPrimary ? null : (
-        <Dropdown
+      <Dropdown
           isOpen={isOpen}
           onOpenChange={setIsOpen}
           onSelect={() => setIsOpen(false)}
@@ -141,7 +140,6 @@ function AccountPersonRow({
             </DropdownItem>
           </DropdownList>
         </Dropdown>
-      )}
     </li>
   )
 }
@@ -158,6 +156,11 @@ function ActivationStepRow({
   onReviewRoles?: (organization: RegisteredOrganization) => void
 }) {
   const idpMeta = step.id === 'idp' ? getIdentityProviderStepMeta(organization) : null
+  const connectedBy =
+    step.id === 'idp' ? resolveIdentityProviderConnectedBy(organization) : null
+  const idpConnectedByLabel = connectedBy
+    ? identityProviderConnectedByLabel(connectedBy)
+    : null
   const rolesMeta =
     step.id === 'rbac' && step.complete
       ? formatOrganizationRolesAssignmentSummary(organization)
@@ -212,9 +215,17 @@ function ActivationStepRow({
         <span className="pf-v6-screen-reader">
           {step.complete ? ', complete' : ', not complete'}
         </span>
-        {idpMeta ? (
+        {idpMeta || idpConnectedByLabel ? (
           <Content component="p" className="provider-admin-organizations__status-step-meta">
-            {organization.identityProviderConnected ? <code>{idpMeta}</code> : idpMeta}
+            {idpMeta ? (
+              organization.identityProviderConnected ? (
+                <code>{idpMeta}</code>
+              ) : (
+                idpMeta
+              )
+            ) : null}
+            {idpMeta && idpConnectedByLabel ? ' · ' : null}
+            {idpConnectedByLabel}
           </Content>
         ) : null}
         {rolesMeta ? (
@@ -227,24 +238,12 @@ function ActivationStepRow({
   )
 }
 
-function isNorthSummitBankTenant(organization: RegisteredOrganization): boolean {
-  const slug = organization.slug.trim().toLowerCase()
-  const name = organization.name.trim().toLowerCase()
-  return slug === 'northsummit' || slug === 'northstar' || name === 'north-summit-bank'
-}
-
 function getDetailsBreakGlassUsername(organization: RegisteredOrganization): string | null {
+  if (resolveIdentityProviderConnectedBy(organization) === 'provider-admin') {
+    return null
+  }
   const username = resolveBreakGlassUsername(organization)
-  if (
-    isNorthSummitBankTenant(organization) &&
-    username.trim().toLowerCase() === 'breakglass-bluesolace'
-  ) {
-    return null
-  }
-  if (/^BG-bluesolace-[a-z0-9]{6}$/i.test(username.trim())) {
-    return null
-  }
-  return username
+  return username.trim() || null
 }
 
 export function OrganizationDetailsPage({
@@ -385,12 +384,9 @@ export function OrganizationDetailsPage({
                 <DescriptionListGroup>
                   <DescriptionListTerm>OSAC URL</DescriptionListTerm>
                   <DescriptionListDescription>
-                    <Link
-                      to={getOrganizationOsacLoginRoute(organization.slug)}
-                      className="provider-admin-organizations__osac-url"
-                    >
+                    <span className="provider-admin-organizations__osac-url">
                       <code>{getOrganizationOsacLoginPath(organization.slug)}</code>
-                    </Link>
+                    </span>
                   </DescriptionListDescription>
                 </DescriptionListGroup>
                 <DescriptionListGroup>
@@ -483,6 +479,7 @@ export function OrganizationDetailsPage({
                 </ul>
               )}
             </div>
+            {showBreakGlassAccount && breakGlassUsername ? (
             <div className="entity-details-page__column-block">
               <Title
                 headingLevel="h2"
@@ -491,33 +488,28 @@ export function OrganizationDetailsPage({
               >
                 Break-glass account
               </Title>
-              {showBreakGlassAccount && breakGlassUsername ? (
-                <div className="provider-admin-organizations__break-glass">
-                  <FormGroup label="Username" fieldId="tenant-break-glass-username">
-                    <ClipboardCopy
-                      id="tenant-break-glass-username"
-                      isReadOnly
-                      isCode
-                      hoverTip="Copy username"
-                      clickTip="Username copied"
-                      textAriaLabel="Break-glass username"
-                    >
-                      {breakGlassUsername}
-                    </ClipboardCopy>
-                  </FormGroup>
-                  <Content
-                    component="p"
-                    className="provider-admin-organizations__secondary-cell"
+              <div className="provider-admin-organizations__break-glass">
+                <FormGroup label="Username" fieldId="tenant-break-glass-username">
+                  <ClipboardCopy
+                    id="tenant-break-glass-username"
+                    isReadOnly
+                    isCode
+                    hoverTip="Copy username"
+                    clickTip="Username copied"
+                    textAriaLabel="Break-glass username"
                   >
-                    Local login for the IdP manager. Does not use the tenant IdP.
-                  </Content>
-                </div>
-              ) : (
-                <Content component="p" className="provider-admin-organizations__secondary-cell">
-                  —
+                    {breakGlassUsername}
+                  </ClipboardCopy>
+                </FormGroup>
+                <Content
+                  component="p"
+                  className="provider-admin-organizations__secondary-cell"
+                >
+                  Local login for the IdP manager. Does not use the tenant IdP.
                 </Content>
-              )}
+              </div>
             </div>
+            ) : null}
           </div>
         </div>
       </div>

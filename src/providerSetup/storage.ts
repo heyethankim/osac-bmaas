@@ -33,6 +33,7 @@ import {
   hydrateIdentityProvidersFromOrganizationFields,
   normalizeAdditionalDomains,
   normalizeOrganizationIdentityProviders,
+  resolveIdentityProviderConnectedBy,
   type OrganizationRoleAssignment,
   type RegisteredOrganization,
 } from '../providerAdmin/organizations'
@@ -1487,6 +1488,17 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
     // Name is the source of truth — clears stub-only "connected" flags from earlier demos.
     identityProviderConnected:
       typeof org.identityProviderName === 'string' && Boolean(org.identityProviderName.trim()),
+    identityProviderConnectedBy: resolveIdentityProviderConnectedBy({
+      identityProviderConnected:
+        typeof org.identityProviderName === 'string' && Boolean(org.identityProviderName.trim()),
+      identityProviderConnectedBy: org.identityProviderConnectedBy,
+      idpInviteStatus:
+        org.idpInviteStatus === 'pending' ||
+        org.idpInviteStatus === 'accepted' ||
+        org.idpInviteStatus === 'expired'
+          ? org.idpInviteStatus
+          : 'none',
+    }),
     additionalTenantAdmins: Array.isArray(org.additionalTenantAdmins)
       ? org.additionalTenantAdmins
           .filter(
@@ -1577,6 +1589,7 @@ export function getProviderRegisteredOrganizations(): RegisteredOrganization[] {
         original.identityProviderDisplayName !== tenant.identityProviderDisplayName ||
         original.identityProviderIssuerUrl !== tenant.identityProviderIssuerUrl ||
         original.identityProviderClientId !== tenant.identityProviderClientId ||
+        original.identityProviderConnectedBy !== tenant.identityProviderConnectedBy ||
         original.tenantAdminName !== tenant.tenantAdminName ||
         original.tenantAdminEmail !== tenant.tenantAdminEmail ||
         original.breakGlassUsername !== tenant.breakGlassUsername ||
@@ -1782,6 +1795,7 @@ export function ensureProviderDemoOrganizations(): RegisteredOrganization[] {
           idpInviteSentAt: pendingInviteSource.idpInviteSentAt,
           idpInviteExpiresAt: pendingInviteSource.idpInviteExpiresAt,
           identityProviderConnected: pendingInviteSource.identityProviderConnected,
+          identityProviderConnectedBy: pendingInviteSource.identityProviderConnectedBy,
           identityProviderName: pendingInviteSource.identityProviderName,
           identityProviderDisplayName: pendingInviteSource.identityProviderDisplayName,
           identityProviderProtocol: pendingInviteSource.identityProviderProtocol,

@@ -77,10 +77,6 @@ function getOrganizationActions(
       title: 'View details',
       onClick: () => onViewDetails(organization),
     },
-    {
-      title: 'Edit',
-      onClick: () => onEdit(organization),
-    },
     ...(organization.identityProviderConnected
       ? [
           {
@@ -89,6 +85,10 @@ function getOrganizationActions(
           },
         ]
       : []),
+    {
+      title: 'Edit',
+      onClick: () => onEdit(organization),
+    },
     {
       isSeparator: true,
     },
@@ -453,6 +453,7 @@ export function ProviderAdminOrganizationsPage({
       ) : idpDirectoryOrganization !== null ? (
         <IdpManagerIdentityProviderPage
           organization={idpDirectoryOrganization}
+          identityProviderConnectedBy="provider-admin"
           onOrganizationChange={(organization) => {
             refreshOrganizations(organization.id)
             setIdpDirectoryOrganization(organization)

@@ -109,6 +109,7 @@ function IdpManagerWorkspaceSession({ orgSlug }: { orgSlug: string }) {
       <IdpManagerIdentityProviderPage
         key={organization.id}
         organization={organization}
+        identityProviderConnectedBy="idp-manager"
         onOrganizationChange={setOrganization}
       />
     )
