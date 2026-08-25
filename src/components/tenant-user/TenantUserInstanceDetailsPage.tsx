@@ -1866,7 +1866,7 @@ function InstanceProjectsSection({
                 {owningProject ? (
                   <Content component="p" className="tenant-admin-project-details__meta">
                     {getTenantProjectEnvironmentLabel(owningProject.environmentType)} ·{' '}
-                    {getTenantProjectMemberCountLabel(owningProject)}
+                    {getTenantProjectMemberCountLabel(projects, owningProject)}
                   </Content>
                 ) : null}
               </div>

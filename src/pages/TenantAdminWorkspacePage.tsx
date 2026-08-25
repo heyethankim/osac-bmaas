@@ -324,6 +324,7 @@ export function TenantAdminWorkspacePage() {
             projects={projects}
             instances={instances}
             onProjectsChange={setProjects}
+            onInstancesChange={setInstances}
             openProjectId={openProjectId}
             onOpenProjectConsumed={() => setOpenProjectId(null)}
             onNavigateToInstance={(instance) => {

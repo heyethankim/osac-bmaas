@@ -102,7 +102,7 @@ type TenantUserInstancesPageProps = {
   activeNavId?: string
   /** Opens the matching catalog item detail page in Catalog. */
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
-  /** Opens the matching project detail page in Projects & teams. */
+  /** Opens the matching project detail page in Projects. */
   onNavigateToProject?: (project: TenantProject) => void
   /** Opens this instance's detail page when navigating from another workspace view. */
   openInstanceId?: string | null

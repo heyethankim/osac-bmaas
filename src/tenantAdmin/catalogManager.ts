@@ -74,11 +74,11 @@ export const TENANT_CATALOG_MANAGER_DEMO = {
   lede: "Filter the provider's global catalog down to safe, approved offerings.",
   accessLabel: 'Access',
   accessDetailNote:
-    'Available to all tenant members by default. Assign projects or teams if you want to restrict who can launch this item.',
+    'Available to all tenant members by default. Assign projects if you want to restrict who can launch this item.',
   accessDefaultLabel: 'All members',
   accessViewDetailsLabel: 'Details',
-  addProjectsLinkLabel: 'Set up projects & teams',
-  manageProjectsLinkLabel: 'Manage projects & teams',
+  addProjectsLinkLabel: 'Set up projects',
+  manageProjectsLinkLabel: 'Manage projects',
   drawerAccessLede:
     'Review provider-configured networking and access for this offering.',
   networkingLabel: 'Networking',

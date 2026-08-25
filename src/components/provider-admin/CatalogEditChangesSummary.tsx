@@ -6,17 +6,21 @@ import {
   DescriptionListTerm,
   Title,
 } from '@patternfly/react-core'
-import type { CatalogEditChangeRow } from '../../catalog/catalogEditDiff'
+import type { EditChangeRow } from '../../shared/editChangeRow'
 
 type CatalogEditChangesSummaryProps = {
-  changes: CatalogEditChangeRow[]
+  changes: EditChangeRow[]
+  emptyMessage?: string
 }
 
-export function CatalogEditChangesSummary({ changes }: CatalogEditChangesSummaryProps) {
+export function CatalogEditChangesSummary({
+  changes,
+  emptyMessage = 'No changes yet. Update a step to see a before-and-after summary here.',
+}: CatalogEditChangesSummaryProps) {
   if (changes.length === 0) {
     return (
       <Content component="p" className="provider-setup-template__edit-changes-empty">
-        No changes yet. Update a step to see a before-and-after summary here.
+        {emptyMessage}
       </Content>
     )
   }

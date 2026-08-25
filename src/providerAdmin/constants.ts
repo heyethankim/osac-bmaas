@@ -26,7 +26,7 @@ export type ProviderAdminNavItem = {
 export const PROVIDER_ADMIN_NAV_ITEMS: ProviderAdminNavItem[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'catalog', label: 'Catalog' },
-  { id: 'projects-teams', label: 'Projects & teams' },
+  { id: 'projects-teams', label: 'Projects' },
 ]
 
 export const PROVIDER_ADMIN_SERVICES_NAV_ITEMS: ProviderAdminNavItem[] = [

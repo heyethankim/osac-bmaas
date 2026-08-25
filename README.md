@@ -3,7 +3,7 @@
 PatternFly React prototype for Bare Metal-as-a-Service flows:
 
 - **Provider admin** — catalog, BMaaS templates, external IP pools, organizations
-- **Tenant admin** — catalog manager, projects & teams
+- **Tenant admin** — catalog manager, projects
 - **Tenant user** — catalog, launch instance, my instances
 
 ## Local development

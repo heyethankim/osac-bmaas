@@ -41,7 +41,7 @@ export const TENANT_USER_NAV_ITEMS: TenantNavItem[] = [
     label: 'Services',
     children: TENANT_USER_SERVICES_NAV_ITEMS,
   },
-  { id: 'projects-teams', label: 'Projects & teams' },
+  { id: 'projects-teams', label: 'Projects' },
   {
     id: 'networking',
     label: 'Networking',

@@ -3,6 +3,18 @@ import { getTenantAdminLeafNavItems } from './constants'
 import type { TenantCatalogItem } from './catalogItems'
 import type { OrganizationExternalIpPool, TenantProject } from './projects'
 import {
+  DEMO_FRAUD_DETECTION_PROJECT_DESCRIPTION,
+  DEMO_FRAUD_DETECTION_PROJECT_ENVIRONMENT,
+  DEMO_FRAUD_DETECTION_PROJECT_ID,
+  DEMO_FRAUD_DETECTION_PROJECT_NAME,
+  DEMO_NESTED_DEV_PROJECT_DESCRIPTION,
+  DEMO_NESTED_DEV_PROJECT_ENVIRONMENT,
+  DEMO_NESTED_DEV_PROJECT_ID,
+  DEMO_NESTED_DEV_PROJECT_NAME,
+  DEMO_NESTED_PROJECT_DESCRIPTION,
+  DEMO_NESTED_PROJECT_ENVIRONMENT,
+  DEMO_NESTED_PROJECT_ID,
+  DEMO_NESTED_PROJECT_NAME,
   DEMO_TENANT_PROJECT_DESCRIPTION,
   DEMO_TENANT_PROJECT_DESCRIPTION_02,
   DEMO_TENANT_PROJECT_ENVIRONMENT,
@@ -11,11 +23,24 @@ import {
   DEMO_TENANT_PROJECT_ID_02,
   DEMO_TENANT_PROJECT_NAME,
   DEMO_TENANT_PROJECT_NAME_02,
+  collectDescendantProjectIds,
   isTenantProjectEnvironment,
   migrateTenantProjectMemberRole,
 } from './projects'
 
 export {
+  DEMO_FRAUD_DETECTION_PROJECT_DESCRIPTION,
+  DEMO_FRAUD_DETECTION_PROJECT_ENVIRONMENT,
+  DEMO_FRAUD_DETECTION_PROJECT_ID,
+  DEMO_FRAUD_DETECTION_PROJECT_NAME,
+  DEMO_NESTED_DEV_PROJECT_DESCRIPTION,
+  DEMO_NESTED_DEV_PROJECT_ENVIRONMENT,
+  DEMO_NESTED_DEV_PROJECT_ID,
+  DEMO_NESTED_DEV_PROJECT_NAME,
+  DEMO_NESTED_PROJECT_DESCRIPTION,
+  DEMO_NESTED_PROJECT_ENVIRONMENT,
+  DEMO_NESTED_PROJECT_ID,
+  DEMO_NESTED_PROJECT_NAME,
   DEMO_TENANT_PROJECT_DESCRIPTION,
   DEMO_TENANT_PROJECT_DESCRIPTION_02,
   DEMO_TENANT_PROJECT_ENVIRONMENT,
@@ -272,6 +297,10 @@ function normalizeTenantProject(value: TenantProject): TenantProject {
     externalIpPoolCidr: project.externalIpPoolCidr ?? null,
     catalogItems,
     members,
+    parentProjectId:
+      project.parentProjectId === undefined || project.parentProjectId === null
+        ? null
+        : project.parentProjectId,
     createdAt: project.createdAt,
   }
 }
@@ -354,7 +383,7 @@ function createDemoTenantProject(): TenantProject {
     name: DEMO_TENANT_PROJECT_NAME,
     description: DEMO_TENANT_PROJECT_DESCRIPTION,
     environmentType: DEMO_TENANT_PROJECT_ENVIRONMENT,
-    instanceQuota: 20,
+    instanceQuota: 10,
     externalIpPoolId: null,
     externalIpPoolName: null,
     externalIpPoolCidr: null,
@@ -369,7 +398,73 @@ function createDemoTenantProject(): TenantProject {
       },
     ],
     members: DEMO_TENANT_PROJECT_MEMBERS,
+    parentProjectId: null,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 12).toISOString(),
+  }
+}
+
+function createDemoNestedTenantProject(): TenantProject {
+  return {
+    id: DEMO_NESTED_PROJECT_ID,
+    name: DEMO_NESTED_PROJECT_NAME,
+    description: DEMO_NESTED_PROJECT_DESCRIPTION,
+    environmentType: DEMO_NESTED_PROJECT_ENVIRONMENT,
+    instanceQuota: 5,
+    externalIpPoolId: null,
+    externalIpPoolName: null,
+    externalIpPoolCidr: null,
+    catalogItems: [],
+    members: [
+      {
+        id: 'member_nested_viewer',
+        name: 'Chris Morgan',
+        email: 'chris@northsummitbank.com',
+        role: 'viewer',
+      },
+    ],
+    parentProjectId: DEMO_TENANT_PROJECT_ID,
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
+  }
+}
+
+function createDemoFeatureSandboxProject(): TenantProject {
+  return {
+    id: DEMO_NESTED_DEV_PROJECT_ID,
+    name: DEMO_NESTED_DEV_PROJECT_NAME,
+    description: DEMO_NESTED_DEV_PROJECT_DESCRIPTION,
+    environmentType: DEMO_NESTED_DEV_PROJECT_ENVIRONMENT,
+    instanceQuota: 2,
+    externalIpPoolId: null,
+    externalIpPoolName: null,
+    externalIpPoolCidr: null,
+    catalogItems: [],
+    members: [
+      {
+        id: 'member_feature_sandbox_viewer',
+        name: 'Jamie Patel',
+        email: 'jamie.patel@northsummitbank.com',
+        role: 'viewer',
+      },
+    ],
+    parentProjectId: DEMO_TENANT_PROJECT_ID_02,
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
+  }
+}
+
+function createDemoFraudDetectionProject(): TenantProject {
+  return {
+    id: DEMO_FRAUD_DETECTION_PROJECT_ID,
+    name: DEMO_FRAUD_DETECTION_PROJECT_NAME,
+    description: DEMO_FRAUD_DETECTION_PROJECT_DESCRIPTION,
+    environmentType: DEMO_FRAUD_DETECTION_PROJECT_ENVIRONMENT,
+    instanceQuota: 3,
+    externalIpPoolId: null,
+    externalIpPoolName: null,
+    externalIpPoolCidr: null,
+    catalogItems: [],
+    members: [DEMO_TENANT_PROJECT_MEMBERS[0]!],
+    parentProjectId: null,
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 8).toISOString(),
   }
 }
 
@@ -379,7 +474,7 @@ function createDemoTenantProject02(): TenantProject {
     name: DEMO_TENANT_PROJECT_NAME_02,
     description: DEMO_TENANT_PROJECT_DESCRIPTION_02,
     environmentType: DEMO_TENANT_PROJECT_ENVIRONMENT_02,
-    instanceQuota: 12,
+    instanceQuota: 4,
     externalIpPoolId: null,
     externalIpPoolName: null,
     externalIpPoolCidr: null,
@@ -390,6 +485,7 @@ function createDemoTenantProject02(): TenantProject {
       },
     ],
     members: DEMO_TENANT_PROJECT_MEMBERS.slice(0, 4),
+    parentProjectId: null,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
   }
 }
@@ -401,6 +497,7 @@ function withDemoProjectDefaults(project: TenantProject): TenantProject {
     name: DEMO_TENANT_PROJECT_NAME,
     description: DEMO_TENANT_PROJECT_DESCRIPTION,
     environmentType: DEMO_TENANT_PROJECT_ENVIRONMENT,
+    instanceQuota: 10,
     members:
       project.members.length < DEMO_TENANT_PROJECT_MEMBERS.length
         ? DEMO_TENANT_PROJECT_MEMBERS
@@ -415,8 +512,71 @@ function withDemoProject02Defaults(project: TenantProject): TenantProject {
     name: DEMO_TENANT_PROJECT_NAME_02,
     description: DEMO_TENANT_PROJECT_DESCRIPTION_02,
     environmentType: DEMO_TENANT_PROJECT_ENVIRONMENT_02,
+    instanceQuota: 4,
     members:
       project.members.length < 4 ? DEMO_TENANT_PROJECT_MEMBERS.slice(0, 4) : project.members,
+    parentProjectId: null,
+  }
+}
+
+function withDemoNestedProjectDefaults(project: TenantProject): TenantProject {
+  return {
+    ...project,
+    id: DEMO_NESTED_PROJECT_ID,
+    name: DEMO_NESTED_PROJECT_NAME,
+    description: DEMO_NESTED_PROJECT_DESCRIPTION,
+    environmentType: DEMO_NESTED_PROJECT_ENVIRONMENT,
+    parentProjectId: DEMO_TENANT_PROJECT_ID,
+    catalogItems: [],
+    members:
+      project.members.length === 0
+        ? [
+            {
+              id: 'member_nested_viewer',
+              name: 'Chris Morgan',
+              email: 'chris@northsummitbank.com',
+              role: 'viewer',
+            },
+          ]
+        : project.members,
+  }
+}
+
+function withDemoFeatureSandboxDefaults(project: TenantProject): TenantProject {
+  return {
+    ...project,
+    id: DEMO_NESTED_DEV_PROJECT_ID,
+    name: DEMO_NESTED_DEV_PROJECT_NAME,
+    description: DEMO_NESTED_DEV_PROJECT_DESCRIPTION,
+    environmentType: DEMO_NESTED_DEV_PROJECT_ENVIRONMENT,
+    parentProjectId: DEMO_TENANT_PROJECT_ID_02,
+    catalogItems: [],
+    members:
+      project.members.length === 0
+        ? [
+            {
+              id: 'member_feature_sandbox_viewer',
+              name: 'Jamie Patel',
+              email: 'jamie.patel@northsummitbank.com',
+              role: 'viewer',
+            },
+          ]
+        : project.members,
+  }
+}
+
+function withDemoFraudDetectionDefaults(project: TenantProject): TenantProject {
+  return {
+    ...project,
+    id: DEMO_FRAUD_DETECTION_PROJECT_ID,
+    name: DEMO_FRAUD_DETECTION_PROJECT_NAME,
+    description: DEMO_FRAUD_DETECTION_PROJECT_DESCRIPTION,
+    environmentType: DEMO_FRAUD_DETECTION_PROJECT_ENVIRONMENT,
+    instanceQuota: 3,
+    catalogItems: [],
+    parentProjectId: null,
+    members:
+      project.members.length === 0 ? [DEMO_TENANT_PROJECT_MEMBERS[0]!] : project.members,
   }
 }
 
@@ -444,6 +604,20 @@ export function ensureTenantDemoProjects(slug: string): TenantProject[] {
       const hasSecondaryDemo = current.some(
         (project) =>
           project.id === DEMO_TENANT_PROJECT_ID_02 || project.name === DEMO_TENANT_PROJECT_NAME_02,
+      )
+      const hasNestedDemo = current.some(
+        (project) =>
+          project.id === DEMO_NESTED_PROJECT_ID || project.name === DEMO_NESTED_PROJECT_NAME,
+      )
+      const hasFeatureSandboxDemo = current.some(
+        (project) =>
+          project.id === DEMO_NESTED_DEV_PROJECT_ID ||
+          project.name === DEMO_NESTED_DEV_PROJECT_NAME,
+      )
+      const hasFraudDetectionDemo = current.some(
+        (project) =>
+          project.id === DEMO_FRAUD_DETECTION_PROJECT_ID ||
+          project.name === DEMO_FRAUD_DETECTION_PROJECT_NAME,
       )
 
       let updated = current
@@ -478,6 +652,44 @@ export function ensureTenantDemoProjects(slug: string): TenantProject[] {
         changed = true
       }
 
+      if (hasNestedDemo) {
+        updated = updated.map((project) =>
+          project.id === DEMO_NESTED_PROJECT_ID || project.name === DEMO_NESTED_PROJECT_NAME
+            ? withDemoNestedProjectDefaults(project)
+            : project,
+        )
+        changed = changed || updated.some((project, index) => project !== current[index])
+      } else if (updated.some((project) => project.id === DEMO_TENANT_PROJECT_ID)) {
+        updated = [...updated, createDemoNestedTenantProject()]
+        changed = true
+      }
+
+      if (hasFeatureSandboxDemo) {
+        updated = updated.map((project) =>
+          project.id === DEMO_NESTED_DEV_PROJECT_ID ||
+          project.name === DEMO_NESTED_DEV_PROJECT_NAME
+            ? withDemoFeatureSandboxDefaults(project)
+            : project,
+        )
+        changed = changed || updated.some((project, index) => project !== current[index])
+      } else if (updated.some((project) => project.id === DEMO_TENANT_PROJECT_ID_02)) {
+        updated = [...updated, createDemoFeatureSandboxProject()]
+        changed = true
+      }
+
+      if (hasFraudDetectionDemo) {
+        updated = updated.map((project) =>
+          project.id === DEMO_FRAUD_DETECTION_PROJECT_ID ||
+          project.name === DEMO_FRAUD_DETECTION_PROJECT_NAME
+            ? withDemoFraudDetectionDefaults(project)
+            : project,
+        )
+        changed = changed || updated.some((project, index) => project !== current[index])
+      } else {
+        updated = [...updated, createDemoFraudDetectionProject()]
+        changed = true
+      }
+
       if (changed) {
         setTenantProjects(slug, updated)
         return updated
@@ -489,7 +701,13 @@ export function ensureTenantDemoProjects(slug: string): TenantProject[] {
     /* fall through to seed */
   }
 
-  const demoProjects = [createDemoTenantProject(), createDemoTenantProject02()]
+  const demoProjects = [
+    createDemoFraudDetectionProject(),
+    createDemoTenantProject02(),
+    createDemoFeatureSandboxProject(),
+    createDemoTenantProject(),
+    createDemoNestedTenantProject(),
+  ]
   setTenantProjects(slug, demoProjects)
   return demoProjects
 }
@@ -507,8 +725,18 @@ export function addTenantProject(slug: string, project: TenantProject): void {
   setTenantProjects(slug, [...current, project])
 }
 
+export function updateTenantProject(slug: string, project: TenantProject): TenantProject[] {
+  const updated = getTenantProjects(slug).map((entry) =>
+    entry.id === project.id ? project : entry,
+  )
+  setTenantProjects(slug, updated)
+  return updated
+}
+
 export function removeTenantProject(slug: string, projectId: string): TenantProject[] {
-  const updated = getTenantProjects(slug).filter((project) => project.id !== projectId)
+  const current = getTenantProjects(slug)
+  const idsToRemove = new Set([projectId, ...collectDescendantProjectIds(current, projectId)])
+  const updated = current.filter((project) => !idsToRemove.has(project.id))
   setTenantProjects(slug, updated)
   return updated
 }

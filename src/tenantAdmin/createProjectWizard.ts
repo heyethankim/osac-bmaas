@@ -1,4 +1,5 @@
 import type {
+  TenantProject,
   TenantProjectCatalogItem,
   TenantProjectEnvironment,
   TenantProjectMemberRole,
@@ -73,11 +74,16 @@ export const CREATE_PROJECT_WIZARD_DEMO = {
   membersInviteNote:
     'Invitees will receive an email to join the platform and be scoped to this project.',
   reviewLede: 'Confirm project details before creating.',
+  reviewEditLede: 'Review your changes before saving.',
   reviewNoDescription: 'No description',
   reviewNoMembers: 'No members yet — you can invite them later.',
   addMemberLabel: 'Add',
   continueLabel: 'Continue',
   createProjectLabel: 'Create project',
+  createNestedProjectLabel: 'Create nested project',
+  editProjectLabel: 'Edit project',
+  saveProjectLabel: 'Save',
+  parentProjectLabel: 'Parent project',
 } as const
 
 export const DEFAULT_PROJECT_IP_SLICE = '203.0.113.0/26'
@@ -117,6 +123,28 @@ export const DEFAULT_CREATE_PROJECT_WIZARD_FORM: CreateProjectWizardForm = {
       role: 'manager',
     },
   ],
+}
+
+export function formFromTenantProject(project: TenantProject): CreateProjectWizardForm {
+  return {
+    name: project.name,
+    description: project.description,
+    environmentType: project.environmentType,
+    vcpuAllocation: DEFAULT_CREATE_PROJECT_WIZARD_FORM.vcpuAllocation,
+    ramAllocationGb: DEFAULT_CREATE_PROJECT_WIZARD_FORM.ramAllocationGb,
+    instanceQuota: project.instanceQuota,
+    externalIpPoolId: project.externalIpPoolId ?? '',
+    ipPoolSlice: project.externalIpPoolCidr ?? DEFAULT_PROJECT_IP_SLICE,
+    memberName: '',
+    memberEmail: '',
+    memberRole: 'manager',
+    members: project.members.map((member) => ({
+      id: member.id,
+      name: member.name,
+      email: member.email,
+      role: member.role,
+    })),
+  }
 }
 
 export function generateProjectWizardMemberId(): string {

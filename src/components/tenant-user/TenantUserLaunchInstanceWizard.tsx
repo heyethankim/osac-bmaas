@@ -115,6 +115,7 @@ import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope
 import { formatTenantInstanceName, generateTenantInstanceId, type TenantInstance } from '../../tenantUser/instances'
 import type { TenantUserScopeKind } from '../../tenantUser/scope'
 import { KubernetesResourceNameField } from '../shared/KubernetesResourceNameHelper'
+import { ProjectTreeDropdownItems } from '../shared/ProjectTreeDropdownItems'
 import { CatalogWizardPageShell } from '../catalog/CatalogWizardPageShell'
 import { useWizardLeaveConfirm } from '../shared/useWizardLeaveConfirm'
 
@@ -264,6 +265,7 @@ export function TenantUserLaunchInstanceWizard({
       externalIpPoolCidr: DEFAULT_PROJECT_IP_SLICE,
       catalogItems: [],
       members: [],
+      parentProjectId: null,
       createdAt: new Date().toISOString(),
     }
 
@@ -841,15 +843,10 @@ export function TenantUserLaunchInstanceWizard({
           )}
         >
           <DropdownList>
-            {projects.map((project) => (
-              <DropdownItem
-                key={project.id}
-                value={project.id}
-                isSelected={!isCreatingProject && selectedProjectId === project.id}
-              >
-                {project.name}
-              </DropdownItem>
-            ))}
+            <ProjectTreeDropdownItems
+              projects={projects}
+              selectedProjectId={!isCreatingProject ? selectedProjectId : null}
+            />
             {projects.length > 0 ? (
               <Divider component="li" key="create-project-separator" />
             ) : null}
@@ -876,7 +873,7 @@ export function TenantUserLaunchInstanceWizard({
           </div>
           <FormHelperText>
             <HelperText>
-              <HelperTextItem>Add team members later in Projects & teams.</HelperTextItem>
+              <HelperTextItem>Add team members later in Projects.</HelperTextItem>
             </HelperText>
           </FormHelperText>
         </>

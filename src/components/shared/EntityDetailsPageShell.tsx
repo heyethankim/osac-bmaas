@@ -9,10 +9,17 @@ import {
   Title,
 } from '@patternfly/react-core'
 
+export type EntityDetailsBreadcrumbAncestor = {
+  label: string
+  onClick?: () => void
+}
+
 export type EntityDetailsPageShellProps = {
   /** List page label shown in the breadcrumb. */
   parentLabel: string
   onBack: () => void
+  /** Optional crumbs between the list page and the active entity (e.g. parent projects). */
+  breadcrumbAncestors?: readonly EntityDetailsBreadcrumbAncestor[]
   title: string
   titleId?: string
   description?: ReactNode
@@ -31,6 +38,7 @@ export type EntityDetailsPageShellProps = {
 export function EntityDetailsPageShell({
   parentLabel,
   onBack,
+  breadcrumbAncestors,
   title,
   titleId = 'entity-details-title',
   description,
@@ -53,6 +61,22 @@ export function EntityDetailsPageShell({
         >
           {parentLabel}
         </BreadcrumbItem>
+        {breadcrumbAncestors?.map((item) => (
+          <BreadcrumbItem
+            key={item.label}
+            to={item.onClick ? '#' : undefined}
+            onClick={
+              item.onClick
+                ? (event) => {
+                    event.preventDefault()
+                    item.onClick?.()
+                  }
+                : undefined
+            }
+          >
+            {item.label}
+          </BreadcrumbItem>
+        ))}
         <BreadcrumbItem isActive>{title}</BreadcrumbItem>
       </Breadcrumb>
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import {
   Button,
   Content,
@@ -17,7 +17,10 @@ import {
   ModalVariant,
   SearchInput,
   Title,
+  Label,
 } from '@patternfly/react-core'
+import { AngleDownIcon } from '@patternfly/react-icons/dist/esm/icons/angle-down-icon'
+import { AngleRightIcon } from '@patternfly/react-icons/dist/esm/icons/angle-right-icon'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table'
 import { CreateTenantProjectWizard } from '../../components/tenant-admin/CreateTenantProjectWizard'
@@ -27,7 +30,14 @@ import { CatalogFilterResultsSummary } from '../../components/catalog/CatalogFil
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import {
   buildProjectFilterParts,
+  buildTenantProjectTreeRows,
+  collectDescendantProjectIds,
+  getAutoExpandedProjectIds,
+  getChildTenantProjects,
   getTenantProjectActions,
+  getTenantProjectAncestors,
+  getTenantProjectById,
+  getTenantProjectInstanceQuotaLabel,
   getTenantProjectMemberCountLabel,
   getTenantProjectPoolLabel,
   getTenantProjectServicesLabel,
@@ -44,7 +54,9 @@ import {
   addTenantProjectMember,
   removeTenantProject,
   removeTenantProjectMember,
+  updateTenantProject,
 } from '../../tenantAdmin/storage'
+import { assignTenantUserInstanceToProject } from '../../tenantUser/storage'
 import type { TenantInstance } from '../../tenantUser/instances'
 
 type TenantAdminProjectsTeamsPageProps = {
@@ -53,6 +65,7 @@ type TenantAdminProjectsTeamsPageProps = {
   projects: TenantProject[]
   instances: readonly TenantInstance[]
   onProjectsChange: (projects: TenantProject[]) => void
+  onInstancesChange: (instances: TenantInstance[]) => void
   onNavigateToInstance: (instance: TenantInstance) => void
   /** Opens this project's detail page when navigating from another workspace view. */
   openProjectId?: string | null
@@ -65,16 +78,23 @@ export function TenantAdminProjectsTeamsPage({
   projects,
   instances,
   onProjectsChange,
+  onInstancesChange,
   onNavigateToInstance,
   openProjectId = null,
   onOpenProjectConsumed,
 }: TenantAdminProjectsTeamsPageProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [editingProject, setEditingProject] = useState<TenantProject | null>(null)
+  const [nestedCreateParent, setNestedCreateParent] = useState<TenantProject | null>(null)
+  const [returnToProjectAfterWizard, setReturnToProjectAfterWizard] = useState<TenantProject | null>(
+    null,
+  )
   const [selectedProject, setSelectedProject] = useState<TenantProject | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [projectPendingDelete, setProjectPendingDelete] = useState<TenantProject | null>(null)
   const [searchValue, setSearchValue] = useState('')
   const [selectedEnvironment, setSelectedEnvironment] = useState<ProjectEnvironmentFilter>('all')
+  const [expandedProjectIds, setExpandedProjectIds] = useState<Set<string>>(() => new Set())
 
   const sortedProjects = useMemo(
     () => [...projects].sort((left, right) => left.name.localeCompare(right.name)),
@@ -91,6 +111,17 @@ export function TenantAdminProjectsTeamsPage({
     })
   }, [searchValue, selectedEnvironment, sortedProjects])
 
+  const treeRows = useMemo(
+    () =>
+      buildTenantProjectTreeRows(
+        sortedProjects,
+        searchValue,
+        selectedEnvironment,
+        expandedProjectIds,
+      ),
+    [expandedProjectIds, searchValue, selectedEnvironment, sortedProjects],
+  )
+
   const filterDescriptionParts = useMemo(
     () => buildProjectFilterParts(searchValue, selectedEnvironment),
     [searchValue, selectedEnvironment],
@@ -100,6 +131,21 @@ export function TenantAdminProjectsTeamsPage({
     setSearchValue('')
     setSelectedEnvironment('all')
   }
+
+  useEffect(() => {
+    const autoExpanded = getAutoExpandedProjectIds(projects, searchValue, selectedEnvironment)
+    const parentsWithChildren = sortedProjects
+      .filter((project) => getChildTenantProjects(sortedProjects, project.id).length > 0)
+      .map((project) => project.id)
+
+    setExpandedProjectIds((current) => {
+      const next = new Set([...current, ...autoExpanded, ...parentsWithChildren])
+      if (next.size === current.size && [...next].every((id) => current.has(id))) {
+        return current
+      }
+      return next
+    })
+  }, [projects, searchValue, selectedEnvironment, sortedProjects])
 
   useEffect(() => {
     if (!openProjectId) {
@@ -140,9 +186,63 @@ export function TenantAdminProjectsTeamsPage({
     setIsDetailsOpen(false)
   }
 
+  const closeCreateWizard = () => {
+    setIsCreateModalOpen(false)
+    setEditingProject(null)
+    setNestedCreateParent(null)
+
+    if (returnToProjectAfterWizard) {
+      const latest =
+        getTenantProjectById(projects, returnToProjectAfterWizard.id) ?? returnToProjectAfterWizard
+      setSelectedProject(latest)
+      setIsDetailsOpen(true)
+      setReturnToProjectAfterWizard(null)
+    }
+  }
+
+  const openCreateProject = (parent: TenantProject | null = null, fromDetails = false) => {
+    setEditingProject(null)
+    setNestedCreateParent(parent)
+    if (fromDetails && parent) {
+      setReturnToProjectAfterWizard(parent)
+      setIsDetailsOpen(false)
+    } else {
+      setReturnToProjectAfterWizard(null)
+    }
+    setIsCreateModalOpen(true)
+  }
+
+  const openEditProject = (project: TenantProject, fromDetails = false) => {
+    setEditingProject(project)
+    setNestedCreateParent(null)
+    if (fromDetails) {
+      setReturnToProjectAfterWizard(project)
+      setIsDetailsOpen(false)
+    } else {
+      setReturnToProjectAfterWizard(null)
+    }
+    setIsCreateModalOpen(true)
+  }
+
   const handleCreateProject = (project: TenantProject) => {
     addTenantProject(tenantSlug, project)
     onProjectsChange([...projects, project])
+  }
+
+  const handleUpdateProject = (project: TenantProject) => {
+    onProjectsChange(updateTenantProject(tenantSlug, project))
+  }
+
+  const toggleProjectExpanded = (projectId: string) => {
+    setExpandedProjectIds((current) => {
+      const next = new Set(current)
+      if (next.has(projectId)) {
+        next.delete(projectId)
+      } else {
+        next.add(projectId)
+      }
+      return next
+    })
   }
 
   const openDeleteProject = (projectId: string) => {
@@ -173,6 +273,10 @@ export function TenantAdminProjectsTeamsPage({
     }
   }
 
+  const nestedDeleteCount = projectPendingDelete
+    ? collectDescendantProjectIds(projects, projectPendingDelete.id).length
+    : 0
+
   const deleteConfirmModal = (
     <Modal
       variant={ModalVariant.small}
@@ -190,8 +294,15 @@ export function TenantAdminProjectsTeamsPage({
         <Content component="p" id="delete-project-description">
           {projectPendingDelete ? (
             <>
-              <strong>{projectPendingDelete.name}</strong> will be permanently removed. This cannot
-              be undone.
+              <strong>{projectPendingDelete.name}</strong> will be permanently removed.
+              {nestedDeleteCount > 0 ? (
+                <>
+                  {' '}
+                  This will also delete {nestedDeleteCount} nested project
+                  {nestedDeleteCount === 1 ? '' : 's'}.
+                </>
+              ) : null}{' '}
+              This cannot be undone.
             </>
           ) : (
             'This project will be permanently removed. This cannot be undone.'
@@ -217,15 +328,52 @@ export function TenantAdminProjectsTeamsPage({
     onProjectsChange(removeTenantProjectMember(tenantSlug, projectId, memberId))
   }
 
+  const handleAssignService = (projectId: string, instanceId: string) => {
+    onInstancesChange(
+      assignTenantUserInstanceToProject(
+        tenantSlug,
+        instanceId,
+        projectId,
+        projects,
+        organization.name,
+        [...instances],
+      ),
+    )
+  }
+
   if (isCreateModalOpen) {
+    const editBreadcrumbAncestors = editingProject
+      ? getTenantProjectAncestors(projects, editingProject.id).map((ancestor) => ({
+          label: ancestor.name,
+          onClick: () => {
+            setIsCreateModalOpen(false)
+            setEditingProject(null)
+            setReturnToProjectAfterWizard(null)
+            openDetails(ancestor)
+          },
+        }))
+      : undefined
+
     return (
       <>
         <CreateTenantProjectWizard
           presentation="page"
           isOpen={isCreateModalOpen}
           organization={organization}
-          onClose={() => setIsCreateModalOpen(false)}
+          projects={projects}
+          parentProject={nestedCreateParent}
+          breadcrumbAncestors={editBreadcrumbAncestors}
+          editingProject={editingProject}
+          onOpenParentProject={(project) => {
+            setIsCreateModalOpen(false)
+            setEditingProject(null)
+            setNestedCreateParent(null)
+            setReturnToProjectAfterWizard(null)
+            openDetails(project)
+          }}
+          onClose={closeCreateWizard}
           onCreate={handleCreateProject}
+          onUpdate={handleUpdateProject}
         />
         {deleteConfirmModal}
       </>
@@ -237,11 +385,16 @@ export function TenantAdminProjectsTeamsPage({
       <>
         <TenantProjectDetailsPage
           project={selectedProject}
+          projects={projects}
           instances={instances}
           onBack={closeDetails}
+          onOpenProject={openDetails}
+          onCreateNested={(parent) => openCreateProject(parent, true)}
+          onEdit={(project) => openEditProject(project, true)}
           onDelete={openDeleteProject}
           onAddMember={handleAddMember}
           onRemoveMember={handleRemoveMember}
+          onAssignService={handleAssignService}
           onNavigateToInstance={onNavigateToInstance}
         />
         {deleteConfirmModal}
@@ -260,7 +413,7 @@ export function TenantAdminProjectsTeamsPage({
         >
           <FlexItem>
             <Title headingLevel="h1" size="3xl" className="tenant-admin-projects-teams__title">
-              Projects & teams
+              Projects
             </Title>
             <Content component="p" className="tenant-admin-projects-teams__lede">
               {TENANT_PROJECTS_TEAMS_DEMO.lede}
@@ -270,7 +423,7 @@ export function TenantAdminProjectsTeamsPage({
             <Button
               variant="primary"
               icon={<PlusIcon />}
-              onClick={() => setIsCreateModalOpen(true)}
+              onClick={() => openCreateProject()}
             >
               {TENANT_PROJECTS_TEAMS_DEMO.createProjectLabel}
             </Button>
@@ -279,7 +432,7 @@ export function TenantAdminProjectsTeamsPage({
       ) : (
         <>
           <Title headingLevel="h1" size="3xl" className="tenant-admin-projects-teams__title">
-            Projects & teams
+            Projects
           </Title>
           <Content component="p" className="tenant-admin-projects-teams__lede">
             {TENANT_PROJECTS_TEAMS_DEMO.lede}
@@ -328,14 +481,14 @@ export function TenantAdminProjectsTeamsPage({
               <Button
                 variant="primary"
                 icon={<PlusIcon />}
-                onClick={() => setIsCreateModalOpen(true)}
+                onClick={() => openCreateProject()}
               >
                 {TENANT_PROJECTS_TEAMS_DEMO.createFirstProjectLabel}
               </Button>
             </EmptyStateActions>
           </EmptyStateFooter>
         </EmptyState>
-      ) : filteredProjects.length === 0 ? (
+      ) : treeRows.length === 0 ? (
         <CatalogFilterEmptyState
           title="No projects match your filters"
           description="Try a different environment or search term."
@@ -365,41 +518,100 @@ export function TenantAdminProjectsTeamsPage({
               </Tr>
             </Thead>
             <Tbody>
-              {filteredProjects.map((project) => (
-                <Tr key={project.id}>
-                  <Td dataLabel="Name">
-                    <Content component="p" className="tenant-admin-projects-teams__primary-cell">
-                      <Button
-                        variant="link"
-                        isInline
-                        className="catalog-table-name-link"
-                        onClick={() => openDetails(project)}
+              {treeRows.map(({ project, depth, hasChildren, isExpanded }) => {
+                const parentProject = project.parentProjectId
+                  ? getTenantProjectById(projects, project.parentProjectId)
+                  : null
+
+                return (
+                  <Tr key={project.id}>
+                    <Td dataLabel="Name">
+                      <div
+                        className="tenant-admin-projects-teams__tree-row"
+                        style={
+                          {
+                            '--tenant-project-tree-depth': depth,
+                          } as CSSProperties
+                        }
                       >
-                        {project.name}
-                      </Button>
-                    </Content>
-                    <Content component="p" className="tenant-admin-projects-teams__meta-cell">
-                      {project.id}
-                    </Content>
-                  </Td>
-                  <Td dataLabel="Services">
-                    {getTenantProjectServicesLabel(instances, project)}
-                  </Td>
-                  <Td dataLabel="Project members">
-                    {getTenantProjectMemberCountLabel(project)}
-                  </Td>
-                  <Td dataLabel="IP pool">{getTenantProjectPoolLabel(project)}</Td>
-                  <Td dataLabel="Instance quota">{project.instanceQuota} instances</Td>
-                  <Td isActionCell className="tenant-admin-projects-teams__table-action">
-                    <ActionsColumn
-                      items={getTenantProjectActions(project, {
-                        onViewDetails: openDetails,
-                        onDelete: openDeleteProject,
-                      })}
-                    />
-                  </Td>
-                </Tr>
-              ))}
+                        <div className="tenant-admin-projects-teams__name-cell">
+                          {hasChildren ? (
+                            <Button
+                              variant="plain"
+                              className="tenant-admin-projects-teams__tree-toggle"
+                              aria-label={
+                                isExpanded
+                                  ? `Collapse ${project.name}`
+                                  : `Expand ${project.name}`
+                              }
+                              aria-expanded={isExpanded}
+                              onClick={() => toggleProjectExpanded(project.id)}
+                            >
+                              {isExpanded ? (
+                                <AngleDownIcon aria-hidden />
+                              ) : (
+                                <AngleRightIcon aria-hidden />
+                              )}
+                            </Button>
+                          ) : (
+                            <span className="tenant-admin-projects-teams__tree-spacer" aria-hidden />
+                          )}
+                          <div className="tenant-admin-projects-teams__name-copy">
+                            <Content
+                              component="p"
+                              className="tenant-admin-projects-teams__primary-cell"
+                            >
+                              <Button
+                                variant="link"
+                                isInline
+                                className="catalog-table-name-link"
+                                onClick={() => openDetails(project)}
+                              >
+                                {project.name}
+                              </Button>
+                              {parentProject ? (
+                                <Label
+                                  color="grey"
+                                  isCompact
+                                  className="tenant-admin-projects-teams__nested-badge"
+                                >
+                                  {TENANT_PROJECTS_TEAMS_DEMO.nestedBadgeLabel}
+                                </Label>
+                              ) : null}
+                            </Content>
+                            <Content
+                              component="p"
+                              className="tenant-admin-projects-teams__meta-cell"
+                            >
+                              {project.id}
+                            </Content>
+                          </div>
+                        </div>
+                      </div>
+                    </Td>
+                    <Td dataLabel="Services">
+                      {getTenantProjectServicesLabel(instances, project)}
+                    </Td>
+                    <Td dataLabel="Project members">
+                      {getTenantProjectMemberCountLabel(projects, project)}
+                    </Td>
+                    <Td dataLabel="IP pool">{getTenantProjectPoolLabel(project)}</Td>
+                    <Td dataLabel="Instance quota">
+                      {getTenantProjectInstanceQuotaLabel(projects, project)}
+                    </Td>
+                    <Td isActionCell className="tenant-admin-projects-teams__table-action">
+                      <ActionsColumn
+                        items={getTenantProjectActions(project, {
+                          onViewDetails: openDetails,
+                          onCreateNested: (parent) => openCreateProject(parent),
+                          onEdit: openEditProject,
+                          onDelete: openDeleteProject,
+                        })}
+                      />
+                    </Td>
+                  </Tr>
+                )
+              })}
             </Tbody>
           </Table>
         </div>

@@ -10,6 +10,7 @@ import {
 import { FolderOpenIcon } from '@patternfly/react-icons/dist/esm/icons/folder-open-icon'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import { CreateTenantProjectWizard } from '../tenant-admin/CreateTenantProjectWizard'
+import { ProjectTreeDropdownItems } from './ProjectTreeDropdownItems'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import { getWorkspaceOrganization } from '../../tenantAdmin/organizations'
 import {
@@ -96,15 +97,12 @@ export function ProjectScopeSwitcher({
           >
             All projects
           </DropdownItem>
-          {projects.map((project) => (
-            <DropdownItem
-              key={project.id}
-              value={project.id}
-              isSelected={selectedScopeId === project.id}
-            >
-              {project.name}
-            </DropdownItem>
-          ))}
+          <ProjectTreeDropdownItems
+            projects={projects}
+            selectedProjectId={
+              selectedScopeId === ALL_PROJECTS_SCOPE_ID ? null : selectedScopeId
+            }
+          />
           <Divider component="li" key="create-project-separator" />
           <DropdownItem icon={<PlusIcon />} onClick={openCreateWizard}>
             {TENANT_PROJECTS_TEAMS_DEMO.createProjectLabel}

@@ -52,7 +52,7 @@ export const TENANT_ADMIN_NAV_ITEMS: TenantAdminNavItem[] = [
     label: 'Services',
     children: TENANT_ADMIN_SERVICES_NAV_ITEMS,
   },
-  { id: 'projects-teams', label: 'Projects & teams' },
+  { id: 'projects-teams', label: 'Projects' },
   {
     id: 'networking',
     label: 'Networking',

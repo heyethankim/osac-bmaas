@@ -198,7 +198,7 @@ export function ProviderAdminShell({
               to="#"
               preventDefault
             >
-              Projects & teams
+              Projects
             </NavItem>
             <NavExpandable
               id="provider-admin-administration-nav"
