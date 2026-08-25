@@ -34,13 +34,13 @@ type AddProjectMemberModalProps = {
 export function AddProjectMemberModal({ project, onClose, onAdd }: AddProjectMemberModalProps) {
   const [memberName, setMemberName] = useState('')
   const [memberEmail, setMemberEmail] = useState('')
-  const [memberRole, setMemberRole] = useState<TenantProjectMemberRole>('developer')
+  const [memberRole, setMemberRole] = useState<TenantProjectMemberRole>('manager')
 
   useEffect(() => {
     if (!project) {
       setMemberName('')
       setMemberEmail('')
-      setMemberRole('developer')
+      setMemberRole('manager')
     }
   }, [project])
 

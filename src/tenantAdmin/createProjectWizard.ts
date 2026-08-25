@@ -1,10 +1,12 @@
-import type { TenantProjectCatalogItem, TenantProjectEnvironment } from './projects'
+import type {
+  TenantProjectCatalogItem,
+  TenantProjectEnvironment,
+  TenantProjectMemberRole,
+} from './projects'
 
 export type CreateProjectWizardStepId = 'project-info' | 'team-members' | 'review'
 
-export type { TenantProjectEnvironment }
-
-export type TenantProjectMemberRole = 'developer' | 'project-admin' | 'viewer'
+export type { TenantProjectEnvironment, TenantProjectMemberRole } from './projects'
 
 export type TenantProjectWizardMember = {
   id: string
@@ -50,13 +52,16 @@ export const TENANT_PROJECT_MEMBER_ROLES: ReadonlyArray<{
   label: string
   shortLabel: string
 }> = [
-  { id: 'developer', label: 'Developer — Provision and manage instances', shortLabel: 'Developer' },
   {
-    id: 'project-admin',
-    label: 'Project admin — Manage project settings and members',
-    shortLabel: 'Project admin',
+    id: 'manager',
+    label: 'Manager — Can create, edit, and delete projects',
+    shortLabel: 'Manager',
   },
-  { id: 'viewer', label: 'Viewer — Read-only access', shortLabel: 'Viewer' },
+  {
+    id: 'viewer',
+    label: 'Viewer — Has view access only',
+    shortLabel: 'Viewer',
+  },
 ]
 
 export const CREATE_PROJECT_WIZARD_DEMO = {
@@ -103,13 +108,13 @@ export const DEFAULT_CREATE_PROJECT_WIZARD_FORM: CreateProjectWizardForm = {
   ipPoolSlice: DEFAULT_PROJECT_IP_SLICE,
   memberName: 'Jordan Lee',
   memberEmail: 'jordan@northsummitbank.com',
-  memberRole: 'developer',
+  memberRole: 'manager',
   members: [
     {
       id: 'project-member-demo',
       name: 'Chris Morgan',
       email: 'chris@northsummitbank.com',
-      role: 'developer',
+      role: 'manager',
     },
   ],
 }

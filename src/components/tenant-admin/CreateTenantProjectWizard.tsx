@@ -12,8 +12,6 @@ import { UserPlusIcon } from '@patternfly/react-icons/dist/esm/icons/user-plus-i
 import { UsersIcon } from '@patternfly/react-icons/dist/esm/icons/users-icon'
 import {
   Button,
-  Card,
-  CardBody,
   Content,
   DescriptionList,
   DescriptionListDescription,
@@ -27,9 +25,9 @@ import {
   FormGroup,
   FormSelect,
   FormSelectOption,
+  Label,
   Modal,
   ModalVariant,
-  Radio,
   TextArea,
   TextInput,
   Wizard,
@@ -168,7 +166,7 @@ export function CreateTenantProjectWizard({
       members: [...current.members, member],
       memberName: '',
       memberEmail: '',
-      memberRole: 'developer',
+      memberRole: 'manager',
     }))
   }
 
@@ -205,46 +203,47 @@ export function CreateTenantProjectWizard({
           role="radiogroup"
           aria-label="Environment type"
         >
-          {TENANT_PROJECT_ENVIRONMENTS.map((environment) => (
-            <Card
-              key={environment.id}
-              isCompact
-              className="tenant-admin-projects-teams__environment-card"
-            >
-              <CardBody className="tenant-admin-projects-teams__environment-card-body">
-                <Flex
-                  alignItems={{ default: 'alignItemsCenter' }}
-                  justifyContent={{ default: 'justifyContentSpaceBetween' }}
-                  className="tenant-admin-projects-teams__environment-option"
-                >
-                  <FlexItem>
-                    <span className="tenant-admin-projects-teams__environment-radio-label">
-                      <span className="tenant-admin-projects-teams__environment-icon">
-                        {ENVIRONMENT_ICONS[environment.id]}
-                      </span>
-                      <span className="tenant-admin-projects-teams__environment-label">
-                        {environment.label}
-                      </span>
-                    </span>
-                  </FlexItem>
-                  <FlexItem>
-                    <Radio
-                      id={`new-project-environment-${environment.id}`}
-                      name="new-project-environment"
-                      isChecked={form.environmentType === environment.id}
-                      onChange={() =>
-                        setForm((current) => ({
-                          ...current,
-                          environmentType: environment.id,
-                        }))
-                      }
-                      aria-label={environment.label}
-                    />
-                  </FlexItem>
-                </Flex>
-              </CardBody>
-            </Card>
-          ))}
+          {TENANT_PROJECT_ENVIRONMENTS.map((environment) => {
+            const isSelected = form.environmentType === environment.id
+            const titleId = `new-project-environment-${environment.id}-title`
+
+            return (
+              <button
+                key={environment.id}
+                type="button"
+                role="radio"
+                aria-checked={isSelected}
+                aria-labelledby={titleId}
+                className={`provider-setup-template__select-card tenant-admin-projects-teams__environment-card${
+                  isSelected ? ' provider-setup-template__select-card--selected' : ''
+                }`}
+                onClick={() =>
+                  setForm((current) => ({
+                    ...current,
+                    environmentType: environment.id,
+                  }))
+                }
+              >
+                {isSelected ? (
+                  <Label
+                    color="grey"
+                    isCompact
+                    className="provider-setup-template__select-card-selected-badge"
+                  >
+                    Selected
+                  </Label>
+                ) : null}
+                <span className="tenant-admin-projects-teams__environment-radio-label">
+                  <span className="tenant-admin-projects-teams__environment-icon">
+                    {ENVIRONMENT_ICONS[environment.id]}
+                  </span>
+                  <span id={titleId} className="tenant-admin-projects-teams__environment-label">
+                    {environment.label}
+                  </span>
+                </span>
+              </button>
+            )
+          })}
         </div>
       </FormGroup>
       {organizationPools.length > 1 ? (

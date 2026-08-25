@@ -12,6 +12,7 @@ import {
   DEMO_TENANT_PROJECT_NAME,
   DEMO_TENANT_PROJECT_NAME_02,
   isTenantProjectEnvironment,
+  migrateTenantProjectMemberRole,
 } from './projects'
 
 export {
@@ -177,7 +178,10 @@ function isTenantProjectMember(value: unknown): value is TenantProject['members'
     typeof member.id === 'string' &&
     typeof member.name === 'string' &&
     typeof member.email === 'string' &&
-    (member.role === 'developer' || member.role === 'project-admin' || member.role === 'viewer')
+    (member.role === 'manager' ||
+      member.role === 'viewer' ||
+      member.role === 'developer' ||
+      member.role === 'project-admin')
   )
 }
 
@@ -248,7 +252,12 @@ function normalizeTenantProject(value: TenantProject): TenantProject {
         : [],
   )
 
-  const members = Array.isArray(project.members) ? project.members.filter(isTenantProjectMember) : []
+  const members = Array.isArray(project.members)
+    ? project.members.filter(isTenantProjectMember).map((member) => ({
+        ...member,
+        role: migrateTenantProjectMemberRole(member.role),
+      }))
+    : []
 
   return {
     id: project.id,
@@ -293,31 +302,31 @@ const DEMO_TENANT_PROJECT_MEMBERS: TenantProject['members'] = [
     id: 'member_demo_admin',
     name: 'Alex Johnson',
     email: 'alex.johnson@northsummitbank.com',
-    role: 'project-admin',
+    role: 'manager',
   },
   {
     id: 'member_demo_dev',
     name: 'Jordan Lee',
     email: 'jordan.lee@northsummitbank.com',
-    role: 'developer',
+    role: 'manager',
   },
   {
     id: 'member_demo_dev_2',
     name: 'Sam Rivera',
     email: 'sam.rivera@northsummitbank.com',
-    role: 'developer',
+    role: 'manager',
   },
   {
     id: 'member_demo_dev_3',
     name: 'Casey Morgan',
     email: 'casey.morgan@northsummitbank.com',
-    role: 'developer',
+    role: 'manager',
   },
   {
     id: 'member_demo_dev_4',
     name: 'Riley Chen',
     email: 'riley.chen@northsummitbank.com',
-    role: 'developer',
+    role: 'manager',
   },
   {
     id: 'member_demo_viewer',

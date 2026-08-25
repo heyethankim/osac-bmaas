@@ -605,25 +605,12 @@
   gap: var(--pf-t--global--spacer--sm);
 }
 
-.tenant-admin-projects-teams__environment-card.pf-v6-c-card {
-  --pf-v6-c-card--BorderWidth: 0.5px;
-  --pf-v6-c-card--BorderColor: var(--pf-t--global--border--color--100);
-  border: 0.5px solid var(--pf-t--global--border--color--100);
-  background-color: var(--pf-t--global--background--color--primary--default);
-  box-shadow: none;
-}
-
-.tenant-admin-projects-teams__environment-card-body {
+.tenant-admin-projects-teams__environment-card.provider-setup-template__select-card {
+  display: flex;
+  align-items: center;
+  min-height: 3.25rem;
   padding: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
-}
-
-.tenant-admin-projects-teams__environment-option {
-  width: 100%;
-  min-width: 0;
-}
-
-.tenant-admin-projects-teams__environment-card .pf-v6-c-radio {
-  margin: 0;
+  padding-inline-end: 5.5rem;
 }
 
 .tenant-admin-projects-teams__environment-radio-label {

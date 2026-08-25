@@ -12,7 +12,20 @@ export type TenantProjectCatalogItem = {
   displayName: string
 }
 
-export type TenantProjectMemberRole = 'developer' | 'project-admin' | 'viewer'
+export type TenantProjectMemberRole = 'manager' | 'viewer'
+
+export function migrateTenantProjectMemberRole(role: string): TenantProjectMemberRole {
+  if (role === 'viewer') {
+    return 'viewer'
+  }
+  if (role === 'manager') {
+    return 'manager'
+  }
+  if (role === 'developer' || role === 'project-admin') {
+    return 'manager'
+  }
+  return 'viewer'
+}
 
 export type TenantProjectEnvironment = 'development' | 'staging' | 'production' | 'research'
 
