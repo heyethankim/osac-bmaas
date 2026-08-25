@@ -653,25 +653,6 @@ export function getInstancesForTenantProject(
   return instances.filter((instance) => instanceBelongsToProject(instance, project))
 }
 
-export function getInstancesAssignableToProject(
-  instances: readonly TenantInstance[],
-  project: TenantProject,
-): TenantInstance[] {
-  return instances
-    .filter((instance) => !instanceBelongsToProject(instance, project))
-    .sort((left, right) => left.name.localeCompare(right.name))
-}
-
-export function canAddInstanceToProject(
-  instances: readonly TenantInstance[],
-  project: TenantProject,
-): boolean {
-  return (
-    getInstancesForTenantProject(instances, project).length < project.instanceQuota &&
-    getInstancesAssignableToProject(instances, project).length > 0
-  )
-}
-
 export function getTenantProjectActions(
   project: TenantProject,
   handlers: {
@@ -796,17 +777,11 @@ export const TENANT_PROJECTS_TEAMS_DEMO = {
     'Members inherited from parent projects keep access here. Add project-specific managers or viewers below.',
   detailsFallbackDescription: 'Project workspace for scoped catalog access and team collaboration.',
   detailsLede: 'Project details for quota, services, members, and nested workspaces.',
-  servicesEmpty: 'No services in this project yet.',
+  servicesEmpty:
+    'No services in this project yet. Instances are assigned to a project when launched from the catalog.',
   membersEmpty: 'No project members yet. Add someone to grant project access.',
   addMemberLabel: 'Add',
   removeMemberLabel: 'Remove',
-  attachServiceTitle: 'Add service',
-  attachServiceDescription: 'Choose a provisioned service to assign to this project.',
-  attachServiceFilterAll: 'All',
-  attachServiceEmpty: 'No other services are available to assign.',
-  attachServiceQuotaReached: 'This project has reached its instance quota.',
-  attachServiceMoveFromPrefix: 'Move from',
-  attachServiceUnassignedHint: 'Tenant-wide · not on a project yet',
 } as const
 
 const ORG_VCPU_TOTAL = 240

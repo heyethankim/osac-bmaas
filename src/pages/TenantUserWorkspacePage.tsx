@@ -383,7 +383,6 @@ export function TenantUserWorkspacePage() {
             projects={projects}
             projectScopeId={projectScopeId}
             onProjectScopeChange={handleProjectScopeChange}
-            onProjectsChange={setProjects}
             organization={organization}
             lockedServiceId={lockedServiceId ?? 'baremetal'}
             activeNavId={activeNavId}
@@ -392,6 +391,9 @@ export function TenantUserWorkspacePage() {
             onOpenInstanceConsumed={() => setOpenInstanceId(null)}
             onNavigateToProject={(project) => {
               setOpenProjectId(project.id)
+              handleNavChange('projects-teams')
+            }}
+            onNavigateToCreateProject={() => {
               handleNavChange('projects-teams')
             }}
           />
@@ -404,7 +406,6 @@ export function TenantUserWorkspacePage() {
             projects={projects}
             instances={instances}
             onProjectsChange={setProjects}
-            onInstancesChange={setInstances}
             openProjectId={openProjectId}
             onOpenProjectConsumed={() => setOpenProjectId(null)}
             onNavigateToInstance={(instance) => {
@@ -480,7 +481,7 @@ export function TenantUserWorkspacePage() {
             projects={projects}
             initialProjectId={isAllProjectsScope(projectScopeId) ? null : projectScopeId}
             onProjectScopeChange={handleProjectScopeChange}
-            onProjectsChange={setProjects}
+            onNavigateToProjectsTeams={() => handleNavChange('projects-teams')}
             preferCatalogDraft={Boolean(previewSession?.catalogItemId)}
             autoOpenLaunchWizard={Boolean(previewSession?.autoLaunch && previewSession.catalogItemId)}
             openCatalogItemKey={openCatalogItemKey}

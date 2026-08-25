@@ -94,7 +94,6 @@ type TenantUserInstancesPageProps = {
   projects: readonly TenantProject[]
   projectScopeId: ProjectScopeId
   onProjectScopeChange: (scopeId: ProjectScopeId) => void
-  onProjectsChange: (projects: TenantProject[]) => void
   organization: RegisteredOrganization | null
   /** When set, page is scoped to one service (nav-driven) and hides service filters. */
   lockedServiceId?: CatalogServiceId
@@ -104,6 +103,8 @@ type TenantUserInstancesPageProps = {
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
   /** Opens the matching project detail page in Projects. */
   onNavigateToProject?: (project: TenantProject) => void
+  /** Opens the Projects page to create a new project. */
+  onNavigateToCreateProject: () => void
   /** Opens this instance's detail page when navigating from another workspace view. */
   openInstanceId?: string | null
   onOpenInstanceConsumed?: () => void
@@ -179,12 +180,12 @@ export function TenantUserInstancesPage({
   projects,
   projectScopeId,
   onProjectScopeChange,
-  onProjectsChange,
   organization,
   lockedServiceId,
   activeNavId,
   onNavigateToCatalogItem,
   onNavigateToProject,
+  onNavigateToCreateProject,
   openInstanceId = null,
   onOpenInstanceConsumed,
   instanceNetworkingVariant = 'summary',
@@ -976,8 +977,7 @@ export function TenantUserInstancesPage({
               projects={projects}
               selectedScopeId={projectScopeId}
               onChange={onProjectScopeChange}
-              organization={organization}
-              onProjectsChange={onProjectsChange}
+              onNavigateToCreateProject={onNavigateToCreateProject}
               id="tenant-user-instances-project-scope"
             />
             {lockedServiceId ? null : (

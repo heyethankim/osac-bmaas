@@ -23,7 +23,6 @@ import { PlusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/plus-circ
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import { CATALOG_SERVICE_LABELS } from '../../providerSetup/templateDemo'
 import { AddProjectMemberModal } from './AddProjectMemberModal'
-import { AddProjectServiceModal } from './AddProjectServiceModal'
 import { EntityDetailsPageShell } from '../shared/EntityDetailsPageShell'
 import { EntityDetailsActionsDropdown } from '../shared/EntityDetailsActionsDropdown'
 import {
@@ -31,7 +30,6 @@ import {
   CREATE_PROJECT_WIZARD_DEMO,
 } from '../../tenantAdmin/createProjectWizard'
 import {
-  canAddInstanceToProject,
   getChildTenantProjects,
   getEffectiveProjectMembers,
   getInstancesForTenantProject,
@@ -65,7 +63,6 @@ type TenantProjectDetailsPageProps = {
   onDelete: (projectId: string) => void
   onAddMember: (projectId: string, member: TenantProjectMember) => void
   onRemoveMember: (projectId: string, memberId: string) => void
-  onAssignService: (projectId: string, instanceId: string) => void
   onNavigateToInstance: (instance: TenantInstance) => void
 }
 
@@ -181,11 +178,9 @@ export function TenantProjectDetailsPage({
   onDelete,
   onAddMember,
   onRemoveMember,
-  onAssignService,
   onNavigateToInstance,
 }: TenantProjectDetailsPageProps) {
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
-  const [isAddServiceOpen, setIsAddServiceOpen] = useState(false)
   const [memberPendingRemove, setMemberPendingRemove] = useState<TenantProjectMember | null>(null)
 
   const parentProject = useMemo(
@@ -266,12 +261,6 @@ export function TenantProjectDetailsPage({
                       {project.description.trim() || CREATE_PROJECT_WIZARD_DEMO.reviewNoDescription}
                     </DescriptionListDescription>
                   </DescriptionListGroup>
-                  <DescriptionListGroup>
-                    <DescriptionListTerm>Environment</DescriptionListTerm>
-                    <DescriptionListDescription>
-                      {getTenantProjectEnvironmentLabel(project.environmentType)}
-                    </DescriptionListDescription>
-                  </DescriptionListGroup>
                   {parentProject ? (
                     <DescriptionListGroup>
                       <DescriptionListTerm>Parent project</DescriptionListTerm>
@@ -310,21 +299,9 @@ export function TenantProjectDetailsPage({
               </div>
 
               <div className="entity-details-page__column">
-                <div className="entity-details-page__section-header">
-                  <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
-                    Services ({projectInstances.length})
-                  </Title>
-                  <Button
-                    variant="link"
-                    isInline
-                    icon={<PlusCircleIcon />}
-                    className="provider-admin-organizations__accounts-add"
-                    isDisabled={!canAddInstanceToProject(instances, project)}
-                    onClick={() => setIsAddServiceOpen(true)}
-                  >
-                    {TENANT_PROJECTS_TEAMS_DEMO.addMemberLabel}
-                  </Button>
-                </div>
+                <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
+                  Services ({projectInstances.length})
+                </Title>
                 {projectInstances.length === 0 ? (
                   <Content component="p" className="provider-admin-organizations__secondary-cell">
                     {TENANT_PROJECTS_TEAMS_DEMO.servicesEmpty}
@@ -469,14 +446,6 @@ export function TenantProjectDetailsPage({
         project={isAddMemberOpen ? project : null}
         onClose={() => setIsAddMemberOpen(false)}
         onAdd={onAddMember}
-      />
-
-      <AddProjectServiceModal
-        project={isAddServiceOpen ? project : null}
-        projects={projects}
-        instances={instances}
-        onClose={() => setIsAddServiceOpen(false)}
-        onAssign={onAssignService}
       />
 
       <Modal

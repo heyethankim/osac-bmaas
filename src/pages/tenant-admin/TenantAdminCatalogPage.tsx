@@ -72,7 +72,6 @@ type TenantAdminCatalogPageProps = {
   projects: readonly TenantProject[]
   initialProjectId?: string | null
   onProjectScopeChange?: (projectId: string) => void
-  onProjectsChange: (projects: TenantProject[]) => void
   onNavigateToProjectsTeams: () => void
   existingInstanceNames?: readonly string[]
   /** When set, open this catalog item's detail page (id or display name). */
@@ -222,7 +221,6 @@ export function TenantAdminCatalogPage({
   projects,
   initialProjectId = null,
   onProjectScopeChange,
-  onProjectsChange,
   onNavigateToProjectsTeams,
   existingInstanceNames = [],
   openCatalogItemKey = null,
@@ -561,7 +559,10 @@ export function TenantAdminCatalogPage({
           projects={projects}
           initialProjectId={initialProjectId}
           onProjectScopeChange={onProjectScopeChange}
-          onProjectsChange={onProjectsChange}
+          onNavigateToCreateProject={() => {
+            closeLaunchWizard()
+            onNavigateToProjectsTeams()
+          }}
           existingInstanceNames={existingInstanceNames}
           onClose={closeLaunchWizard}
           onProvisioningStarted={(instance) => {

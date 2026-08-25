@@ -4306,6 +4306,10 @@
   gap: var(--pf-t--global--spacer--md);
 }
 
+.provider-admin-organizations__usage-split .provider-admin-organizations__usage-rows {
+  margin-block-start: var(--pf-t--global--spacer--md);
+}
+
 .provider-admin-organizations__usage-rows {
   display: flex;
   flex-direction: column;

@@ -5,11 +5,11 @@ import {
 import type { RegisteredOrganization } from './organizations'
 import {
   CATALOG_SERVICE_FILTER_LABELS,
+  CATALOG_SERVICE_FILTERS,
   type CatalogServiceId,
 } from '../providerSetup/templateDemo'
 import { getTenantProjects, ensureTenantDemoProjects } from '../tenantAdmin/storage'
 import {
-  getTenantProjectEnvironmentLabel,
   resolveOrganizationExternalIpPools,
   type OrganizationExternalIpPool,
   type TenantProject,
@@ -30,7 +30,6 @@ export type OrganizationServiceUsage = {
 export type OrganizationProjectUsage = {
   id: string
   name: string
-  environmentLabel: string
   used: number
   quota: number
   catalogItemCount: number
@@ -54,7 +53,7 @@ export type OrganizationResourceUsage = {
   projects: OrganizationProjectUsage[]
 }
 
-const SERVICE_ORDER: CatalogServiceId[] = ['baremetal', 'cluster', 'virtual-machine']
+const SERVICE_ORDER: CatalogServiceId[] = CATALOG_SERVICE_FILTERS.map((filter) => filter.id)
 
 function shouldSeedDemoInventory(organization: RegisteredOrganization): boolean {
   return organization.id === DEMO_NORTH_SUMMIT_BANK_ORG_ID
@@ -149,7 +148,6 @@ export function getOrganizationResourceUsage(
     projects: projects.map((project) => ({
       id: project.id,
       name: project.name,
-      environmentLabel: getTenantProjectEnvironmentLabel(project.environmentType),
       used: instances.filter((instance) => instanceBelongsToProject(instance, project)).length,
       quota: project.instanceQuota,
       catalogItemCount: project.catalogItems.length,

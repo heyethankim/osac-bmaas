@@ -390,7 +390,6 @@ export function ProviderAdminWorkspacePage() {
             projects={projects}
             projectScopeId={projectScopeId}
             onProjectScopeChange={handleProjectScopeChange}
-            onProjectsChange={setProjects}
             organization={getWorkspaceOrganization(PROVIDER_SERVICES_DEMO_TENANT)}
             lockedServiceId={lockedServiceId ?? 'baremetal'}
             activeNavId={activeNavId}
@@ -405,6 +404,9 @@ export function ProviderAdminWorkspacePage() {
               setOpenProjectId(project.id)
               handleNavChange('projects-teams')
             }}
+            onNavigateToCreateProject={() => {
+              handleNavChange('projects-teams')
+            }}
           />
         )
       case 'projects-teams':
@@ -415,7 +417,6 @@ export function ProviderAdminWorkspacePage() {
             projects={projects}
             instances={instances}
             onProjectsChange={setProjects}
-            onInstancesChange={setInstances}
             openProjectId={openProjectId}
             onOpenProjectConsumed={() => setOpenProjectId(null)}
             onNavigateToInstance={(instance) => {
@@ -446,7 +447,7 @@ export function ProviderAdminWorkspacePage() {
             projects={projects}
             initialProjectId={isAllProjectsScope(projectScopeId) ? null : projectScopeId}
             onProjectScopeChange={handleProjectScopeChange}
-            onProjectsChange={setProjects}
+            onNavigateToCreateProject={() => handleNavChange('projects-teams')}
             onEditLeaveAttemptChange={(attemptLeave) => {
               catalogEditLeaveAttemptRef.current = attemptLeave
             }}

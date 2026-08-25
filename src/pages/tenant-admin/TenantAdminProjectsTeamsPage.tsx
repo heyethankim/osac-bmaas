@@ -56,7 +56,6 @@ import {
   removeTenantProjectMember,
   updateTenantProject,
 } from '../../tenantAdmin/storage'
-import { assignTenantUserInstanceToProject } from '../../tenantUser/storage'
 import type { TenantInstance } from '../../tenantUser/instances'
 
 type TenantAdminProjectsTeamsPageProps = {
@@ -65,7 +64,6 @@ type TenantAdminProjectsTeamsPageProps = {
   projects: TenantProject[]
   instances: readonly TenantInstance[]
   onProjectsChange: (projects: TenantProject[]) => void
-  onInstancesChange: (instances: TenantInstance[]) => void
   onNavigateToInstance: (instance: TenantInstance) => void
   /** Opens this project's detail page when navigating from another workspace view. */
   openProjectId?: string | null
@@ -78,7 +76,6 @@ export function TenantAdminProjectsTeamsPage({
   projects,
   instances,
   onProjectsChange,
-  onInstancesChange,
   onNavigateToInstance,
   openProjectId = null,
   onOpenProjectConsumed,
@@ -328,19 +325,6 @@ export function TenantAdminProjectsTeamsPage({
     onProjectsChange(removeTenantProjectMember(tenantSlug, projectId, memberId))
   }
 
-  const handleAssignService = (projectId: string, instanceId: string) => {
-    onInstancesChange(
-      assignTenantUserInstanceToProject(
-        tenantSlug,
-        instanceId,
-        projectId,
-        projects,
-        organization.name,
-        [...instances],
-      ),
-    )
-  }
-
   if (isCreateModalOpen) {
     const editBreadcrumbAncestors = editingProject
       ? getTenantProjectAncestors(projects, editingProject.id).map((ancestor) => ({
@@ -394,7 +378,6 @@ export function TenantAdminProjectsTeamsPage({
           onDelete={openDeleteProject}
           onAddMember={handleAddMember}
           onRemoveMember={handleRemoveMember}
-          onAssignService={handleAssignService}
           onNavigateToInstance={onNavigateToInstance}
         />
         {deleteConfirmModal}

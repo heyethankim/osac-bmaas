@@ -12,6 +12,7 @@ export type WizardLeaveConfirmModalProps = {
   isOpen: boolean
   onClose: () => void
   onConfirm: () => void
+  title?: string
   primaryActionLabel?: string
   description?: string
   titleId?: string
@@ -21,6 +22,7 @@ export function WizardLeaveConfirmModal({
   isOpen,
   onClose,
   onConfirm,
+  title = 'Are you sure?',
   primaryActionLabel = 'Leave',
   description = 'Your progress will not be saved.',
   titleId = 'wizard-leave-confirm-title',
@@ -33,7 +35,7 @@ export function WizardLeaveConfirmModal({
       aria-labelledby={titleId}
       aria-describedby={`${titleId}-description`}
     >
-      <ModalHeader title="Are you sure?" titleIconVariant="warning" labelId={titleId} />
+      <ModalHeader title={title} titleIconVariant="warning" labelId={titleId} />
       <ModalBody>
         <Content component="p" id={`${titleId}-description`}>
           {description}

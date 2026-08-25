@@ -234,7 +234,7 @@ export function OrganizationResourceUsageSection({
                 {usage.projects.map((project) => (
                   <UsageProgressRow
                     key={project.id}
-                    label={`${project.name} · ${project.environmentLabel}`}
+                    label={project.name}
                     hint={
                       project.catalogItemNames.length > 0
                         ? project.catalogItemNames.join(', ')

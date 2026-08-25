@@ -144,6 +144,10 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
     'Provisioning will continue in the background—check status under Services.',
   bootLogRemaining: '~10 sec remaining',
   launchInstanceLabel: 'Launch instance',
+  createProjectConfirmTitle: 'Create a project first',
+  createProjectConfirmDescription:
+    'Create the project on the Projects page — including nested projects under a parent — then return here to continue launching.',
+  createProjectConfirmActionLabel: 'Go to Projects',
   closeWhileProvisioningLabel: 'Close',
   backgroundProvisioningAlertTitle: 'Provisioning continues in the background',
   backgroundProvisioningAlertBody:

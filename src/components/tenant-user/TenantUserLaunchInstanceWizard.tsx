@@ -40,19 +40,10 @@ import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import type { CatalogServiceId } from '../../providerSetup/templateDemo'
-import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
 import {
-  DEFAULT_CREATE_PROJECT_WIZARD_FORM,
-  DEFAULT_PROJECT_IP_SLICE,
-} from '../../tenantAdmin/createProjectWizard'
-import { getWorkspaceOrganization } from '../../tenantAdmin/organizations'
-import {
-  generateTenantProjectId,
-  resolveOrganizationExternalIpPool,
   TENANT_PROJECTS_TEAMS_DEMO,
   type TenantProject,
 } from '../../tenantAdmin/projects'
-import { addTenantProject } from '../../tenantAdmin/storage'
 import { resolveBaremetalCatalogCardSpecRows, resolveCatalogSpecRows, resolveClusterCatalogHighlightRows } from '../../catalog/catalogSpecs'
 import {
   formatBaremetalInstanceTypeLabel,
@@ -132,7 +123,7 @@ type TenantUserLaunchInstanceWizardProps = {
   /** Prefill from Services project switcher when a specific project is selected. */
   initialProjectId?: string | null
   onProjectScopeChange?: (projectId: string) => void
-  onProjectsChange: (projects: TenantProject[]) => void
+  onNavigateToCreateProject: () => void
   existingInstanceNames?: readonly string[]
   onClose: () => void
   onProvisioningStarted: (instance: TenantInstance) => void
@@ -185,7 +176,7 @@ export function TenantUserLaunchInstanceWizard({
   projects,
   initialProjectId = null,
   onProjectScopeChange,
-  onProjectsChange,
+  onNavigateToCreateProject,
   existingInstanceNames = [],
   onClose,
   onProvisioningStarted,
@@ -217,70 +208,22 @@ export function TenantUserLaunchInstanceWizard({
     resolveInitialLaunchProjectId(projects, initialProjectId),
   )
   const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false)
-  const [isCreatingProject, setIsCreatingProject] = useState(false)
-  const [newProjectName, setNewProjectName] = useState('')
-  const resolvedOrganization = organization ?? getWorkspaceOrganization(tenantSlug)
-  const organizationPool = resolveOrganizationExternalIpPool(resolvedOrganization)
   const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? null
   const launchScopeKind: TenantUserScopeKind = selectedProject ? 'project' : 'organization'
   const launchScopeLabel = selectedProject?.name ?? organization?.name ?? tenantSlug
   const launchScopeFieldLabel = selectedProject ? 'Project' : 'Tenant'
   const selectedProjectLabel = selectedProject?.name ?? 'Select a project'
-  const projectToggleLabel = isCreatingProject
-    ? TENANT_PROJECTS_TEAMS_DEMO.createProjectLabel
-    : selectedProjectLabel
-  const canCreateProject = isValidKubernetesResourceName(newProjectName)
-  const isProjectSelectionValid =
-    projects.length === 0 ||
-    Boolean(selectedProjectId) ||
-    (isCreatingProject && canCreateProject)
+  const projectToggleLabel = selectedProjectLabel
+  const isProjectSelectionValid = projects.length === 0 || Boolean(selectedProjectId)
 
   const selectProject = (projectId: string) => {
-    setIsCreatingProject(false)
-    setNewProjectName('')
     setSelectedProjectId(projectId)
     onProjectScopeChange?.(projectId)
   }
 
-  const startCreateProject = () => {
+  const handleNavigateToCreateProject = () => {
     setIsProjectMenuOpen(false)
-    setSelectedProjectId('')
-    setNewProjectName(getNextQuickCreateProjectName(projects))
-    setIsCreatingProject(true)
-  }
-
-  const handleQuickCreateProject = () => {
-    if (!canCreateProject) {
-      return
-    }
-
-    const project: TenantProject = {
-      id: generateTenantProjectId(),
-      name: newProjectName.trim(),
-      description: '',
-      environmentType: DEFAULT_CREATE_PROJECT_WIZARD_FORM.environmentType,
-      instanceQuota: DEFAULT_CREATE_PROJECT_WIZARD_FORM.instanceQuota,
-      externalIpPoolId: organizationPool?.id ?? null,
-      externalIpPoolName: organizationPool?.name ?? null,
-      externalIpPoolCidr: DEFAULT_PROJECT_IP_SLICE,
-      catalogItems: [],
-      members: [],
-      parentProjectId: null,
-      createdAt: new Date().toISOString(),
-    }
-
-    addTenantProject(tenantSlug, project)
-    onProjectsChange([...projects, project])
-    setIsCreatingProject(false)
-    setNewProjectName('')
-    setSelectedProjectId(project.id)
-    onProjectScopeChange?.(project.id)
-  }
-
-  const commitPendingProjectIfNeeded = () => {
-    if (isCreatingProject) {
-      handleQuickCreateProject()
-    }
+    showCreateProjectConfirm()
   }
   const catalogDetailSpecRows = useMemo(
     () =>
@@ -504,8 +447,6 @@ export function TenantUserLaunchInstanceWizard({
       }),
     )
     setSelectedProjectId(resolveInitialLaunchProjectId(projects, initialProjectId))
-    setIsCreatingProject(false)
-    setNewProjectName('')
     setIsProjectMenuOpen(false)
     setActiveStepId(usesGeneralFirstStep ? 'general' : 'configure')
     setActiveBootLogIndex(0)
@@ -534,6 +475,17 @@ export function TenantUserLaunchInstanceWizard({
       primaryActionLabel: 'Leave',
       titleId: 'launch-instance-leave-confirm',
     })
+
+  const {
+    requestClose: showCreateProjectConfirm,
+    leaveConfirmModal: createProjectConfirmModal,
+  } = useWizardLeaveConfirm({
+    onLeave: onNavigateToCreateProject,
+    title: LAUNCH_INSTANCE_WIZARD_DEMO.createProjectConfirmTitle,
+    description: LAUNCH_INSTANCE_WIZARD_DEMO.createProjectConfirmDescription,
+    primaryActionLabel: LAUNCH_INSTANCE_WIZARD_DEMO.createProjectConfirmActionLabel,
+    titleId: 'launch-instance-create-project-confirm',
+  })
 
   const requestClose = () => {
     if (provisioningInstanceIdRef.current) {
@@ -572,8 +524,6 @@ export function TenantUserLaunchInstanceWizard({
       }),
     )
     setSelectedProjectId(resolveInitialLaunchProjectId(projects, initialProjectId))
-    setIsCreatingProject(false)
-    setNewProjectName('')
     setIsProjectMenuOpen(false)
     setActiveStepId(usesGeneralFirstStep ? 'general' : 'configure')
   }, [
@@ -817,7 +767,7 @@ export function TenantUserLaunchInstanceWizard({
   }
 
   const renderProjectField = (fieldId: string) => (
-    <FormGroup label="Project" fieldId={fieldId} isRequired={projects.length > 0 || isCreatingProject}>
+    <FormGroup label="Project" fieldId={fieldId} isRequired={projects.length > 0}>
       <div className="tenant-user-launch-wizard__project-control">
         <Dropdown
           isOpen={isProjectMenuOpen}
@@ -845,44 +795,23 @@ export function TenantUserLaunchInstanceWizard({
           <DropdownList>
             <ProjectTreeDropdownItems
               projects={projects}
-              selectedProjectId={!isCreatingProject ? selectedProjectId : null}
+              selectedProjectId={selectedProjectId}
             />
             {projects.length > 0 ? (
               <Divider component="li" key="create-project-separator" />
             ) : null}
-            <DropdownItem
-              icon={<PlusIcon />}
-              isSelected={isCreatingProject}
-              onClick={startCreateProject}
-            >
+            <DropdownItem icon={<PlusIcon />} onClick={handleNavigateToCreateProject}>
               {TENANT_PROJECTS_TEAMS_DEMO.createProjectLabel}
             </DropdownItem>
           </DropdownList>
         </Dropdown>
       </div>
-      {isCreatingProject ? (
-        <>
-          <div className="tenant-user-launch-wizard__project-name">
-            <KubernetesResourceNameField
-              id={`${fieldId}-name`}
-              value={newProjectName}
-              onChange={setNewProjectName}
-              placeholder="my-project"
-              isRequired
-            />
-          </div>
-          <FormHelperText>
-            <HelperText>
-              <HelperTextItem>Add team members later in Projects.</HelperTextItem>
-            </HelperText>
-          </FormHelperText>
-        </>
-      ) : null}
-      {!isCreatingProject && projects.length === 0 ? (
+      {projects.length === 0 ? (
         <FormHelperText>
           <HelperText>
             <HelperTextItem>
-              Create a project to launch into, or this instance will use the tenant.
+              Create a project on the Projects page before launching, or this instance will use the
+              tenant.
             </HelperTextItem>
           </HelperText>
         </FormHelperText>
@@ -2197,20 +2126,8 @@ export function TenantUserLaunchInstanceWizard({
       height={isPage ? '100%' : '40rem'}
       isPlain={isPage}
       onClose={isPage ? undefined : requestClose}
-      onStepChange={(_event, currentStep, prevStep) => {
+      onStepChange={(_event, currentStep) => {
         const stepId = String(currentStep?.id ?? '').replace('launch-instance-step-', '')
-        const previousStepId = String(prevStep?.id ?? '').replace('launch-instance-step-', '')
-        // Commit quick-create project when leaving the step that collects it.
-        // Do not put this in footer onNext — that overrides Wizard navigation.
-        if (
-          previousStepId === 'general' ||
-          (previousStepId === 'configure' &&
-            !isClusterCatalogItem &&
-            !isVmCatalogItem &&
-            !isBareMetalCatalogItem)
-        ) {
-          commitPendingProjectIfNeeded()
-        }
         if (
           stepId === 'general' ||
           stepId === 'configure' ||
@@ -2260,6 +2177,7 @@ export function TenantUserLaunchInstanceWizard({
           {wizard}
         </CatalogWizardPageShell>
         {leaveConfirmModal}
+        {createProjectConfirmModal}
       </>
     )
   }
@@ -2278,20 +2196,7 @@ export function TenantUserLaunchInstanceWizard({
         {wizard}
       </Modal>
       {leaveConfirmModal}
+      {createProjectConfirmModal}
     </>
   )
-}
-
-function getNextQuickCreateProjectName(projects: readonly TenantProject[]): string {
-  const base = DEFAULT_CREATE_PROJECT_WIZARD_FORM.name
-  const taken = new Set(projects.map((project) => project.name.trim().toLowerCase()))
-  if (!taken.has(base.toLowerCase())) {
-    return base
-  }
-
-  let suffix = 2
-  while (taken.has(`${base}-${suffix}`.toLowerCase())) {
-    suffix += 1
-  }
-  return `${base}-${suffix}`
 }

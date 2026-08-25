@@ -282,7 +282,6 @@ export function TenantAdminWorkspacePage() {
             projects={projects}
             projectScopeId={projectScopeId}
             onProjectScopeChange={handleProjectScopeChange}
-            onProjectsChange={setProjects}
             organization={organization}
             lockedServiceId={lockedServiceId ?? 'baremetal'}
             activeNavId={activeNavId}
@@ -296,6 +295,9 @@ export function TenantAdminWorkspacePage() {
               setOpenProjectId(project.id)
               handleNavChange('projects-teams')
             }}
+            onNavigateToCreateProject={() => {
+              handleNavChange('projects-teams')
+            }}
           />
         )
       case 'catalog':
@@ -306,7 +308,6 @@ export function TenantAdminWorkspacePage() {
             projects={projects}
             initialProjectId={isAllProjectsScope(projectScopeId) ? null : projectScopeId}
             onProjectScopeChange={handleProjectScopeChange}
-            onProjectsChange={setProjects}
             onNavigateToProjectsTeams={() => handleNavChange('projects-teams')}
             existingInstanceNames={instances.map((instance) => instance.name)}
             openCatalogItemKey={openCatalogItemKey}
@@ -324,7 +325,6 @@ export function TenantAdminWorkspacePage() {
             projects={projects}
             instances={instances}
             onProjectsChange={setProjects}
-            onInstancesChange={setInstances}
             openProjectId={openProjectId}
             onOpenProjectConsumed={() => setOpenProjectId(null)}
             onNavigateToInstance={(instance) => {

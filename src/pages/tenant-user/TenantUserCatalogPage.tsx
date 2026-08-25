@@ -58,7 +58,7 @@ type TenantUserCatalogPageProps = {
   projects: readonly TenantProject[]
   initialProjectId?: string | null
   onProjectScopeChange?: (projectId: string) => void
-  onProjectsChange: (projects: TenantProject[]) => void
+  onNavigateToProjectsTeams: () => void
   /** When true, open the launch wizard immediately (provider preview). */
   autoOpenLaunchWizard?: boolean
   /** Prefer the provided catalog draft even if org assignment differs. */
@@ -95,7 +95,7 @@ export function TenantUserCatalogPage({
   projects,
   initialProjectId = null,
   onProjectScopeChange,
-  onProjectsChange,
+  onNavigateToProjectsTeams,
   autoOpenLaunchWizard = false,
   preferCatalogDraft = false,
   openCatalogItemKey = null,
@@ -317,7 +317,10 @@ export function TenantUserCatalogPage({
           projects={projects}
           initialProjectId={initialProjectId}
           onProjectScopeChange={onProjectScopeChange}
-          onProjectsChange={onProjectsChange}
+          onNavigateToCreateProject={() => {
+            closeLaunchWizard()
+            onNavigateToProjectsTeams()
+          }}
           existingInstanceNames={existingInstanceNames}
           onClose={closeLaunchWizard}
           onProvisioningStarted={onProvisioningStarted}
