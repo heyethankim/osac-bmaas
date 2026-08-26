@@ -41,11 +41,11 @@ import {
   getTenantProjectMemberCountLabel,
   getTenantProjectPoolLabel,
   getTenantProjectServicesLabel,
-  matchesProjectEnvironmentFilter,
-  PROJECT_ENVIRONMENT_FILTER_OPTIONS,
+  matchesProjectListFilter,
+  PROJECT_LIST_FILTER_OPTIONS,
   projectMatchesSearch,
   TENANT_PROJECTS_TEAMS_DEMO,
-  type ProjectEnvironmentFilter,
+  type ProjectListFilter,
   type TenantProject,
   type TenantProjectMember,
 } from '../../tenantAdmin/projects'
@@ -90,7 +90,7 @@ export function TenantAdminProjectsTeamsPage({
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [projectPendingDelete, setProjectPendingDelete] = useState<TenantProject | null>(null)
   const [searchValue, setSearchValue] = useState('')
-  const [selectedEnvironment, setSelectedEnvironment] = useState<ProjectEnvironmentFilter>('all')
+  const [selectedProjectFilter, setSelectedProjectFilter] = useState<ProjectListFilter>('all')
   const [expandedProjectIds, setExpandedProjectIds] = useState<Set<string>>(() => new Set())
 
   const sortedProjects = useMemo(
@@ -98,39 +98,47 @@ export function TenantAdminProjectsTeamsPage({
     [projects],
   )
 
-  const filteredProjects = useMemo(() => {
-    return sortedProjects.filter((project) => {
-      if (!matchesProjectEnvironmentFilter(project, selectedEnvironment)) {
-        return false
-      }
+  const filteredProjects = useMemo(
+    () =>
+      sortedProjects.filter((project) => {
+        if (!matchesProjectListFilter(project, selectedProjectFilter, instances)) {
+          return false
+        }
 
-      return projectMatchesSearch(project, searchValue)
-    })
-  }, [searchValue, selectedEnvironment, sortedProjects])
+        return projectMatchesSearch(project, searchValue, sortedProjects)
+      }),
+    [instances, searchValue, selectedProjectFilter, sortedProjects],
+  )
 
   const treeRows = useMemo(
     () =>
       buildTenantProjectTreeRows(
         sortedProjects,
         searchValue,
-        selectedEnvironment,
+        selectedProjectFilter,
+        instances,
         expandedProjectIds,
       ),
-    [expandedProjectIds, searchValue, selectedEnvironment, sortedProjects],
+    [expandedProjectIds, instances, searchValue, selectedProjectFilter, sortedProjects],
   )
 
   const filterDescriptionParts = useMemo(
-    () => buildProjectFilterParts(searchValue, selectedEnvironment),
-    [searchValue, selectedEnvironment],
+    () => buildProjectFilterParts(searchValue, selectedProjectFilter),
+    [searchValue, selectedProjectFilter],
   )
 
   const clearAllFilters = () => {
     setSearchValue('')
-    setSelectedEnvironment('all')
+    setSelectedProjectFilter('all')
   }
 
   useEffect(() => {
-    const autoExpanded = getAutoExpandedProjectIds(projects, searchValue, selectedEnvironment)
+    const autoExpanded = getAutoExpandedProjectIds(
+      projects,
+      searchValue,
+      selectedProjectFilter,
+      instances,
+    )
     const parentsWithChildren = sortedProjects
       .filter((project) => getChildTenantProjects(sortedProjects, project.id).length > 0)
       .map((project) => project.id)
@@ -142,7 +150,7 @@ export function TenantAdminProjectsTeamsPage({
       }
       return next
     })
-  }, [projects, searchValue, selectedEnvironment, sortedProjects])
+  }, [instances, projects, searchValue, selectedProjectFilter, sortedProjects])
 
   useEffect(() => {
     if (!openProjectId) {
@@ -428,14 +436,12 @@ export function TenantAdminProjectsTeamsPage({
           <div className="catalog-view-toolbar__start">
             <FormSelect
               className="catalog-status-filter"
-              id="tenant-projects-environment-filter"
-              value={selectedEnvironment}
-              onChange={(_event, value) =>
-                setSelectedEnvironment(value as ProjectEnvironmentFilter)
-              }
-              aria-label="Filter projects by environment"
+              id="tenant-projects-list-filter"
+              value={selectedProjectFilter}
+              onChange={(_event, value) => setSelectedProjectFilter(value as ProjectListFilter)}
+              aria-label="Filter projects"
             >
-              {PROJECT_ENVIRONMENT_FILTER_OPTIONS.map((option) => (
+              {PROJECT_LIST_FILTER_OPTIONS.map((option) => (
                 <FormSelectOption key={option.value} value={option.value} label={option.label} />
               ))}
             </FormSelect>
@@ -474,7 +480,7 @@ export function TenantAdminProjectsTeamsPage({
       ) : treeRows.length === 0 ? (
         <CatalogFilterEmptyState
           title="No projects match your filters"
-          description="Try a different environment or search term."
+          description={TENANT_PROJECTS_TEAMS_DEMO.filterEmptyDescription}
           onClearFilters={clearAllFilters}
         />
       ) : (

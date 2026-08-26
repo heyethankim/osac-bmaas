@@ -496,35 +496,39 @@ export function collectDescendantProjectIds(
 
 function projectMatchesFilters(
   project: TenantProject,
+  projects: readonly TenantProject[],
   searchValue: string,
-  selectedEnvironment: ProjectEnvironmentFilter,
+  selectedFilter: ProjectListFilter,
+  instances: readonly TenantInstance[],
 ): boolean {
-  if (!matchesProjectEnvironmentFilter(project, selectedEnvironment)) {
+  if (!matchesProjectListFilter(project, selectedFilter, instances)) {
     return false
   }
 
-  return projectMatchesSearch(project, searchValue)
+  return projectMatchesSearch(project, searchValue, projects)
 }
 
 function projectOrDescendantMatchesFilters(
   projects: readonly TenantProject[],
   project: TenantProject,
   searchValue: string,
-  selectedEnvironment: ProjectEnvironmentFilter,
+  selectedFilter: ProjectListFilter,
+  instances: readonly TenantInstance[],
 ): boolean {
-  if (projectMatchesFilters(project, searchValue, selectedEnvironment)) {
+  if (projectMatchesFilters(project, projects, searchValue, selectedFilter, instances)) {
     return true
   }
 
   return getChildTenantProjects(projects, project.id).some((child) =>
-    projectOrDescendantMatchesFilters(projects, child, searchValue, selectedEnvironment),
+    projectOrDescendantMatchesFilters(projects, child, searchValue, selectedFilter, instances),
   )
 }
 
 export function getAutoExpandedProjectIds(
   projects: readonly TenantProject[],
   searchValue: string,
-  selectedEnvironment: ProjectEnvironmentFilter,
+  selectedFilter: ProjectListFilter,
+  instances: readonly TenantInstance[],
 ): Set<string> {
   const expanded = new Set<string>()
 
@@ -538,7 +542,7 @@ export function getAutoExpandedProjectIds(
   }
 
   for (const project of projects) {
-    if (projectMatchesFilters(project, searchValue, selectedEnvironment)) {
+    if (projectMatchesFilters(project, projects, searchValue, selectedFilter, instances)) {
       expandAncestors(project.id)
     }
   }
@@ -575,7 +579,8 @@ export function buildTenantProjectScopeTreeRows(
 export function buildTenantProjectTreeRows(
   projects: readonly TenantProject[],
   searchValue: string,
-  selectedEnvironment: ProjectEnvironmentFilter,
+  selectedFilter: ProjectListFilter,
+  instances: readonly TenantInstance[],
   expandedProjectIds: ReadonlySet<string>,
 ): TenantProjectTreeRow[] {
   const rows: TenantProjectTreeRow[] = []
@@ -584,7 +589,13 @@ export function buildTenantProjectTreeRows(
     const siblings = projects
       .filter((project) => (project.parentProjectId ?? null) === parentId)
       .filter((project) =>
-        projectOrDescendantMatchesFilters(projects, project, searchValue, selectedEnvironment),
+        projectOrDescendantMatchesFilters(
+          projects,
+          project,
+          searchValue,
+          selectedFilter,
+          instances,
+        ),
       )
       .sort((left, right) => left.name.localeCompare(right.name))
 
@@ -707,53 +718,72 @@ export function getTenantProjectActions(
   ]
 }
 
-export type ProjectEnvironmentFilter = 'all' | TenantProjectEnvironment
+export type ProjectListFilter = 'all' | 'root' | 'nested' | 'with-services' | 'no-services'
 
-export const PROJECT_ENVIRONMENT_FILTER_OPTIONS: ReadonlyArray<{
-  value: ProjectEnvironmentFilter
+export const PROJECT_LIST_FILTER_OPTIONS: ReadonlyArray<{
+  value: ProjectListFilter
   label: string
 }> = [
-  { value: 'all', label: 'All environments' },
-  { value: 'development', label: TENANT_PROJECT_ENVIRONMENT_LABELS.development },
-  { value: 'staging', label: TENANT_PROJECT_ENVIRONMENT_LABELS.staging },
-  { value: 'production', label: TENANT_PROJECT_ENVIRONMENT_LABELS.production },
-  { value: 'research', label: TENANT_PROJECT_ENVIRONMENT_LABELS.research },
+  { value: 'all', label: 'All projects' },
+  { value: 'root', label: 'Root projects' },
+  { value: 'nested', label: 'Nested projects' },
+  { value: 'with-services', label: 'With services' },
+  { value: 'no-services', label: 'No services' },
 ]
 
-export function projectMatchesSearch(project: TenantProject, searchValue: string): boolean {
+export function getProjectListFilterLabel(filter: ProjectListFilter): string {
+  return PROJECT_LIST_FILTER_OPTIONS.find((option) => option.value === filter)?.label ?? filter
+}
+
+export function projectMatchesSearch(
+  project: TenantProject,
+  searchValue: string,
+  projects: readonly TenantProject[] = [],
+): boolean {
   const query = searchValue.trim().toLowerCase()
   if (!query) {
     return true
   }
 
+  const parentProject = project.parentProjectId
+    ? getTenantProjectById(projects, project.parentProjectId)
+    : null
+
   return (
     project.name.toLowerCase().includes(query) ||
-    project.id.toLowerCase().includes(query) ||
     project.description.toLowerCase().includes(query) ||
-    getTenantProjectEnvironmentLabel(project.environmentType).toLowerCase().includes(query) ||
+    parentProject?.name.toLowerCase().includes(query) ||
     getTenantProjectPoolLabel(project).toLowerCase().includes(query)
   )
 }
 
-export function matchesProjectEnvironmentFilter(
+export function matchesProjectListFilter(
   project: TenantProject,
-  selectedEnvironment: ProjectEnvironmentFilter,
+  selectedFilter: ProjectListFilter,
+  instances: readonly TenantInstance[],
 ): boolean {
-  if (selectedEnvironment === 'all') {
-    return true
+  switch (selectedFilter) {
+    case 'all':
+      return true
+    case 'root':
+      return !project.parentProjectId
+    case 'nested':
+      return Boolean(project.parentProjectId)
+    case 'with-services':
+      return getInstancesForTenantProject(instances, project).length > 0
+    case 'no-services':
+      return getInstancesForTenantProject(instances, project).length === 0
   }
-
-  return project.environmentType === selectedEnvironment
 }
 
 export function buildProjectFilterParts(
   searchValue: string,
-  selectedEnvironment: ProjectEnvironmentFilter,
+  selectedFilter: ProjectListFilter,
 ): string[] {
   const parts: string[] = []
 
-  if (selectedEnvironment !== 'all') {
-    parts.push(`environment: ${getTenantProjectEnvironmentLabel(selectedEnvironment)}`)
+  if (selectedFilter !== 'all') {
+    parts.push(getProjectListFilterLabel(selectedFilter))
   }
 
   if (searchValue.trim()) {
@@ -764,6 +794,7 @@ export function buildProjectFilterParts(
 }
 
 export const TENANT_PROJECTS_TEAMS_DEMO = {
+  filterEmptyDescription: 'Try a different filter or search term.',
   lede: 'Carve your tenant workspace into isolated projects and grant team members scoped access.',
   emptyTitle: 'No projects yet',
   emptyBody: 'Create your first project to carve quota slices and invite developers.',
