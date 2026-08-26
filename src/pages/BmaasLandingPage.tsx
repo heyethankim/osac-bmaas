@@ -126,7 +126,7 @@ export function BmaasLandingPage() {
       statusLabel: 'Not approved yet',
     },
     {
-      label: 'Onboarding',
+      label: 'Tenant onboarding (IdP Manager)',
       to: '/idp-manager/bluesolace',
       statusLabel: 'Not approved yet',
     },
