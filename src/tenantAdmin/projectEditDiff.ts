@@ -2,6 +2,7 @@ import type { RegisteredOrganization } from '../providerAdmin/organizations'
 import type { CreateProjectWizardStepId } from './createProjectWizard'
 import {
   CREATE_PROJECT_WIZARD_DEMO,
+  formFromTenantProject,
   getTenantProjectMemberRoleShortLabel,
   type CreateProjectWizardForm,
   type TenantProjectWizardMember,
@@ -132,31 +133,11 @@ export function buildProjectEditSnapshotFromProject(
   organization: RegisteredOrganization,
   parentProjectName: string | null,
 ): ProjectEditSnapshot {
-  const members: TenantProjectWizardMember[] = project.members.map((member) => ({
-    id: member.id,
-    name: member.name,
-    email: member.email,
-    role: member.role,
-  }))
-
-  return {
-    name: snapshotValue(project.name, project.name),
-    description: snapshotValue(project.description, formatDescription(project.description)),
-    instanceQuota: snapshotValue(
-      String(project.instanceQuota),
-      formatInstanceQuota(project.instanceQuota, parentProjectName),
-    ),
-    externalIpPool: snapshotValue(
-      `${project.externalIpPoolId ?? ''}:${project.externalIpPoolCidr ?? ''}`,
-      formatExternalIpPool(
-        project.externalIpPoolId,
-        project.externalIpPoolName,
-        project.externalIpPoolCidr,
-        organization,
-      ),
-    ),
-    members: snapshotValue(serializeMembers(members), formatMembers(members)),
-  }
+  return buildProjectEditSnapshotFromForm(
+    formFromTenantProject(project),
+    organization,
+    parentProjectName,
+  )
 }
 
 const PROJECT_EDIT_FIELD_CONFIG: ReadonlyArray<{

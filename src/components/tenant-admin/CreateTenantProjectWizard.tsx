@@ -100,7 +100,9 @@ export function CreateTenantProjectWizard({
   editingProject = null,
   onUpdate,
 }: CreateTenantProjectWizardProps) {
-  const [form, setForm] = useState<CreateProjectWizardForm>(DEFAULT_CREATE_PROJECT_WIZARD_FORM)
+  const [form, setForm] = useState<CreateProjectWizardForm>(() =>
+    editingProject ? formFromTenantProject(editingProject) : DEFAULT_CREATE_PROJECT_WIZARD_FORM,
+  )
   const isEditMode = editingProject !== null
 
   const resolvedParentProject = useMemo(() => {
