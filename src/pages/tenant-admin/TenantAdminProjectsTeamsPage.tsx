@@ -34,6 +34,7 @@ import {
   collectDescendantProjectIds,
   getAutoExpandedProjectIds,
   getChildTenantProjects,
+  getEffectiveProjectMembers,
   getTenantProjectActions,
   getTenantProjectAncestors,
   getTenantProjectById,
@@ -49,6 +50,7 @@ import {
   type TenantProject,
   type TenantProjectMember,
 } from '../../tenantAdmin/projects'
+import { generateProjectWizardMemberId } from '../../tenantAdmin/createProjectWizard'
 import {
   addTenantProject,
   addTenantProjectMember,
@@ -57,7 +59,7 @@ import {
   updateTenantProject,
 } from '../../tenantAdmin/storage'
 import type { TenantInstance } from '../../tenantUser/instances'
-import { buildTenantUserProjectTreeRows } from '../../tenantUser/projects'
+import { buildTenantUserProjectTreeRows, getProjectMembershipForEmail, isTenantUserProjectManager, normalizeMemberEmail } from '../../tenantUser/projects'
 
 type TenantAdminProjectsTeamsPageProps = {
   tenantSlug: string
@@ -133,16 +135,11 @@ export function TenantAdminProjectsTeamsPage({
     }
 
     const visibleIds = new Set(filteredProjects.map((project) => project.id))
-    return buildTenantUserProjectTreeRows(projectCatalog, sortedProjects)
-      .filter(({ project }) => visibleIds.has(project.id))
-      .map(({ project, depth }) => ({
-        project,
-        depth,
-        hasChildren: getChildTenantProjects(sortedProjects, project.id).some((child) =>
-          visibleIds.has(child.id),
-        ),
-        isExpanded: true,
-      }))
+    return buildTenantUserProjectTreeRows(
+      projectCatalog,
+      sortedProjects,
+      expandedProjectIds,
+    ).filter(({ project }) => visibleIds.has(project.id))
   }, [
     expandedProjectIds,
     filteredProjects,
@@ -158,6 +155,55 @@ export function TenantAdminProjectsTeamsPage({
     () => buildProjectFilterParts(searchValue, selectedProjectFilter),
     [searchValue, selectedProjectFilter],
   )
+
+  const showActionsColumn = !readOnly || Boolean(currentUserEmail)
+
+  const canCreateRootProject =
+    !readOnly ||
+    Boolean(currentUserEmail && isTenantUserProjectManager(projectCatalog, currentUserEmail))
+
+  const canManageProject = (project: TenantProject) => {
+    if (!readOnly) {
+      return true
+    }
+
+    if (!currentUserEmail) {
+      return false
+    }
+
+    return (
+      getProjectMembershipForEmail(projectCatalog, project, currentUserEmail)?.role === 'manager'
+    )
+  }
+
+  const getProjectRowActions = (project: TenantProject) => {
+    if (readOnly) {
+      const canManage = canManageProject(project)
+
+      return getTenantProjectActions(project, {
+        onViewDetails: openDetails,
+        onCreateNested: (parent) => openCreateProject(parent),
+        showCreateNested: true,
+        createNestedDisabled: !canManage,
+        createNestedDisabledTooltip: TENANT_PROJECTS_TEAMS_DEMO.createNestedProjectDeniedTooltip,
+        onEdit: openEditProject,
+        showEdit: true,
+        editDisabled: !canManage,
+        editDisabledTooltip: TENANT_PROJECTS_TEAMS_DEMO.editProjectDeniedTooltip,
+        onDelete: openDeleteProject,
+        showDelete: true,
+        deleteDisabled: !canManage,
+        deleteDisabledTooltip: TENANT_PROJECTS_TEAMS_DEMO.deleteProjectDeniedTooltip,
+      })
+    }
+
+    return getTenantProjectActions(project, {
+      onViewDetails: openDetails,
+      onCreateNested: (parent) => openCreateProject(parent),
+      onEdit: openEditProject,
+      onDelete: openDeleteProject,
+    })
+  }
 
   const clearAllFilters = () => {
     setSearchValue('')
@@ -262,8 +308,41 @@ export function TenantAdminProjectsTeamsPage({
   }
 
   const handleCreateProject = (project: TenantProject) => {
-    addTenantProject(tenantSlug, project)
-    onProjectsChange([...projects, project])
+    let nextProject = project
+
+    if (readOnly && currentUserEmail) {
+      const normalizedEmail = normalizeMemberEmail(currentUserEmail)
+      const alreadyMember = project.members.some(
+        (member) => normalizeMemberEmail(member.email) === normalizedEmail,
+      )
+
+      if (!alreadyMember) {
+        const parentProject = project.parentProjectId
+          ? getTenantProjectById(projectCatalog, project.parentProjectId)
+          : null
+        const inheritedMembership = parentProject
+          ? getEffectiveProjectMembers(projectCatalog, parentProject).find(
+              (member) => normalizeMemberEmail(member.email) === normalizedEmail,
+            )
+          : null
+
+        nextProject = {
+          ...project,
+          members: [
+            ...project.members,
+            {
+              id: generateProjectWizardMemberId(),
+              name: inheritedMembership?.name ?? currentUserEmail,
+              email: currentUserEmail,
+              role: 'manager',
+            },
+          ],
+        }
+      }
+    }
+
+    addTenantProject(tenantSlug, nextProject)
+    onProjectsChange([...projectCatalog, nextProject])
   }
 
   const handleUpdateProject = (project: TenantProject) => {
@@ -444,7 +523,7 @@ export function TenantAdminProjectsTeamsPage({
               {lede ?? TENANT_PROJECTS_TEAMS_DEMO.lede}
             </Content>
           </FlexItem>
-          {readOnly ? null : (
+          {canCreateRootProject ? (
             <FlexItem alignSelf={{ default: 'alignSelfFlexStart' }}>
               <Button
                 variant="primary"
@@ -454,7 +533,7 @@ export function TenantAdminProjectsTeamsPage({
                 {TENANT_PROJECTS_TEAMS_DEMO.createProjectLabel}
               </Button>
             </FlexItem>
-          )}
+          ) : null}
         </Flex>
       ) : (
         <>
@@ -503,13 +582,15 @@ export function TenantAdminProjectsTeamsPage({
           </EmptyStateBody>
           <EmptyStateFooter>
             <EmptyStateActions>
-              <Button
-                variant="primary"
-                icon={<PlusIcon />}
-                onClick={() => openCreateProject()}
-              >
-                {TENANT_PROJECTS_TEAMS_DEMO.createFirstProjectLabel}
-              </Button>
+              {canCreateRootProject ? (
+                <Button
+                  variant="primary"
+                  icon={<PlusIcon />}
+                  onClick={() => openCreateProject()}
+                >
+                  {TENANT_PROJECTS_TEAMS_DEMO.createFirstProjectLabel}
+                </Button>
+              ) : null}
             </EmptyStateActions>
           </EmptyStateFooter>
         </EmptyState>
@@ -539,7 +620,7 @@ export function TenantAdminProjectsTeamsPage({
                 <Th>Project members</Th>
                 <Th>IP pool</Th>
                 <Th>Instance quota</Th>
-                {readOnly ? null : <Th screenReaderText="Actions" />}
+                {showActionsColumn ? <Th screenReaderText="Actions" /> : null}
               </Tr>
             </Thead>
             <Tbody>
@@ -624,18 +705,11 @@ export function TenantAdminProjectsTeamsPage({
                     <Td dataLabel="Instance quota">
                       {getTenantProjectInstanceQuotaLabel(projectCatalog, project)}
                     </Td>
-                    {readOnly ? null : (
+                    {showActionsColumn ? (
                       <Td isActionCell className="tenant-admin-projects-teams__table-action">
-                        <ActionsColumn
-                          items={getTenantProjectActions(project, {
-                            onViewDetails: openDetails,
-                            onCreateNested: (parent) => openCreateProject(parent),
-                            onEdit: openEditProject,
-                            onDelete: openDeleteProject,
-                          })}
-                        />
+                        <ActionsColumn items={getProjectRowActions(project)} />
                       </Td>
-                    )}
+                    ) : null}
                   </Tr>
                 )
               })}

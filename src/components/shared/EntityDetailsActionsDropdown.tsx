@@ -14,6 +14,8 @@ type EntityDetailsActionsDropdownProps = {
   removeLabel?: 'Remove' | 'Delete'
   editDisabled?: boolean
   removeDisabled?: boolean
+  editDisabledReason?: string
+  removeDisabledReason?: string
 }
 
 export function EntityDetailsActionsDropdown({
@@ -22,6 +24,8 @@ export function EntityDetailsActionsDropdown({
   removeLabel = 'Remove',
   editDisabled = false,
   removeDisabled = false,
+  editDisabledReason,
+  removeDisabledReason,
 }: EntityDetailsActionsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -49,7 +53,15 @@ export function EntityDetailsActionsDropdown({
     >
       <DropdownList>
         {onEdit ? (
-          <DropdownItem value="edit" onClick={onEdit} isDisabled={editDisabled}>
+          <DropdownItem
+            value="edit"
+            onClick={onEdit}
+            isDisabled={editDisabled}
+            description={editDisabled ? editDisabledReason : undefined}
+            tooltipProps={
+              editDisabled && editDisabledReason ? { content: editDisabledReason } : undefined
+            }
+          >
             Edit
           </DropdownItem>
         ) : null}
@@ -58,8 +70,12 @@ export function EntityDetailsActionsDropdown({
           <DropdownItem
             value="remove"
             onClick={onRemove}
-            isDanger
+            isDanger={!removeDisabled}
             isDisabled={removeDisabled}
+            description={removeDisabled ? removeDisabledReason : undefined}
+            tooltipProps={
+              removeDisabled && removeDisabledReason ? { content: removeDisabledReason } : undefined
+            }
           >
             {removeLabel}
           </DropdownItem>

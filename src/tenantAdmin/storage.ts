@@ -440,7 +440,7 @@ function createDemoTenantProject(): TenantProject {
         displayName: 'cluster-node-sets-object',
       },
     ],
-    members: DEMO_TENANT_PROJECT_MEMBERS,
+    members: ensureDemoTenantUserMembership(DEMO_TENANT_PROJECT_MEMBERS, 'viewer'),
     parentProjectId: null,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 12).toISOString(),
   }
@@ -538,13 +538,24 @@ function createDemoTenantProject02(): TenantProject {
 
 function ensureDemoTenantUserMembership(
   members: TenantProject['members'],
+  role: TenantProject['members'][number]['role'] = 'manager',
 ): TenantProject['members'] {
   const normalizedEmail = DEMO_TENANT_USER_PROJECT_MEMBER.email.toLowerCase()
-  if (members.some((member) => member.email.trim().toLowerCase() === normalizedEmail)) {
-    return members
+  const existing = members.find(
+    (member) => member.email.trim().toLowerCase() === normalizedEmail,
+  )
+
+  if (existing) {
+    if (existing.role === role) {
+      return members
+    }
+
+    return members.map((member) =>
+      member.email.trim().toLowerCase() === normalizedEmail ? { ...member, role } : member,
+    )
   }
 
-  return [...members, DEMO_TENANT_USER_PROJECT_MEMBER]
+  return [...members, { ...DEMO_TENANT_USER_PROJECT_MEMBER, role }]
 }
 
 function withDemoProjectDefaults(project: TenantProject): TenantProject {
@@ -555,10 +566,12 @@ function withDemoProjectDefaults(project: TenantProject): TenantProject {
     description: DEMO_TENANT_PROJECT_DESCRIPTION,
     environmentType: DEMO_TENANT_PROJECT_ENVIRONMENT,
     instanceQuota: 10,
-    members:
+    members: ensureDemoTenantUserMembership(
       project.members.length < DEMO_TENANT_PROJECT_MEMBERS.length
-        ? DEMO_TENANT_PROJECT_MEMBERS
+        ? [...DEMO_TENANT_PROJECT_MEMBERS]
         : project.members,
+      'viewer',
+    ),
   }
 }
 
@@ -574,6 +587,7 @@ function withDemoProject02Defaults(project: TenantProject): TenantProject {
       project.members.length < 4
         ? [...DEMO_TENANT_PROJECT_MEMBERS.slice(0, 4), DEMO_TENANT_USER_PROJECT_MEMBER]
         : project.members,
+      'manager',
     ),
     parentProjectId: null,
   }
@@ -588,7 +602,7 @@ function withDemoNestedProjectDefaults(project: TenantProject): TenantProject {
     environmentType: DEMO_NESTED_PROJECT_ENVIRONMENT,
     parentProjectId: DEMO_TENANT_PROJECT_ID,
     catalogItems: [],
-    members:
+    members: ensureDemoTenantUserMembership(
       project.members.length === 0
         ? [
             {
@@ -599,6 +613,8 @@ function withDemoNestedProjectDefaults(project: TenantProject): TenantProject {
             },
           ]
         : project.members,
+      'viewer',
+    ),
   }
 }
 

@@ -1,7 +1,7 @@
 import {
   getEffectiveProjectMembers,
   type TenantProject,
-  type TenantProjectScopeTreeRow,
+  type TenantProjectTreeRow,
 } from '../tenantAdmin/projects'
 
 export function normalizeMemberEmail(email: string): string {
@@ -19,6 +19,35 @@ export function isProjectMemberEmail(
   )
 }
 
+export function getProjectMembershipForEmail(
+  projects: readonly TenantProject[],
+  project: TenantProject,
+  userEmail: string,
+) {
+  const normalizedEmail = normalizeMemberEmail(userEmail)
+  return (
+    getEffectiveProjectMembers(projects, project).find(
+      (member) => normalizeMemberEmail(member.email) === normalizedEmail,
+    ) ?? null
+  )
+}
+
+export function isProjectManagerEmail(
+  projects: readonly TenantProject[],
+  project: TenantProject,
+  userEmail: string,
+): boolean {
+  return getProjectMembershipForEmail(projects, project, userEmail)?.role === 'manager'
+}
+
+/** True when the tenant user has manager access on at least one project. */
+export function isTenantUserProjectManager(
+  projects: readonly TenantProject[],
+  userEmail: string,
+): boolean {
+  return projects.some((project) => isProjectManagerEmail(projects, project, userEmail))
+}
+
 /** Projects the signed-in tenant user can access (direct membership or inherited). */
 export function getTenantUserAccessibleProjects(
   projects: readonly TenantProject[],
@@ -30,9 +59,11 @@ export function getTenantUserAccessibleProjects(
 export function buildTenantUserProjectTreeRows(
   allProjects: readonly TenantProject[],
   accessibleProjects: readonly TenantProject[],
-): TenantProjectScopeTreeRow[] {
+  expandedProjectIds?: ReadonlySet<string>,
+): TenantProjectTreeRow[] {
   const accessibleIds = new Set(accessibleProjects.map((project) => project.id))
-  const rows: TenantProjectScopeTreeRow[] = []
+  const alwaysExpanded = expandedProjectIds === undefined
+  const rows: TenantProjectTreeRow[] = []
 
   const appendRows = (parentId: string | null, depth: number) => {
     const siblings = allProjects
@@ -47,8 +78,17 @@ export function buildTenantUserProjectTreeRows(
       .sort((left, right) => left.name.localeCompare(right.name))
 
     for (const project of siblings) {
-      rows.push({ project, depth })
-      appendRows(project.id, depth + 1)
+      const hasChildren = allProjects.some(
+        (child) =>
+          accessibleIds.has(child.id) && (child.parentProjectId ?? null) === project.id,
+      )
+      const isExpanded = alwaysExpanded || expandedProjectIds.has(project.id)
+
+      rows.push({ project, depth, hasChildren, isExpanded })
+
+      if (hasChildren && isExpanded) {
+        appendRows(project.id, depth + 1)
+      }
     }
   }
 

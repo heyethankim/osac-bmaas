@@ -17,6 +17,7 @@ import {
   ModalHeader,
   ModalVariant,
   Title,
+  Tooltip,
 } from '@patternfly/react-core'
 import { EllipsisVIcon } from '@patternfly/react-icons/dist/esm/icons/ellipsis-v-icon'
 import { PlusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/plus-circle-icon'
@@ -244,7 +245,7 @@ export function TenantProjectDetailsPage({
   )
 
   const currentUserMembership = useMemo(() => {
-    if (!readOnly || !currentUserEmail) {
+    if (!currentUserEmail) {
       return null
     }
 
@@ -254,7 +255,10 @@ export function TenantProjectDetailsPage({
           normalizeMemberEmail(member.email) === normalizeMemberEmail(currentUserEmail),
       ) ?? null
     )
-  }, [currentUserEmail, effectiveMembers, readOnly])
+  }, [currentUserEmail, effectiveMembers])
+
+  const canCreateNested = !readOnly || currentUserMembership?.role === 'manager'
+  const showCreateNestedAction = !readOnly || Boolean(currentUserMembership)
 
   const projectInstances = useMemo(
     () => getInstancesForTenantProject(instances, project),
@@ -284,7 +288,19 @@ export function TenantProjectDetailsPage({
         titleId="tenant-project-details-title"
         description={TENANT_PROJECTS_TEAMS_DEMO.detailsLede}
         actions={
-          readOnly ? undefined : (
+          readOnly ? (
+            currentUserMembership ? (
+              <EntityDetailsActionsDropdown
+                onEdit={() => onEdit(project)}
+                editDisabled={currentUserMembership.role !== 'manager'}
+                editDisabledReason={TENANT_PROJECTS_TEAMS_DEMO.editProjectDeniedTooltip}
+                onRemove={() => onDelete(project.id)}
+                removeDisabled={currentUserMembership.role !== 'manager'}
+                removeDisabledReason={TENANT_PROJECTS_TEAMS_DEMO.deleteProjectDeniedTooltip}
+                removeLabel="Delete"
+              />
+            ) : undefined
+          ) : (
             <EntityDetailsActionsDropdown
               onEdit={() => onEdit(project)}
               onRemove={() => onDelete(project.id)}
@@ -321,7 +337,7 @@ export function TenantProjectDetailsPage({
                       </DescriptionListDescription>
                     </DescriptionListGroup>
                   ) : null}
-                  {currentUserMembership ? (
+                  {currentUserMembership && readOnly ? (
                     <DescriptionListGroup>
                       <DescriptionListTerm>Your role</DescriptionListTerm>
                       <DescriptionListDescription>
@@ -418,17 +434,31 @@ export function TenantProjectDetailsPage({
                 <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
                   {TENANT_PROJECTS_TEAMS_DEMO.nestedProjectsTitle} ({nestedProjects.length})
                 </Title>
-                {readOnly ? null : (
-                  <Button
-                    variant="link"
-                    isInline
-                    icon={<PlusCircleIcon />}
-                    className="provider-admin-organizations__accounts-add"
-                    onClick={() => onCreateNested(project)}
-                  >
-                    {TENANT_PROJECTS_TEAMS_DEMO.createNestedProjectLabel}
-                  </Button>
-                )}
+                {showCreateNestedAction ? (
+                  canCreateNested ? (
+                    <Button
+                      variant="link"
+                      isInline
+                      icon={<PlusCircleIcon />}
+                      className="provider-admin-organizations__accounts-add"
+                      onClick={() => onCreateNested(project)}
+                    >
+                      {TENANT_PROJECTS_TEAMS_DEMO.createLabel}
+                    </Button>
+                  ) : (
+                    <Tooltip content={TENANT_PROJECTS_TEAMS_DEMO.createNestedProjectDeniedTooltip}>
+                      <Button
+                        variant="link"
+                        isInline
+                        icon={<PlusCircleIcon />}
+                        className="provider-admin-organizations__accounts-add"
+                        isDisabled
+                      >
+                        {TENANT_PROJECTS_TEAMS_DEMO.createLabel}
+                      </Button>
+                    </Tooltip>
+                  )
+                ) : null}
               </div>
               {nestedProjects.length === 0 ? (
                 <Content component="p" className="provider-admin-organizations__secondary-cell">

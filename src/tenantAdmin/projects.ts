@@ -701,20 +701,49 @@ export function getInstancesForTenantProject(
   return instances.filter((instance) => instanceBelongsToProject(instance, project))
 }
 
+export type TenantProjectActionItem = {
+  title?: string
+  onClick?: () => void
+  isDanger?: boolean
+  isSeparator?: boolean
+  isDisabled?: boolean
+  description?: string
+  tooltipProps?: { content: string }
+}
+
+function disabledActionExplanation(message?: string) {
+  if (!message) {
+    return {}
+  }
+
+  return {
+    description: message,
+    tooltipProps: { content: message },
+  }
+}
+
 export function getTenantProjectActions(
   project: TenantProject,
   handlers: {
     onViewDetails: (project: TenantProject) => void
     onEdit?: (project: TenantProject) => void
     onCreateNested?: (project: TenantProject) => void
-    onDelete: (projectId: string) => void
+    onDelete?: (projectId: string) => void
+    showCreateNested?: boolean
+    createNestedDisabled?: boolean
+    createNestedDisabledTooltip?: string
+    showEdit?: boolean
+    editDisabled?: boolean
+    editDisabledTooltip?: string
+    showDelete?: boolean
+    deleteDisabled?: boolean
+    deleteDisabledTooltip?: string
   },
-): Array<{
-  title?: string
-  onClick?: () => void
-  isDanger?: boolean
-  isSeparator?: boolean
-}> {
+): TenantProjectActionItem[] {
+  const showCreateNested = handlers.showCreateNested ?? Boolean(handlers.onCreateNested)
+  const showEdit = handlers.showEdit ?? Boolean(handlers.onEdit)
+  const showDelete = handlers.showDelete ?? Boolean(handlers.onDelete)
+
   return [
     {
       title: 'View details',
@@ -722,36 +751,58 @@ export function getTenantProjectActions(
         handlers.onViewDetails(project)
       },
     },
-    ...(handlers.onCreateNested
+    ...(showCreateNested
       ? [
           {
             title: 'Create nested project',
-            onClick: () => {
-              handlers.onCreateNested?.(project)
-            },
+            onClick: handlers.createNestedDisabled
+              ? undefined
+              : () => {
+                  handlers.onCreateNested?.(project)
+                },
+            isDisabled: handlers.createNestedDisabled,
+            ...disabledActionExplanation(
+              handlers.createNestedDisabled ? handlers.createNestedDisabledTooltip : undefined,
+            ),
           },
         ]
       : []),
-    ...(handlers.onEdit
+    ...(showEdit
       ? [
           {
             title: 'Edit',
-            onClick: () => {
-              handlers.onEdit?.(project)
-            },
+            onClick: handlers.editDisabled
+              ? undefined
+              : () => {
+                  handlers.onEdit?.(project)
+                },
+            isDisabled: handlers.editDisabled,
+            ...disabledActionExplanation(
+              handlers.editDisabled ? handlers.editDisabledTooltip : undefined,
+            ),
           },
         ]
       : []),
-    {
-      isSeparator: true,
-    },
-    {
-      title: 'Delete',
-      isDanger: true,
-      onClick: () => {
-        handlers.onDelete(project.id)
-      },
-    },
+    ...(showDelete
+      ? [
+          {
+            isSeparator: true,
+          },
+          {
+            title: 'Delete',
+            isDanger: !handlers.deleteDisabled,
+            onClick: handlers.deleteDisabled
+              ? undefined
+              : () => {
+                  handlers.onDelete?.(project.id)
+                },
+            isDisabled: handlers.deleteDisabled,
+            ...disabledActionExplanation(
+              handlers.deleteDisabled ? handlers.deleteDisabledTooltip : undefined,
+            ),
+          },
+        ]
+      : []),
   ]
 }
 
@@ -837,7 +888,11 @@ export const TENANT_PROJECTS_TEAMS_DEMO = {
   emptyBody: 'Create your first project to carve quota slices and invite developers.',
   createFirstProjectLabel: 'Create first project',
   createProjectLabel: 'Create project',
+  createLabel: 'Create',
   createNestedProjectLabel: 'Create nested project',
+  createNestedProjectDeniedTooltip: 'Manager role is required',
+  editProjectDeniedTooltip: 'Manager role is required',
+  deleteProjectDeniedTooltip: 'Manager role is required',
   nestedProjectsTitle: 'Nested projects',
   nestedProjectsEmpty: 'No nested projects yet.',
   nestedBadgeLabel: 'Nested',
