@@ -92,6 +92,7 @@ type TenantUserInstancesPageProps = {
   instances: TenantInstance[]
   onInstancesChange: Dispatch<SetStateAction<TenantInstance[]>>
   projects: readonly TenantProject[]
+  allProjects?: readonly TenantProject[]
   projectScopeId: ProjectScopeId
   onProjectScopeChange: (scopeId: ProjectScopeId) => void
   organization: RegisteredOrganization | null
@@ -104,7 +105,7 @@ type TenantUserInstancesPageProps = {
   /** Opens the matching project detail page in Projects. */
   onNavigateToProject?: (project: TenantProject) => void
   /** Opens the Projects page to create a new project. */
-  onNavigateToCreateProject: () => void
+  onNavigateToCreateProject?: () => void
   /** Opens this instance's detail page when navigating from another workspace view. */
   openInstanceId?: string | null
   onOpenInstanceConsumed?: () => void
@@ -178,6 +179,7 @@ export function TenantUserInstancesPage({
   instances,
   onInstancesChange,
   projects,
+  allProjects,
   projectScopeId,
   onProjectScopeChange,
   organization,
@@ -975,6 +977,7 @@ export function TenantUserInstancesPage({
             <ProjectScopeSwitcher
               tenantSlug={tenantSlug}
               projects={projects}
+              allProjects={allProjects}
               selectedScopeId={projectScopeId}
               onChange={onProjectScopeChange}
               onNavigateToCreateProject={onNavigateToCreateProject}

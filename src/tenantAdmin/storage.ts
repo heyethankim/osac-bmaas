@@ -263,6 +263,40 @@ function isTenantProject(value: unknown): value is TenantProject {
   )
 }
 
+const LEGACY_DEMO_TENANT_USER_EMAIL = 'chris@northsummitbank.com'
+const DEMO_TENANT_USER_EMAIL = 'cmorgan@northsummitbank.com'
+
+function normalizeTenantProjectMembers(
+  members: TenantProject['members'],
+): TenantProject['members'] {
+  const legacyEmail = LEGACY_DEMO_TENANT_USER_EMAIL.toLowerCase()
+
+  const mapped = members.map((member) =>
+    member.email.trim().toLowerCase() === legacyEmail
+      ? { ...member, email: DEMO_TENANT_USER_EMAIL }
+      : member,
+  )
+
+  const preferredByEmail = new Map<string, TenantProject['members'][number]>()
+  for (const member of mapped) {
+    const email = member.email.trim().toLowerCase()
+    const existing = preferredByEmail.get(email)
+    if (!existing || (member.role === 'manager' && existing.role !== 'manager')) {
+      preferredByEmail.set(email, member)
+    }
+  }
+
+  const seen = new Set<string>()
+  return mapped.filter((member) => {
+    const email = member.email.trim().toLowerCase()
+    if (preferredByEmail.get(email) !== member || seen.has(email)) {
+      return false
+    }
+    seen.add(email)
+    return true
+  })
+}
+
 function normalizeTenantProject(value: TenantProject): TenantProject {
   const project = value as TenantProject & {
     catalogItemId?: string | null
@@ -277,12 +311,14 @@ function normalizeTenantProject(value: TenantProject): TenantProject {
         : [],
   )
 
-  const members = Array.isArray(project.members)
-    ? project.members.filter(isTenantProjectMember).map((member) => ({
-        ...member,
-        role: migrateTenantProjectMemberRole(member.role),
-      }))
-    : []
+  const members = normalizeTenantProjectMembers(
+    Array.isArray(project.members)
+      ? project.members.filter(isTenantProjectMember).map((member) => ({
+          ...member,
+          role: migrateTenantProjectMemberRole(member.role),
+        }))
+      : [],
+  )
 
   return {
     id: project.id,
@@ -325,6 +361,13 @@ export function getTenantProjects(slug: string): TenantProject[] {
 
 const LEGACY_DEMO_TENANT_PROJECT_IDS = ['project_ml-platform', 'project_ml-project'] as const
 const LEGACY_DEMO_TENANT_PROJECT_NAMES = ['ml-platform', 'ml-project'] as const
+
+const DEMO_TENANT_USER_PROJECT_MEMBER: TenantProject['members'][number] = {
+  id: 'member_demo_user_chris',
+  name: 'Chris Morgan',
+  email: DEMO_TENANT_USER_EMAIL,
+  role: 'manager',
+}
 
 const DEMO_TENANT_PROJECT_MEMBERS: TenantProject['members'] = [
   {
@@ -418,7 +461,7 @@ function createDemoNestedTenantProject(): TenantProject {
       {
         id: 'member_nested_viewer',
         name: 'Chris Morgan',
-        email: 'chris@northsummitbank.com',
+        email: DEMO_TENANT_USER_EMAIL,
         role: 'viewer',
       },
     ],
@@ -484,10 +527,24 @@ function createDemoTenantProject02(): TenantProject {
         displayName: 'bare-metal-gpu-training-server',
       },
     ],
-    members: DEMO_TENANT_PROJECT_MEMBERS.slice(0, 4),
+    members: [
+      ...DEMO_TENANT_PROJECT_MEMBERS.slice(0, 4),
+      DEMO_TENANT_USER_PROJECT_MEMBER,
+    ],
     parentProjectId: null,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
   }
+}
+
+function ensureDemoTenantUserMembership(
+  members: TenantProject['members'],
+): TenantProject['members'] {
+  const normalizedEmail = DEMO_TENANT_USER_PROJECT_MEMBER.email.toLowerCase()
+  if (members.some((member) => member.email.trim().toLowerCase() === normalizedEmail)) {
+    return members
+  }
+
+  return [...members, DEMO_TENANT_USER_PROJECT_MEMBER]
 }
 
 function withDemoProjectDefaults(project: TenantProject): TenantProject {
@@ -513,8 +570,11 @@ function withDemoProject02Defaults(project: TenantProject): TenantProject {
     description: DEMO_TENANT_PROJECT_DESCRIPTION_02,
     environmentType: DEMO_TENANT_PROJECT_ENVIRONMENT_02,
     instanceQuota: 4,
-    members:
-      project.members.length < 4 ? DEMO_TENANT_PROJECT_MEMBERS.slice(0, 4) : project.members,
+    members: ensureDemoTenantUserMembership(
+      project.members.length < 4
+        ? [...DEMO_TENANT_PROJECT_MEMBERS.slice(0, 4), DEMO_TENANT_USER_PROJECT_MEMBER]
+        : project.members,
+    ),
     parentProjectId: null,
   }
 }
@@ -534,7 +594,7 @@ function withDemoNestedProjectDefaults(project: TenantProject): TenantProject {
             {
               id: 'member_nested_viewer',
               name: 'Chris Morgan',
-              email: 'chris@northsummitbank.com',
+              email: DEMO_TENANT_USER_EMAIL,
               role: 'viewer',
             },
           ]

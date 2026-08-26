@@ -56,6 +56,7 @@ type TenantUserCatalogPageProps = {
   catalogDraft: ProviderCatalogDraft | null
   tenantSlug: string
   projects: readonly TenantProject[]
+  allProjects?: readonly TenantProject[]
   initialProjectId?: string | null
   onProjectScopeChange?: (projectId: string) => void
   onNavigateToProjectsTeams: () => void
@@ -93,9 +94,9 @@ export function TenantUserCatalogPage({
   catalogDraft,
   tenantSlug,
   projects,
+  allProjects,
   initialProjectId = null,
   onProjectScopeChange,
-  onNavigateToProjectsTeams,
   autoOpenLaunchWizard = false,
   preferCatalogDraft = false,
   openCatalogItemKey = null,
@@ -315,12 +316,9 @@ export function TenantUserCatalogPage({
           preferCatalogDraft={preferCatalogDraft}
           tenantSlug={tenantSlug}
           projects={projects}
+          allProjects={allProjects}
           initialProjectId={initialProjectId}
           onProjectScopeChange={onProjectScopeChange}
-          onNavigateToCreateProject={() => {
-            closeLaunchWizard()
-            onNavigateToProjectsTeams()
-          }}
           existingInstanceNames={existingInstanceNames}
           onClose={closeLaunchWizard}
           onProvisioningStarted={onProvisioningStarted}

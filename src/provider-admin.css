@@ -4232,6 +4232,14 @@
   border-block-end: none;
 }
 
+.provider-admin-organizations__account-person--current-user {
+  margin-inline: calc(-1 * var(--pf-t--global--spacer--sm));
+  padding-inline: var(--pf-t--global--spacer--sm);
+  border-inline-start: var(--pf-t--global--border--width--strong) solid
+    var(--pf-t--global--color--brand--default);
+  background: var(--pf-t--global--background--color--secondary--default);
+}
+
 .provider-admin-organizations__account-person-main {
   min-width: 0;
 }

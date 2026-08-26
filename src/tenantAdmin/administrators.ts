@@ -46,6 +46,40 @@ export const ASSIGNABLE_TENANT_ROLES = [
 
 export type AssignableTenantRoleId = OrganizationAssignedRoleId
 
+const TENANT_ROLE_SORT_ORDER: Record<AssignableTenantRoleId, number> = {
+  'tenant-administrator': 0,
+  'tenant-reader': 1,
+  'tenant-user': 2,
+}
+
+function compareTenantRoleAssignments(
+  left: TenantAdministrator,
+  right: TenantAdministrator,
+): number {
+  const roleCompare =
+    TENANT_ROLE_SORT_ORDER[left.roleId] - TENANT_ROLE_SORT_ORDER[right.roleId]
+  if (roleCompare !== 0) {
+    return roleCompare
+  }
+
+  if (left.isPrimary !== right.isPrimary) {
+    return left.isPrimary ? -1 : 1
+  }
+
+  const nameCompare = left.name.localeCompare(right.name, undefined, { sensitivity: 'base' })
+  if (nameCompare !== 0) {
+    return nameCompare
+  }
+
+  return left.email.localeCompare(right.email, undefined, { sensitivity: 'base' })
+}
+
+export function sortTenantRoleAssignments(
+  assignments: readonly TenantAdministrator[],
+): TenantAdministrator[] {
+  return [...assignments].sort(compareTenantRoleAssignments)
+}
+
 export function getAssignableTenantRole(
   roleId: AssignableTenantRoleId,
 ): (typeof ASSIGNABLE_TENANT_ROLES)[number] {
@@ -105,10 +139,10 @@ export function listRoleAssignments(
   )
 
   if (!hasPrimaryTenantAdministrator(organization)) {
-    return additional
+    return sortTenantRoleAssignments(additional)
   }
 
-  return [
+  return sortTenantRoleAssignments([
     toRoleAssignment(
       {
         name: organization.tenantAdminName,
@@ -118,7 +152,7 @@ export function listRoleAssignments(
       true,
     ),
     ...additional,
-  ]
+  ])
 }
 
 export function listTenantAdministrators(

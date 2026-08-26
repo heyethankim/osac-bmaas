@@ -57,6 +57,7 @@ import {
   updateTenantProject,
 } from '../../tenantAdmin/storage'
 import type { TenantInstance } from '../../tenantUser/instances'
+import { buildTenantUserProjectTreeRows } from '../../tenantUser/projects'
 
 type TenantAdminProjectsTeamsPageProps = {
   tenantSlug: string
@@ -68,6 +69,10 @@ type TenantAdminProjectsTeamsPageProps = {
   /** Opens this project's detail page when navigating from another workspace view. */
   openProjectId?: string | null
   onOpenProjectConsumed?: () => void
+  readOnly?: boolean
+  currentUserEmail?: string
+  allProjects?: readonly TenantProject[]
+  lede?: string
 }
 
 export function TenantAdminProjectsTeamsPage({
@@ -79,6 +84,10 @@ export function TenantAdminProjectsTeamsPage({
   onNavigateToInstance,
   openProjectId = null,
   onOpenProjectConsumed,
+  readOnly = false,
+  currentUserEmail,
+  allProjects,
+  lede,
 }: TenantAdminProjectsTeamsPageProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<TenantProject | null>(null)
@@ -92,6 +101,8 @@ export function TenantAdminProjectsTeamsPage({
   const [searchValue, setSearchValue] = useState('')
   const [selectedProjectFilter, setSelectedProjectFilter] = useState<ProjectListFilter>('all')
   const [expandedProjectIds, setExpandedProjectIds] = useState<Set<string>>(() => new Set())
+
+  const projectCatalog = allProjects ?? projects
 
   const sortedProjects = useMemo(
     () => [...projects].sort((left, right) => left.name.localeCompare(right.name)),
@@ -110,17 +121,38 @@ export function TenantAdminProjectsTeamsPage({
     [instances, searchValue, selectedProjectFilter, sortedProjects],
   )
 
-  const treeRows = useMemo(
-    () =>
-      buildTenantProjectTreeRows(
+  const treeRows = useMemo(() => {
+    if (!readOnly) {
+      return buildTenantProjectTreeRows(
         sortedProjects,
         searchValue,
         selectedProjectFilter,
         instances,
         expandedProjectIds,
-      ),
-    [expandedProjectIds, instances, searchValue, selectedProjectFilter, sortedProjects],
-  )
+      )
+    }
+
+    const visibleIds = new Set(filteredProjects.map((project) => project.id))
+    return buildTenantUserProjectTreeRows(projectCatalog, sortedProjects)
+      .filter(({ project }) => visibleIds.has(project.id))
+      .map(({ project, depth }) => ({
+        project,
+        depth,
+        hasChildren: getChildTenantProjects(sortedProjects, project.id).some((child) =>
+          visibleIds.has(child.id),
+        ),
+        isExpanded: true,
+      }))
+  }, [
+    expandedProjectIds,
+    filteredProjects,
+    instances,
+    projectCatalog,
+    readOnly,
+    searchValue,
+    selectedProjectFilter,
+    sortedProjects,
+  ])
 
   const filterDescriptionParts = useMemo(
     () => buildProjectFilterParts(searchValue, selectedProjectFilter),
@@ -377,7 +409,7 @@ export function TenantAdminProjectsTeamsPage({
       <>
         <TenantProjectDetailsPage
           project={selectedProject}
-          projects={projects}
+          projects={projectCatalog}
           instances={instances}
           onBack={closeDetails}
           onOpenProject={openDetails}
@@ -387,6 +419,8 @@ export function TenantAdminProjectsTeamsPage({
           onAddMember={handleAddMember}
           onRemoveMember={handleRemoveMember}
           onNavigateToInstance={onNavigateToInstance}
+          readOnly={readOnly}
+          currentUserEmail={currentUserEmail}
         />
         {deleteConfirmModal}
       </>
@@ -407,18 +441,20 @@ export function TenantAdminProjectsTeamsPage({
               Projects
             </Title>
             <Content component="p" className="tenant-admin-projects-teams__lede">
-              {TENANT_PROJECTS_TEAMS_DEMO.lede}
+              {lede ?? TENANT_PROJECTS_TEAMS_DEMO.lede}
             </Content>
           </FlexItem>
-          <FlexItem alignSelf={{ default: 'alignSelfFlexStart' }}>
-            <Button
-              variant="primary"
-              icon={<PlusIcon />}
-              onClick={() => openCreateProject()}
-            >
-              {TENANT_PROJECTS_TEAMS_DEMO.createProjectLabel}
-            </Button>
-          </FlexItem>
+          {readOnly ? null : (
+            <FlexItem alignSelf={{ default: 'alignSelfFlexStart' }}>
+              <Button
+                variant="primary"
+                icon={<PlusIcon />}
+                onClick={() => openCreateProject()}
+              >
+                {TENANT_PROJECTS_TEAMS_DEMO.createProjectLabel}
+              </Button>
+            </FlexItem>
+          )}
         </Flex>
       ) : (
         <>
@@ -503,13 +539,13 @@ export function TenantAdminProjectsTeamsPage({
                 <Th>Project members</Th>
                 <Th>IP pool</Th>
                 <Th>Instance quota</Th>
-                <Th screenReaderText="Actions" />
+                {readOnly ? null : <Th screenReaderText="Actions" />}
               </Tr>
             </Thead>
             <Tbody>
               {treeRows.map(({ project, depth, hasChildren, isExpanded }) => {
                 const parentProject = project.parentProjectId
-                  ? getTenantProjectById(projects, project.parentProjectId)
+                  ? getTenantProjectById(projectCatalog, project.parentProjectId)
                   : null
 
                 return (
@@ -582,22 +618,24 @@ export function TenantAdminProjectsTeamsPage({
                       {getTenantProjectServicesLabel(instances, project)}
                     </Td>
                     <Td dataLabel="Project members">
-                      {getTenantProjectMemberCountLabel(projects, project)}
+                      {getTenantProjectMemberCountLabel(projectCatalog, project)}
                     </Td>
                     <Td dataLabel="IP pool">{getTenantProjectPoolLabel(project)}</Td>
                     <Td dataLabel="Instance quota">
-                      {getTenantProjectInstanceQuotaLabel(projects, project)}
+                      {getTenantProjectInstanceQuotaLabel(projectCatalog, project)}
                     </Td>
-                    <Td isActionCell className="tenant-admin-projects-teams__table-action">
-                      <ActionsColumn
-                        items={getTenantProjectActions(project, {
-                          onViewDetails: openDetails,
-                          onCreateNested: (parent) => openCreateProject(parent),
-                          onEdit: openEditProject,
-                          onDelete: openDeleteProject,
-                        })}
-                      />
-                    </Td>
+                    {readOnly ? null : (
+                      <Td isActionCell className="tenant-admin-projects-teams__table-action">
+                        <ActionsColumn
+                          items={getTenantProjectActions(project, {
+                            onViewDetails: openDetails,
+                            onCreateNested: (parent) => openCreateProject(parent),
+                            onEdit: openEditProject,
+                            onDelete: openDeleteProject,
+                          })}
+                        />
+                      </Td>
+                    )}
                   </Tr>
                 )
               })}

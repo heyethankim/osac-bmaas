@@ -52,11 +52,14 @@ export function setProjectScopeId(tenantSlug: string, scopeId: ProjectScopeId): 
 export function getProjectScopeLabel(
   tenantSlug: string,
   scopeId: ProjectScopeId,
+  accessibleProjects?: readonly TenantProject[],
 ): string {
   if (isAllProjectsScope(scopeId)) {
     return 'All projects'
   }
-  return getTenantProjects(tenantSlug).find((project) => project.id === scopeId)?.name ?? 'All projects'
+
+  const projects = accessibleProjects ?? getTenantProjects(tenantSlug)
+  return projects.find((project) => project.id === scopeId)?.name ?? 'All projects'
 }
 
 export function resolveLaunchScopeForProjectSelection(

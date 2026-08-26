@@ -44,6 +44,7 @@ import {
   TENANT_PROJECTS_TEAMS_DEMO,
   type TenantProject,
 } from '../../tenantAdmin/projects'
+import { buildTenantUserProjectTreeRows } from '../../tenantUser/projects'
 import { resolveBaremetalCatalogCardSpecRows, resolveCatalogSpecRows, resolveClusterCatalogHighlightRows } from '../../catalog/catalogSpecs'
 import {
   formatBaremetalInstanceTypeLabel,
@@ -120,10 +121,11 @@ type TenantUserLaunchInstanceWizardProps = {
   preferCatalogDraft?: boolean
   tenantSlug: string
   projects: readonly TenantProject[]
+  allProjects?: readonly TenantProject[]
   /** Prefill from Services project switcher when a specific project is selected. */
   initialProjectId?: string | null
   onProjectScopeChange?: (projectId: string) => void
-  onNavigateToCreateProject: () => void
+  onNavigateToCreateProject?: () => void
   existingInstanceNames?: readonly string[]
   onClose: () => void
   onProvisioningStarted: (instance: TenantInstance) => void
@@ -174,6 +176,7 @@ export function TenantUserLaunchInstanceWizard({
   preferCatalogDraft = false,
   tenantSlug,
   projects,
+  allProjects,
   initialProjectId = null,
   onProjectScopeChange,
   onNavigateToCreateProject,
@@ -480,7 +483,7 @@ export function TenantUserLaunchInstanceWizard({
     requestClose: showCreateProjectConfirm,
     leaveConfirmModal: createProjectConfirmModal,
   } = useWizardLeaveConfirm({
-    onLeave: onNavigateToCreateProject,
+    onLeave: () => onNavigateToCreateProject?.(),
     title: LAUNCH_INSTANCE_WIZARD_DEMO.createProjectConfirmTitle,
     description: LAUNCH_INSTANCE_WIZARD_DEMO.createProjectConfirmDescription,
     primaryActionLabel: LAUNCH_INSTANCE_WIZARD_DEMO.createProjectConfirmActionLabel,
@@ -795,14 +798,19 @@ export function TenantUserLaunchInstanceWizard({
           <DropdownList>
             <ProjectTreeDropdownItems
               projects={projects}
+              treeRows={buildTenantUserProjectTreeRows(allProjects ?? projects, projects)}
               selectedProjectId={selectedProjectId}
             />
-            {projects.length > 0 ? (
-              <Divider component="li" key="create-project-separator" />
+            {onNavigateToCreateProject ? (
+              <>
+                {projects.length > 0 ? (
+                  <Divider component="li" key="create-project-separator" />
+                ) : null}
+                <DropdownItem icon={<PlusIcon />} onClick={handleNavigateToCreateProject}>
+                  {TENANT_PROJECTS_TEAMS_DEMO.createProjectLabel}
+                </DropdownItem>
+              </>
             ) : null}
-            <DropdownItem icon={<PlusIcon />} onClick={handleNavigateToCreateProject}>
-              {TENANT_PROJECTS_TEAMS_DEMO.createProjectLabel}
-            </DropdownItem>
           </DropdownList>
         </Dropdown>
       </div>

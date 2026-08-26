@@ -119,7 +119,7 @@ export const DEFAULT_CREATE_PROJECT_WIZARD_FORM: CreateProjectWizardForm = {
     {
       id: 'project-member-demo',
       name: 'Chris Morgan',
-      email: 'chris@northsummitbank.com',
+      email: 'cmorgan@northsummitbank.com',
       role: 'manager',
     },
   ],
@@ -173,6 +173,12 @@ export function getTenantProjectMemberRoleShortLabel(role: TenantProjectMemberRo
   return (
     TENANT_PROJECT_MEMBER_ROLES.find((entry) => entry.id === role)?.shortLabel ?? role
   )
+}
+
+export function getTenantProjectMemberRoleLabelColor(
+  role: TenantProjectMemberRole,
+): 'blue' | 'grey' {
+  return role === 'manager' ? 'blue' : 'grey'
 }
 
 export function isCatalogItemSelected(

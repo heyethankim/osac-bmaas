@@ -60,6 +60,43 @@ export type EffectiveTenantProjectMember = TenantProjectMember & {
   inheritedFromProjectName?: string
 }
 
+function comparePeopleByName(
+  left: Pick<TenantProjectMember, 'name' | 'email'>,
+  right: Pick<TenantProjectMember, 'name' | 'email'>,
+): number {
+  const nameCompare = left.name.localeCompare(right.name, undefined, { sensitivity: 'base' })
+  if (nameCompare !== 0) {
+    return nameCompare
+  }
+
+  return left.email.localeCompare(right.email, undefined, { sensitivity: 'base' })
+}
+
+function compareProjectMembersByRoleThenName(
+  left: EffectiveTenantProjectMember,
+  right: EffectiveTenantProjectMember,
+): number {
+  const roleOrder = (role: TenantProjectMemberRole) => (role === 'manager' ? 0 : 1)
+  const roleCompare = roleOrder(left.role) - roleOrder(right.role)
+  if (roleCompare !== 0) {
+    return roleCompare
+  }
+
+  const sourceOrder = (member: EffectiveTenantProjectMember) => (member.inherited ? 1 : 0)
+  const sourceCompare = sourceOrder(left) - sourceOrder(right)
+  if (sourceCompare !== 0) {
+    return sourceCompare
+  }
+
+  return comparePeopleByName(left, right)
+}
+
+export function sortEffectiveProjectMembers(
+  members: readonly EffectiveTenantProjectMember[],
+): EffectiveTenantProjectMember[] {
+  return [...members].sort(compareProjectMembersByRoleThenName)
+}
+
 export type TenantProjectTreeRow = {
   project: TenantProject
   depth: number
@@ -456,12 +493,12 @@ export function getEffectiveProjectMembers(
   )
 
   if (!project.parentProjectId) {
-    return direct
+    return sortEffectiveProjectMembers(direct)
   }
 
   const parent = getTenantProjectById(projects, project.parentProjectId)
   if (!parent) {
-    return direct
+    return sortEffectiveProjectMembers(direct)
   }
 
   const inherited = getEffectiveProjectMembers(projects, parent)
@@ -474,7 +511,7 @@ export function getEffectiveProjectMembers(
         : parent.name,
     }))
 
-  return [...inherited, ...direct]
+  return sortEffectiveProjectMembers([...direct, ...inherited])
 }
 
 export function collectDescendantProjectIds(

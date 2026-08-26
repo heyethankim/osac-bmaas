@@ -26,6 +26,7 @@ import { AddProjectMemberModal } from './AddProjectMemberModal'
 import { EntityDetailsPageShell } from '../shared/EntityDetailsPageShell'
 import { EntityDetailsActionsDropdown } from '../shared/EntityDetailsActionsDropdown'
 import {
+  getTenantProjectMemberRoleLabelColor,
   getTenantProjectMemberRoleShortLabel,
   CREATE_PROJECT_WIZARD_DEMO,
 } from '../../tenantAdmin/createProjectWizard'
@@ -45,6 +46,7 @@ import {
   type TenantProject,
   type TenantProjectMember,
 } from '../../tenantAdmin/projects'
+import { normalizeMemberEmail } from '../../tenantUser/projects'
 import {
   formatTenantInstanceCreatedAt,
   getTenantInstanceServiceId,
@@ -64,6 +66,8 @@ type TenantProjectDetailsPageProps = {
   onAddMember: (projectId: string, member: TenantProjectMember) => void
   onRemoveMember: (projectId: string, memberId: string) => void
   onNavigateToInstance: (instance: TenantInstance) => void
+  readOnly?: boolean
+  currentUserEmail?: string
 }
 
 function formatCreatedAt(iso: string): string {
@@ -133,13 +137,25 @@ function ProjectMemberPersonRow({
   member,
   parentProject,
   onRequestRemove,
+  currentUserEmail,
+  readOnly = false,
 }: {
   member: EffectiveTenantProjectMember
   parentProject: TenantProject | null
   onRequestRemove: (member: TenantProjectMember) => void
+  currentUserEmail?: string
+  readOnly?: boolean
 }) {
+  const isCurrentUser =
+    currentUserEmail !== undefined &&
+    normalizeMemberEmail(member.email) === normalizeMemberEmail(currentUserEmail)
+
   return (
-    <li className="provider-admin-organizations__account-person">
+    <li
+      className={`provider-admin-organizations__account-person${
+        isCurrentUser ? ' provider-admin-organizations__account-person--current-user' : ''
+      }`}
+    >
       <div className="provider-admin-organizations__account-person-main">
         <Content component="p" className="provider-admin-organizations__primary-cell">
           {member.name}
@@ -154,13 +170,13 @@ function ProjectMemberPersonRow({
         ) : null}
         <Label
           isCompact
-          color={member.inherited ? 'grey' : 'blue'}
+          color={getTenantProjectMemberRoleLabelColor(member.role)}
           className="provider-admin-organizations__account-person-role"
         >
           {getTenantProjectMemberRoleShortLabel(member.role)}
         </Label>
       </div>
-      {member.inherited ? null : (
+      {readOnly || member.inherited ? null : (
         <ProjectMemberRowActions member={member} onRequestRemove={onRequestRemove} />
       )}
     </li>
@@ -179,6 +195,8 @@ export function TenantProjectDetailsPage({
   onAddMember,
   onRemoveMember,
   onNavigateToInstance,
+  readOnly = false,
+  currentUserEmail,
 }: TenantProjectDetailsPageProps) {
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
   const [memberPendingRemove, setMemberPendingRemove] = useState<TenantProjectMember | null>(null)
@@ -191,22 +209,52 @@ export function TenantProjectDetailsPage({
 
   const breadcrumbAncestors = useMemo(
     () =>
-      getTenantProjectAncestors(projects, project.id).map((ancestor) => ({
-        label: ancestor.name,
-        onClick: () => onOpenProject(ancestor),
-      })),
-    [onOpenProject, project.id, projects],
+      getTenantProjectAncestors(projects, project.id)
+        .filter((ancestor) =>
+          readOnly && currentUserEmail
+            ? getEffectiveProjectMembers(projects, ancestor).some(
+                (member) =>
+                  normalizeMemberEmail(member.email) === normalizeMemberEmail(currentUserEmail),
+              )
+            : true,
+        )
+        .map((ancestor) => ({
+          label: ancestor.name,
+          onClick: () => onOpenProject(ancestor),
+        })),
+    [currentUserEmail, onOpenProject, project.id, projects, readOnly],
   )
 
-  const nestedProjects = useMemo(
-    () => getChildTenantProjects(projects, project.id),
-    [project.id, projects],
-  )
+  const nestedProjects = useMemo(() => {
+    const children = getChildTenantProjects(projects, project.id)
+    if (!readOnly || !currentUserEmail) {
+      return children
+    }
+
+    return children.filter((nestedProject) =>
+      getEffectiveProjectMembers(projects, nestedProject).some(
+        (member) => normalizeMemberEmail(member.email) === normalizeMemberEmail(currentUserEmail),
+      ),
+    )
+  }, [currentUserEmail, project.id, projects, readOnly])
 
   const effectiveMembers = useMemo(
     () => getEffectiveProjectMembers(projects, project),
     [project, projects],
   )
+
+  const currentUserMembership = useMemo(() => {
+    if (!readOnly || !currentUserEmail) {
+      return null
+    }
+
+    return (
+      effectiveMembers.find(
+        (member) =>
+          normalizeMemberEmail(member.email) === normalizeMemberEmail(currentUserEmail),
+      ) ?? null
+    )
+  }, [currentUserEmail, effectiveMembers, readOnly])
 
   const projectInstances = useMemo(
     () => getInstancesForTenantProject(instances, project),
@@ -236,11 +284,13 @@ export function TenantProjectDetailsPage({
         titleId="tenant-project-details-title"
         description={TENANT_PROJECTS_TEAMS_DEMO.detailsLede}
         actions={
-          <EntityDetailsActionsDropdown
-            onEdit={() => onEdit(project)}
-            onRemove={() => onDelete(project.id)}
-            removeLabel="Delete"
-          />
+          readOnly ? undefined : (
+            <EntityDetailsActionsDropdown
+              onEdit={() => onEdit(project)}
+              onRemove={() => onDelete(project.id)}
+              removeLabel="Delete"
+            />
+          )
         }
       >
         <div className="entity-details-page__columns entity-details-page__columns--with-rail">
@@ -268,6 +318,21 @@ export function TenantProjectDetailsPage({
                         <Button variant="link" isInline onClick={() => onOpenProject(parentProject)}>
                           {parentProject.name}
                         </Button>
+                      </DescriptionListDescription>
+                    </DescriptionListGroup>
+                  ) : null}
+                  {currentUserMembership ? (
+                    <DescriptionListGroup>
+                      <DescriptionListTerm>Your role</DescriptionListTerm>
+                      <DescriptionListDescription>
+                        {getTenantProjectMemberRoleShortLabel(currentUserMembership.role)}
+                        {currentUserMembership.inherited
+                          ? ` (inherited from ${
+                              currentUserMembership.inheritedFromProjectName ??
+                              parentProject?.name ??
+                              'parent'
+                            })`
+                          : ''}
                       </DescriptionListDescription>
                     </DescriptionListGroup>
                   ) : null}
@@ -353,15 +418,17 @@ export function TenantProjectDetailsPage({
                 <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
                   {TENANT_PROJECTS_TEAMS_DEMO.nestedProjectsTitle} ({nestedProjects.length})
                 </Title>
-                <Button
-                  variant="link"
-                  isInline
-                  icon={<PlusCircleIcon />}
-                  className="provider-admin-organizations__accounts-add"
-                  onClick={() => onCreateNested(project)}
-                >
-                  {TENANT_PROJECTS_TEAMS_DEMO.addMemberLabel}
-                </Button>
+                {readOnly ? null : (
+                  <Button
+                    variant="link"
+                    isInline
+                    icon={<PlusCircleIcon />}
+                    className="provider-admin-organizations__accounts-add"
+                    onClick={() => onCreateNested(project)}
+                  >
+                    {TENANT_PROJECTS_TEAMS_DEMO.createNestedProjectLabel}
+                  </Button>
+                )}
               </div>
               {nestedProjects.length === 0 ? (
                 <Content component="p" className="provider-admin-organizations__secondary-cell">
@@ -407,15 +474,17 @@ export function TenantProjectDetailsPage({
                   >
                     Project members ({effectiveMembers.length})
                   </Title>
-                  <Button
-                    variant="link"
-                    isInline
-                    icon={<PlusCircleIcon />}
-                    className="provider-admin-organizations__accounts-add"
-                    onClick={() => setIsAddMemberOpen(true)}
-                  >
-                    {TENANT_PROJECTS_TEAMS_DEMO.addMemberLabel}
-                  </Button>
+                  {readOnly ? null : (
+                    <Button
+                      variant="link"
+                      isInline
+                      icon={<PlusCircleIcon />}
+                      className="provider-admin-organizations__accounts-add"
+                      onClick={() => setIsAddMemberOpen(true)}
+                    >
+                      {TENANT_PROJECTS_TEAMS_DEMO.addMemberLabel}
+                    </Button>
+                  )}
                 </div>
                 {effectiveMembers.length === 0 ? (
                   <Content component="p" className="provider-admin-organizations__secondary-cell">
@@ -432,6 +501,8 @@ export function TenantProjectDetailsPage({
                         member={member}
                         parentProject={parentProject}
                         onRequestRemove={setMemberPendingRemove}
+                        currentUserEmail={currentUserEmail}
+                        readOnly={readOnly}
                       />
                     ))}
                   </ul>

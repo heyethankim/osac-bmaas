@@ -3,6 +3,10 @@ export const TENANT_USER_CATALOG_PAGE = {
   projectLede: 'Browse and provision catalog items assigned to your project.',
 } as const
 
+export const TENANT_USER_PROJECTS_PAGE = {
+  lede: 'Projects you belong to. Open a project to see services, catalog items, and teammates.',
+} as const
+
 export const DEMO_TENANT_USER_PROJECT_INVITATION = {
   projectEnvironment: 'Development',
   role: 'Developer',

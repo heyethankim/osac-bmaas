@@ -19,30 +19,34 @@ import {
   getProjectScopeLabel,
   type ProjectScopeId,
 } from '../../tenantUser/projectScope'
+import { buildTenantUserProjectTreeRows } from '../../tenantUser/projects'
 
 type ProjectScopeSwitcherProps = {
   tenantSlug: string
   projects: readonly TenantProject[]
+  allProjects?: readonly TenantProject[]
   selectedScopeId: ProjectScopeId
   onChange: (scopeId: ProjectScopeId) => void
-  onNavigateToCreateProject: () => void
+  onNavigateToCreateProject?: () => void
   id?: string
 }
 
 export function ProjectScopeSwitcher({
   tenantSlug,
   projects,
+  allProjects,
   selectedScopeId,
   onChange,
   onNavigateToCreateProject,
   id = 'project-scope-switcher',
 }: ProjectScopeSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const selectedLabel = getProjectScopeLabel(tenantSlug, selectedScopeId)
+  const selectedLabel = getProjectScopeLabel(tenantSlug, selectedScopeId, projects)
+  const treeRows = buildTenantUserProjectTreeRows(allProjects ?? projects, projects)
 
   const handleCreateProject = () => {
     setIsOpen(false)
-    onNavigateToCreateProject()
+    onNavigateToCreateProject?.()
   }
 
   return (
@@ -84,14 +88,19 @@ export function ProjectScopeSwitcher({
           </DropdownItem>
           <ProjectTreeDropdownItems
             projects={projects}
+            treeRows={treeRows}
             selectedProjectId={
               selectedScopeId === ALL_PROJECTS_SCOPE_ID ? null : selectedScopeId
             }
           />
-          <Divider component="li" key="create-project-separator" />
-          <DropdownItem icon={<PlusIcon />} onClick={handleCreateProject}>
-            {TENANT_PROJECTS_TEAMS_DEMO.createProjectLabel}
-          </DropdownItem>
+          {onNavigateToCreateProject ? (
+            <>
+              <Divider component="li" key="create-project-separator" />
+              <DropdownItem icon={<PlusIcon />} onClick={handleCreateProject}>
+                {TENANT_PROJECTS_TEAMS_DEMO.createProjectLabel}
+              </DropdownItem>
+            </>
+          ) : null}
         </DropdownList>
       </Dropdown>
     </div>
