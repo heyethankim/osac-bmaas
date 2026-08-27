@@ -146,6 +146,8 @@ type ProviderSetupPublishCatalogWizardProps = {
   onRegisterOrganization?: () => void
   isPublishing?: boolean
   isSaving?: boolean
+  /** Tenant admins configure offerings for their org only — omit provider Visibility step. */
+  hidePublishScope?: boolean
 }
 
 function CustomHardwareUnitNumberInput({
@@ -239,6 +241,7 @@ export function ProviderSetupPublishCatalogWizard({
   onRegisterOrganization,
   isPublishing = false,
   isSaving = false,
+  hidePublishScope = false,
 }: ProviderSetupPublishCatalogWizardProps) {
   const isEditMode = mode === 'edit'
   const isSubmitting = isPublishing || isSaving
@@ -416,6 +419,9 @@ export function ProviderSetupPublishCatalogWizard({
   const publishSteps = useMemo(
     () =>
       PUBLISH_CATALOG_STEPS.filter((step) => {
+        if (step.id === 'publish-scope' && hidePublishScope) {
+          return false
+        }
         if (step.id === 'template' && hasSingleTemplate) {
           return false
         }
@@ -429,7 +435,7 @@ export function ProviderSetupPublishCatalogWizard({
       }).map((step) =>
         step.id === 'hardware-os' ? { ...step, label: hardwareOsStepLabel } : step,
       ),
-    [hasLockableParameters, hasSingleTemplate, hardwareOsStepLabel, isClusterService],
+    [hasLockableParameters, hasSingleTemplate, hardwareOsStepLabel, hidePublishScope, isClusterService],
   )
 
   const selectVipEnterprise = () => {
@@ -854,7 +860,7 @@ export function ProviderSetupPublishCatalogWizard({
 
     onCreateCatalogItem({
       ...payload,
-      status: 'unpublished',
+      status: hidePublishScope ? 'live' : 'unpublished',
     })
   }
 
@@ -2306,25 +2312,29 @@ export function ProviderSetupPublishCatalogWizard({
                   </DescriptionListDescription>
                 </DescriptionListGroup>
               ) : null}
-              <DescriptionListGroup>
-                <DescriptionListTerm>Visibility</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {isVipEnterprise
-                    ? formatVipEnterpriseVisibilityLabel(organizations, enterpriseTenantIds)
-                    : 'Global public'}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
+              {includesPublishStep('publish-scope') ? (
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Visibility</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {isVipEnterprise
+                      ? formatVipEnterpriseVisibilityLabel(organizations, enterpriseTenantIds)
+                      : 'Global public'}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              ) : null}
             </DescriptionList>
             <Alert
               variant="info"
               isInline
-              title="Starts as unpublished"
+              title={hidePublishScope ? 'Tenant catalog item' : 'Starts as unpublished'}
               className="provider-setup-template__publish-review-alert"
             >
               <Content component="p">
-                {isVipUnassigned
-                  ? 'VIP enterprise is selected without a target tenant. The catalog item will be saved as unpublished until you register or assign a tenant, then publish it from the catalog.'
-                  : 'New catalog items are saved as unpublished. Publish from the catalog when you are ready for tenants to use this offering.'}
+                {hidePublishScope
+                  ? 'This item is added to your tenant catalog. Manage who can launch it from the item details page.'
+                  : isVipUnassigned
+                    ? 'VIP enterprise is selected without a target tenant. The catalog item will be saved as unpublished until you register or assign a tenant, then publish it from the catalog.'
+                    : 'New catalog items are saved as unpublished. Publish from the catalog when you are ready for tenants to use this offering.'}
               </Content>
             </Alert>
               </>

@@ -1,17 +1,39 @@
-import type { RateCard } from '../providerSetup/templateDemo'
+import type { PublishedTemplatePayload, RateCard } from '../providerSetup/templateDemo'
 import { DEFAULT_RATE_CARD } from '../providerSetup/templateDemo'
 import { TENANT_CATALOG_GOVERNANCE_ITEMS } from './catalogManager'
 import type { TenantProjectCatalogItem } from './projects'
 
 export type TenantCatalogItemSource = 'custom'
 
+export type TenantCatalogItemStatus = 'Live' | 'Unpublished'
+
+export type TenantCatalogItemConfig = Omit<
+  PublishedTemplatePayload,
+  | 'displayName'
+  | 'description'
+  | 'scope'
+  | 'status'
+  | 'rateCard'
+  | 'enterpriseTenantId'
+  | 'enterpriseTenantIds'
+  | 'vipOrganizationId'
+  | 'vipOrganizationIds'
+>
+
 export type TenantCatalogItem = {
   id: string
   displayName: string
+  description?: string
   source: TenantCatalogItemSource
   sourceCatalogItemId: string | null
   rateCard: RateCard
+  status: TenantCatalogItemStatus
   createdAt: string
+  catalogConfig?: TenantCatalogItemConfig
+}
+
+export function isTenantScopedCatalogItemId(id: string): boolean {
+  return id.startsWith('tenant-catalog_')
 }
 
 export type AttachableCatalogOption = {
@@ -26,18 +48,53 @@ export function generateTenantCatalogItemId(): string {
   return `tenant-catalog_${suffix}`
 }
 
+export function createTenantCatalogItemFromPayload(
+  payload: PublishedTemplatePayload,
+): TenantCatalogItem {
+  const {
+    displayName,
+    description,
+    scope: _scope,
+    status,
+    enterpriseTenantId: _enterpriseTenantId,
+    enterpriseTenantIds: _enterpriseTenantIds,
+    vipOrganizationId: _vipOrganizationId,
+    vipOrganizationIds: _vipOrganizationIds,
+    rateCard,
+    ...catalogConfig
+  } = payload
+
+  return {
+    id: generateTenantCatalogItemId(),
+    displayName: displayName.trim(),
+    description: description.trim() || undefined,
+    source: 'custom',
+    sourceCatalogItemId: null,
+    rateCard,
+    status: status === 'unpublished' ? 'Unpublished' : 'Live',
+    createdAt: new Date().toISOString(),
+    catalogConfig,
+  }
+}
+
 export function createTenantCatalogItem(input: {
   displayName: string
+  description?: string
   sourceCatalogItemId: string | null
   rateCard?: RateCard
+  status?: TenantCatalogItemStatus
+  catalogConfig?: TenantCatalogItemConfig
 }): TenantCatalogItem {
   return {
     id: generateTenantCatalogItemId(),
     displayName: input.displayName.trim(),
+    description: input.description?.trim() || undefined,
     source: 'custom',
     sourceCatalogItemId: input.sourceCatalogItemId,
     rateCard: input.rateCard ?? DEFAULT_RATE_CARD,
+    status: input.status ?? 'Live',
     createdAt: new Date().toISOString(),
+    catalogConfig: input.catalogConfig,
   }
 }
 
@@ -64,7 +121,7 @@ export function getAttachableCatalogOptions(
     options.push({
       id: item.id,
       displayName: item.displayName,
-      sourceLabel: 'Tenant-scoped catalog item',
+      sourceLabel: 'Created by your tenant',
       rateCard: item.rateCard,
     })
   }

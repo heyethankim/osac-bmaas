@@ -305,6 +305,27 @@
   margin-block-end: 0;
 }
 
+.tenant-admin-catalog__wizard-lede.pf-v6-c-content--p {
+  color: var(--pf-t--global--text--color--subtle);
+  margin-block-end: var(--pf-t--global--spacer--lg);
+  max-width: 42rem;
+}
+
+.tenant-admin-catalog__wizard-footer-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.tenant-admin-catalog__review-dl {
+  max-width: 36rem;
+}
+
+.tenant-admin-catalog__project-checkboxes {
+  display: grid;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
 .tenant-admin-catalog__table,
 .tenant-admin-team-access__table,
 .tenant-admin-quota-distribution__table {
@@ -1028,11 +1049,38 @@
   --pf-v6-c-card--BackgroundColor: var(--pf-t--global--background--color--secondary--default);
 }
 
+.tenant-admin-catalog-manager__card--creating {
+  box-sizing: border-box;
+}
+
+.tenant-admin-catalog-manager__card-body--creating {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pf-t--global--spacer--md);
+  block-size: 100%;
+  min-block-size: 100%;
+  text-align: center;
+  padding-block-end: var(--pf-t--global--spacer--lg) !important;
+}
+
+.tenant-admin-catalog-manager__creating-kicker.pf-v6-c-content--p {
+  margin: 0;
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
 .tenant-admin-catalog-manager__card .pf-v6-c-card__body {
   display: flex;
   flex-direction: column;
   gap: var(--pf-t--global--spacer--md);
   padding-block-end: 0;
+}
+
+.tenant-admin-catalog-manager__card:not(:has(.tenant-admin-catalog-manager__card-footer))
+  .pf-v6-c-card__body {
+  padding-block-end: var(--pf-t--global--spacer--lg);
 }
 
 .tenant-admin-catalog-manager__card-header {
@@ -1070,7 +1118,7 @@
     100% + var(--pf-v6-c-card--child--PaddingInlineStart) +
       var(--pf-v6-c-card--child--PaddingInlineEnd)
   );
-  margin-block-start: 0;
+  margin-block-start: var(--pf-t--global--spacer--md);
   margin-inline: calc(-1 * var(--pf-v6-c-card--child--PaddingInlineStart))
     calc(-1 * var(--pf-v6-c-card--child--PaddingInlineEnd));
   padding-block: var(--pf-t--global--spacer--md);
@@ -1314,7 +1362,7 @@
   display: grid;
   grid-template-columns: 5.5rem minmax(0, 1fr);
   column-gap: var(--pf-t--global--spacer--lg);
-  align-items: baseline;
+  align-items: center;
 }
 
 .tenant-admin-catalog-manager__spec-label {

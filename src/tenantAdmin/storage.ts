@@ -865,6 +865,7 @@ function isTenantCatalogItem(value: unknown): value is TenantCatalogItem {
   return (
     typeof item.id === 'string' &&
     typeof item.displayName === 'string' &&
+    (item.description === undefined || typeof item.description === 'string') &&
     item.source === 'custom' &&
     (item.sourceCatalogItemId === null || typeof item.sourceCatalogItemId === 'string') &&
     typeof item.createdAt === 'string' &&
@@ -873,7 +874,10 @@ function isTenantCatalogItem(value: unknown): value is TenantCatalogItem {
     typeof item.rateCard.hourlyRate === 'number' &&
     typeof item.rateCard.monthlyRate === 'number' &&
     typeof item.rateCard.currency === 'string' &&
-    item.rateCard.billingUnit === 'per-instance'
+    item.rateCard.billingUnit === 'per-instance' &&
+    (item.status === undefined ||
+      item.status === 'Live' ||
+      item.status === 'Unpublished')
   )
 }
 
@@ -905,6 +909,24 @@ export function setTenantCatalogItems(slug: string, items: TenantCatalogItem[]):
 
 export function addTenantCatalogItem(slug: string, item: TenantCatalogItem): TenantCatalogItem[] {
   const updated = [...getTenantCatalogItems(slug), item]
+  setTenantCatalogItems(slug, updated)
+  return updated
+}
+
+export function updateTenantCatalogItem(
+  slug: string,
+  itemId: string,
+  updater: (item: TenantCatalogItem) => TenantCatalogItem,
+): TenantCatalogItem[] {
+  const updated = getTenantCatalogItems(slug).map((item) =>
+    item.id === itemId ? updater(item) : item,
+  )
+  setTenantCatalogItems(slug, updated)
+  return updated
+}
+
+export function removeTenantCatalogItem(slug: string, itemId: string): TenantCatalogItem[] {
+  const updated = getTenantCatalogItems(slug).filter((item) => item.id !== itemId)
   setTenantCatalogItems(slug, updated)
   return updated
 }

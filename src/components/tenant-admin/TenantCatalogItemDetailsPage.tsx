@@ -26,18 +26,18 @@ import { formatRateCardSummary } from '../../providerSetup/templateDemo'
 import { formatCatalogFieldPolicyMode } from '../../catalog/catalogPublishConfig'
 import { CatalogClusterVersionValue } from '../catalog/CatalogClusterVersionValue'
 import { CatalogVmDefaultsSections } from '../catalog/CatalogVmDefaultsSections'
-import { CatalogPublishScopeIcon } from '../provider-admin/CatalogPublishScopeIcon'
 import {
   TENANT_CATALOG_MANAGER_DEMO,
   getTenantCatalogItemDetailSpecRows,
   getTenantCatalogProjectsLinkLabel,
   type TenantCatalogGovernanceItemWithNetworking,
 } from '../../tenantAdmin/catalogManager'
+import {
+  getTenantAdminCatalogSourceLabel,
+  shouldShowTenantAdminCatalogOrigin,
+  TenantAdminCatalogSourceIcon,
+} from '../../tenantAdmin/catalogSource'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
-
-function getVisibilityLabel(scope: TenantCatalogGovernanceItemWithNetworking['scope']): string {
-  return scope === 'vip-enterprise' ? 'VIP enterprise' : 'Global public'
-}
 
 type TenantCatalogItemDetailsPageProps = {
   item: TenantCatalogGovernanceItemWithNetworking
@@ -149,7 +149,7 @@ export function TenantCatalogItemDetailsPage({
             statusColor: item.status === 'Unpublished' ? 'grey' : 'green',
             rateSummary: formatRateCardSummary(item.rateCard),
             scope: item.scope,
-            visibilityLabel: getVisibilityLabel(item.scope),
+            visibilityLabel: getTenantAdminCatalogSourceLabel(item),
             createdAtLabel: formatCatalogItemCreatedAt(item.createdAt),
             hardwareSpecRows: resolveCatalogSpecRows({
               serviceId: item.serviceId,
@@ -172,7 +172,7 @@ export function TenantCatalogItemDetailsPage({
             statusColor: item.status === 'Unpublished' ? 'grey' : 'green',
             rateSummary: formatRateCardSummary(item.rateCard),
             scope: item.scope,
-            visibilityLabel: getVisibilityLabel(item.scope),
+            visibilityLabel: getTenantAdminCatalogSourceLabel(item),
             createdAtLabel: formatCatalogItemCreatedAt(item.createdAt),
             clusterVersionMode: item.clusterVersionMode,
             configurationRows: resolveCatalogSpecRows(
@@ -217,18 +217,20 @@ export function TenantCatalogItemDetailsPage({
                 </Label>
               </DescriptionListDescription>
             </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Visibility</DescriptionListTerm>
-              <DescriptionListDescription>
-                <span className="tenant-admin-catalog-manager__scope">
-                  <CatalogPublishScopeIcon
-                    scope={item.scope}
-                    className="tenant-admin-catalog-manager__scope-icon"
-                  />
-                  <span>{getVisibilityLabel(item.scope)}</span>
-                </span>
-              </DescriptionListDescription>
-            </DescriptionListGroup>
+            {shouldShowTenantAdminCatalogOrigin(item) ? (
+              <DescriptionListGroup>
+                <DescriptionListTerm>Origin</DescriptionListTerm>
+                <DescriptionListDescription>
+                  <span className="tenant-admin-catalog-manager__scope">
+                    <TenantAdminCatalogSourceIcon
+                      item={item}
+                      className="tenant-admin-catalog-manager__scope-icon"
+                    />
+                    <span>{getTenantAdminCatalogSourceLabel(item)}</span>
+                  </span>
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+            ) : null}
             {!isVirtualMachine && !isCluster && item.instanceTypeLabel ? (
               <DescriptionListGroup>
                 <DescriptionListTerm>Instance type</DescriptionListTerm>
