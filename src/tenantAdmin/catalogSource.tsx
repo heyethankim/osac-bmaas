@@ -1,6 +1,6 @@
-import { CatalogIcon } from '@patternfly/react-icons/dist/esm/icons/catalog-icon'
 import { EnterpriseIcon } from '@patternfly/react-icons/dist/esm/icons/enterprise-icon'
 import { ImportIcon } from '@patternfly/react-icons/dist/esm/icons/import-icon'
+import { UserIcon } from '@patternfly/react-icons/dist/esm/icons/user-icon'
 import type { PublishCatalogScope } from '../providerSetup/templateDemo'
 import { isTenantScopedCatalogItemId } from './catalogItems'
 
@@ -19,7 +19,7 @@ export function shouldShowTenantAdminCatalogOrigin(item: TenantAdminCatalogSourc
 
 export function getTenantAdminCatalogSourceLabel(item: TenantAdminCatalogSourceItem): string {
   if (isTenantScopedCatalogItemId(item.id)) {
-    return 'Created by you'
+    return 'Added by you'
   }
 
   if (item.scope === 'vip-enterprise') {
@@ -31,7 +31,7 @@ export function getTenantAdminCatalogSourceLabel(item: TenantAdminCatalogSourceI
 
 export function getTenantAdminCatalogSourceTooltip(item: TenantAdminCatalogSourceItem): string {
   if (isTenantScopedCatalogItemId(item.id)) {
-    return 'Added by you for members of this organization.'
+    return 'Available to members of this organization.'
   }
 
   if (item.scope === 'vip-enterprise') {
@@ -49,7 +49,7 @@ export function TenantAdminCatalogSourceIcon({
   className?: string
 }) {
   if (isTenantScopedCatalogItemId(item.id)) {
-    return <CatalogIcon set="rh-ui" className={className} aria-hidden />
+    return <UserIcon className={className} aria-hidden />
   }
 
   if (item.scope === 'vip-enterprise') {

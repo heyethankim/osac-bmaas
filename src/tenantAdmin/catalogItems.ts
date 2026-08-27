@@ -1,7 +1,16 @@
 import type { PublishedTemplatePayload, RateCard } from '../providerSetup/templateDemo'
-import { DEFAULT_RATE_CARD } from '../providerSetup/templateDemo'
+import {
+  DEFAULT_BLUEPRINT_FORM,
+  DEFAULT_RATE_CARD,
+  PUBLISH_CATALOG_SUGGESTED_DISPLAY_NAME,
+  parseRateCardFromForm,
+} from '../providerSetup/templateDemo'
+import { formatBaremetalInstanceTypeLabel } from '../catalog/catalogPublishConfig'
+import { DEFAULT_CATALOG_NETWORK_POLICY } from '../providerAdmin/catalogNetworkPolicy'
 import { TENANT_CATALOG_GOVERNANCE_ITEMS } from './catalogManager'
 import type { TenantProjectCatalogItem } from './projects'
+
+export const DEMO_TENANT_CATALOG_GENERAL_PURPOSE_ID = 'tenant-catalog_general-purpose'
 
 export type TenantCatalogItemSource = 'custom'
 
@@ -46,6 +55,38 @@ export type AttachableCatalogOption = {
 export function generateTenantCatalogItemId(): string {
   const suffix = Math.random().toString(36).slice(2, 8)
   return `tenant-catalog_${suffix}`
+}
+
+export function createDemoTenantCatalogGeneralPurposeItem(): TenantCatalogItem {
+  return {
+    id: DEMO_TENANT_CATALOG_GENERAL_PURPOSE_ID,
+    displayName: PUBLISH_CATALOG_SUGGESTED_DISPLAY_NAME,
+    source: 'custom',
+    sourceCatalogItemId: null,
+    rateCard: parseRateCardFromForm(DEFAULT_BLUEPRINT_FORM) ?? DEFAULT_RATE_CARD,
+    status: 'Live',
+    createdAt: '2026-08-01T12:00:00.000Z',
+    catalogConfig: {
+      serviceId: 'baremetal',
+      templateRefId: 'bm-dell-r750',
+      templateName: DEFAULT_BLUEPRINT_FORM.templateName,
+      instanceTypeId: 'small',
+      instanceTypeLabel:
+        formatBaremetalInstanceTypeLabel('small') ??
+        'Small (16 vCPU · 128 GB · NVIDIA A100 40 GB)',
+      diskImageId: 'rhel-10',
+      diskImageLabel: 'RHEL 10',
+      hardwareOsMode: 'locked',
+      fieldPolicies: [],
+      networkPolicy: {
+        ...DEFAULT_CATALOG_NETWORK_POLICY,
+        virtualNetwork: { ...DEFAULT_CATALOG_NETWORK_POLICY.virtualNetwork },
+        subnet: { ...DEFAULT_CATALOG_NETWORK_POLICY.subnet },
+        securityGroup: { ...DEFAULT_CATALOG_NETWORK_POLICY.securityGroup },
+        externalIpPool: { ...DEFAULT_CATALOG_NETWORK_POLICY.externalIpPool },
+      },
+    },
+  }
 }
 
 export function createTenantCatalogItemFromPayload(
@@ -121,7 +162,7 @@ export function getAttachableCatalogOptions(
     options.push({
       id: item.id,
       displayName: item.displayName,
-      sourceLabel: 'Created by your tenant',
+      sourceLabel: 'Added by you',
       rateCard: item.rateCard,
     })
   }

@@ -19,7 +19,13 @@ import {
   resolveCatalogSpecRows,
 } from '../catalog/catalogSpecs'
 import {
+  CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
+  LEGACY_CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
+} from '../catalog/catalogSpecs'
+import {
   BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID,
+  BARE_METAL_GPU_CATALOG_ITEM_ID,
+  LEGACY_BARE_METAL_GPU_CATALOG_ITEM_ID,
   ensureProviderCatalogDemoItems,
   sortByDemoCatalogOrder,
 } from '../providerSetup/prototypeEntry'
@@ -28,7 +34,7 @@ import {
   applyTenantNetworkOverrides,
   getTenantNetworkOverrides,
 } from './networking'
-import { getTenantCatalogItems } from './storage'
+import { ensureTenantDemoCatalogItems } from './storage'
 
 export type TenantCatalogGovernanceItem = {
   id: string
@@ -95,6 +101,18 @@ export function getTenantCatalogProjectsLinkLabel(projectCount: number): string 
   return projectCount > 0
     ? TENANT_CATALOG_MANAGER_DEMO.manageProjectsLinkLabel
     : TENANT_CATALOG_MANAGER_DEMO.addProjectsLinkLabel
+}
+
+/** Inherited provider offerings shown on the tenant admin catalog demo (2 cards). */
+const TENANT_ADMIN_DEMO_PROVIDER_CATALOG_ITEM_IDS = new Set([
+  BARE_METAL_GPU_CATALOG_ITEM_ID,
+  CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
+  LEGACY_BARE_METAL_GPU_CATALOG_ITEM_ID,
+  LEGACY_CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
+])
+
+function isTenantAdminDemoProviderCatalogItem(catalogItemId: string): boolean {
+  return TENANT_ADMIN_DEMO_PROVIDER_CATALOG_ITEM_IDS.has(catalogItemId)
 }
 
 function isCatalogVisibleToTenant(
@@ -314,8 +332,10 @@ export function getTenantCatalogGovernanceItems(
 ): TenantCatalogGovernanceItemWithNetworking[] {
   ensureProviderCatalogDemoItems()
 
-  const visibleItems = getProviderCatalogItems().filter((item) =>
-    isCatalogVisibleToTenant(item, organization),
+  const visibleItems = getProviderCatalogItems().filter(
+    (item) =>
+      isCatalogVisibleToTenant(item, organization) &&
+      isTenantAdminDemoProviderCatalogItem(item.catalogItemId),
   )
 
   const providerItems =
@@ -333,7 +353,7 @@ export function getTenantCatalogGovernanceItems(
           ),
         }))
 
-  const customItems = getTenantCatalogItems(organization.slug).map((item) =>
+  const customItems = ensureTenantDemoCatalogItems(organization.slug).map((item) =>
     mapCustomTenantCatalogItemToGovernance(item, organization),
   )
 
