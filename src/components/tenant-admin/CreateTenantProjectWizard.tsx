@@ -567,11 +567,7 @@ export function CreateTenantProjectWizard({
       {isEditMode ? (
         <CatalogEditChangesSummary changes={editChanges} />
       ) : (
-        <DescriptionList
-          isHorizontal
-          isCompact
-          className="tenant-admin-projects-teams__wizard-review-list"
-        >
+        <DescriptionList isCompact className="tenant-admin-projects-teams__wizard-review-list">
           {resolvedParentProject ? (
             <DescriptionListGroup>
               <DescriptionListTerm>Parent project</DescriptionListTerm>

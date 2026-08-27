@@ -812,11 +812,21 @@
 
 .tenant-admin-projects-teams__wizard-review-members {
   margin: 0;
-  padding-inline-start: 1.25rem;
+  padding: 0;
+  list-style: none;
 }
 
 .tenant-admin-projects-teams__wizard-review-members li + li {
   margin-block-start: var(--pf-t--global--spacer--xs);
+}
+
+.tenant-admin-projects-teams__wizard-review-list {
+  font-family: var(--pf-t--global--font--family--body);
+}
+
+.tenant-admin-projects-teams__wizard-review-list code {
+  font-family: inherit;
+  font-size: inherit;
 }
 
 .tenant-admin-projects-teams__wizard-members-empty {
