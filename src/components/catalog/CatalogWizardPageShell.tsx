@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react'
-import { ResourceCreatePageShell } from '../shared/ResourceCreatePageShell'
+import {
+  ResourceCreatePageShell,
+  type ResourceCreateBreadcrumbAncestor,
+} from '../shared/ResourceCreatePageShell'
 
 type CatalogWizardPageShellProps = {
   /** Current wizard title shown as the page H1 and active breadcrumb crumb. */
@@ -7,6 +10,9 @@ type CatalogWizardPageShellProps = {
   titleId?: string
   description?: ReactNode
   onBackToCatalog: () => void
+  /** Optional catalog item name between Catalog and the wizard title (e.g. launch flows). */
+  catalogItemLabel?: string
+  onBackToCatalogItem?: () => void
   children: ReactNode
   className?: string
 }
@@ -20,12 +26,25 @@ export function CatalogWizardPageShell({
   titleId,
   description,
   onBackToCatalog,
+  catalogItemLabel,
+  onBackToCatalogItem,
   children,
   className,
 }: CatalogWizardPageShellProps) {
+  const ancestors: ResourceCreateBreadcrumbAncestor[] = [
+    { label: 'Catalog', onClick: onBackToCatalog },
+  ]
+
+  if (catalogItemLabel) {
+    ancestors.push({
+      label: catalogItemLabel,
+      onClick: onBackToCatalogItem,
+    })
+  }
+
   return (
     <ResourceCreatePageShell
-      parentLabel="Catalog"
+      ancestors={ancestors}
       title={title}
       titleId={titleId}
       description={description}

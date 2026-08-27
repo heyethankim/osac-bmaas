@@ -763,6 +763,11 @@ export function TenantAdminCatalogPage({
           }}
           existingInstanceNames={existingInstanceNames}
           onClose={closeLaunchWizard}
+          onBackToCatalogItem={() => {
+            if (selectedCatalogItem) {
+              openDetails(selectedCatalogItem)
+            }
+          }}
           onProvisioningStarted={(instance) => {
             onProvisioningStarted?.(instance)
           }}

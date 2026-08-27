@@ -84,6 +84,7 @@ import {
   isVmGeneralStepValid,
   isVmNetworkingStepValid,
   isBareMetalGeneralStepValid,
+  isBareMetalHardwareOsStepValid,
   BAREMETAL_LAUNCH_INSTANCE_DEMO,
   CLUSTER_LAUNCH_INSTANCE_DEMO,
   LAUNCH_INSTANCE_BOOT_LOG_STEP_MS,
@@ -128,6 +129,7 @@ type TenantUserLaunchInstanceWizardProps = {
   onNavigateToCreateProject?: () => void
   existingInstanceNames?: readonly string[]
   onClose: () => void
+  onBackToCatalogItem?: () => void
   onProvisioningStarted: (instance: TenantInstance) => void
   onDismissDuringProvisioning: (instanceId: string, serviceId: CatalogServiceId) => void
   onWizardFinished: (instanceId: string, serviceId: CatalogServiceId) => void
@@ -182,6 +184,7 @@ export function TenantUserLaunchInstanceWizard({
   onNavigateToCreateProject,
   existingInstanceNames = [],
   onClose,
+  onBackToCatalogItem,
   onProvisioningStarted,
   onDismissDuringProvisioning,
   onWizardFinished,
@@ -204,6 +207,9 @@ export function TenantUserLaunchInstanceWizard({
   const isClusterCatalogItem = catalogItem.serviceId === 'cluster'
   const isVmCatalogItem = catalogItem.serviceId === 'virtual-machine'
   const isBareMetalCatalogItem = catalogItem.serviceId === 'baremetal'
+  const isBareMetalHardwareOsEditable =
+    isBareMetalCatalogItem &&
+    resolveCatalogHardwareOsMode(catalogItem.hardwareOsMode) === 'editable'
   const isServiceAwareCatalogItem = isClusterCatalogItem || isVmCatalogItem
   const usesGeneralFirstStep =
     isClusterCatalogItem || isVmCatalogItem || isBareMetalCatalogItem
@@ -319,8 +325,9 @@ export function TenantUserLaunchInstanceWizard({
       getLaunchInstanceWizardSteps({
         includeNetworking: includeNetworkingStep,
         serviceId: catalogItem.serviceId,
+        bareMetalHardwareOsEditable: isBareMetalHardwareOsEditable,
       }),
-    [catalogItem.serviceId],
+    [catalogItem.serviceId, isBareMetalHardwareOsEditable],
   )
 
   const catalogClusterVersion =
@@ -356,9 +363,6 @@ export function TenantUserLaunchInstanceWizard({
   const clusterVersionModeLabel = getCatalogClusterVersionModeLabel(
     resolveCatalogClusterVersionMode(catalogItem.clusterVersionMode),
   )
-  const isBareMetalHardwareOsEditable =
-    isBareMetalCatalogItem &&
-    resolveCatalogHardwareOsMode(catalogItem.hardwareOsMode) === 'editable'
   const hardwareOsModeLabel = getCatalogHardwareOsModeLabel(
     resolveCatalogHardwareOsMode(catalogItem.hardwareOsMode),
   )
@@ -951,63 +955,6 @@ export function TenantUserLaunchInstanceWizard({
             </FormHelperText>
           </FormGroup>
 
-          {isBareMetalHardwareOsEditable ? (
-            <>
-              <FormGroup label="Instance type" fieldId="launch-bm-instance-type" isRequired>
-                <FormSelect
-                  id="launch-bm-instance-type"
-                  value={form.instanceType}
-                  onChange={(_event, value) =>
-                    setForm((current) => ({ ...current, instanceType: value }))
-                  }
-                  aria-label="Instance type"
-                >
-                  {bareMetalInstanceTypeOptions.map((option) => (
-                    <FormSelectOption
-                      key={option.id}
-                      value={option.id}
-                      label={
-                        option.accelerator
-                          ? `${option.label} (${option.detail} · ${option.accelerator})`
-                          : option.detail
-                            ? `${option.label} (${option.detail})`
-                            : option.label
-                      }
-                    />
-                  ))}
-                </FormSelect>
-                <FormHelperText>
-                  <HelperText>
-                    <HelperTextItem>
-                      {`Editable on this catalog item (${hardwareOsModeLabel}). Tenants can change at launch.`}
-                    </HelperTextItem>
-                  </HelperText>
-                </FormHelperText>
-              </FormGroup>
-              <FormGroup label="Disk image" fieldId="launch-bm-disk-image" isRequired>
-                <FormSelect
-                  id="launch-bm-disk-image"
-                  value={form.diskImageId}
-                  onChange={(_event, value) =>
-                    setForm((current) => ({ ...current, diskImageId: value }))
-                  }
-                  aria-label="Disk image"
-                >
-                  {bareMetalDiskImageOptions.map((option) => (
-                    <FormSelectOption key={option.id} value={option.id} label={option.label} />
-                  ))}
-                </FormSelect>
-                <FormHelperText>
-                  <HelperText>
-                    <HelperTextItem>
-                      {`Editable on this catalog item (${hardwareOsModeLabel}). Tenants can change at launch.`}
-                    </HelperTextItem>
-                  </HelperText>
-                </FormHelperText>
-              </FormGroup>
-            </>
-          ) : null}
-
           {isClusterCatalogItem ? (
             <FormGroup label="Pull secret" fieldId="launch-cluster-pull-secret" isRequired>
               <TextArea
@@ -1255,6 +1202,65 @@ export function TenantUserLaunchInstanceWizard({
       </Content>
       <Form autoComplete="off" className="tenant-user-launch-wizard__form">
         {renderPlacementNetworkingFields('launch-bm')}
+      </Form>
+    </div>
+  )
+
+  const renderBareMetalHardwareOsStep = () => (
+    <div className="tenant-user-launch-wizard__step">
+      <Form autoComplete="off" className="tenant-user-launch-wizard__form">
+        <FormGroup label="Instance type" fieldId="launch-bm-instance-type" isRequired>
+          <FormSelect
+            id="launch-bm-instance-type"
+            value={form.instanceType}
+            onChange={(_event, value) =>
+              setForm((current) => ({ ...current, instanceType: value }))
+            }
+            aria-label="Instance type"
+          >
+            {bareMetalInstanceTypeOptions.map((option) => (
+              <FormSelectOption
+                key={option.id}
+                value={option.id}
+                label={
+                  option.accelerator
+                    ? `${option.label} (${option.detail} · ${option.accelerator})`
+                    : option.detail
+                      ? `${option.label} (${option.detail})`
+                      : option.label
+                }
+              />
+            ))}
+          </FormSelect>
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem>
+                {`Editable on this catalog item (${hardwareOsModeLabel}). Tenants can change at launch.`}
+              </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        </FormGroup>
+        <FormGroup label="Disk image" fieldId="launch-bm-disk-image" isRequired>
+          <FormSelect
+            id="launch-bm-disk-image"
+            value={form.diskImageId}
+            onChange={(_event, value) =>
+              setForm((current) => ({ ...current, diskImageId: value }))
+            }
+            aria-label="Disk image"
+          >
+            {bareMetalDiskImageOptions.map((option) => (
+              <FormSelectOption key={option.id} value={option.id} label={option.label} />
+            ))}
+          </FormSelect>
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem>
+                {`Editable on this catalog item (${hardwareOsModeLabel}). Tenants can change at launch.`}
+              </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        </FormGroup>
       </Form>
     </div>
   )
@@ -1922,6 +1928,8 @@ export function TenantUserLaunchInstanceWizard({
       switch (stepId) {
         case 'general':
           return renderGeneralStep()
+        case 'configure':
+          return renderBareMetalHardwareOsStep()
         case 'networking':
           return renderBareMetalNetworkingStep()
         case 'review':
@@ -2020,13 +2028,20 @@ export function TenantUserLaunchInstanceWizard({
   }
 
   const bareMetalStepFooter = (stepId: LaunchInstanceWizardStepId) => {
-    if (stepId === 'general' || stepId === 'networking' || stepId === 'review') {
+    if (
+      stepId === 'general' ||
+      stepId === 'configure' ||
+      stepId === 'networking' ||
+      stepId === 'review'
+    ) {
       const isNextDisabled =
         stepId === 'general'
           ? !isBareMetalGeneralStepValid(form) || !isProjectSelectionValid
-          : stepId === 'networking'
-            ? !isVmNetworkingStepValid(form)
-            : false
+          : stepId === 'configure'
+            ? !isBareMetalHardwareOsStepValid(form)
+            : stepId === 'networking'
+              ? !isVmNetworkingStepValid(form)
+              : false
 
       return {
         isNextDisabled,
@@ -2129,7 +2144,7 @@ export function TenantUserLaunchInstanceWizard({
 
   const wizard = isOpen ? (
     <Wizard
-      key={`launch-instance-wizard-${catalogItem.serviceId}-${includeNetworkingStep ? 'net' : 'no-net'}`}
+      key={`launch-instance-wizard-${catalogItem.serviceId}-${includeNetworkingStep ? 'net' : 'no-net'}-${isBareMetalHardwareOsEditable ? 'hw-os' : 'std'}`}
       className="tenant-user-launch-wizard"
       height={isPage ? '100%' : '40rem'}
       isPlain={isPage}
@@ -2181,6 +2196,8 @@ export function TenantUserLaunchInstanceWizard({
           title={wizardTitle}
           description={activeStepDescription || undefined}
           onBackToCatalog={requestClose}
+          catalogItemLabel={catalogItem.displayName}
+          onBackToCatalogItem={onBackToCatalogItem}
         >
           {wizard}
         </CatalogWizardPageShell>

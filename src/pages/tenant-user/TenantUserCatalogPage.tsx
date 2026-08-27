@@ -321,6 +321,13 @@ export function TenantUserCatalogPage({
           onProjectScopeChange={onProjectScopeChange}
           existingInstanceNames={existingInstanceNames}
           onClose={closeLaunchWizard}
+          onBackToCatalogItem={() => {
+            if (activeCatalogItem) {
+              setIsWizardOpen(false)
+              setIsDetailsDrawerOpen(true)
+              syncWorkspaceCatalogItemParam(setSearchParams, activeCatalogItem.displayName)
+            }
+          }}
           onProvisioningStarted={onProvisioningStarted}
           onDismissDuringProvisioning={(instanceId, serviceId) => {
             onDismissDuringProvisioning(instanceId, serviceId)

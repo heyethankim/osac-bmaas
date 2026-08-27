@@ -1034,6 +1034,11 @@ export function ProviderAdminCatalogPage({
           }}
           existingInstanceNames={existingInstanceNames}
           onClose={closeLaunchWizard}
+          onBackToCatalogItem={() => {
+            if (selectedCatalogItem) {
+              openDetails(selectedCatalogItem)
+            }
+          }}
           onProvisioningStarted={(instance) => {
             onProvisioningStarted?.(instance)
             if (!onProvisioningStarted) {

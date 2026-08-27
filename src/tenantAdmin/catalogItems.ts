@@ -76,7 +76,7 @@ export function createDemoTenantCatalogGeneralPurposeItem(): TenantCatalogItem {
         'Small (16 vCPU · 128 GB · NVIDIA A100 40 GB)',
       diskImageId: 'rhel-10',
       diskImageLabel: 'RHEL 10',
-      hardwareOsMode: 'locked',
+      hardwareOsMode: 'editable',
       fieldPolicies: [],
       networkPolicy: {
         ...DEFAULT_CATALOG_NETWORK_POLICY,

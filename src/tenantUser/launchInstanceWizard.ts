@@ -65,6 +65,19 @@ export const BAREMETAL_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   { id: 'provisioning', label: 'Provisioning', description: '' },
 ]
 
+/** Bare metal with editable Hardware & OS: General → Hardware & OS → Networking → Review → Provisioning. */
+export const BAREMETAL_HARDWARE_OS_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
+  id: LaunchInstanceWizardStepId
+  label: string
+  description: string
+}> = [
+  { id: 'general', label: 'General', description: '' },
+  { id: 'configure', label: 'Hardware & OS', description: '' },
+  { id: 'networking', label: 'Networking', description: '' },
+  { id: 'review', label: 'Review', description: '' },
+  { id: 'provisioning', label: 'Provisioning', description: '' },
+]
+
 /** Cluster launch flow: General → Configure → Networking → Review → Provisioning. */
 export const CLUSTER_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   id: LaunchInstanceWizardStepId
@@ -94,6 +107,7 @@ export const VM_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
 export function getLaunchInstanceWizardSteps(options: {
   includeNetworking: boolean
   serviceId?: CatalogServiceId
+  bareMetalHardwareOsEditable?: boolean
 }) {
   if (options.serviceId === 'cluster') {
     return CLUSTER_LAUNCH_INSTANCE_WIZARD_STEPS
@@ -104,7 +118,9 @@ export function getLaunchInstanceWizardSteps(options: {
   }
 
   if (options.serviceId === 'baremetal') {
-    return BAREMETAL_LAUNCH_INSTANCE_WIZARD_STEPS
+    return options.bareMetalHardwareOsEditable
+      ? BAREMETAL_HARDWARE_OS_LAUNCH_INSTANCE_WIZARD_STEPS
+      : BAREMETAL_LAUNCH_INSTANCE_WIZARD_STEPS
   }
 
   // Models / legacy: always include Networking at service launch.
@@ -550,4 +566,8 @@ export function isVmNetworkingStepValid(form: LaunchInstanceWizardForm): boolean
 
 export function isBareMetalGeneralStepValid(form: LaunchInstanceWizardForm): boolean {
   return isDnsLabelValid(form.instanceName) && form.sshPublicKey.trim().length > 0
+}
+
+export function isBareMetalHardwareOsStepValid(form: LaunchInstanceWizardForm): boolean {
+  return form.instanceType.trim().length > 0 && form.diskImageId.trim().length > 0
 }
