@@ -9,7 +9,6 @@ import {
   Flex,
   FlexItem,
   Icon,
-  Label,
   Stack,
   StackItem,
   Title,
@@ -28,7 +27,6 @@ import redHatHatLogoUrl from '../assets/Logo-RedHat-Hat-Color-RGB.svg?url'
 type PrototypeLink = {
   label: string
   to: string
-  statusLabel?: string
 }
 
 type RoleBlockProps = {
@@ -77,11 +75,6 @@ function RoleBlock({ id, title, description, icon, actions, prototypeLinks = [] 
                   <RouterButton variant="link" isInline to={link.to}>
                     {link.label}
                   </RouterButton>
-                  {link.statusLabel ? (
-                    <Label color="orange" isCompact>
-                      {link.statusLabel}
-                    </Label>
-                  ) : null}
                 </Flex>
               </StackItem>
             ))}
@@ -123,12 +116,14 @@ export function BmaasLandingPage() {
     {
       label: 'Catalog',
       to: '/provider/workspace?nav=catalog',
-      statusLabel: 'Not approved yet',
+    },
+    {
+      label: 'Projects',
+      to: '/provider/workspace?nav=projects-teams',
     },
     {
       label: 'Tenant onboarding (IdP Manager)',
       to: '/idp-manager/bluesolace',
-      statusLabel: 'Not approved yet',
     },
   ]
 
@@ -162,7 +157,10 @@ export function BmaasLandingPage() {
         {
           label: 'Catalog',
           to: '/tenant-admin/northsummit/workspace?nav=catalog',
-          statusLabel: 'Not approved yet',
+        },
+        {
+          label: 'Projects',
+          to: '/tenant-admin/northsummit/workspace?nav=projects-teams',
         },
       ],
     },
@@ -178,7 +176,10 @@ export function BmaasLandingPage() {
         {
           label: 'Catalog',
           to: '/tenant-user/northsummit/workspace?nav=catalog',
-          statusLabel: 'Not approved yet',
+        },
+        {
+          label: 'Projects',
+          to: '/tenant-user/northsummit/workspace?nav=projects-teams',
         },
       ],
     },
