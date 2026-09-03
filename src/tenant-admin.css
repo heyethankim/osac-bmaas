@@ -1031,13 +1031,42 @@
 
 .tenant-admin-catalog-manager__table {
   margin-block-start: 0;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.tenant-admin-catalog-manager__col-name {
+  --pf-v6-c-table--cell--Width: 28%;
+  --pf-v6-c-table--cell--MinWidth: 12rem;
+  --pf-v6-c-table--cell--MaxWidth: none;
+  overflow-wrap: anywhere;
+}
+
+.tenant-admin-catalog-manager__col-status {
+  --pf-v6-c-table--cell--Width: 10%;
+  --pf-v6-c-table--cell--MinWidth: 5rem;
+  --pf-v6-c-table--cell--MaxWidth: none;
+  --pf-v6-c-table--cell--WhiteSpace: nowrap;
+}
+
+.tenant-admin-catalog-manager__col-configuration {
+  --pf-v6-c-table--cell--Width: 50%;
+  --pf-v6-c-table--cell--MinWidth: 14rem;
+  --pf-v6-c-table--cell--MaxWidth: none;
+}
+
+.tenant-admin-catalog-manager__col-action {
+  --pf-v6-c-table--cell--Width: 12%;
+  --pf-v6-c-table--cell--MinWidth: 3rem;
+  --pf-v6-c-table--cell--MaxWidth: none;
+  --pf-v6-c-table--cell--WhiteSpace: nowrap;
 }
 
 .tenant-admin-catalog-manager__table .tenant-admin-catalog-manager__authorized-teams {
   margin-block-start: 0;
 }
 
-.tenant-admin-catalog-manager__table .tenant-admin-catalog-manager__category-label.pf-v6-c-content--p {
+.tenant-admin-catalog-manager__table .tenant-admin-catalog-manager__service-type.pf-v6-c-content--p {
   margin-block-start: var(--pf-t--global--spacer--xs);
 }
 
@@ -1178,16 +1207,33 @@
 }
 
 .tenant-admin-catalog-manager__primary-cell.pf-v6-c-content--p,
-.tenant-admin-catalog-manager__category-label.pf-v6-c-content--p,
+.tenant-admin-catalog-manager__service-type.pf-v6-c-content--p,
 .tenant-admin-catalog-manager__approval-label.pf-v6-c-content--p {
   margin: 0;
 }
 
-.tenant-admin-catalog-manager__category-label.pf-v6-c-content--p {
+.tenant-admin-catalog-manager__service-type.pf-v6-c-content--p {
   margin-block-start: var(--pf-t--global--spacer--xs);
   line-height: 1.2;
   color: var(--pf-t--global--text--color--subtle);
   font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.tenant-admin-catalog-manager__list-origin {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--xs);
+  margin-block-start: var(--pf-t--global--spacer--xs);
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+  line-height: 1.2;
+}
+
+.tenant-admin-catalog-manager__list-origin-icon {
+  flex-shrink: 0;
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--pf-t--global--icon--color--regular);
 }
 
 .tenant-admin-catalog-manager__drawer-panel {
@@ -1741,6 +1787,36 @@
 
 .tenant-user-catalog__table {
   margin-block-start: 0;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.tenant-user-catalog__col-name {
+  --pf-v6-c-table--cell--Width: 24%;
+  --pf-v6-c-table--cell--MinWidth: 11rem;
+  --pf-v6-c-table--cell--MaxWidth: none;
+  overflow-wrap: anywhere;
+}
+
+.tenant-user-catalog__col-status {
+  --pf-v6-c-table--cell--Width: 10%;
+  --pf-v6-c-table--cell--MinWidth: 5rem;
+  --pf-v6-c-table--cell--MaxWidth: none;
+  --pf-v6-c-table--cell--WhiteSpace: nowrap;
+}
+
+.tenant-user-catalog__col-action {
+  --pf-v6-c-table--cell--Width: 16%;
+  --pf-v6-c-table--cell--MinWidth: 9rem;
+  --pf-v6-c-table--cell--MaxWidth: none;
+  --pf-v6-c-table--cell--WhiteSpace: nowrap;
+  text-align: start;
+}
+
+.tenant-user-catalog__col-configuration {
+  --pf-v6-c-table--cell--Width: 50%;
+  --pf-v6-c-table--cell--MinWidth: 14rem;
+  --pf-v6-c-table--cell--MaxWidth: none;
 }
 
 .tenant-user-catalog__table .tenant-user-catalog__launch-button {
@@ -1805,7 +1881,7 @@
 
 .tenant-user-catalog__primary-cell.pf-v6-c-content--p,
 .tenant-user-catalog__display-name.pf-v6-c-content--p,
-.tenant-user-catalog__category-label.pf-v6-c-content--p,
+.tenant-user-catalog__service-type.pf-v6-c-content--p,
 .tenant-user-instances__primary-cell.pf-v6-c-content--p,
 .tenant-user-instances__secondary-cell.pf-v6-c-content--p {
   margin: 0;
@@ -1817,7 +1893,7 @@
   line-height: 1.2;
 }
 
-.tenant-user-catalog__category-label.pf-v6-c-content--p {
+.tenant-user-catalog__service-type.pf-v6-c-content--p {
   margin-block-start: -0.3rem;
   line-height: 1.2;
   color: var(--pf-t--global--text--color--subtle);

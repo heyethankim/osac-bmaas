@@ -40,7 +40,6 @@ import { TenantUserLaunchInstanceWizard } from '../../components/tenant-user/Ten
 import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
 import { KubernetesResourceNameField } from '../../components/shared/KubernetesResourceNameHelper'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
-import { formatCatalogConfigurationSummary } from '../../catalog/catalogSpecs'
 import {
   createCatalogServiceFilterSet,
   describeCatalogServiceFilter,
@@ -149,46 +148,48 @@ function toLaunchCatalogCard(
   }
 }
 
-function AccessSummary({
-  compact = false,
-  onViewDetails,
+/** Grid: blue label chip. List: subtle subtext under the item name. */
+function TenantAdminCatalogServiceType({
+  service,
+  variant,
 }: {
-  compact?: boolean
-  onViewDetails?: () => void
+  service: string
+  variant: 'grid' | 'list'
 }) {
-  const statusContent = (
-    <span className="tenant-admin-catalog-manager__access-status">
-      <Label
-        color="grey"
-        isCompact
-        className="tenant-admin-catalog-manager__access-status-label"
-      >
-        {TENANT_CATALOG_MANAGER_DEMO.accessDefaultLabel}
+  if (variant === 'grid') {
+    return (
+      <Label color="blue" className="tenant-admin-catalog-manager__card-label">
+        {service}
       </Label>
-      {onViewDetails ? (
-        <Button
-          variant="link"
-          isInline
-          className="tenant-admin-catalog-manager__inline-link"
-          onClick={onViewDetails}
-        >
-          {TENANT_CATALOG_MANAGER_DEMO.accessViewDetailsLabel}
-        </Button>
-      ) : null}
-    </span>
-  )
-
-  if (compact) {
-    return statusContent
+    )
   }
 
   return (
-    <div className="tenant-admin-catalog-manager__spec-row">
-      <dt className="tenant-admin-catalog-manager__spec-label">
-        {TENANT_CATALOG_MANAGER_DEMO.accessLabel}
-      </dt>
-      <dd className="tenant-admin-catalog-manager__spec-value">{statusContent}</dd>
-    </div>
+    <Content component="p" className="tenant-admin-catalog-manager__service-type">
+      {service}
+    </Content>
+  )
+}
+
+function TenantAdminCatalogListOrigin({
+  item,
+}: {
+  item: TenantCatalogGovernanceItemWithNetworking
+}) {
+  if (!shouldShowTenantAdminCatalogOrigin(item)) {
+    return null
+  }
+
+  return (
+    <Tooltip content={getTenantAdminCatalogSourceTooltip(item)} position="top" enableFlip={false}>
+      <span className="tenant-admin-catalog-manager__list-origin">
+        <TenantAdminCatalogSourceIcon
+          item={item}
+          className="tenant-admin-catalog-manager__list-origin-icon"
+        />
+        <span>{getTenantAdminCatalogSourceLabel(item)}</span>
+      </span>
+    </Tooltip>
   )
 }
 
@@ -916,9 +917,7 @@ export function TenantAdminCatalogPage({
                         {getCatalogServiceIcon(item.serviceId)}
                       </span>
                       <div className="tenant-admin-catalog-manager__card-header-actions">
-                        <Label color="blue" className="tenant-admin-catalog-manager__card-label">
-                          {item.service}
-                        </Label>
+                        <TenantAdminCatalogServiceType service={item.service} variant="grid" />
                         <Label
                           color={item.status === 'Unpublished' ? 'grey' : 'green'}
                           className="tenant-admin-catalog-manager__card-label"
@@ -992,11 +991,10 @@ export function TenantAdminCatalogPage({
             >
               <Thead>
                 <Tr>
-                  <Th>Name</Th>
-                  <Th>Status</Th>
-                  <Th>Configuration</Th>
-                  <Th>Access</Th>
-                  <Th screenReaderText="Actions" />
+                  <Th className="tenant-admin-catalog-manager__col-name">Name</Th>
+                  <Th className="tenant-admin-catalog-manager__col-status">Status</Th>
+                  <Th className="tenant-admin-catalog-manager__col-configuration">Configuration</Th>
+                  <Th screenReaderText="Actions" className="tenant-admin-catalog-manager__col-action" />
                 </Tr>
               </Thead>
               <Tbody>
@@ -1005,7 +1003,7 @@ export function TenantAdminCatalogPage({
 
                   return (
                     <Tr key={item.id}>
-                      <Td dataLabel="Name">
+                      <Td dataLabel="Name" className="tenant-admin-catalog-manager__col-name">
                         <Content component="p" className="tenant-admin-catalog-manager__primary-cell">
                           <Button
                             variant="link"
@@ -1016,30 +1014,24 @@ export function TenantAdminCatalogPage({
                             {item.displayName}
                           </Button>
                         </Content>
+                        <TenantAdminCatalogServiceType service={item.service} variant="list" />
+                        <TenantAdminCatalogListOrigin item={item} />
                       </Td>
-                      <Td dataLabel="Status">
+                      <Td dataLabel="Status" className="tenant-admin-catalog-manager__col-status">
                         <Label color={item.status === 'Unpublished' ? 'grey' : 'green'} isCompact>
                           {item.status}
                         </Label>
                       </Td>
-                      <Td dataLabel="Configuration">
-                        <Content component="p" className="tenant-admin-catalog-manager__primary-cell">
-                          {formatCatalogConfigurationSummary({
-                            serviceId: item.serviceId,
-                            templateRefId: item.templateRefId,
-                            templateName: item.templateName,
-                            instanceTypeLabel: item.instanceTypeLabel,
-                            diskImageLabel: item.diskImageLabel,
-                            diskImageId: item.diskImageId,
-                            clusterVersionMode: item.clusterVersionMode,
-                            hardwareOsMode: item.hardwareOsMode,
-                          })}
-                        </Content>
+                      <Td dataLabel="Configuration" className="tenant-admin-catalog-manager__col-configuration">
+                        <CatalogSpecRowsList
+                          rows={item.specRows}
+                          className="catalog-table-specs-list"
+                          rowClassName="catalog-table-spec-row"
+                          labelClassName="catalog-table-spec-label"
+                          valueClassName="catalog-table-spec-value"
+                        />
                       </Td>
-                      <Td dataLabel="Access">
-                        <AccessSummary compact onViewDetails={() => openDetails(item)} />
-                      </Td>
-                      <Td isActionCell>
+                      <Td isActionCell className="tenant-admin-catalog-manager__col-action">
                         <ActionsColumn items={catalogItemActions} />
                       </Td>
                     </Tr>

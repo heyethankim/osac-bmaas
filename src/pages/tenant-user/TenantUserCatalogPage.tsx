@@ -31,7 +31,6 @@ import {
 } from '../../catalog/catalogFilterSummary'
 import { TenantUserCatalogItemDetailsPage } from '../../components/tenant-user/TenantUserCatalogItemDetailsPage'
 import { TenantUserLaunchInstanceWizard } from '../../components/tenant-user/TenantUserLaunchInstanceWizard'
-import { formatCatalogConfigurationSummary } from '../../catalog/catalogSpecs'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import { getCatalogViewMode, setCatalogViewMode, type CatalogViewMode } from '../../catalog/viewMode'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
@@ -87,6 +86,29 @@ function getCatalogItemActions(
       onClick: onLaunch,
     },
   ]
+}
+
+/** Grid: blue label chip. List: subtle subtext under the item name. */
+function TenantUserCatalogServiceType({
+  service,
+  variant,
+}: {
+  service: string
+  variant: 'grid' | 'list'
+}) {
+  if (variant === 'grid') {
+    return (
+      <Label color="blue" className="tenant-user-catalog__card-label">
+        {service}
+      </Label>
+    )
+  }
+
+  return (
+    <Content component="p" className="tenant-user-catalog__service-type">
+      {service}
+    </Content>
+  )
 }
 
 export function TenantUserCatalogPage({
@@ -426,9 +448,7 @@ export function TenantUserCatalogPage({
                         {getCatalogServiceIcon(item.serviceId)}
                       </span>
                       <div className="tenant-user-catalog__card-header-actions">
-                        <Label color="blue" className="tenant-user-catalog__card-label">
-                          {item.service}
-                        </Label>
+                        <TenantUserCatalogServiceType service={item.service} variant="grid" />
                         <Label color="green" className="tenant-user-catalog__card-label">
                           {item.status}
                         </Label>
@@ -489,16 +509,16 @@ export function TenantUserCatalogPage({
             >
               <Thead>
                 <Tr>
-                  <Th>Name</Th>
-                  <Th>Status</Th>
-                  <Th>Configuration</Th>
-                  <Th>Action</Th>
+                  <Th className="tenant-user-catalog__col-name">Name</Th>
+                  <Th className="tenant-user-catalog__col-status">Status</Th>
+                  <Th className="tenant-user-catalog__col-configuration">Configuration</Th>
+                  <Th className="tenant-user-catalog__col-action">Action</Th>
                 </Tr>
               </Thead>
               <Tbody>
                 {filteredItems.map((item) => (
                   <Tr key={item.catalogItemId}>
-                    <Td dataLabel="Name">
+                    <Td dataLabel="Name" className="tenant-user-catalog__col-name">
                       <Content component="p" className="tenant-user-catalog__display-name">
                         <Button
                           variant="link"
@@ -509,28 +529,23 @@ export function TenantUserCatalogPage({
                           {item.displayName}
                         </Button>
                       </Content>
-                      <Content component="p" className="tenant-user-catalog__category-label">
-                        {item.service}
-                      </Content>
+                      <TenantUserCatalogServiceType service={item.service} variant="list" />
                     </Td>
-                    <Td dataLabel="Status">
+                    <Td dataLabel="Status" className="tenant-user-catalog__col-status">
                       <Label color="green" isCompact>
                         {item.status}
                       </Label>
                     </Td>
-                    <Td dataLabel="Configuration">
-                      {formatCatalogConfigurationSummary({
-                        serviceId: item.serviceId,
-                        templateRefId: item.templateRefId,
-                        templateName: item.templateName,
-                        instanceTypeLabel: item.instanceTypeLabel,
-                        diskImageLabel: item.diskImageLabel,
-                        diskImageId: item.diskImageId,
-                        clusterVersionMode: item.clusterVersionMode,
-                        hardwareOsMode: item.hardwareOsMode,
-                      })}
+                    <Td dataLabel="Configuration" className="tenant-user-catalog__col-configuration">
+                      <CatalogSpecRowsList
+                        rows={item.specRows}
+                        className="catalog-table-specs-list"
+                        rowClassName="catalog-table-spec-row"
+                        labelClassName="catalog-table-spec-label"
+                        valueClassName="catalog-table-spec-value"
+                      />
                     </Td>
-                    <Td dataLabel="Action">
+                    <Td dataLabel="Action" className="tenant-user-catalog__col-action">
                       <Button
                         variant="primary"
                         icon={<RocketIcon />}

@@ -373,6 +373,15 @@ export function resolveBaremetalCatalogCardSpecRows(
   return buildBaremetalCatalogSpecRows(item).filter((row) => row.label !== 'Size')
 }
 
+/** Grid and list catalog views share the same card-level specification rows. */
+export function resolveCatalogCardSpecRows(
+  item: Parameters<typeof resolveCatalogSpecRows>[0],
+): CatalogSpecRow[] {
+  return getDraftServiceId(item) === 'baremetal'
+    ? resolveBaremetalCatalogCardSpecRows(item)
+    : resolveCatalogSpecRows(item)
+}
+
 export function resolveCatalogSpecRows(
   item: Pick<
     ProviderCatalogDraft,
@@ -466,7 +475,7 @@ export function formatCatalogConfigurationSummary(
     | 'hardwareOsMode'
   >,
 ): string {
-  return resolveCatalogSpecRows(item)
+  return resolveCatalogCardSpecRows(item)
     .map((row) => (row.badge ? `${row.value} (${row.badge.text})` : row.value))
     .join(' · ')
 }

@@ -40,11 +40,7 @@ import {
   createCatalogServiceFilterSet,
   describeCatalogServiceFilter,
 } from '../catalog/catalogFilterSummary'
-import {
-  formatCatalogConfigurationSummary,
-  resolveBaremetalCatalogCardSpecRows,
-  resolveCatalogSpecRows,
-} from '../catalog/catalogSpecs'
+import { resolveCatalogCardSpecRows } from '../catalog/catalogSpecs'
 import { CatalogSpecRowsList } from '../components/catalog/CatalogSpecRowsList'
 import { findCatalogLinkedTemplate } from '../catalog/hardwareSpecs'
 import { getCatalogViewMode, setCatalogViewMode, type CatalogViewMode } from '../catalog/viewMode'
@@ -76,6 +72,7 @@ import {
   parseRateCardFromForm,
   type CatalogServiceId,
   type PublishedTemplatePayload,
+  type RateCard,
 } from '../providerSetup/templateDemo'
 import { ProviderSetupPublishCatalogWizard } from './provider-setup/ProviderSetupPublishCatalogWizard'
 import { TenantUserLaunchInstanceWizard } from '../components/tenant-user/TenantUserLaunchInstanceWizard'
@@ -128,6 +125,29 @@ const PROVIDER_LAUNCH_DEMO_TENANT = 'northsummit'
 
 function getDraftServiceId(catalogDraft: ProviderCatalogDraft): CatalogServiceId {
   return catalogDraft.serviceId ?? 'baremetal'
+}
+
+/** Grid: blue label chip. List: subtle subtext under the item name. */
+function ProviderAdminCatalogServiceType({
+  service,
+  variant,
+}: {
+  service: string
+  variant: 'grid' | 'list'
+}) {
+  if (variant === 'grid') {
+    return (
+      <Label color="blue" className="provider-admin-catalog-items__card-label">
+        {service}
+      </Label>
+    )
+  }
+
+  return (
+    <Content component="p" className="provider-admin-catalog-items__service-type">
+      {service}
+    </Content>
+  )
 }
 
 function dedupeCatalogItemsById(items: ProviderCatalogDraft[]): ProviderCatalogDraft[] {
@@ -230,6 +250,20 @@ function ScopeCell({ scope }: { scope: ProviderCatalogDraft['scope'] }) {
         <span>{label}</span>
       </span>
     </Tooltip>
+  )
+}
+
+function ProviderAdminCatalogRateCell({ rateCard }: { rateCard: RateCard }) {
+  const hourly = rateCard.hourlyRate.toFixed(2)
+  const monthly = rateCard.monthlyRate.toLocaleString('en-US', { maximumFractionDigits: 0 })
+
+  return (
+    <Content component="p" className="provider-admin-catalog-items__primary-cell provider-admin-catalog-items__rate-cell">
+      <span className="provider-admin-catalog-items__rate-line">
+        ${hourly}/hr · ${monthly}/mo
+      </span>
+      <span className="provider-admin-catalog-items__rate-unit">per instance</span>
+    </Content>
   )
 }
 
@@ -1215,10 +1249,7 @@ export function ProviderAdminCatalogPage({
                     getCatalogEnterpriseTenantIds(item),
                   )
                 : 'Global public'
-            const specRows =
-              (item.serviceId ?? 'baremetal') === 'baremetal'
-                ? resolveBaremetalCatalogCardSpecRows(item)
-                : resolveCatalogSpecRows(item)
+            const specRows = resolveCatalogCardSpecRows(item)
 
             return (
               <Card
@@ -1259,9 +1290,10 @@ export function ProviderAdminCatalogPage({
                       {getCatalogServiceIcon(serviceId)}
                     </span>
                     <div className="provider-admin-catalog-items__card-header-actions">
-                      <Label color="blue" className="provider-admin-catalog-items__card-label">
-                        {CATALOG_SERVICE_LABELS[serviceId]}
-                      </Label>
+                      <ProviderAdminCatalogServiceType
+                        service={CATALOG_SERVICE_LABELS[serviceId]}
+                        variant="grid"
+                      />
                       <CatalogStatusLabel item={item} isPublishing={isPublishing} />
                       <ActionsColumn items={catalogItemActions} />
                     </div>
@@ -1275,9 +1307,6 @@ export function ProviderAdminCatalogPage({
                     >
                       {item.displayName}
                     </Button>
-                  </Content>
-                  <Content component="p" className="provider-admin-catalog-items__secondary-cell">
-                    <code>{item.catalogItemId}</code>
                   </Content>
                   <CatalogSpecRowsList
                     rows={specRows}
@@ -1329,17 +1358,19 @@ export function ProviderAdminCatalogPage({
           >
           <Thead>
             <Tr>
-              <Th>Name</Th>
-              <Th>Status</Th>
-              <Th>Configuration</Th>
-              <Th>Rate</Th>
-              <Th>Visibility</Th>
-              <Th>Created</Th>
-              <Th screenReaderText="Actions" />
+              <Th className="provider-admin-catalog-items__col-name">Name</Th>
+              <Th className="provider-admin-catalog-items__col-status">Status</Th>
+              <Th className="provider-admin-catalog-items__col-configuration">Configuration</Th>
+              <Th className="provider-admin-catalog-items__col-rate">Rate</Th>
+              <Th className="provider-admin-catalog-items__col-visibility">Visibility</Th>
+              <Th className="provider-admin-catalog-items__col-created">Created</Th>
+              <Th screenReaderText="Actions" className="provider-admin-catalog-items__col-action" />
             </Tr>
           </Thead>
           <Tbody>
             {filteredCatalogItems.map((item) => {
+              const serviceId = getDraftServiceId(item)
+              const specRows = resolveCatalogCardSpecRows(item)
               const catalogItemActions = getCatalogItemActions(
                 item,
                 publishingCatalogItemId === item.catalogItemId,
@@ -1353,7 +1384,7 @@ export function ProviderAdminCatalogPage({
 
               return (
                 <Tr key={item.catalogItemId}>
-                  <Td dataLabel="Name">
+                  <Td dataLabel="Name" className="provider-admin-catalog-items__col-name">
                     <Content component="p" className="provider-admin-catalog-items__primary-cell">
                       <Button
                         variant="link"
@@ -1364,31 +1395,36 @@ export function ProviderAdminCatalogPage({
                         {item.displayName}
                       </Button>
                     </Content>
-                    <Content component="p" className="provider-admin-catalog-items__secondary-cell">
-                      <code>{item.catalogItemId}</code>
-                    </Content>
+                    <ProviderAdminCatalogServiceType
+                      service={CATALOG_SERVICE_LABELS[serviceId]}
+                      variant="list"
+                    />
                   </Td>
-                  <Td dataLabel="Status">
+                  <Td dataLabel="Status" className="provider-admin-catalog-items__col-status">
                     <CatalogStatusLabel
                       item={item}
                       isPublishing={publishingCatalogItemId === item.catalogItemId}
                     />
                   </Td>
-                  <Td dataLabel="Configuration">
-                    <Content component="p" className="provider-admin-catalog-items__primary-cell">
-                      {formatCatalogConfigurationSummary(item)}
-                    </Content>
+                  <Td dataLabel="Configuration" className="provider-admin-catalog-items__col-configuration">
+                    <CatalogSpecRowsList
+                      rows={specRows}
+                      className="catalog-table-specs-list"
+                      rowClassName="catalog-table-spec-row"
+                      labelClassName="catalog-table-spec-label"
+                      valueClassName="catalog-table-spec-value"
+                    />
                   </Td>
-                  <Td dataLabel="Rate">
-                    <Content component="p" className="provider-admin-catalog-items__primary-cell">
-                      {formatRateCardSummary(item.rateCard)}
-                    </Content>
+                  <Td dataLabel="Rate" className="provider-admin-catalog-items__col-rate">
+                    <ProviderAdminCatalogRateCell rateCard={item.rateCard} />
                   </Td>
-                  <Td dataLabel="Visibility">
+                  <Td dataLabel="Visibility" className="provider-admin-catalog-items__col-visibility">
                     <ScopeCell scope={item.scope} />
                   </Td>
-                  <Td dataLabel="Created">{formatCatalogCreatedAt(item.createdAt)}</Td>
-                  <Td isActionCell>
+                  <Td dataLabel="Created" className="provider-admin-catalog-items__col-created">
+                    {formatCatalogCreatedAt(item.createdAt)}
+                  </Td>
+                  <Td isActionCell className="provider-admin-catalog-items__col-action">
                     <ActionsColumn items={catalogItemActions} />
                   </Td>
                 </Tr>

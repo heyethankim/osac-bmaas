@@ -166,6 +166,32 @@
   max-width: none;
 }
 
+.catalog-table-specs-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--sm);
+  margin: 0;
+}
+
+.catalog-table-spec-row {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  gap: var(--pf-t--global--spacer--sm);
+  align-items: baseline;
+}
+
+.catalog-table-spec-label {
+  margin: 0;
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+}
+
+.catalog-table-spec-value {
+  margin: 0;
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
 /*
  * Catalog table views sit directly on the page surface, which can be a glass
  * (translucent) surface. Drop the opaque primary background there so the
