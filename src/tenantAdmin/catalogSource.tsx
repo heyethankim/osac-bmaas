@@ -2,19 +2,13 @@ import { EnterpriseIcon } from '@patternfly/react-icons/dist/esm/icons/enterpris
 import { ImportIcon } from '@patternfly/react-icons/dist/esm/icons/import-icon'
 import { UserIcon } from '@patternfly/react-icons/dist/esm/icons/user-icon'
 import type { PublishCatalogScope } from '../providerSetup/templateDemo'
+import { formatCatalogItemAddedDate } from '../catalog/catalogDetails'
 import { isTenantScopedCatalogItemId } from './catalogItems'
 
 export type TenantAdminCatalogSourceItem = {
   id: string
   scope: PublishCatalogScope
-}
-
-export function shouldShowTenantAdminCatalogOrigin(item: TenantAdminCatalogSourceItem): boolean {
-  if (isTenantScopedCatalogItemId(item.id)) {
-    return true
-  }
-
-  return item.scope === 'vip-enterprise'
+  createdAt?: string
 }
 
 export function getTenantAdminCatalogSourceLabel(item: TenantAdminCatalogSourceItem): string {
@@ -26,7 +20,24 @@ export function getTenantAdminCatalogSourceLabel(item: TenantAdminCatalogSourceI
     return 'Assigned by provider'
   }
 
-  return 'Inherited offering'
+  return 'From provider'
+}
+
+/** Grid footer — includes a compact date when available. */
+export function getTenantAdminCatalogOriginDisplay(item: TenantAdminCatalogSourceItem): string {
+  const label = getTenantAdminCatalogSourceLabel(item)
+  if (item.createdAt) {
+    return `${label} · ${formatCatalogItemAddedDate(item.createdAt)}`
+  }
+  return label
+}
+
+/** List Added column — tenant-added or provider-published date. */
+export function getTenantAdminCatalogAddedDate(item: TenantAdminCatalogSourceItem): string | null {
+  if (item.createdAt) {
+    return formatCatalogItemAddedDate(item.createdAt)
+  }
+  return null
 }
 
 export function getTenantAdminCatalogSourceTooltip(item: TenantAdminCatalogSourceItem): string {
@@ -38,7 +49,7 @@ export function getTenantAdminCatalogSourceTooltip(item: TenantAdminCatalogSourc
     return 'Your provider published this exclusively for your tenant. You decide who can launch it.'
   }
 
-  return 'Included in your provider’s catalog. You decide who in your organization can launch it.'
+  return 'Included in your provider’s catalog.'
 }
 
 export function TenantAdminCatalogSourceIcon({

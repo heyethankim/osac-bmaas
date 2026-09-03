@@ -82,9 +82,10 @@ import {
 } from '../../tenantAdmin/catalogItems'
 import type { PublishedTemplatePayload } from '../../providerSetup/templateDemo'
 import {
+  getTenantAdminCatalogAddedDate,
+  getTenantAdminCatalogOriginDisplay,
   getTenantAdminCatalogSourceLabel,
   getTenantAdminCatalogSourceTooltip,
-  shouldShowTenantAdminCatalogOrigin,
   TenantAdminCatalogSourceIcon,
 } from '../../tenantAdmin/catalogSource'
 import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
@@ -171,23 +172,26 @@ function TenantAdminCatalogServiceType({
   )
 }
 
-function TenantAdminCatalogListOrigin({
+function TenantAdminCatalogOriginLine({
   item,
+  className,
+  iconClassName,
+  includeDate = true,
 }: {
   item: TenantCatalogGovernanceItemWithNetworking
+  className?: string
+  iconClassName?: string
+  includeDate?: boolean
 }) {
-  if (!shouldShowTenantAdminCatalogOrigin(item)) {
-    return null
-  }
+  const text = includeDate
+    ? getTenantAdminCatalogOriginDisplay(item)
+    : getTenantAdminCatalogSourceLabel(item)
 
   return (
     <Tooltip content={getTenantAdminCatalogSourceTooltip(item)} position="top" enableFlip={false}>
-      <span className="tenant-admin-catalog-manager__list-origin">
-        <TenantAdminCatalogSourceIcon
-          item={item}
-          className="tenant-admin-catalog-manager__list-origin-icon"
-        />
-        <span>{getTenantAdminCatalogSourceLabel(item)}</span>
+      <span className={className}>
+        <TenantAdminCatalogSourceIcon item={item} className={iconClassName} />
+        <span>{text}</span>
       </span>
     </Tooltip>
   )
@@ -947,28 +951,18 @@ export function TenantAdminCatalogPage({
                       valueClassName="tenant-admin-catalog-manager__spec-value"
                     />
 
-                    {shouldShowTenantAdminCatalogOrigin(item) ? (
-                      <div className="tenant-admin-catalog-manager__card-footer">
-                        <div
-                          className="tenant-admin-catalog-manager__card-footer-visibility"
-                          aria-label="Catalog origin"
-                        >
-                          <Tooltip
-                            content={getTenantAdminCatalogSourceTooltip(item)}
-                            position="top"
-                            enableFlip={false}
-                          >
-                            <span className="tenant-admin-catalog-manager__scope">
-                              <TenantAdminCatalogSourceIcon
-                                item={item}
-                                className="tenant-admin-catalog-manager__scope-icon"
-                              />
-                              <span>{getTenantAdminCatalogSourceLabel(item)}</span>
-                            </span>
-                          </Tooltip>
-                        </div>
+                    <div className="tenant-admin-catalog-manager__card-footer">
+                      <div
+                        className="tenant-admin-catalog-manager__card-footer-visibility"
+                        aria-label="Catalog source"
+                      >
+                        <TenantAdminCatalogOriginLine
+                          item={item}
+                          className="tenant-admin-catalog-manager__scope"
+                          iconClassName="tenant-admin-catalog-manager__scope-icon"
+                        />
                       </div>
-                    ) : null}
+                    </div>
                   </CardBody>
                   )}
                 </Card>
@@ -994,6 +988,8 @@ export function TenantAdminCatalogPage({
                   <Th className="tenant-admin-catalog-manager__col-name">Name</Th>
                   <Th className="tenant-admin-catalog-manager__col-status">Status</Th>
                   <Th className="tenant-admin-catalog-manager__col-configuration">Configuration</Th>
+                  <Th className="tenant-admin-catalog-manager__col-source">Source</Th>
+                  <Th className="tenant-admin-catalog-manager__col-added">Added</Th>
                   <Th screenReaderText="Actions" className="tenant-admin-catalog-manager__col-action" />
                 </Tr>
               </Thead>
@@ -1015,7 +1011,6 @@ export function TenantAdminCatalogPage({
                           </Button>
                         </Content>
                         <TenantAdminCatalogServiceType service={item.service} variant="list" />
-                        <TenantAdminCatalogListOrigin item={item} />
                       </Td>
                       <Td dataLabel="Status" className="tenant-admin-catalog-manager__col-status">
                         <Label color={item.status === 'Unpublished' ? 'grey' : 'green'} isCompact>
@@ -1030,6 +1025,17 @@ export function TenantAdminCatalogPage({
                           labelClassName="catalog-table-spec-label"
                           valueClassName="catalog-table-spec-value"
                         />
+                      </Td>
+                      <Td dataLabel="Source" className="tenant-admin-catalog-manager__col-source">
+                        <TenantAdminCatalogOriginLine
+                          item={item}
+                          includeDate={false}
+                          className="tenant-admin-catalog-manager__list-origin"
+                          iconClassName="tenant-admin-catalog-manager__list-origin-icon"
+                        />
+                      </Td>
+                      <Td dataLabel="Added" className="tenant-admin-catalog-manager__col-added">
+                        {getTenantAdminCatalogAddedDate(item) ?? '—'}
                       </Td>
                       <Td isActionCell className="tenant-admin-catalog-manager__col-action">
                         <ActionsColumn items={catalogItemActions} />

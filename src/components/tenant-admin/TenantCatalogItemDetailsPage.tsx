@@ -34,7 +34,6 @@ import {
 } from '../../tenantAdmin/catalogManager'
 import {
   getTenantAdminCatalogSourceLabel,
-  shouldShowTenantAdminCatalogOrigin,
   TenantAdminCatalogSourceIcon,
 } from '../../tenantAdmin/catalogSource'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
@@ -217,20 +216,18 @@ export function TenantCatalogItemDetailsPage({
                 </Label>
               </DescriptionListDescription>
             </DescriptionListGroup>
-            {shouldShowTenantAdminCatalogOrigin(item) ? (
-              <DescriptionListGroup>
-                <DescriptionListTerm>Origin</DescriptionListTerm>
-                <DescriptionListDescription>
-                  <span className="tenant-admin-catalog-manager__scope">
-                    <TenantAdminCatalogSourceIcon
-                      item={item}
-                      className="tenant-admin-catalog-manager__scope-icon"
-                    />
-                    <span>{getTenantAdminCatalogSourceLabel(item)}</span>
-                  </span>
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-            ) : null}
+            <DescriptionListGroup>
+              <DescriptionListTerm>Source</DescriptionListTerm>
+              <DescriptionListDescription>
+                <span className="tenant-admin-catalog-manager__scope">
+                  <TenantAdminCatalogSourceIcon
+                    item={item}
+                    className="tenant-admin-catalog-manager__scope-icon"
+                  />
+                  <span>{getTenantAdminCatalogSourceLabel(item)}</span>
+                </span>
+              </DescriptionListDescription>
+            </DescriptionListGroup>
             {!isVirtualMachine && !isCluster && item.instanceTypeLabel ? (
               <DescriptionListGroup>
                 <DescriptionListTerm>Instance type</DescriptionListTerm>
