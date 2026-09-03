@@ -1179,19 +1179,7 @@
 }
 
 .tenant-admin-catalog-manager__scope {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--pf-t--global--spacer--sm);
-}
-
-.tenant-admin-catalog-manager__card-footer .tenant-admin-catalog-manager__scope-icon,
-.tenant-admin-catalog-manager__card-footer svg,
-.tenant-admin-catalog-manager__drawer-dl .tenant-admin-catalog-manager__scope-icon,
-.tenant-admin-catalog-manager__drawer-dl .tenant-admin-catalog-manager__scope svg {
-  flex-shrink: 0;
-  width: 1rem;
-  height: 1rem;
-  color: var(--pf-t--global--icon--color--regular);
+  min-inline-size: 0;
 }
 
 .tenant-admin-catalog-manager__approval-control {
@@ -1234,20 +1222,10 @@
 }
 
 .tenant-admin-catalog-manager__list-origin {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--pf-t--global--spacer--xs);
   margin-block-start: 0;
   color: var(--pf-t--global--text--color--subtle);
   font-size: var(--pf-t--global--font--size--body--sm);
   line-height: 1.2;
-}
-
-.tenant-admin-catalog-manager__list-origin-icon {
-  flex-shrink: 0;
-  width: 0.875rem;
-  height: 0.875rem;
-  color: var(--pf-t--global--icon--color--regular);
 }
 
 .tenant-admin-catalog-manager__drawer-panel {

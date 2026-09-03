@@ -1,6 +1,3 @@
-import { EnterpriseIcon } from '@patternfly/react-icons/dist/esm/icons/enterprise-icon'
-import { ImportIcon } from '@patternfly/react-icons/dist/esm/icons/import-icon'
-import { UserIcon } from '@patternfly/react-icons/dist/esm/icons/user-icon'
 import type { PublishCatalogScope } from '../providerSetup/templateDemo'
 import { formatCatalogItemAddedDate } from '../catalog/catalogDetails'
 import { isTenantScopedCatalogItemId } from './catalogItems'
@@ -50,22 +47,4 @@ export function getTenantAdminCatalogSourceTooltip(item: TenantAdminCatalogSourc
   }
 
   return 'Included in your provider’s catalog.'
-}
-
-export function TenantAdminCatalogSourceIcon({
-  item,
-  className,
-}: {
-  item: TenantAdminCatalogSourceItem
-  className?: string
-}) {
-  if (isTenantScopedCatalogItemId(item.id)) {
-    return <UserIcon className={className} aria-hidden />
-  }
-
-  if (item.scope === 'vip-enterprise') {
-    return <EnterpriseIcon className={className} aria-hidden />
-  }
-
-  return <ImportIcon className={className} aria-hidden />
 }

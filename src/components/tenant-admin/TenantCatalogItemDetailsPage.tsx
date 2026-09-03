@@ -34,7 +34,6 @@ import {
 } from '../../tenantAdmin/catalogManager'
 import {
   getTenantAdminCatalogSourceLabel,
-  TenantAdminCatalogSourceIcon,
 } from '../../tenantAdmin/catalogSource'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
 
@@ -219,13 +218,7 @@ export function TenantCatalogItemDetailsPage({
             <DescriptionListGroup>
               <DescriptionListTerm>Source</DescriptionListTerm>
               <DescriptionListDescription>
-                <span className="tenant-admin-catalog-manager__scope">
-                  <TenantAdminCatalogSourceIcon
-                    item={item}
-                    className="tenant-admin-catalog-manager__scope-icon"
-                  />
-                  <span>{getTenantAdminCatalogSourceLabel(item)}</span>
-                </span>
+                {getTenantAdminCatalogSourceLabel(item)}
               </DescriptionListDescription>
             </DescriptionListGroup>
             {!isVirtualMachine && !isCluster && item.instanceTypeLabel ? (

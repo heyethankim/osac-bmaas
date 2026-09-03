@@ -86,7 +86,6 @@ import {
   getTenantAdminCatalogOriginDisplay,
   getTenantAdminCatalogSourceLabel,
   getTenantAdminCatalogSourceTooltip,
-  TenantAdminCatalogSourceIcon,
 } from '../../tenantAdmin/catalogSource'
 import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
 
@@ -175,12 +174,10 @@ function TenantAdminCatalogServiceType({
 function TenantAdminCatalogOriginLine({
   item,
   className,
-  iconClassName,
   includeDate = true,
 }: {
   item: TenantCatalogGovernanceItemWithNetworking
   className?: string
-  iconClassName?: string
   includeDate?: boolean
 }) {
   const text = includeDate
@@ -189,10 +186,7 @@ function TenantAdminCatalogOriginLine({
 
   return (
     <Tooltip content={getTenantAdminCatalogSourceTooltip(item)} position="top" enableFlip={false}>
-      <span className={className}>
-        <TenantAdminCatalogSourceIcon item={item} className={iconClassName} />
-        <span>{text}</span>
-      </span>
+      <span className={className}>{text}</span>
     </Tooltip>
   )
 }
@@ -959,7 +953,6 @@ export function TenantAdminCatalogPage({
                         <TenantAdminCatalogOriginLine
                           item={item}
                           className="tenant-admin-catalog-manager__scope"
-                          iconClassName="tenant-admin-catalog-manager__scope-icon"
                         />
                       </div>
                     </div>
@@ -1031,7 +1024,6 @@ export function TenantAdminCatalogPage({
                           item={item}
                           includeDate={false}
                           className="tenant-admin-catalog-manager__list-origin"
-                          iconClassName="tenant-admin-catalog-manager__list-origin-icon"
                         />
                       </Td>
                       <Td dataLabel="Added" className="tenant-admin-catalog-manager__col-added">

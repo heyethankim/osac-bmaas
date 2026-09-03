@@ -120,10 +120,14 @@ export function ClusterCatalogItemDetailsBody({
           <DescriptionListGroup>
             <DescriptionListTerm>Visibility</DescriptionListTerm>
             <DescriptionListDescription>
-              <span className={scopeWrapClass}>
-                <CatalogPublishScopeIcon scope={content.scope} className={scopeIconClass} />
-                <span>{content.visibilityLabel}</span>
-              </span>
+              {variant === 'entity' ? (
+                content.visibilityLabel
+              ) : (
+                <span className={scopeWrapClass}>
+                  <CatalogPublishScopeIcon scope={content.scope} className={scopeIconClass} />
+                  <span>{content.visibilityLabel}</span>
+                </span>
+              )}
             </DescriptionListDescription>
           </DescriptionListGroup>
           {publishingExtras}
