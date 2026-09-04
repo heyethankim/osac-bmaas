@@ -64,6 +64,59 @@
   max-width: 14rem;
 }
 
+.pill-filter-select {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.pill-filter-select__toggle.pf-v6-c-menu-toggle {
+  min-width: 14rem;
+}
+
+/* Secondary toolbar filters: softly rounded, distinct from the project pill. */
+.pill-filter-select:not(.project-scope-switcher) .pill-filter-select__toggle.pf-v6-c-menu-toggle {
+  --pf-v6-c-menu-toggle--BorderRadius: var(--pf-t--global--border--radius--medium);
+}
+
+.project-scope-switcher .pill-filter-select__toggle.pf-v6-c-menu-toggle {
+  --pf-v6-c-menu-toggle--BorderRadius: var(--pf-t--global--border--radius--pill);
+}
+
+.pill-filter-select__icon {
+  color: var(--pf-t--global--icon--color--brand--default);
+}
+
+.pill-filter-select--organization,
+.pill-filter-select--status {
+  flex: 0 0 14rem;
+  width: 14rem;
+  max-width: 14rem;
+}
+
+.pill-filter-select--narrow {
+  flex: 0 0 10.5rem;
+  width: 10.5rem;
+  max-width: 10.5rem;
+}
+
+.pill-filter-select--narrow .pill-filter-select__toggle.pf-v6-c-menu-toggle {
+  min-width: 0;
+  width: 100%;
+  max-width: 10.5rem;
+}
+
+.pill-filter-select--narrow .pill-filter-select__toggle .pf-v6-c-menu-toggle__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.instance-spec-filter__menu {
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
 /* Keep provider class as an alias for shared search sizing. */
 .provider-admin-catalog-items__search {
   flex: 0 0 15rem;

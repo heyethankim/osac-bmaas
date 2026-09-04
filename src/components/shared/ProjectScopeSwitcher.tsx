@@ -50,7 +50,7 @@ export function ProjectScopeSwitcher({
   }
 
   return (
-    <div className="project-scope-switcher">
+    <div className="project-scope-switcher pill-filter-select pill-filter-select--organization">
       <Dropdown
         isOpen={isOpen}
         onOpenChange={setIsOpen}
@@ -68,9 +68,9 @@ export function ProjectScopeSwitcher({
             isExpanded={isOpen}
             onClick={() => setIsOpen((open) => !open)}
             aria-label={`Project: ${selectedLabel}`}
-            className="project-scope-switcher__toggle"
+            className="project-scope-switcher__toggle pill-filter-select__toggle"
             icon={
-              <Icon className="project-scope-switcher__icon">
+              <Icon className="project-scope-switcher__icon pill-filter-select__icon">
                 <FolderOpenIcon aria-hidden />
               </Icon>
             }

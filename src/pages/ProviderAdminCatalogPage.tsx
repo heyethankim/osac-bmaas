@@ -11,8 +11,6 @@ import {
   EmptyStateBody,
   Flex,
   FlexItem,
-  FormSelect,
-  FormSelectOption,
   Label,
   Modal,
   ModalBody,
@@ -29,6 +27,7 @@ import { CatalogServiceFilterToggle, countCatalogServices, toggleCatalogServiceF
 import { CatalogFilterEmptyState } from '../components/catalog/CatalogFilterEmptyState'
 import { CatalogFilterResultsSummary } from '../components/catalog/CatalogFilterResultsSummary'
 import { CatalogViewToggle } from '../components/catalog/CatalogViewToggle'
+import { PillFilterSelect } from '../components/shared/PillFilterSelect'
 import { CatalogItemDetailsPage } from '../components/provider-admin/CatalogItemDetailsPage'
 import { CatalogPublishScopeIcon } from '../components/provider-admin/CatalogPublishScopeIcon'
 import {
@@ -483,6 +482,26 @@ export function ProviderAdminCatalogPage({
         left.name.localeCompare(right.name, undefined, { sensitivity: 'base' }),
       ),
     [organizations],
+  )
+
+  const tenantFilterOptions = useMemo(
+    () => [
+      { value: '', label: 'All tenants' },
+      ...organizationOptions.map((organization) => ({
+        value: organization.tenantId,
+        label: organization.name,
+      })),
+    ],
+    [organizationOptions],
+  )
+
+  const publishStatusFilterOptions = useMemo(
+    () => [
+      { value: 'all', label: 'All publish states' },
+      { value: 'live', label: 'Published' },
+      { value: 'unpublished', label: 'Unpublished' },
+    ],
+    [],
   )
 
   const filteredCatalogItems = useMemo(() => {
@@ -1159,35 +1178,22 @@ export function ProviderAdminCatalogPage({
             serviceCounts={serviceCounts}
             onToggle={handleFilterToggle}
           />
-          <FormSelect
-            className="catalog-status-filter"
+          <PillFilterSelect
             id="catalog-status-filter"
+            className="pill-filter-select--status"
             value={selectedStatus}
-            onChange={(_event, value) =>
-              setSelectedStatus(value as 'all' | CatalogItemStatus)
-            }
-            aria-label="Filter catalog items by publish status"
-          >
-            <FormSelectOption value="all" label="All publish states" />
-            <FormSelectOption value="live" label="Published" />
-            <FormSelectOption value="unpublished" label="Unpublished" />
-          </FormSelect>
-          <FormSelect
-            className="catalog-organization-filter"
+            options={publishStatusFilterOptions}
+            onChange={(value) => setSelectedStatus(value as 'all' | CatalogItemStatus)}
+            ariaLabel="Filter catalog items by publish status"
+          />
+          <PillFilterSelect
             id="catalog-organization-filter"
+            className="pill-filter-select--organization"
             value={organizationFilter}
-            onChange={(_event, value) => setOrganizationFilter(value)}
-            aria-label="Filter catalog items by tenant"
-          >
-            <FormSelectOption value="" label="All tenants" />
-            {organizationOptions.map((organization) => (
-              <FormSelectOption
-                key={organization.id}
-                value={organization.tenantId}
-                label={organization.name}
-              />
-            ))}
-          </FormSelect>
+            options={tenantFilterOptions}
+            onChange={setOrganizationFilter}
+            ariaLabel="Filter catalog items by tenant"
+          />
           <SearchInput
             className="catalog-search provider-admin-catalog-items__search"
             placeholder="Search catalog items"

@@ -148,6 +148,8 @@ export type TenantInstance = {
   status: TenantInstanceStatus
   createdAt: string
   provisionedAt: string | null
+  /** Provider Services view: workspace slug that owns this instance. */
+  ownerTenantSlug?: string
 }
 
 export function getTenantInstanceServiceId(instance: TenantInstance): CatalogServiceId {

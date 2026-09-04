@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { syncWorkspaceCatalogItemParam, syncWorkspaceNavParam } from '../shared/workspaceNavUrl'
 import { ProviderAdminShell } from '../components/provider-admin/ProviderAdminShell'
@@ -33,6 +33,7 @@ import {
 import {
   getProviderActiveNav,
   getProviderCatalogItems,
+  getProviderRegisteredOrganizations,
   getProviderSelectedServices,
   isProviderServicesSelected,
   isProviderSetupComplete,
@@ -44,10 +45,10 @@ import {
   setProviderSetupComplete,
 } from '../providerSetup/storage'
 import {
-  addTenantUserInstance,
-  ensureTenantDemoInstances,
-  updateTenantUserInstance,
-} from '../tenantUser/storage'
+  addProviderServiceInstance,
+  ensureProviderServicesInstances,
+  patchProviderServiceInstance,
+} from '../tenantUser/providerServicesInstances'
 import {
   getTenantInstanceServiceId,
   isStickyDemoProvisioningInstance,
@@ -139,8 +140,18 @@ export function ProviderAdminWorkspacePage() {
   const [openCatalogItemKey, setOpenCatalogItemKey] = useState<string | null>(null)
   const [openInstanceId, setOpenInstanceId] = useState<string | null>(null)
   const [openProjectId, setOpenProjectId] = useState<string | null>(null)
+  const providerOrganizations = useMemo(() => getProviderRegisteredOrganizations(), [])
+  const providerProjects = useMemo(() => {
+    const byId = new Map<string, TenantProject>()
+    for (const organization of providerOrganizations) {
+      for (const project of ensureTenantDemoProjects(organization.slug)) {
+        byId.set(project.id, project)
+      }
+    }
+    return [...byId.values()]
+  }, [providerOrganizations])
   const [instances, setInstances] = useState(() =>
-    ensureTenantDemoInstances(PROVIDER_SERVICES_DEMO_TENANT),
+    ensureProviderServicesInstances(getProviderRegisteredOrganizations()),
   )
   const [projects, setProjects] = useState<TenantProject[]>(() =>
     ensureTenantDemoProjects(PROVIDER_SERVICES_DEMO_TENANT),
@@ -170,7 +181,7 @@ export function ProviderAdminWorkspacePage() {
       setServicesSelected(true)
       setSetupComplete(true)
       setActiveNavId(requestedNav)
-      setInstances(ensureTenantDemoInstances(PROVIDER_SERVICES_DEMO_TENANT))
+      setInstances(ensureProviderServicesInstances(getProviderRegisteredOrganizations()))
       setProjects(ensureTenantDemoProjects(PROVIDER_SERVICES_DEMO_TENANT))
       setProjectScopeIdState(getProjectScopeId(PROVIDER_SERVICES_DEMO_TENANT))
       return
@@ -302,7 +313,7 @@ export function ProviderAdminWorkspacePage() {
       navId === 'services-models' ||
       navId === 'services-virtual-machines'
     ) {
-      setInstances(ensureTenantDemoInstances(PROVIDER_SERVICES_DEMO_TENANT))
+      setInstances(ensureProviderServicesInstances(getProviderRegisteredOrganizations()))
     }
   }
 
@@ -332,14 +343,14 @@ export function ProviderAdminWorkspacePage() {
     clearProvisioningTimer(instanceId)
     const timeoutId = window.setTimeout(() => {
       setInstances((current) =>
-        updateTenantUserInstance(
-          PROVIDER_SERVICES_DEMO_TENANT,
+        patchProviderServiceInstance(
+          current,
           instanceId,
           {
             status: 'running',
             provisionedAt: new Date().toISOString(),
           },
-          current,
+          PROVIDER_SERVICES_DEMO_TENANT,
         ),
       )
       provisioningTimersRef.current.delete(instanceId)
@@ -349,7 +360,7 @@ export function ProviderAdminWorkspacePage() {
 
   const handleProvisioningStarted = (instance: TenantInstance) => {
     setInstances((current) =>
-      addTenantUserInstance(PROVIDER_SERVICES_DEMO_TENANT, instance, current),
+      addProviderServiceInstance(current, PROVIDER_SERVICES_DEMO_TENANT, instance),
     )
     scheduleProvisioningCompletion(instance.id, LAUNCH_INSTANCE_PROVISIONING_DURATION_MS)
   }
@@ -357,14 +368,14 @@ export function ProviderAdminWorkspacePage() {
   const handleNavigateToServices = (instanceId: string, serviceId: CatalogServiceId) => {
     clearProvisioningTimer(instanceId)
     setInstances((current) =>
-      updateTenantUserInstance(
-        PROVIDER_SERVICES_DEMO_TENANT,
+      patchProviderServiceInstance(
+        current,
         instanceId,
         {
           status: 'provisioning',
           provisionedAt: null,
         },
-        current,
+        PROVIDER_SERVICES_DEMO_TENANT,
       ),
     )
     scheduleProvisioningCompletion(instanceId, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS)
@@ -388,10 +399,13 @@ export function ProviderAdminWorkspacePage() {
             tenantSlug={PROVIDER_SERVICES_DEMO_TENANT}
             instances={instances}
             onInstancesChange={setInstances}
-            projects={projects}
+            projects={providerProjects}
+            allProjects={providerProjects}
             projectScopeId={projectScopeId}
             onProjectScopeChange={handleProjectScopeChange}
             organization={getWorkspaceOrganization(PROVIDER_SERVICES_DEMO_TENANT)}
+            showTenantFilter
+            organizations={providerOrganizations}
             lockedServiceId={lockedServiceId ?? 'baremetal'}
             activeNavId={activeNavId}
             instanceNetworkingVariant="summary"
