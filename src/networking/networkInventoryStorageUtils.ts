@@ -12,3 +12,10 @@ export function replaceInventoryItemById<T extends { id: string }>(
   })
   return found ? next : [...items]
 }
+
+export function removeInventoryItemById<T extends { id: string }>(
+  items: readonly T[],
+  id: string,
+): T[] {
+  return items.filter((item) => item.id !== id)
+}

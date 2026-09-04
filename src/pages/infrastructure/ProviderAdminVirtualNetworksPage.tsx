@@ -11,7 +11,8 @@ import {
   SearchInput,
   Title,
 } from '@patternfly/react-core'
-import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table'
+import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
+import { AttachNatGatewayModal } from '../../components/networking/AttachNatGatewayModal'
 import { CreateVirtualNetworkWizard } from '../../components/networking/CreateVirtualNetworkWizard'
 import { VirtualNetworkDetailsPage } from '../../components/provider-admin/VirtualNetworkDetailsPage'
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
@@ -19,12 +20,15 @@ import { CatalogFilterEmptyState } from '../../components/catalog/CatalogFilterE
 import { CatalogFilterResultsSummary } from '../../components/catalog/CatalogFilterResultsSummary'
 import { buildInventoryFilterParts } from '../../catalog/catalogFilterSummary'
 import type {
+  NatGatewayProfile,
   NetworkInventoryStatus,
   ProviderVirtualNetwork,
 } from '../../providerAdmin/networkInventory'
 import {
+  attachNatGatewayProfileToVirtualNetwork,
   getNetworkInventoryStatus,
   getNetworkInventoryStatusLabelColor,
+  hasVirtualNetworkNatGateway,
   NETWORK_INVENTORY_STATUSES,
 } from '../../providerAdmin/networkInventory'
 import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope'
@@ -38,6 +42,42 @@ type ProviderAdminVirtualNetworksPageProps = {
   tenantSlug?: string
   /** Hide create actions (tenant user read-only view). */
   readOnly?: boolean
+}
+
+function getVirtualNetworkActions(
+  network: ProviderVirtualNetwork,
+  options: {
+    readOnly: boolean
+    onViewDetails: (network: ProviderVirtualNetwork) => void
+    onEdit: (network: ProviderVirtualNetwork) => void
+  },
+): IAction[] {
+  const actions: IAction[] = [
+    {
+      title: 'View details',
+      onClick: () => options.onViewDetails(network),
+    },
+  ]
+
+  if (options.readOnly) {
+    return actions
+  }
+
+  actions.push({
+    title: 'Edit',
+    onClick: () => options.onEdit(network),
+  })
+
+  actions.push(
+    { isSeparator: true },
+    {
+      title: 'Delete',
+      isDanger: true,
+      onClick: () => undefined,
+    },
+  )
+
+  return actions
 }
 
 export function ProviderAdminVirtualNetworksPage({
@@ -56,6 +96,24 @@ export function ProviderAdminVirtualNetworksPage({
   const [selectedNetwork, setSelectedNetwork] = useState<ProviderVirtualNetwork | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [editingNetwork, setEditingNetwork] = useState<ProviderVirtualNetwork | null>(null)
+  const [networkPendingNatAttach, setNetworkPendingNatAttach] =
+    useState<ProviderVirtualNetwork | null>(null)
+
+  const refreshNetworks = () => {
+    const nextNetworks = inventory.getVirtualNetworks()
+    setNetworks(nextNetworks)
+  }
+
+  const syncSelectedNetwork = (nextNetworks: ProviderVirtualNetwork[]) => {
+    if (!selectedNetwork) {
+      return
+    }
+
+    const match = nextNetworks.find((network) => network.id === selectedNetwork.id) ?? null
+    if (match) {
+      setSelectedNetwork(match)
+    }
+  }
 
   const closeWizard = () => {
     setIsCreateWizardOpen(false)
@@ -66,6 +124,35 @@ export function ProviderAdminVirtualNetworksPage({
     setIsDetailsOpen(false)
     setEditingNetwork(network)
   }
+
+  const openAttachNatGateway = (network: ProviderVirtualNetwork) => {
+    setNetworkPendingNatAttach(network)
+  }
+
+  const closeAttachNatGateway = () => {
+    setNetworkPendingNatAttach(null)
+  }
+
+  const handleAttachNatGateway = (
+    network: ProviderVirtualNetwork,
+    profile: NatGatewayProfile,
+  ) => {
+    const updatedNetwork = attachNatGatewayProfileToVirtualNetwork(network, profile)
+    inventory.updateVirtualNetwork(updatedNetwork)
+    const nextNetworks = inventory.getVirtualNetworks()
+    setNetworks(nextNetworks)
+    syncSelectedNetwork(nextNetworks)
+    closeAttachNatGateway()
+  }
+
+  const attachNatGatewayModal = (
+    <AttachNatGatewayModal
+      network={networkPendingNatAttach}
+      isOpen={networkPendingNatAttach !== null}
+      onClose={closeAttachNatGateway}
+      onAttach={handleAttachNatGateway}
+    />
+  )
 
   const filteredNetworks = useMemo(() => {
     const query = searchValue.trim().toLowerCase()
@@ -86,6 +173,8 @@ export function ProviderAdminVirtualNetworksPage({
         network.id.toLowerCase().includes(query) ||
         network.cidr.toLowerCase().includes(query) ||
         (network.ipv6Cidr?.toLowerCase().includes(query) ?? false) ||
+        (network.natGateway?.name.toLowerCase().includes(query) ?? false) ||
+        (network.natGateway?.publicIp.toLowerCase().includes(query) ?? false) ||
         status.toLowerCase().includes(query)
       )
     })
@@ -133,7 +222,7 @@ export function ProviderAdminVirtualNetworksPage({
         resource={editingNetwork}
         onClose={closeWizard}
         onCreated={() => {
-          setNetworks(inventory.getVirtualNetworks())
+          refreshNetworks()
           closeWizard()
         }}
       />
@@ -142,19 +231,26 @@ export function ProviderAdminVirtualNetworksPage({
 
   if (isDetailsOpen && selectedNetwork) {
     return (
-      <VirtualNetworkDetailsPage
-        network={selectedNetwork}
-        tenantSlug={tenantSlug}
-        onBack={closeDetails}
-        onEdit={readOnly ? undefined : () => openEdit(selectedNetwork)}
-        onDelete={() => undefined}
-        onNavigateToSubnet={onNavigateToSubnet}
-        onNavigateToSecurityGroup={onNavigateToSecurityGroup}
-      />
+      <>
+        <VirtualNetworkDetailsPage
+          network={selectedNetwork}
+          tenantSlug={tenantSlug}
+          onBack={closeDetails}
+          onEdit={readOnly ? undefined : () => openEdit(selectedNetwork)}
+          onDelete={() => undefined}
+          onAttachNatGateway={
+            readOnly ? undefined : () => openAttachNatGateway(selectedNetwork)
+          }
+          onNavigateToSubnet={onNavigateToSubnet}
+          onNavigateToSecurityGroup={onNavigateToSecurityGroup}
+        />
+        {attachNatGatewayModal}
+      </>
     )
   }
 
   return (
+    <>
     <div className="provider-admin-workspace-page provider-admin-network-inventory">
       <ProviderAdminWorkspacePageHeader
         kicker="Networking"
@@ -237,14 +333,16 @@ export function ProviderAdminVirtualNetworksPage({
               <Tr>
                 <Th className="provider-admin-network-inventory__col-name">Name</Th>
                 <Th className="provider-admin-network-inventory__col-status">Status</Th>
-                <Th width={25}>IPv4 CIDR</Th>
-                <Th width={25}>IPv6 CIDR</Th>
+                <Th width={20}>IPv4 CIDR</Th>
+                <Th width={20}>IPv6 CIDR</Th>
+                <Th width={20}>NAT gateway</Th>
                 <Th screenReaderText="Actions" />
               </Tr>
             </Thead>
             <Tbody>
               {filteredNetworks.map((network) => {
                 const status = getNetworkInventoryStatus(network)
+                const natGateway = hasVirtualNetworkNatGateway(network) ? network.natGateway : null
                 return (
                   <Tr key={network.id}>
                     <Td
@@ -279,14 +377,38 @@ export function ProviderAdminVirtualNetworksPage({
                     <Td dataLabel="IPv6 CIDR">
                       <code>{network.ipv6Cidr?.trim() ? network.ipv6Cidr : '—'}</code>
                     </Td>
+                    <Td dataLabel="NAT gateway">
+                      {natGateway ? (
+                        <>
+                          <Content
+                            component="p"
+                            className="provider-admin-network-inventory__primary-cell"
+                          >
+                            {natGateway.name}
+                          </Content>
+                          <Content
+                            component="p"
+                            className="provider-admin-network-inventory__meta-cell"
+                          >
+                            <code>{natGateway.publicIp}</code>
+                          </Content>
+                        </>
+                      ) : (
+                        <Content
+                          component="p"
+                          className="provider-admin-network-inventory__meta-cell"
+                        >
+                          —
+                        </Content>
+                      )}
+                    </Td>
                     <Td isActionCell>
                       <ActionsColumn
-                        items={[
-                          { title: 'View details', onClick: () => openDetails(network) },
-                          { title: 'Edit', onClick: () => openEdit(network) },
-                          { isSeparator: true },
-                          { title: 'Delete', isDanger: true, onClick: () => undefined },
-                        ]}
+                        items={getVirtualNetworkActions(network, {
+                          readOnly,
+                          onViewDetails: openDetails,
+                          onEdit: openEdit,
+                        })}
                       />
                     </Td>
                   </Tr>
@@ -298,5 +420,7 @@ export function ProviderAdminVirtualNetworksPage({
       )}
 
     </div>
+    {attachNatGatewayModal}
+    </>
   )
 }

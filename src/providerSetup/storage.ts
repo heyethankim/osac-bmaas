@@ -50,11 +50,12 @@ import {
   DEFAULT_PROVIDER_SECURITY_GROUPS,
   DEFAULT_PROVIDER_SUBNETS,
   DEFAULT_PROVIDER_VIRTUAL_NETWORKS,
+  ensureDemoNatGatewayOnTenantWorkload,
   getNetworkInventoryStatus,
   toCatalogNetworkOption,
 } from '../providerAdmin/networkInventory'
 import type { CatalogNetworkPolicy, CatalogNetworkResourceOption } from '../providerAdmin/catalogNetworkPolicy'
-import { replaceInventoryItemById } from '../networking/networkInventoryStorageUtils'
+import { removeInventoryItemById, replaceInventoryItemById } from '../networking/networkInventoryStorageUtils'
 import {
   normalizeCatalogNetworkPolicy,
   resolveCatalogNetworkPolicy,
@@ -2145,6 +2146,12 @@ export function updateProviderExternalIpPool(pool: ExternalIpPool): void {
   setProviderExternalIpPools(replaceInventoryItemById(getProviderExternalIpPools(), pool))
 }
 
+export function deleteProviderExternalIpPool(poolId: string): void {
+  setProviderExternalIpPools(
+    removeInventoryItemById(getProviderExternalIpPools(), poolId),
+  )
+}
+
 export function assignExternalIpPoolToOrganization(
   poolId: string,
   organizationId: string,
@@ -2256,6 +2263,12 @@ function normalizeProviderVirtualNetwork(network: ProviderVirtualNetwork): Provi
       : network.dataCenter,
     ipv6Cidr: network.ipv6Cidr?.trim() ?? '',
     status: getNetworkInventoryStatus(network),
+    natGateway: network.natGateway
+      ? {
+          ...network.natGateway,
+          status: getNetworkInventoryStatus(network.natGateway),
+        }
+      : network.natGateway ?? null,
   }
 }
 
@@ -2333,17 +2346,17 @@ export function getProviderVirtualNetworks(): ProviderVirtualNetwork[] {
         PROVIDER_VIRTUAL_NETWORKS_KEY,
         JSON.stringify(DEFAULT_PROVIDER_VIRTUAL_NETWORKS),
       )
-      return [...DEFAULT_PROVIDER_VIRTUAL_NETWORKS]
+      return ensureDemoNatGatewayOnTenantWorkload([...DEFAULT_PROVIDER_VIRTUAL_NETWORKS])
     }
 
     const parsed: unknown = JSON.parse(raw)
     if (!Array.isArray(parsed)) {
-      return [...DEFAULT_PROVIDER_VIRTUAL_NETWORKS]
+      return ensureDemoNatGatewayOnTenantWorkload([...DEFAULT_PROVIDER_VIRTUAL_NETWORKS])
     }
 
     const networks = parsed.filter(isProviderVirtualNetwork).map(normalizeProviderVirtualNetwork)
     if (networks.length === 0) {
-      return [...DEFAULT_PROVIDER_VIRTUAL_NETWORKS]
+      return ensureDemoNatGatewayOnTenantWorkload([...DEFAULT_PROVIDER_VIRTUAL_NETWORKS])
     }
 
     const needsPersist = networks.some((network, index) => {
@@ -2362,9 +2375,9 @@ export function getProviderVirtualNetworks(): ProviderVirtualNetwork[] {
       sessionStorage.setItem(PROVIDER_VIRTUAL_NETWORKS_KEY, JSON.stringify(networks))
     }
 
-    return networks
+    return ensureDemoNatGatewayOnTenantWorkload(networks)
   } catch {
-    return [...DEFAULT_PROVIDER_VIRTUAL_NETWORKS]
+    return ensureDemoNatGatewayOnTenantWorkload([...DEFAULT_PROVIDER_VIRTUAL_NETWORKS])
   }
 }
 

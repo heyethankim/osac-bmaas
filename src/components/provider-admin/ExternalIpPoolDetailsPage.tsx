@@ -19,7 +19,7 @@ type ExternalIpPoolDetailsPageProps = {
   pool: ExternalIpPool;
   organization: RegisteredOrganization | null;
   onBack: () => void;
-  /** Provider-admin management actions; omitted for tenant read-only views. */
+  /** Management actions; omitted for read-only views. */
   onEdit?: () => void;
   onDelete?: () => void;
   readOnly?: boolean;
@@ -50,7 +50,7 @@ export function ExternalIpPoolDetailsPage({
   const canManage = !readOnly;
   const canEdit = canManage && Boolean(onEdit);
   const canDelete = canManage && Boolean(onDelete);
-  const isTenantView = readOnly && Boolean(scopeOrganization);
+  const isTenantView = Boolean(scopeOrganization);
   const organizationPools = scopeOrganization
     ? resolveOrganizationExternalIpPools(scopeOrganization)
     : [];

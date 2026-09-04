@@ -16,7 +16,7 @@ type CreateSecretDropdownProps = {
 }
 
 export function CreateSecretDropdown({
-  buttonLabel = 'Create secret type',
+  buttonLabel = 'Create secret',
   className,
   onSelectType,
 }: CreateSecretDropdownProps) {

@@ -46,7 +46,7 @@ export const TENANT_SECRETS_COPY = {
   lede: 'Store credentials for use at launch. Encrypted at rest in the platform vault.',
   emptyTitle: 'No secrets yet',
   emptyBody: 'Add your first secret to get started.',
-  createSecretTypeLabel: 'Create secret type',
+  createSecretTypeLabel: 'Create secret',
 } as const
 
 export type TenantSecret = {

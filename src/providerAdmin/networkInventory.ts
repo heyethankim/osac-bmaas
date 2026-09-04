@@ -8,6 +8,46 @@ export type NetworkInventoryOption = {
 
 export type NetworkInventoryStatus = 'Ready' | 'Creating' | 'Error'
 
+export type VirtualNetworkNatGateway = {
+  id: string
+  name: string
+  publicIp: string
+  status: NetworkInventoryStatus
+  attachedAt: string
+}
+
+export type NatGatewayProfile = {
+  id: string
+  name: string
+  publicIp: string
+  description: string
+}
+
+export const NAT_GATEWAY_PROFILES: readonly NatGatewayProfile[] = [
+  {
+    id: 'nat-edge-standard',
+    name: 'edge-nat',
+    publicIp: '203.0.113.10',
+    description: 'Standard edge NAT for outbound internet access.',
+  },
+  {
+    id: 'nat-ha-pair',
+    name: 'ha-nat',
+    publicIp: '203.0.113.20',
+    description: 'Highly available NAT for production workloads.',
+  },
+] as const
+
+export const DEMO_TENANT_WORKLOAD_VIRTUAL_NETWORK_ID = 'vnet-tenant-workload'
+
+export const DEMO_TENANT_WORKLOAD_NAT_GATEWAY: VirtualNetworkNatGateway = {
+  id: 'nat-tenant-workload-edge',
+  name: 'edge-nat',
+  publicIp: '203.0.113.10',
+  status: 'Ready',
+  attachedAt: '2026-07-02T10:30:00.000Z',
+}
+
 export type ProviderVirtualNetwork = {
   id: string
   name: string
@@ -20,6 +60,7 @@ export type ProviderVirtualNetwork = {
   dataCenter?: string
   /** Defaults to Ready for inventory created before status existed. */
   status?: NetworkInventoryStatus
+  natGateway?: VirtualNetworkNatGateway | null
   createdAt: string
 }
 
@@ -84,6 +125,7 @@ export const DEFAULT_PROVIDER_VIRTUAL_NETWORKS: ProviderVirtualNetwork[] = [
     ipv6Cidr: '2001:db8:42::/48',
     dataCenter: 'eu-west-1-dc-a',
     status: 'Ready',
+    natGateway: { ...DEMO_TENANT_WORKLOAD_NAT_GATEWAY },
     createdAt: '2026-07-01T09:00:00.000Z',
   },
   {
@@ -156,6 +198,50 @@ export const DEFAULT_PROVIDER_SECURITY_GROUPS: ProviderSecurityGroup[] = [
 
 export function generateProviderVirtualNetworkId(): string {
   return `vnet-${Math.random().toString(36).slice(2, 8)}`
+}
+
+export function generateNatGatewayId(): string {
+  return `nat-${Math.random().toString(36).slice(2, 8)}`
+}
+
+export function hasVirtualNetworkNatGateway(
+  network: ProviderVirtualNetwork,
+): network is ProviderVirtualNetwork & { natGateway: VirtualNetworkNatGateway } {
+  return Boolean(network.natGateway)
+}
+
+export function ensureDemoNatGatewayOnTenantWorkload(
+  networks: readonly ProviderVirtualNetwork[],
+): ProviderVirtualNetwork[] {
+  return networks.map((network) => {
+    if (
+      network.id === DEMO_TENANT_WORKLOAD_VIRTUAL_NETWORK_ID &&
+      !network.natGateway
+    ) {
+      return {
+        ...network,
+        natGateway: { ...DEMO_TENANT_WORKLOAD_NAT_GATEWAY },
+      }
+    }
+
+    return network
+  })
+}
+
+export function attachNatGatewayProfileToVirtualNetwork(
+  network: ProviderVirtualNetwork,
+  profile: NatGatewayProfile,
+): ProviderVirtualNetwork {
+  return {
+    ...network,
+    natGateway: {
+      id: generateNatGatewayId(),
+      name: profile.name,
+      publicIp: profile.publicIp,
+      status: 'Ready',
+      attachedAt: new Date().toISOString(),
+    },
+  }
 }
 
 export function generateProviderSubnetId(): string {

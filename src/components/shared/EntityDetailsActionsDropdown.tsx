@@ -7,6 +7,13 @@ import {
   MenuToggle,
 } from '@patternfly/react-core'
 
+type AdditionalAction = {
+  label: string
+  onClick: () => void
+  disabled?: boolean
+  disabledReason?: string
+}
+
 type EntityDetailsActionsDropdownProps = {
   onEdit?: () => void
   onRemove?: () => void
@@ -16,6 +23,7 @@ type EntityDetailsActionsDropdownProps = {
   removeDisabled?: boolean
   editDisabledReason?: string
   removeDisabledReason?: string
+  additionalItems?: AdditionalAction[]
 }
 
 export function EntityDetailsActionsDropdown({
@@ -26,10 +34,11 @@ export function EntityDetailsActionsDropdown({
   removeDisabled = false,
   editDisabledReason,
   removeDisabledReason,
+  additionalItems = [],
 }: EntityDetailsActionsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
 
-  if (!onEdit && !onRemove) {
+  if (!onEdit && !onRemove && additionalItems.length === 0) {
     return null
   }
 
@@ -65,7 +74,21 @@ export function EntityDetailsActionsDropdown({
             Edit
           </DropdownItem>
         ) : null}
-        {onEdit && onRemove ? <Divider component="li" /> : null}
+        {additionalItems.map((item) => (
+          <DropdownItem
+            key={item.label}
+            value={item.label}
+            onClick={item.onClick}
+            isDisabled={item.disabled}
+            description={item.disabled ? item.disabledReason : undefined}
+            tooltipProps={
+              item.disabled && item.disabledReason ? { content: item.disabledReason } : undefined
+            }
+          >
+            {item.label}
+          </DropdownItem>
+        ))}
+        {(onEdit || additionalItems.length > 0) && onRemove ? <Divider component="li" /> : null}
         {onRemove ? (
           <DropdownItem
             value="remove"

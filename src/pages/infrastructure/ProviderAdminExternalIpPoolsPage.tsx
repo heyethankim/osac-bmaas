@@ -8,6 +8,11 @@ import {
   FormSelect,
   FormSelectOption,
   Label,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  ModalVariant,
   SearchInput,
   Title,
 } from '@patternfly/react-core'
@@ -35,6 +40,7 @@ function getExternalIpPoolActions(
   pool: ExternalIpPool,
   onViewDetails: (pool: ExternalIpPool) => void,
   onEdit: (pool: ExternalIpPool) => void,
+  onDelete: (pool: ExternalIpPool) => void,
 ): IAction[] {
   return [
     {
@@ -51,9 +57,7 @@ function getExternalIpPoolActions(
     {
       title: 'Delete',
       isDanger: true,
-      onClick: () => {
-        /* demo */
-      },
+      onClick: () => onDelete(pool),
     },
   ]
 }
@@ -69,7 +73,7 @@ export function ProviderAdminExternalIpPoolsPage({
 } = {}) {
   const inventory = useMemo(() => resolveNetworkInventoryScope(tenantSlug), [tenantSlug])
   const isTenantScope = inventory.mode === 'tenant'
-  const canManagePools = !readOnly && !isTenantScope
+  const canManagePools = !readOnly
   const [pools, setPools] = useState<ExternalIpPool[]>(() => inventory.getExternalIpPools())
   const [organizations, setOrganizations] = useState<RegisteredOrganization[]>(() =>
     getProviderRegisteredOrganizations(),
@@ -80,6 +84,7 @@ export function ProviderAdminExternalIpPoolsPage({
   const [selectedPool, setSelectedPool] = useState<ExternalIpPool | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [editingPool, setEditingPool] = useState<ExternalIpPool | null>(null)
+  const [poolPendingDelete, setPoolPendingDelete] = useState<ExternalIpPool | null>(null)
 
   const closeWizard = () => {
     setIsCreateWizardOpen(false)
@@ -89,6 +94,27 @@ export function ProviderAdminExternalIpPoolsPage({
   const openEdit = (pool: ExternalIpPool) => {
     setIsDetailsOpen(false)
     setEditingPool(pool)
+  }
+
+  const openDelete = (pool: ExternalIpPool) => {
+    setPoolPendingDelete(pool)
+  }
+
+  const closeDelete = () => {
+    setPoolPendingDelete(null)
+  }
+
+  const handleConfirmDelete = () => {
+    if (!poolPendingDelete) {
+      return
+    }
+
+    inventory.deleteExternalIpPool(poolPendingDelete.id)
+    refreshData()
+    if (selectedPool?.id === poolPendingDelete.id) {
+      closeDetails()
+    }
+    closeDelete()
   }
 
   const refreshData = () => {
@@ -158,6 +184,42 @@ export function ProviderAdminExternalIpPoolsPage({
     )
   }, [selectedPool, organizations])
 
+  const deleteConfirmModal = (
+    <Modal
+      variant={ModalVariant.small}
+      isOpen={poolPendingDelete !== null}
+      onClose={closeDelete}
+      aria-labelledby="delete-external-ip-pool-title"
+      aria-describedby="delete-external-ip-pool-description"
+    >
+      <ModalHeader
+        title="Delete external IP pool?"
+        titleIconVariant="warning"
+        labelId="delete-external-ip-pool-title"
+      />
+      <ModalBody>
+        <Content component="p" id="delete-external-ip-pool-description">
+          {poolPendingDelete ? (
+            <>
+              <strong>{poolPendingDelete.name}</strong> will be permanently removed. This cannot be
+              undone.
+            </>
+          ) : (
+            'This external IP pool will be permanently removed. This cannot be undone.'
+          )}
+        </Content>
+      </ModalBody>
+      <ModalFooter>
+        <Button variant="danger" onClick={handleConfirmDelete}>
+          Delete
+        </Button>
+        <Button variant="link" onClick={closeDelete}>
+          Cancel
+        </Button>
+      </ModalFooter>
+    </Modal>
+  )
+
   if ((isCreateWizardOpen || editingPool) && canManagePools) {
     return (
       <CreateExternalIpPoolWizard
@@ -176,19 +238,23 @@ export function ProviderAdminExternalIpPoolsPage({
 
   if (isDetailsOpen && selectedPool) {
     return (
-      <ExternalIpPoolDetailsPage
-        pool={selectedPool}
-        organization={detailsOrganization}
-        onBack={closeDetails}
-        readOnly={!canManagePools}
-        scopeOrganization={isTenantScope ? scopeOrganization : null}
-        onEdit={canManagePools ? () => openEdit(selectedPool) : undefined}
-        onDelete={() => undefined}
-      />
+      <>
+        <ExternalIpPoolDetailsPage
+          pool={selectedPool}
+          organization={detailsOrganization}
+          onBack={closeDetails}
+          readOnly={!canManagePools}
+          scopeOrganization={isTenantScope ? scopeOrganization : null}
+          onEdit={canManagePools ? () => openEdit(selectedPool) : undefined}
+          onDelete={canManagePools ? () => openDelete(selectedPool) : undefined}
+        />
+        {deleteConfirmModal}
+      </>
     )
   }
 
   return (
+    <>
     <div className="provider-admin-workspace-page provider-admin-external-ip-pools">
       <ProviderAdminWorkspacePageHeader
         kicker="Networking"
@@ -253,7 +319,9 @@ export function ProviderAdminExternalIpPoolsPage({
           </Title>
           <EmptyStateBody>
             {isTenantScope
-              ? 'Your provider has not published any external IP pools for this tenant yet.'
+              ? canManagePools
+                ? 'Create a pool to define routable address ranges for tenant workloads.'
+                : 'Your provider has not published any external IP pools for this tenant yet.'
               : 'Create a pool to define routable address ranges for tenant edge exposure.'}
           </EmptyStateBody>
         </EmptyState>
@@ -316,9 +384,9 @@ export function ProviderAdminExternalIpPoolsPage({
                     <Td isActionCell>
                       <ActionsColumn
                         items={
-                          isTenantScope
-                            ? [{ title: 'View details', onClick: () => openDetails(pool) }]
-                            : getExternalIpPoolActions(pool, openDetails, openEdit)
+                          canManagePools
+                            ? getExternalIpPoolActions(pool, openDetails, openEdit, openDelete)
+                            : [{ title: 'View details', onClick: () => openDetails(pool) }]
                         }
                       />
                     </Td>
@@ -330,5 +398,7 @@ export function ProviderAdminExternalIpPoolsPage({
         </div>
       )}
     </div>
+    {deleteConfirmModal}
+    </>
   )
 }

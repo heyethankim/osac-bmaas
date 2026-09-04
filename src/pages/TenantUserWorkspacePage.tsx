@@ -481,7 +481,6 @@ export function TenantUserWorkspacePage() {
         return (
           <ProviderAdminExternalIpPoolsPage
             tenantSlug={tenantSlug}
-            readOnly
             scopeOrganization={organization}
           />
         )

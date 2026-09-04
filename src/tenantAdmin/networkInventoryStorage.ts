@@ -10,13 +10,17 @@ import {
   DEFAULT_PROVIDER_SECURITY_GROUPS,
   DEFAULT_PROVIDER_SUBNETS,
   DEFAULT_PROVIDER_VIRTUAL_NETWORKS,
+  ensureDemoNatGatewayOnTenantWorkload,
   getNetworkInventoryStatus,
   toCatalogNetworkOption,
   type ProviderSecurityGroup,
   type ProviderSubnet,
   type ProviderVirtualNetwork,
 } from '../providerAdmin/networkInventory'
-import { replaceInventoryItemById } from '../networking/networkInventoryStorageUtils'
+import {
+  removeInventoryItemById,
+  replaceInventoryItemById,
+} from '../networking/networkInventoryStorageUtils'
 
 const TENANT_VIRTUAL_NETWORKS_KEY_PREFIX = 'bmaas-tenant-virtual-networks-'
 const TENANT_SUBNETS_KEY_PREFIX = 'bmaas-tenant-subnets-'
@@ -133,14 +137,16 @@ function isExternalIpPool(value: unknown): value is ExternalIpPool {
 
 /** Tenant-owned network inventory seeded independently from provider defaults. */
 export function getTenantVirtualNetworks(slug: string): ProviderVirtualNetwork[] {
-  return readJsonArray(
-    tenantKey(TENANT_VIRTUAL_NETWORKS_KEY_PREFIX, slug),
-    DEFAULT_PROVIDER_VIRTUAL_NETWORKS,
-    isProviderVirtualNetwork,
-  ).map((network) => ({
-    ...network,
-    status: getNetworkInventoryStatus(network),
-  }))
+  return ensureDemoNatGatewayOnTenantWorkload(
+    readJsonArray(
+      tenantKey(TENANT_VIRTUAL_NETWORKS_KEY_PREFIX, slug),
+      DEFAULT_PROVIDER_VIRTUAL_NETWORKS,
+      isProviderVirtualNetwork,
+    ).map((network) => ({
+      ...network,
+      status: getNetworkInventoryStatus(network),
+    })),
+  )
 }
 
 export function setTenantVirtualNetworks(
@@ -245,6 +251,13 @@ export function updateTenantExternalIpPool(slug: string, pool: ExternalIpPool): 
   setTenantExternalIpPools(
     slug,
     replaceInventoryItemById(getTenantExternalIpPools(slug), pool),
+  )
+}
+
+export function deleteTenantExternalIpPool(slug: string, poolId: string): void {
+  setTenantExternalIpPools(
+    slug,
+    removeInventoryItemById(getTenantExternalIpPools(slug), poolId),
   )
 }
 
