@@ -1,5 +1,8 @@
 import type { TenantSecretData, TenantSecretType, TenantSecretUsage } from './secretTypes'
-import { CLUSTER_LAUNCH_INSTANCE_DEMO } from '../tenantUser/launchInstanceWizard'
+import {
+  CLUSTER_LAUNCH_DEMO_PULL_SECRET,
+  CLUSTER_LAUNCH_DEMO_SSH_PUBLIC_KEY,
+} from '../tenantUser/clusterLaunchDemoSecrets'
 
 export type {
   StoredImagePullCredential,
@@ -14,11 +17,28 @@ export { buildTenantSecretData } from './secretTypes'
 export const TENANT_SECRET_TYPE_OPTIONS: ReadonlyArray<{
   id: TenantSecretType
   label: string
+  description: string
 }> = [
-  { id: 'key-value', label: 'Key/value' },
-  { id: 'image-pull', label: 'Image pull' },
-  { id: 'source', label: 'Source' },
-  { id: 'webhook', label: 'Webhook' },
+  {
+    id: 'key-value',
+    label: 'Key/value',
+    description: 'SSH keys, tokens, and custom pairs.',
+  },
+  {
+    id: 'image-pull',
+    label: 'Image pull',
+    description: 'Registry credentials or pull-secret file.',
+  },
+  {
+    id: 'source',
+    label: 'Source',
+    description: 'Git credentials or SSH private key.',
+  },
+  {
+    id: 'webhook',
+    label: 'Webhook',
+    description: 'Signing key for inbound webhooks.',
+  },
 ]
 
 export const TENANT_SECRETS_COPY = {
@@ -138,7 +158,7 @@ function createDemoTenantSecrets(): TenantSecret[] {
         authMode: 'upload-configuration',
         credentials: [],
         configurationFileName: 'pull-secret.json',
-        configurationFileContents: CLUSTER_LAUNCH_INSTANCE_DEMO.pullSecret,
+        configurationFileContents: CLUSTER_LAUNCH_DEMO_PULL_SECRET,
       },
     },
     {
@@ -153,7 +173,7 @@ function createDemoTenantSecrets(): TenantSecret[] {
         pairs: [
           {
             key: 'ssh-public-key',
-            value: CLUSTER_LAUNCH_INSTANCE_DEMO.sshPublicKey,
+            value: CLUSTER_LAUNCH_DEMO_SSH_PUBLIC_KEY,
           },
         ],
       },
@@ -310,6 +330,93 @@ export function addTenantSecret(tenantSlug: string, secret: TenantSecret): Tenan
 }
 
 export const MASKED_SECRET_VALUE = '•'.repeat(24)
+
+export type LaunchSecretPurpose = 'ssh-public-key' | 'pull-secret'
+
+export function getTenantSecretTypeForLaunchPurpose(
+  purpose: LaunchSecretPurpose,
+): TenantSecretType {
+  return purpose === 'ssh-public-key' ? 'key-value' : 'image-pull'
+}
+
+export function filterTenantSecretsForLaunch(
+  secrets: readonly TenantSecret[],
+  purpose: LaunchSecretPurpose,
+): TenantSecret[] {
+  return secrets.filter((secret) => {
+    if (purpose === 'ssh-public-key') {
+      return secret.type === 'key-value' && Boolean(resolveSshPublicKeySecretValue(secret))
+    }
+
+    return secret.type === 'image-pull' && Boolean(resolvePullSecretValue(secret))
+  })
+}
+
+export function resolveSshPublicKeySecretValue(secret: TenantSecret): string | null {
+  if (secret.data.kind !== 'key-value') {
+    return null
+  }
+
+  const sshPair =
+    secret.data.pairs.find((pair) => pair.key.trim() === 'ssh-public-key') ??
+    secret.data.pairs.find((pair) => pair.value.trim())
+  const value = sshPair?.value.trim()
+  return value || null
+}
+
+export function resolvePullSecretValue(secret: TenantSecret): string | null {
+  if (secret.data.kind !== 'image-pull') {
+    return null
+  }
+
+  if (secret.data.authMode === 'upload-configuration') {
+    const contents = secret.data.configurationFileContents.trim()
+    return contents || null
+  }
+
+  if (secret.data.credentials.length === 0) {
+    return null
+  }
+
+  const auths = Object.fromEntries(
+    secret.data.credentials
+      .filter((credential) => credential.registryServer.trim())
+      .map((credential) => [
+        credential.registryServer.trim(),
+        {
+          username: credential.username,
+          password: credential.password,
+          email: credential.email,
+        },
+      ]),
+  )
+
+  return Object.keys(auths).length > 0 ? JSON.stringify({ auths }) : null
+}
+
+export function getDefaultLaunchSecretSelections(tenantSlug: string): {
+  sshPublicKeySecretId: string
+  sshPublicKey: string
+  pullSecretId: string
+  pullSecret: string
+} {
+  const secrets = ensureTenantDemoSecrets(tenantSlug)
+  const sshSecret =
+    secrets.find((secret) => secret.id === DEMO_TENANT_CLUSTER_SSH_SECRET_ID) ??
+    filterTenantSecretsForLaunch(secrets, 'ssh-public-key')[0] ??
+    null
+  const pullSecretRecord =
+    secrets.find((secret) => secret.id === DEMO_TENANT_CLUSTER_PULL_SECRET_ID) ??
+    filterTenantSecretsForLaunch(secrets, 'pull-secret')[0] ??
+    null
+
+  return {
+    sshPublicKeySecretId: sshSecret?.id ?? '',
+    sshPublicKey: sshSecret ? resolveSshPublicKeySecretValue(sshSecret) ?? '' : '',
+    pullSecretId: pullSecretRecord?.id ?? '',
+    pullSecret: pullSecretRecord ? resolvePullSecretValue(pullSecretRecord) ?? '' : '',
+  }
+}
 
 export function formatSecretDetailValue(fieldId: string, value: string, reveal = false): string {
   if (!value.trim()) {

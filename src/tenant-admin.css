@@ -1638,12 +1638,40 @@
 
 .tenant-secrets__wizard.pf-v6-c-wizard {
   min-block-size: 24rem;
+  --pf-v6-c-wizard--Height: 40rem;
 }
 
-.tenant-secrets__radio-group {
+.tenant-secrets__create-modal.pf-v6-c-modal-box {
+  --pf-v6-c-modal-box--c-wizard--Height--base: 40rem;
+  z-index: 600;
+}
+
+.tenant-secrets__type-card-title.pf-v6-c-title {
+  padding-inline-end: 4.5rem;
+}
+
+.tenant-secrets__create-modal .tenant-secrets__wizard.pf-v6-c-wizard {
   display: flex;
   flex-direction: column;
-  gap: var(--pf-t--global--spacer--sm);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tenant-secrets__create-modal .tenant-secrets__wizard.pf-v6-c-wizard .pf-v6-c-wizard__main {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.tenant-secrets__create-modal .tenant-secrets__wizard.pf-v6-c-wizard .pf-v6-c-wizard__main-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .tenant-secrets__pair-row,
@@ -1694,6 +1722,21 @@
 .tenant-secrets__meta-cell.pf-v6-c-content--p {
   color: var(--pf-t--global--text--color--subtle);
   font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.tenant-secret-select {
+  display: block;
+  inline-size: 100%;
+  max-inline-size: 32rem;
+}
+
+.tenant-secret-select__toggle.pf-v6-c-menu-toggle {
+  inline-size: 100%;
+  justify-content: space-between;
+}
+
+.tenant-user-launch-wizard__secret-select {
+  max-inline-size: 32rem;
 }
 
 .tenant-secret-details__code,

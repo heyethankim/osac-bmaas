@@ -13,6 +13,21 @@ body {
   background-color: var(--pf-t--global--background--color--primary--default);
 }
 
+/* Form-style dropdowns: rounded rectangle with caret (not pill). */
+:root {
+  --bmaas-dropdown-border-radius: var(--pf-t--global--border--radius--small);
+}
+
+.bmaas-dropdown-toggle.pf-v6-c-menu-toggle {
+  --pf-v6-c-menu-toggle--BorderRadius: var(--bmaas-dropdown-border-radius);
+  border-radius: var(--bmaas-dropdown-border-radius) !important;
+  justify-content: space-between;
+}
+
+select.pf-v6-c-form-control {
+  border-radius: var(--bmaas-dropdown-border-radius);
+}
+
 .bmaas-role-landing {
   min-height: 100dvh;
   width: 100%;

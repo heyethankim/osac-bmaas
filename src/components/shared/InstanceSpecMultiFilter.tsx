@@ -58,7 +58,7 @@ export function InstanceSpecMultiFilter({
           isExpanded={isOpen}
           onClick={() => setIsOpen((open) => !open)}
           aria-label={ariaLabel}
-          className="pill-filter-select__toggle"
+          className="bmaas-dropdown-toggle pill-filter-select__toggle"
         >
           {toggleLabel}
         </MenuToggle>

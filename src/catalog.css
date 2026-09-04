@@ -74,15 +74,6 @@
   min-width: 14rem;
 }
 
-/* Secondary toolbar filters: softly rounded, distinct from the project pill. */
-.pill-filter-select:not(.project-scope-switcher) .pill-filter-select__toggle.pf-v6-c-menu-toggle {
-  --pf-v6-c-menu-toggle--BorderRadius: var(--pf-t--global--border--radius--medium);
-}
-
-.project-scope-switcher .pill-filter-select__toggle.pf-v6-c-menu-toggle {
-  --pf-v6-c-menu-toggle--BorderRadius: var(--pf-t--global--border--radius--pill);
-}
-
 .pill-filter-select__icon {
   color: var(--pf-t--global--icon--color--brand--default);
 }
@@ -356,6 +347,25 @@
   padding-inline: var(--pf-t--global--spacer--md);
   font-size: var(--pf-t--global--font--size--body--default);
   line-height: 1;
+}
+
+/* Catalog/Services toolbar controls share the same rounded-rectangle chrome. */
+.catalog-view-toolbar .pf-v6-c-menu-toggle:not(.pf-m-plain):not(.pf-m-icon-only) {
+  --pf-v6-c-menu-toggle--BorderRadius: var(--bmaas-dropdown-border-radius);
+  border-radius: var(--bmaas-dropdown-border-radius) !important;
+}
+
+.catalog-view-toolbar select.pf-v6-c-form-control {
+  border-radius: var(--bmaas-dropdown-border-radius) !important;
+}
+
+.catalog-view-toolbar .pf-v6-c-text-input-group {
+  border-radius: var(--bmaas-dropdown-border-radius);
+}
+
+.catalog-view-toolbar .pf-v6-c-text-input-group__main,
+.catalog-view-toolbar .pf-v6-c-text-input-group__text {
+  border-radius: var(--bmaas-dropdown-border-radius);
 }
 
 /* Focus must not look like selected; only pf-m-selected should stay filled. */

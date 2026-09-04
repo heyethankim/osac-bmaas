@@ -109,6 +109,8 @@ import { formatTenantInstanceName, generateTenantInstanceId, type TenantInstance
 import type { TenantUserScopeKind } from '../../tenantUser/scope'
 import { KubernetesResourceNameField } from '../shared/KubernetesResourceNameHelper'
 import { ProjectTreeDropdownItems } from '../shared/ProjectTreeDropdownItems'
+import { TenantSecretSelect } from '../tenant/secrets/TenantSecretSelect'
+import { getTenantSecretById } from '../../tenant/secrets'
 import { CatalogWizardPageShell } from '../catalog/CatalogWizardPageShell'
 import { useWizardLeaveConfirm } from '../shared/useWizardLeaveConfirm'
 
@@ -396,6 +398,7 @@ export function TenantUserLaunchInstanceWizard({
       nodeSetId: catalogDefaultNodeSetId,
       instanceTypeId: catalogItem.instanceTypeId,
       diskImageId: catalogItem.diskImageId,
+      tenantSlug,
     }),
   )
   const [activeStepId, setActiveStepId] = useState<LaunchInstanceWizardStepId>(
@@ -451,6 +454,7 @@ export function TenantUserLaunchInstanceWizard({
         nodeSetId: catalogDefaultNodeSetId,
       instanceTypeId: catalogItem.instanceTypeId,
       diskImageId: catalogItem.diskImageId,
+      tenantSlug,
       }),
     )
     setSelectedProjectId(resolveInitialLaunchProjectId(projects, initialProjectId))
@@ -528,6 +532,7 @@ export function TenantUserLaunchInstanceWizard({
         nodeSetId: catalogDefaultNodeSetId,
       instanceTypeId: catalogItem.instanceTypeId,
       diskImageId: catalogItem.diskImageId,
+      tenantSlug,
       }),
     )
     setSelectedProjectId(resolveInitialLaunchProjectId(projects, initialProjectId))
@@ -547,6 +552,7 @@ export function TenantUserLaunchInstanceWizard({
     catalogDefaultNodeSetId,
     catalogItem.instanceTypeId,
     catalogItem.diskImageId,
+    tenantSlug,
   ])
 
   useEffect(() => {
@@ -792,7 +798,7 @@ export function TenantUserLaunchInstanceWizard({
               id={fieldId}
               isExpanded={isProjectMenuOpen}
               onClick={() => setIsProjectMenuOpen((open) => !open)}
-              className="tenant-user-launch-wizard__project-toggle"
+              className="bmaas-dropdown-toggle tenant-user-launch-wizard__project-toggle"
               aria-label={`Project: ${projectToggleLabel}`}
             >
               {projectToggleLabel}
@@ -939,14 +945,21 @@ export function TenantUserLaunchInstanceWizard({
           </FormGroup>
 
           <FormGroup label="SSH public key" fieldId={sshFieldId} isRequired>
-            <TextArea
+            <TenantSecretSelect
               id={sshFieldId}
-              value={form.sshPublicKey}
-              onChange={(_event, value) =>
-                setForm((current) => ({ ...current, sshPublicKey: value }))
+              tenantSlug={tenantSlug}
+              purpose="ssh-public-key"
+              selectedSecretId={form.sshPublicKeySecretId}
+              onChange={({ secretId, resolvedValue }) =>
+                setForm((current) => ({
+                  ...current,
+                  sshPublicKeySecretId: secretId,
+                  sshPublicKey: resolvedValue,
+                }))
               }
-              resizeOrientation="vertical"
-              rows={4}
+              ariaLabel="SSH public key"
+              usage="cluster-launch"
+              className="tenant-user-launch-wizard__secret-select"
             />
             <FormHelperText>
               <HelperText>
@@ -957,14 +970,21 @@ export function TenantUserLaunchInstanceWizard({
 
           {isClusterCatalogItem ? (
             <FormGroup label="Pull secret" fieldId="launch-cluster-pull-secret" isRequired>
-              <TextArea
+              <TenantSecretSelect
                 id="launch-cluster-pull-secret"
-                value={form.pullSecret}
-                onChange={(_event, value) =>
-                  setForm((current) => ({ ...current, pullSecret: value }))
+                tenantSlug={tenantSlug}
+                purpose="pull-secret"
+                selectedSecretId={form.pullSecretId}
+                onChange={({ secretId, resolvedValue }) =>
+                  setForm((current) => ({
+                    ...current,
+                    pullSecretId: secretId,
+                    pullSecret: resolvedValue,
+                  }))
                 }
-                resizeOrientation="vertical"
-                rows={8}
+                ariaLabel="Pull secret"
+                usage="cluster-launch"
+                className="tenant-user-launch-wizard__secret-select"
               />
             </FormGroup>
           ) : null}
@@ -1596,12 +1616,21 @@ export function TenantUserLaunchInstanceWizard({
         </FormGroup>
 
         <FormGroup label="SSH public key" fieldId="launch-instance-ssh-key" isRequired>
-          <TextArea
+          <TenantSecretSelect
             id="launch-instance-ssh-key"
-            value={form.sshPublicKey}
-            onChange={(_event, value) => setForm((current) => ({ ...current, sshPublicKey: value }))}
-            placeholder={LAUNCH_INSTANCE_WIZARD_DEMO.sshPlaceholder}
-            resizeOrientation="vertical"
+            tenantSlug={tenantSlug}
+            purpose="ssh-public-key"
+            selectedSecretId={form.sshPublicKeySecretId}
+            onChange={({ secretId, resolvedValue }) =>
+              setForm((current) => ({
+                ...current,
+                sshPublicKeySecretId: secretId,
+                sshPublicKey: resolvedValue,
+              }))
+            }
+            ariaLabel="SSH public key"
+            usage="cluster-launch"
+            className="tenant-user-launch-wizard__secret-select"
           />
         </FormGroup>
 
@@ -1687,18 +1716,22 @@ export function TenantUserLaunchInstanceWizard({
       </DescriptionListGroup>
     )
 
+    const sshSecretName =
+      (form.sshPublicKeySecretId
+        ? getTenantSecretById(tenantSlug, form.sshPublicKeySecretId)?.name
+        : null) ?? '—'
+    const pullSecretName =
+      (form.pullSecretId
+        ? getTenantSecretById(tenantSlug, form.pullSecretId)?.name
+        : null) ?? '—'
+
     const renderGeneralStepRows = () => [
       renderReviewRow(launchScopeFieldLabel, launchScopeLabel),
       renderReviewRow('Instance name', reviewInstanceName),
       renderReviewRow('Description', form.description.trim() || '—'),
-      renderReviewRow('SSH public key', form.sshPublicKey.trim() || '—'),
+      renderReviewRow('SSH public key', sshSecretName),
       ...(isClusterCatalogItem
-        ? [
-            renderReviewRow(
-              'Pull secret',
-              form.pullSecret.trim() ? 'Provided' : '—',
-            ),
-          ]
+        ? [renderReviewRow('Pull secret', pullSecretName)]
         : []),
     ]
 

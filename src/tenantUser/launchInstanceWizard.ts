@@ -1,3 +1,10 @@
+import {
+  getDefaultLaunchSecretSelections,
+} from '../tenant/secrets'
+import {
+  CLUSTER_LAUNCH_DEMO_PULL_SECRET,
+  CLUSTER_LAUNCH_DEMO_SSH_PUBLIC_KEY,
+} from './clusterLaunchDemoSecrets'
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
 import {
   getCatalogClusterVersionOption,
@@ -184,34 +191,10 @@ export function getLaunchInstanceDefaultDescription(serviceId: CatalogServiceId)
 export const CLUSTER_LAUNCH_INSTANCE_DEMO = {
   defaultName: 'ocp-cluster-01',
   nameHelper: KUBERNETES_RESOURCE_NAME_HELPER,
-  sshPublicKey:
-    'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBJACfzqANDyWlygNn0FWP7YBZ6XLt+XPGpSw5PyknOW brotman@redhat.com',
+  sshPublicKey: CLUSTER_LAUNCH_DEMO_SSH_PUBLIC_KEY,
   sshHelper:
     'Paste a public SSH key for remote access. Supported types: ssh-rsa, ssh-ed25519, and ecdsa-sha2-nistp256/384/521.',
-  pullSecret: JSON.stringify(
-    {
-      auths: {
-        'cloud.openshift.com': {
-          auth: 'ZGVtbzpwdWxsLXNlY3JldA==',
-          email: 'brotman@redhat.com',
-        },
-        'quay.io': {
-          auth: 'ZGVtbzpwdWxsLXNlY3JldA==',
-          email: 'brotman@redhat.com',
-        },
-        'registry.connect.redhat.com': {
-          auth: 'ZGVtbzpwdWxsLXNlY3JldA==',
-          email: 'brotman@redhat.com',
-        },
-        'registry.redhat.io': {
-          auth: 'ZGVtbzpwdWxsLXNlY3JldA==',
-          email: 'brotman@redhat.com',
-        },
-      },
-    },
-    null,
-    2,
-  ),
+  pullSecret: CLUSTER_LAUNCH_DEMO_PULL_SECRET,
   releaseImage: 'quay.io/openshift-release-dev/ocp-release:4.21.0-multi',
   hostTypeOptions: ['standard-host', 'gpu-host', 'storage-host'] as const,
   defaultHostType: 'standard-host',
@@ -315,7 +298,9 @@ export type LaunchInstanceWizardForm = {
   instanceName: string
   /** Optional free-text description (same pattern as catalog item creation). */
   description: string
+  sshPublicKeySecretId: string
   sshPublicKey: string
+  pullSecretId: string
   pullSecret: string
   /** Selected OpenShift version id when provisioning a cluster. */
   clusterVersionId: string
@@ -400,7 +385,9 @@ export function createDefaultClusterNodeSet(
 export const DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM: LaunchInstanceWizardForm = {
   instanceName: LAUNCH_INSTANCE_WIZARD_DEMO.defaultInstanceName,
   description: '',
+  sshPublicKeySecretId: '',
   sshPublicKey: LAUNCH_INSTANCE_WIZARD_DEMO.defaultSshPublicKey,
+  pullSecretId: '',
   pullSecret: '',
   clusterVersionId: '',
   releaseImage: '',
@@ -437,11 +424,17 @@ export function createLaunchInstanceWizardForm(options: {
   instanceTypeId?: string
   /** Bare metal default disk image id. */
   diskImageId?: string
+  tenantSlug?: string
 }): LaunchInstanceWizardForm {
   const serviceId = options.serviceId ?? 'baremetal'
   const isCluster = serviceId === 'cluster'
   const isVm = serviceId === 'virtual-machine'
   const isBaremetal = serviceId === 'baremetal'
+  const launchSecrets =
+    options.tenantSlug &&
+    (isCluster || isVm || isBaremetal)
+      ? getDefaultLaunchSecretSelections(options.tenantSlug)
+      : null
   const matchedClusterVersion = isCluster
     ? getCatalogClusterVersionOption(options.clusterVersion)
     : undefined
@@ -460,11 +453,16 @@ export function createLaunchInstanceWizardForm(options: {
       (isCluster || isVm || isBaremetal
         ? getNextLaunchInstanceName([], serviceId)
         : DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM.instanceName),
+    sshPublicKeySecretId: launchSecrets?.sshPublicKeySecretId ?? '',
     sshPublicKey:
-      isCluster || isVm || isBaremetal
+      launchSecrets?.sshPublicKey ??
+      (isCluster || isVm || isBaremetal
         ? CLUSTER_LAUNCH_INSTANCE_DEMO.sshPublicKey
-        : DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM.sshPublicKey,
-    pullSecret: isCluster ? CLUSTER_LAUNCH_INSTANCE_DEMO.pullSecret : '',
+        : DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM.sshPublicKey),
+    pullSecretId: launchSecrets?.pullSecretId ?? '',
+    pullSecret:
+      launchSecrets?.pullSecret ??
+      (isCluster ? CLUSTER_LAUNCH_INSTANCE_DEMO.pullSecret : ''),
     clusterVersionId,
     releaseImage: isCluster
       ? getReleaseImageForClusterVersion(

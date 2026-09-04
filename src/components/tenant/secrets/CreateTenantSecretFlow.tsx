@@ -6,6 +6,8 @@ import { PlusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/plus-circ
 import { SyncAltIcon } from '@patternfly/react-icons/dist/esm/icons/sync-alt-icon'
 import {
   Button,
+  Card,
+  CardBody,
   Content,
   DescriptionList,
   DescriptionListDescription,
@@ -14,11 +16,19 @@ import {
   FileUpload,
   Form,
   FormGroup,
+  Label,
+  Modal,
+  ModalVariant,
   Radio,
   TextArea,
   TextInput,
+  Title,
+  Wizard,
+  WizardHeader,
+  WizardStep,
 } from '@patternfly/react-core'
 import { NetworkInventoryCreateWizardShell } from '../../networking/NetworkInventoryCreateWizardShell'
+import { useWizardLeaveConfirm } from '../../shared/useWizardLeaveConfirm'
 import { NETWORK_INVENTORY_CREATE_REVIEW_STEP } from '../../../networking/networkInventoryCreateWizard'
 import { KubernetesResourceNameField } from '../../shared/KubernetesResourceNameHelper'
 import { isValidKubernetesResourceName } from '../../../shared/kubernetesResourceName'
@@ -26,15 +36,17 @@ import {
   addTenantSecret,
   generateTenantSecretId,
   getTenantSecretTypeLabel,
+  TENANT_SECRET_TYPE_OPTIONS,
   type TenantSecret,
   type TenantSecretType,
+  type TenantSecretUsage,
 } from '../../../tenant/secrets'
 import { buildTenantSecretData } from '../../../tenant/secretTypes'
 import { SecretFieldInput } from './SecretFieldInput'
 import {
-  createDefaultSecretFormState,
   createImagePullCredential,
   createKeyValuePair,
+  createSecretFormState,
   generateWebhookSecretKey,
   type ImagePullCredential,
   type KeyValuePair,
@@ -43,33 +55,56 @@ import {
 
 type CreateTenantSecretFlowProps = {
   tenantSlug: string
-  initialType: TenantSecretType
+  initialType?: TenantSecretType
+  presentation?: 'page' | 'modal'
+  isOpen?: boolean
+  usage?: TenantSecretUsage
   onClose: () => void
   onCreated: (secret: TenantSecret) => void
 }
 
+const TYPE_SELECTION_STEP_ID = 'type'
 const SECRET_DETAILS_STEP_ID = 'secret'
 
-function getSecretWizardSteps(type: TenantSecretType) {
-  return [
-    { id: SECRET_DETAILS_STEP_ID, label: getTenantSecretTypeLabel(type) },
-    NETWORK_INVENTORY_CREATE_REVIEW_STEP,
-  ] as const
+function getSecretWizardSteps(options: {
+  includeTypeStep: boolean
+  type: TenantSecretType | null
+}) {
+  const steps: Array<{ id: string; label: string }> = []
+
+  if (options.includeTypeStep) {
+    steps.push({ id: TYPE_SELECTION_STEP_ID, label: 'Type' })
+  }
+
+  steps.push({
+    id: SECRET_DETAILS_STEP_ID,
+    label: options.type ? getTenantSecretTypeLabel(options.type) : 'Configuration',
+  })
+  steps.push(NETWORK_INVENTORY_CREATE_REVIEW_STEP)
+
+  return steps
 }
 
 function getSecretWizardLede(type: TenantSecretType): string {
   switch (type) {
     case 'key-value':
-      return 'Store key/value pairs for use at launch.'
+      return 'Add key/value pairs.'
     case 'image-pull':
-      return 'Configure registry credentials or upload a pull secret configuration file.'
+      return 'Add registry credentials or upload a pull secret.'
     case 'source':
-      return 'Configure basic authentication or an SSH private key for source repositories.'
+      return 'Add Git credentials or an SSH private key.'
     case 'webhook':
-      return 'Generate or enter a webhook secret key for authenticated callbacks.'
+      return 'Add a signing key for webhooks.'
     default:
-      return 'Configure this secret for use at launch.'
+      return 'Configure this secret.'
   }
+}
+
+function buildInitialSecretFormState(
+  presentation: CreateTenantSecretFlowProps['presentation'],
+  type: TenantSecretType,
+): TenantSecretFormState {
+  return createSecretFormState(type, { prefill: presentation === 'modal' })
 }
 
 function getSecretName(type: TenantSecretType, form: TenantSecretFormState): string {
@@ -683,43 +718,146 @@ function renderSecretDetailsForm(
   }
 }
 
+function SecretTypeStep({
+  selectedType,
+  onChange,
+}: {
+  selectedType: TenantSecretType | null
+  onChange: (type: TenantSecretType) => void
+}) {
+  return (
+    <div className="provider-admin-network-inventory__wizard-step">
+      <Content component="p" className="provider-admin-network-inventory__wizard-lede">
+        Choose a secret type.
+      </Content>
+      <div
+        className="provider-setup-template__service-cards"
+        role="radiogroup"
+        aria-label="Secret type"
+      >
+        {TENANT_SECRET_TYPE_OPTIONS.map((option) => {
+          const isSelected = selectedType === option.id
+          const titleId = `create-secret-type-${option.id}-title`
+
+          return (
+            <Card
+              key={option.id}
+              isSelectable
+              isSelected={isSelected}
+              className="provider-setup-template__service-card"
+              aria-labelledby={titleId}
+              onClick={() => onChange(option.id)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  onChange(option.id)
+                }
+              }}
+            >
+              <CardBody className="provider-setup-template__service-card-body">
+                {isSelected ? (
+                  <Label
+                    color="grey"
+                    isCompact
+                    className="provider-setup-template__service-card-badge"
+                  >
+                    Selected
+                  </Label>
+                ) : null}
+                <Title
+                  id={titleId}
+                  headingLevel="h3"
+                  size="md"
+                  className="provider-setup-template__service-card-title tenant-secrets__type-card-title"
+                >
+                  {option.label}
+                </Title>
+                <Content
+                  component="p"
+                  className="provider-setup-template__service-card-description"
+                >
+                  {option.description}
+                </Content>
+              </CardBody>
+            </Card>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export function CreateTenantSecretFlow({
   tenantSlug,
   initialType,
+  presentation = 'page',
+  isOpen = true,
+  usage = 'general',
   onClose,
   onCreated,
 }: CreateTenantSecretFlowProps) {
+  const includeTypeStep = initialType == null
+  const isModal = presentation === 'modal'
+  const defaultType = initialType ?? (isModal ? 'key-value' : null)
+  const [selectedType, setSelectedType] = useState<TenantSecretType | null>(defaultType)
+  const activeType = selectedType ?? initialType ?? null
   const [formState, setFormState] = useState<TenantSecretFormState>(() =>
-    createDefaultSecretFormState(initialType),
+    buildInitialSecretFormState(presentation, defaultType ?? 'key-value'),
   )
 
-  const typeLabel = getTenantSecretTypeLabel(initialType)
-  const wizardTitle = `Create ${typeLabel.toLowerCase()}`
-  const wizardSteps = useMemo(() => getSecretWizardSteps(initialType), [initialType])
-  const isDetailsStepValid = isFormValid(initialType, formState)
+  const wizardTitle = activeType
+    ? `Create ${getTenantSecretTypeLabel(activeType).toLowerCase()}`
+    : 'Create secret'
+  const wizardSteps = useMemo(
+    () => getSecretWizardSteps({ includeTypeStep, type: activeType }),
+    [activeType, includeTypeStep],
+  )
+  const isDetailsStepValid = activeType ? isFormValid(activeType, formState) : false
 
-  useEffect(() => {
-    setFormState(createDefaultSecretFormState(initialType))
-  }, [initialType])
+  const resetFlow = (type: TenantSecretType | null = initialType ?? (isModal ? 'key-value' : null)) => {
+    setSelectedType(type)
+    setFormState(buildInitialSecretFormState(presentation, type ?? 'key-value'))
+  }
 
   const handleClose = () => {
-    setFormState(createDefaultSecretFormState(initialType))
+    resetFlow()
     onClose()
   }
 
+  const { requestClose, leaveConfirmModal, wrapStepFooter } = useWizardLeaveConfirm({
+    onLeave: handleClose,
+    primaryActionLabel: 'Leave',
+    titleId: 'create-secret-wizard-title',
+  })
+
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+
+    const type = initialType ?? (isModal ? 'key-value' : null)
+    setSelectedType(type)
+    setFormState(buildInitialSecretFormState(presentation, type ?? 'key-value'))
+  }, [initialType, isModal, isOpen, presentation])
+
+  const handleTypeChange = (type: TenantSecretType) => {
+    setSelectedType(type)
+    setFormState(buildInitialSecretFormState(presentation, type))
+  }
+
   const handleCreate = () => {
-    if (!isDetailsStepValid) {
+    if (!activeType || !isDetailsStepValid) {
       return
     }
 
     const secret: TenantSecret = {
       id: generateTenantSecretId(),
-      name: getSecretName(initialType, formState),
-      type: initialType,
-      usage: 'general',
+      name: getSecretName(activeType, formState),
+      type: activeType,
+      usage,
       createdAt: new Date().toISOString(),
-      summary: buildSecretSummary(initialType, formState),
-      data: buildTenantSecretData(initialType, formState),
+      summary: buildSecretSummary(activeType, formState),
+      data: buildTenantSecretData(activeType, formState),
     }
 
     addTenantSecret(tenantSlug, secret)
@@ -728,27 +866,47 @@ export function CreateTenantSecretFlow({
   }
 
   function renderStepContent(stepId: string) {
+    if (stepId === TYPE_SELECTION_STEP_ID) {
+      return <SecretTypeStep selectedType={selectedType} onChange={handleTypeChange} />
+    }
+
     if (stepId === SECRET_DETAILS_STEP_ID) {
+      if (!activeType) {
+        return (
+          <Content component="p" className="provider-admin-network-inventory__wizard-lede">
+            Choose a secret type to continue.
+          </Content>
+        )
+      }
+
       return (
         <div className="provider-admin-network-inventory__wizard-step">
           <Content component="p" className="provider-admin-network-inventory__wizard-lede">
-            {getSecretWizardLede(initialType)}
+            {getSecretWizardLede(activeType)}
           </Content>
-          {renderSecretDetailsForm(initialType, formState, setFormState)}
+          {renderSecretDetailsForm(activeType, formState, setFormState)}
         </div>
       )
     }
 
-    return renderSecretReview(initialType, formState)
+    return activeType ? renderSecretReview(activeType, formState) : null
   }
 
   function getStepFooter(stepId: string) {
+    if (stepId === TYPE_SELECTION_STEP_ID) {
+      return wrapStepFooter({
+        isNextDisabled: !selectedType,
+      })
+    }
+
     if (stepId === SECRET_DETAILS_STEP_ID) {
-      return { isNextDisabled: !isDetailsStepValid }
+      return wrapStepFooter({
+        isNextDisabled: !activeType || !isDetailsStepValid,
+      })
     }
 
     if (stepId === 'review') {
-      return {
+      return wrapStepFooter({
         nextButtonText: (
           <span className="provider-admin-network-inventory__wizard-footer-label">
             <KeyIcon aria-hidden />
@@ -757,25 +915,78 @@ export function CreateTenantSecretFlow({
           </span>
         ),
         onNext: handleCreate,
-        isNextDisabled: !isDetailsStepValid,
-      }
+        isNextDisabled: !activeType || !isDetailsStepValid,
+      })
     }
 
     return undefined
   }
 
-  return (
-    <NetworkInventoryCreateWizardShell
-      isOpen
-      parentLabel="Secrets"
-      title={wizardTitle}
-      titleId={`create-${initialType}-secret-wizard-title`}
-      steps={wizardSteps}
-      renderStepContent={renderStepContent}
-      getStepFooter={getStepFooter}
-      onClose={handleClose}
+  const isPage = presentation === 'page'
+  const wizardKey = `create-secret-${activeType ?? 'type'}-${includeTypeStep ? 'picker' : 'fixed'}`
+
+  const wizard = isOpen ? (
+    <Wizard
+      key={wizardKey}
       className="tenant-secrets__wizard"
-      leaveConfirmPrimaryActionLabel="Leave"
-    />
+      height={isPage ? '100%' : '40rem'}
+      isPlain={isPage}
+      onClose={isPage ? undefined : requestClose}
+      header={
+        isPage ? undefined : (
+          <WizardHeader
+            title="Create secret"
+            titleId="create-secret-wizard-title"
+            onClose={requestClose}
+            closeButtonAriaLabel="Close create secret wizard"
+          />
+        )
+      }
+    >
+      {wizardSteps.map((step) => (
+        <WizardStep
+          key={step.id}
+          id={`create-secret-step-${step.id}`}
+          name={step.label}
+          footer={getStepFooter(step.id)}
+        >
+          {renderStepContent(step.id)}
+        </WizardStep>
+      ))}
+    </Wizard>
+  ) : null
+
+  return (
+    <>
+      {isPage ? (
+        <NetworkInventoryCreateWizardShell
+          isOpen={isOpen}
+          parentLabel="Secrets"
+          title={wizardTitle}
+          titleId="create-secret-wizard-title"
+          steps={wizardSteps}
+          renderStepContent={renderStepContent}
+          getStepFooter={getStepFooter}
+          onClose={handleClose}
+          className="tenant-secrets__wizard"
+          leaveConfirmPrimaryActionLabel="Leave"
+        />
+      ) : (
+        <>
+          <Modal
+            variant={ModalVariant.medium}
+            width="64rem"
+            maxWidth="64rem"
+            isOpen={isOpen}
+            onEscapePress={requestClose}
+            aria-labelledby="create-secret-wizard-title"
+            className="tenant-secrets__create-modal"
+          >
+            {wizard}
+          </Modal>
+          {leaveConfirmModal}
+        </>
+      )}
+    </>
   )
 }

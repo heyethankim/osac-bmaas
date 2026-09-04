@@ -49,7 +49,7 @@ export default defineConfig({
   server: {
     host: '127.0.0.1',
     port: 5184,
-    strictPort: false,
+    strictPort: true,
     open: true,
     watch: {
       usePolling: true,

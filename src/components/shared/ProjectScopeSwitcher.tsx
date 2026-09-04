@@ -68,7 +68,7 @@ export function ProjectScopeSwitcher({
             isExpanded={isOpen}
             onClick={() => setIsOpen((open) => !open)}
             aria-label={`Project: ${selectedLabel}`}
-            className="project-scope-switcher__toggle pill-filter-select__toggle"
+            className="bmaas-dropdown-toggle project-scope-switcher__toggle pill-filter-select__toggle"
             icon={
               <Icon className="project-scope-switcher__icon pill-filter-select__icon">
                 <FolderOpenIcon aria-hidden />
