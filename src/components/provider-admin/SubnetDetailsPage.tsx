@@ -93,12 +93,6 @@ export function SubnetDetailsPage({
               </DescriptionListDescription>
             </DescriptionListGroup>
             <DescriptionListGroup>
-              <DescriptionListTerm>Subnet ID</DescriptionListTerm>
-              <DescriptionListDescription>
-                <code>{subnet.id}</code>
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
               <DescriptionListTerm>Created</DescriptionListTerm>
               <DescriptionListDescription>
                 {formatCreatedAt(subnet.createdAt)}

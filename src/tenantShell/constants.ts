@@ -47,5 +47,6 @@ export const TENANT_USER_NAV_ITEMS: TenantNavItem[] = [
     label: 'Networking',
     children: TENANT_ADMIN_NETWORKING_NAV_ITEMS,
   },
+  { id: 'secrets', label: 'Secrets' },
   { id: 'activity-log', label: 'Activity log' },
 ]

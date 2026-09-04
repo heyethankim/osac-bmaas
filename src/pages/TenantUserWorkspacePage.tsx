@@ -39,6 +39,7 @@ import { ProviderAdminSecurityGroupsPage } from './infrastructure/ProviderAdminS
 import { ProviderAdminSubnetsPage } from './infrastructure/ProviderAdminSubnetsPage'
 import { ProviderAdminVirtualNetworksPage } from './infrastructure/ProviderAdminVirtualNetworksPage'
 import { TenantUserActivityLogPage } from './tenant-user/TenantUserActivityLogPage'
+import { TenantSecretsPage } from './tenant/TenantSecretsPage'
 import { TenantUserCatalogPage } from './tenant-user/TenantUserCatalogPage'
 import { TenantUserInstancesPage } from './tenant-user/TenantUserInstancesPage'
 import { TenantAdminProjectsTeamsPage } from './tenant-admin/TenantAdminProjectsTeamsPage'
@@ -65,6 +66,7 @@ function isTenantUserNavId(value: string | null): value is TenantUserNavId {
     value === 'networking-subnets' ||
     value === 'networking-security-groups' ||
     value === 'networking-external-ip-pools' ||
+    value === 'secrets' ||
     value === 'activity-log'
   )
 }
@@ -483,6 +485,8 @@ export function TenantUserWorkspacePage() {
             scopeOrganization={organization}
           />
         )
+      case 'secrets':
+        return <TenantSecretsPage tenantSlug={tenantSlug} />
       case 'activity-log':
         return <TenantUserActivityLogPage />
       case 'catalog':

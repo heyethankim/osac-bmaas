@@ -10,6 +10,7 @@ export type ProviderAdminNavId =
   | 'networking-subnets'
   | 'networking-security-groups'
   | 'networking-external-ip-pools'
+  | 'secrets'
   | 'infrastructure-data-centers'
   | 'infrastructure-hardware-inventory'
   | 'infrastructure-bmaas-templates'

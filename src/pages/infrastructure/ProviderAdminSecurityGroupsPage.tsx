@@ -284,9 +284,6 @@ export function ProviderAdminSecurityGroupsPage({
                           {group.name}
                         </Button>
                       </Content>
-                      <Content component="p" className="provider-admin-network-inventory__meta-cell">
-                        <code>{group.id}</code>
-                      </Content>
                     </Td>
                     <Td
                       dataLabel="Status"

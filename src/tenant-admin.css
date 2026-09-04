@@ -1610,16 +1610,158 @@
 
 .tenant-user-catalog__title.pf-v6-c-title,
 .tenant-user-instances__title.pf-v6-c-title,
-.tenant-user-activity-log__title.pf-v6-c-title {
+.tenant-user-activity-log__title.pf-v6-c-title,
+.tenant-secrets__title.pf-v6-c-title {
   margin-block-end: var(--pf-t--global--spacer--sm);
 }
 
 .tenant-user-catalog__lede.pf-v6-c-content--p,
 .tenant-user-instances__lede.pf-v6-c-content--p,
-.tenant-user-activity-log__lede.pf-v6-c-content--p {
+.tenant-user-activity-log__lede.pf-v6-c-content--p,
+.tenant-secrets__lede.pf-v6-c-content--p {
   margin: 0 0 var(--pf-t--global--spacer--lg);
   max-width: 42rem;
   color: var(--pf-t--global--text--color--subtle);
+}
+
+.tenant-secrets > .catalog-view-toolbar {
+  margin-block-end: 0;
+}
+
+.tenant-secrets > .catalog-table-panel {
+  margin-block-start: 0;
+}
+
+.tenant-secrets__empty.pf-v6-c-empty-state {
+  margin-block-start: 0;
+}
+
+.tenant-secrets__wizard.pf-v6-c-wizard {
+  min-block-size: 24rem;
+}
+
+.tenant-secrets__radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.tenant-secrets__pair-row,
+.tenant-secrets__credential-block {
+  display: grid;
+  gap: var(--pf-t--global--spacer--md);
+  margin-block-end: var(--pf-t--global--spacer--lg);
+  padding-block-end: var(--pf-t--global--spacer--md);
+  border-block-end: 1px solid var(--pf-t--global--border--color--default);
+}
+
+.tenant-secrets__pair-remove {
+  justify-self: start;
+}
+
+.tenant-secrets__add-row {
+  margin-block-start: var(--pf-t--global--spacer--xs);
+}
+
+.tenant-secrets__webhook-key-row {
+  display: grid;
+  gap: var(--pf-t--global--spacer--md);
+}
+
+.tenant-secrets__secret-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  border: 1px solid var(--pf-t--global--border--color--default);
+  border-radius: var(--pf-t--global--border--radius--small);
+  background: var(--pf-t--global--background--color--secondary--default);
+  color: var(--pf-t--global--icon--color--regular);
+  cursor: pointer;
+}
+
+.tenant-secrets__secret-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.tenant-secrets__primary-cell.pf-v6-c-content--p,
+.tenant-secrets__meta-cell.pf-v6-c-content--p {
+  margin: 0;
+}
+
+.tenant-secrets__meta-cell.pf-v6-c-content--p {
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.tenant-secret-details__code,
+.tenant-secret-details__pre {
+  font-family: var(--pf-t--global--font--family--monospace);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.tenant-secret-details__pre {
+  margin: 0;
+}
+
+.tenant-secret-details__values .pf-v6-c-description-list__description {
+  max-width: none;
+}
+
+.tenant-secret-details__pair-group .pf-v6-c-description-list__term:nth-of-type(2) {
+  margin-block-start: var(--pf-t--global--spacer--md);
+}
+
+.tenant-secret-details__values .tenant-secret-details__masked-value,
+.tenant-secret-details__values .tenant-secret-details__code--revealed,
+.tenant-secret-details__values .tenant-secret-details__pre--revealed {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tenant-secret-details__values .tenant-secret-details__masked-value {
+  display: flex;
+}
+
+.tenant-secret-details__values-header.entity-details-page__section-header {
+  align-items: center;
+}
+
+.tenant-secret-details__masked-value {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm);
+  padding: var(--pf-t--global--spacer--xs) var(--pf-t--global--spacer--md);
+  border: 1px dashed var(--pf-t--global--border--color--default);
+  border-radius: var(--pf-t--global--border--radius--small);
+  background-color: var(--pf-t--global--background--color--primary--default);
+}
+
+.tenant-secret-details__masked-value-icon {
+  color: var(--pf-t--global--icon--color--subtle);
+}
+
+.tenant-secret-details__masked-value-text {
+  font-family: var(--pf-t--global--font--family--monospace);
+  letter-spacing: 0.12em;
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.tenant-secret-details__code--revealed,
+.tenant-secret-details__pre--revealed {
+  display: block;
+  padding: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
+  border: 1px solid var(--pf-t--global--border--color--default);
+  border-radius: var(--pf-t--global--border--radius--small);
+  background-color: var(--pf-t--global--background--color--primary--default);
+}
+
+.tenant-secret-details__pre--revealed {
+  max-width: none;
 }
 
 .tenant-user-instances__provisioning-alert {

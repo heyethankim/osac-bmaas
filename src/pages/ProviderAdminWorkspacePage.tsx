@@ -20,6 +20,7 @@ import { PlaceholderProviderAdminPage } from './PlaceholderProviderAdminPage'
 import { ProviderServiceSelectionPage } from './provider-setup/ProviderServiceSelectionPage'
 import { TenantUserInstancesPage } from './tenant-user/TenantUserInstancesPage'
 import { TenantAdminProjectsTeamsPage } from './tenant-admin/TenantAdminProjectsTeamsPage'
+import { TenantSecretsPage } from './tenant/TenantSecretsPage'
 import type { ProviderServiceId } from '../providerSetup/constants'
 import { generateCatalogItemId, type PublishedTemplatePayload } from '../providerSetup/templateDemo'
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
@@ -505,6 +506,8 @@ export function ProviderAdminWorkspacePage() {
             }}
           />
         )
+      case 'secrets':
+        return <TenantSecretsPage tenantSlug={PROVIDER_SERVICES_DEMO_TENANT} />
       case 'administration-organizations':
         return <ProviderAdminOrganizationsPage onNavigate={handleNavChange} />
       case 'administration-quotas':

@@ -281,9 +281,6 @@ export function ProviderAdminSubnetsPage({
                           {subnet.name}
                         </Button>
                       </Content>
-                      <Content component="p" className="provider-admin-network-inventory__meta-cell">
-                        <code>{subnet.id}</code>
-                      </Content>
                     </Td>
                     <Td
                       dataLabel="Status"

@@ -12,6 +12,7 @@ import { TenantAdminCatalogPage } from './tenant-admin/TenantAdminCatalogPage'
 import { TenantAdminOverviewPage } from './tenant-admin/TenantAdminOverviewPage'
 import { TenantAdminAdministratorsPage } from './tenant-admin/TenantAdminAdministratorsPage'
 import { TenantAdminProjectsTeamsPage } from './tenant-admin/TenantAdminProjectsTeamsPage'
+import { TenantSecretsPage } from './tenant/TenantSecretsPage'
 import { TenantUserInstancesPage } from './tenant-user/TenantUserInstancesPage'
 import {
   TENANT_ADMIN_NAV_ITEMS,
@@ -65,7 +66,8 @@ function isTenantAdminNavId(value: string | null): value is TenantAdminNavId {
     value === 'networking-virtual-networks' ||
     value === 'networking-subnets' ||
     value === 'networking-security-groups' ||
-    value === 'networking-external-ip-pools'
+    value === 'networking-external-ip-pools' ||
+    value === 'secrets'
   )
 }
 
@@ -392,6 +394,8 @@ export function TenantAdminWorkspacePage() {
             scopeOrganization={organization}
           />
         )
+      case 'secrets':
+        return <TenantSecretsPage tenantSlug={tenant} />
       case 'overview':
       default:
         return <TenantAdminOverviewPage />

@@ -236,6 +236,9 @@ export function ProviderAdminShell({
                 </NavItem>
               ))}
             </NavExpandable>
+            <NavItem itemId="secrets" isActive={activeNavId === 'secrets'} to="#" preventDefault>
+              Secrets
+            </NavItem>
           </NavList>
         </Nav>
       </PageSidebarBody>

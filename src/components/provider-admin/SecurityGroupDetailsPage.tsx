@@ -93,12 +93,6 @@ export function SecurityGroupDetailsPage({
               </DescriptionListDescription>
             </DescriptionListGroup>
             <DescriptionListGroup>
-              <DescriptionListTerm>Security group ID</DescriptionListTerm>
-              <DescriptionListDescription>
-                <code>{group.id}</code>
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
               <DescriptionListTerm>Created</DescriptionListTerm>
               <DescriptionListDescription>
                 {formatCreatedAt(group.createdAt)}

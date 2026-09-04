@@ -190,12 +190,6 @@ export function VirtualNetworkDetailsPage({
               </DescriptionListDescription>
             </DescriptionListGroup>
             <DescriptionListGroup>
-              <DescriptionListTerm>Network ID</DescriptionListTerm>
-              <DescriptionListDescription>
-                <code>{network.id}</code>
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
               <DescriptionListTerm>Created</DescriptionListTerm>
               <DescriptionListDescription>
                 {formatCreatedAt(network.createdAt)}

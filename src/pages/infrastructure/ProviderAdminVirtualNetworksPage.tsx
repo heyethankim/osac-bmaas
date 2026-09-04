@@ -264,9 +264,6 @@ export function ProviderAdminVirtualNetworksPage({
                           {network.name}
                         </Button>
                       </Content>
-                      <Content component="p" className="provider-admin-network-inventory__meta-cell">
-                        <code>{network.id}</code>
-                      </Content>
                     </Td>
                     <Td
                       dataLabel="Status"

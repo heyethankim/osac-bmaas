@@ -11,6 +11,7 @@ export type TenantAdminNavId =
   | 'networking-subnets'
   | 'networking-security-groups'
   | 'networking-external-ip-pools'
+  | 'secrets'
 
 export type TenantAdminNavItem = {
   id: string
@@ -58,6 +59,7 @@ export const TENANT_ADMIN_NAV_ITEMS: TenantAdminNavItem[] = [
     label: 'Networking',
     children: TENANT_ADMIN_NETWORKING_NAV_ITEMS,
   },
+  { id: 'secrets', label: 'Secrets' },
   { id: 'administrators', label: 'Administration' },
 ]
 

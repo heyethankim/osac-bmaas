@@ -174,6 +174,7 @@ export function getProviderActiveNav(): ProviderAdminNavId {
       value === 'networking-subnets' ||
       value === 'networking-security-groups' ||
       value === 'networking-external-ip-pools' ||
+      value === 'secrets' ||
       value === 'administration-organizations' ||
       value === 'administration-quotas' ||
       value === 'billing-metering' ||

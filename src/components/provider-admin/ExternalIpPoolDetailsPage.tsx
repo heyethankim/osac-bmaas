@@ -105,12 +105,6 @@ export function ExternalIpPoolDetailsPage({
               </DescriptionListDescription>
             </DescriptionListGroup>
             <DescriptionListGroup>
-              <DescriptionListTerm>Pool ID</DescriptionListTerm>
-              <DescriptionListDescription>
-                <code>{pool.id}</code>
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
               <DescriptionListTerm>Created</DescriptionListTerm>
               <DescriptionListDescription>
                 {formatCreatedAt(pool.createdAt)}

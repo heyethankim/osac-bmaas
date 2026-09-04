@@ -300,12 +300,6 @@ export function ProviderAdminExternalIpPoolsPage({
                           {pool.name}
                         </Button>
                       </Content>
-                      <Content
-                        component="p"
-                        className="provider-admin-external-ip-pools__meta-cell"
-                      >
-                        <code>{pool.id}</code>
-                      </Content>
                     </Td>
                     <Td dataLabel="Status">
                       <Label color={status === 'Assigned' ? 'blue' : 'green'} isCompact>
