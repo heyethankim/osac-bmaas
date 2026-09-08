@@ -106,6 +106,7 @@ type ProviderAdminCatalogPageProps = {
   projects?: readonly TenantProject[]
   initialProjectId?: string | null
   onProjectScopeChange?: (projectId: string) => void
+  onCreateProject?: (project: TenantProject) => void
   onNavigateToCreateProject?: () => void
   /**
    * When the edit wizard is open, parent navigation should call this to show the same
@@ -354,7 +355,7 @@ export function ProviderAdminCatalogPage({
   projects = [],
   initialProjectId = null,
   onProjectScopeChange,
-  onNavigateToCreateProject,
+  onCreateProject,
   onEditLeaveAttemptChange,
 }: ProviderAdminCatalogPageProps) {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -1081,10 +1082,7 @@ export function ProviderAdminCatalogPage({
           projects={projects}
           initialProjectId={initialProjectId}
           onProjectScopeChange={onProjectScopeChange}
-          onNavigateToCreateProject={() => {
-            closeLaunchWizard()
-            onNavigateToCreateProject?.()
-          }}
+          onCreateProject={onCreateProject}
           existingInstanceNames={existingInstanceNames}
           onClose={closeLaunchWizard}
           onBackToCatalogItem={() => {

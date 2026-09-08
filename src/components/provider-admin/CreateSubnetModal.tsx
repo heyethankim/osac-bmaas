@@ -32,19 +32,29 @@ type CreateSubnetForm = {
 }
 
 /** Demo prefills so the create flow is ready to submit. */
-function buildDemoForm(virtualNetworks: ProviderVirtualNetwork[]): CreateSubnetForm {
+function buildDemoForm(
+  virtualNetworks: ProviderVirtualNetwork[],
+  defaultVirtualNetworkId?: string,
+): CreateSubnetForm {
+  const preferredVirtualNetworkId =
+    defaultVirtualNetworkId &&
+    virtualNetworks.some((network) => network.id === defaultVirtualNetworkId)
+      ? defaultVirtualNetworkId
+      : (virtualNetworks[0]?.id ?? '')
+
   return {
     name: 'bm-compute-c',
     detail: 'Demo subnet for additional tenant compute capacity',
     cidr: '10.42.2.0/24',
     vlan: '202',
-    virtualNetworkId: virtualNetworks[0]?.id ?? '',
+    virtualNetworkId: preferredVirtualNetworkId,
   }
 }
 
 type CreateSubnetModalProps = {
   isOpen: boolean
   virtualNetworks: ProviderVirtualNetwork[]
+  defaultVirtualNetworkId?: string
   onClose: () => void
   onCreated: (subnet: ProviderSubnet) => void
   tenantSlug?: string
@@ -53,17 +63,20 @@ type CreateSubnetModalProps = {
 export function CreateSubnetModal({
   isOpen,
   virtualNetworks,
+  defaultVirtualNetworkId,
   onClose,
   onCreated,
   tenantSlug,
 }: CreateSubnetModalProps) {
-  const [form, setForm] = useState<CreateSubnetForm>(() => buildDemoForm(virtualNetworks))
+  const [form, setForm] = useState<CreateSubnetForm>(() =>
+    buildDemoForm(virtualNetworks, defaultVirtualNetworkId),
+  )
 
   useEffect(() => {
     if (isOpen) {
-      setForm(buildDemoForm(virtualNetworks))
+      setForm(buildDemoForm(virtualNetworks, defaultVirtualNetworkId))
     }
-  }, [isOpen, virtualNetworks])
+  }, [defaultVirtualNetworkId, isOpen, virtualNetworks])
 
   const isNameValid = isValidKubernetesResourceName(form.name)
   const isCreateDisabled =

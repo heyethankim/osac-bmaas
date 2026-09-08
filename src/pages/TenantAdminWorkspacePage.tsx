@@ -26,6 +26,7 @@ import {
   ensureTenantDemoProjects,
   setTenantActiveNav,
   setTenantOnboardingComplete,
+  addTenantProject,
 } from '../tenantAdmin/storage'
 import type { TenantProject } from '../tenantAdmin/projects'
 import {
@@ -310,6 +311,10 @@ export function TenantAdminWorkspacePage() {
             projects={projects}
             initialProjectId={isAllProjectsScope(projectScopeId) ? null : projectScopeId}
             onProjectScopeChange={handleProjectScopeChange}
+            onCreateProject={(project) => {
+              addTenantProject(tenant, project)
+              setProjects((current) => [...current, project])
+            }}
             onNavigateToProjectsTeams={() => handleNavChange('projects-teams')}
             existingInstanceNames={instances.map((instance) => instance.name)}
             openCatalogItemKey={openCatalogItemKey}

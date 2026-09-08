@@ -42,6 +42,7 @@ import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import type { CatalogServiceId } from '../../providerSetup/templateDemo'
 import {
   TENANT_PROJECTS_TEAMS_DEMO,
+  getTenantRootProject,
   type TenantProject,
 } from '../../tenantAdmin/projects'
 import { buildTenantUserProjectTreeRows } from '../../tenantUser/projects'
@@ -112,7 +113,13 @@ import { ProjectTreeDropdownItems } from '../shared/ProjectTreeDropdownItems'
 import { TenantSecretSelect } from '../tenant/secrets/TenantSecretSelect'
 import { getTenantSecretById } from '../../tenant/secrets'
 import { CatalogWizardPageShell } from '../catalog/CatalogWizardPageShell'
+import { CreateExternalIpPoolWizard } from '../networking/CreateExternalIpPoolWizard'
+import { CreateSecurityGroupWizard } from '../networking/CreateSecurityGroupWizard'
+import { CreateSubnetWizard } from '../networking/CreateSubnetWizard'
+import { CreateVirtualNetworkWizard } from '../networking/CreateVirtualNetworkWizard'
+import { CreateTenantProjectWizard } from '../tenant-admin/CreateTenantProjectWizard'
 import { useWizardLeaveConfirm } from '../shared/useWizardLeaveConfirm'
+import type { LaunchNetworkFieldKind } from '../../tenantUser/launchNetworking'
 
 type TenantUserLaunchInstanceWizardProps = {
   isOpen: boolean
@@ -128,6 +135,8 @@ type TenantUserLaunchInstanceWizardProps = {
   /** Prefill from Services project switcher when a specific project is selected. */
   initialProjectId?: string | null
   onProjectScopeChange?: (projectId: string) => void
+  onCreateProject?: (project: TenantProject) => void
+  /** @deprecated Use onCreateProject for inline create during launch. */
   onNavigateToCreateProject?: () => void
   existingInstanceNames?: readonly string[]
   onClose: () => void
@@ -183,6 +192,7 @@ export function TenantUserLaunchInstanceWizard({
   allProjects,
   initialProjectId = null,
   onProjectScopeChange,
+  onCreateProject,
   onNavigateToCreateProject,
   existingInstanceNames = [],
   onClose,
@@ -192,6 +202,12 @@ export function TenantUserLaunchInstanceWizard({
   onWizardFinished,
   canManageNetworkObjects = false,
 }: TenantUserLaunchInstanceWizardProps) {
+  const [networkInventoryRevision, setNetworkInventoryRevision] = useState(0)
+  const [openNetworkMenuKind, setOpenNetworkMenuKind] =
+    useState<LaunchNetworkFieldKind | null>(null)
+  const [networkCreateKind, setNetworkCreateKind] = useState<LaunchNetworkFieldKind | null>(
+    null,
+  )
   const networkContext = useMemo(
     () =>
       resolveLaunchNetworkContext(
@@ -200,11 +216,18 @@ export function TenantUserLaunchInstanceWizard({
         preferCatalogDraft,
         catalogItem.catalogItemId,
       ),
-    [organization, catalogDraft, preferCatalogDraft, catalogItem.catalogItemId],
+    [
+      organization,
+      catalogDraft,
+      preferCatalogDraft,
+      catalogItem.catalogItemId,
+      networkInventoryRevision,
+    ],
   )
+  const networkInventoryTenantSlug = organization?.slug ?? tenantSlug
   const networkInventory = useMemo(
-    () => resolveNetworkInventoryScope(organization?.slug ?? tenantSlug),
-    [organization?.slug, tenantSlug],
+    () => resolveNetworkInventoryScope(networkInventoryTenantSlug),
+    [networkInventoryTenantSlug, networkInventoryRevision],
   )
   const isClusterCatalogItem = catalogItem.serviceId === 'cluster'
   const isVmCatalogItem = catalogItem.serviceId === 'virtual-machine'
@@ -219,6 +242,9 @@ export function TenantUserLaunchInstanceWizard({
     resolveInitialLaunchProjectId(projects, initialProjectId),
   )
   const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false)
+  const [isCreateProjectWizardOpen, setIsCreateProjectWizardOpen] = useState(false)
+  const projectCatalog = allProjects ?? projects
+  const canCreateProjectInline = Boolean(organization && onCreateProject)
   const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? null
   const launchScopeKind: TenantUserScopeKind = selectedProject ? 'project' : 'organization'
   const launchScopeLabel = selectedProject?.name ?? organization?.name ?? tenantSlug
@@ -232,9 +258,26 @@ export function TenantUserLaunchInstanceWizard({
     onProjectScopeChange?.(projectId)
   }
 
-  const handleNavigateToCreateProject = () => {
+  const handleOpenCreateProject = () => {
     setIsProjectMenuOpen(false)
+    if (canCreateProjectInline) {
+      setIsCreateProjectWizardOpen(true)
+      return
+    }
     showCreateProjectConfirm()
+  }
+
+  const createProjectParent = useMemo(() => {
+    if (selectedProject) {
+      return selectedProject
+    }
+    return getTenantRootProject(projectCatalog)
+  }, [projectCatalog, selectedProject])
+
+  const handleInlineProjectCreated = (project: TenantProject) => {
+    onCreateProject?.(project)
+    selectProject(project.id)
+    setIsCreateProjectWizardOpen(false)
   }
   const catalogDetailSpecRows = useMemo(
     () =>
@@ -459,6 +502,9 @@ export function TenantUserLaunchInstanceWizard({
     )
     setSelectedProjectId(resolveInitialLaunchProjectId(projects, initialProjectId))
     setIsProjectMenuOpen(false)
+    setOpenNetworkMenuKind(null)
+    setNetworkCreateKind(null)
+    setIsCreateProjectWizardOpen(false)
     setActiveStepId(usesGeneralFirstStep ? 'general' : 'configure')
     setActiveBootLogIndex(0)
     setIsProvisioningComplete(false)
@@ -537,6 +583,9 @@ export function TenantUserLaunchInstanceWizard({
     )
     setSelectedProjectId(resolveInitialLaunchProjectId(projects, initialProjectId))
     setIsProjectMenuOpen(false)
+    setOpenNetworkMenuKind(null)
+    setNetworkCreateKind(null)
+    setIsCreateProjectWizardOpen(false)
     setActiveStepId(usesGeneralFirstStep ? 'general' : 'configure')
   }, [
     isOpen,
@@ -766,17 +815,237 @@ export function TenantUserLaunchInstanceWizard({
     })
   }
 
-  const getSelectedIdForField = (field: LaunchNetworkFieldView): string => {
-    if (field.kind === 'virtual-network') {
+  const getNetworkFieldSelectedId = (kind: LaunchNetworkFieldKind): string => {
+    if (kind === 'virtual-network') {
       return networkSelections.virtualNetworkId
     }
-    if (field.kind === 'subnet') {
+    if (kind === 'subnet') {
       return networkSelections.subnetId
     }
-    if (field.kind === 'security-group') {
+    if (kind === 'security-group') {
       return networkSelections.securityGroupId
     }
     return networkSelections.externalIpPoolId
+  }
+
+  const getNetworkFieldOptions = (kind: LaunchNetworkFieldKind) => {
+    if (kind === 'virtual-network') {
+      return networkInventory.getVirtualNetworkOptions()
+    }
+    if (kind === 'subnet') {
+      return networkInventory.getSubnetOptions(networkSelections.virtualNetworkId)
+    }
+    if (kind === 'security-group') {
+      return networkInventory.getSecurityGroupOptions()
+    }
+    return networkInventory.getExternalIpPoolOptions()
+  }
+
+  const getNetworkCreateLabel = (kind: LaunchNetworkFieldKind): string => {
+    switch (kind) {
+      case 'virtual-network':
+        return LAUNCH_INSTANCE_WIZARD_DEMO.createVirtualNetworkLabel
+      case 'subnet':
+        return LAUNCH_INSTANCE_WIZARD_DEMO.createSubnetLabel
+      case 'security-group':
+        return LAUNCH_INSTANCE_WIZARD_DEMO.createSecurityGroupLabel
+      case 'external-ip-pool':
+        return LAUNCH_INSTANCE_WIZARD_DEMO.createExternalIpPoolLabel
+    }
+  }
+
+  const handleNetworkObjectCreated = (kind: LaunchNetworkFieldKind, id: string) => {
+    setNetworkInventoryRevision((revision) => revision + 1)
+    setForm((current) => {
+      if (kind === 'virtual-network') {
+        const inventory = resolveNetworkInventoryScope(networkInventoryTenantSlug)
+        const nextSubnetId =
+          inventory.getSubnetOptions(id).find((option) => option.id === current.subnetId)?.id ??
+          inventory.getSubnetOptions(id)[0]?.id ??
+          current.subnetId
+        return { ...current, virtualNetworkId: id, subnetId: nextSubnetId }
+      }
+      if (kind === 'subnet') {
+        return { ...current, subnetId: id }
+      }
+      if (kind === 'security-group') {
+        return { ...current, securityGroupId: id }
+      }
+      return { ...current, externalIpPoolId: id }
+    })
+    setNetworkCreateKind(null)
+  }
+
+  const openNetworkCreate = (kind: LaunchNetworkFieldKind) => {
+    setOpenNetworkMenuKind(null)
+    if (
+      (kind === 'subnet' || kind === 'security-group') &&
+      networkInventory.getVirtualNetworks().length === 0
+    ) {
+      setNetworkCreateKind('virtual-network')
+      return
+    }
+    setNetworkCreateKind(kind)
+  }
+
+  const renderNetworkObjectField = (
+    kind: LaunchNetworkFieldKind,
+    label: string,
+    fieldId: string,
+  ) => {
+    const options = getNetworkFieldOptions(kind)
+    const selectedId = getNetworkFieldSelectedId(kind)
+    const selectedOption = options.find((option) => option.id === selectedId)
+    const toggleLabel = selectedOption
+      ? getCatalogOptionLabel(selectedOption.name, selectedOption.detail)
+      : `Select ${label.toLowerCase()}`
+    const createLabel = getNetworkCreateLabel(kind)
+    const createRequiresVirtualNetwork =
+      (kind === 'subnet' || kind === 'security-group') &&
+      networkInventory.getVirtualNetworks().length === 0
+
+    if (!canManageNetworkObjects) {
+      return (
+        <FormGroup key={kind} label={label} fieldId={fieldId} isRequired>
+          <FormSelect
+            id={fieldId}
+            value={selectedId}
+            onChange={(_event, value) => updateNetworkSelection(kind, value)}
+            aria-label={label}
+          >
+            {options.map((option) => (
+              <FormSelectOption
+                key={option.id}
+                value={option.id}
+                label={getCatalogOptionLabel(option.name, option.detail)}
+              />
+            ))}
+          </FormSelect>
+        </FormGroup>
+      )
+    }
+
+    return (
+      <FormGroup key={kind} label={label} fieldId={fieldId} isRequired>
+        <div className="tenant-user-launch-wizard__project-control">
+          <Dropdown
+            isOpen={openNetworkMenuKind === kind}
+            onOpenChange={(open) => setOpenNetworkMenuKind(open ? kind : null)}
+            onSelect={(_event, value) => {
+              if (value == null) {
+                return
+              }
+              updateNetworkSelection(kind, String(value))
+              setOpenNetworkMenuKind(null)
+            }}
+            toggle={(toggleRef) => (
+              <MenuToggle
+                ref={toggleRef}
+                id={fieldId}
+                isExpanded={openNetworkMenuKind === kind}
+                onClick={() =>
+                  setOpenNetworkMenuKind((current) => (current === kind ? null : kind))
+                }
+                className="bmaas-dropdown-toggle tenant-user-launch-wizard__project-toggle"
+                aria-label={`${label}: ${toggleLabel}`}
+              >
+                {toggleLabel}
+              </MenuToggle>
+            )}
+          >
+            <DropdownList>
+              {options.map((option) => (
+                <DropdownItem key={option.id} value={option.id}>
+                  {getCatalogOptionLabel(option.name, option.detail)}
+                </DropdownItem>
+              ))}
+              <Divider component="li" />
+              <DropdownItem
+                icon={<PlusIcon />}
+                isDisabled={createRequiresVirtualNetwork}
+                onClick={() => openNetworkCreate(kind)}
+              >
+                {createLabel}
+              </DropdownItem>
+            </DropdownList>
+          </Dropdown>
+        </div>
+        {createRequiresVirtualNetwork ? (
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem>
+                {LAUNCH_INSTANCE_WIZARD_DEMO.createSubnetRequiresVirtualNetworkHelper}
+              </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        ) : null}
+      </FormGroup>
+    )
+  }
+
+  const renderCreateProjectWizard = () => {
+    if (!canCreateProjectInline || !organization) {
+      return null
+    }
+
+    return (
+      <CreateTenantProjectWizard
+        isOpen={isCreateProjectWizardOpen}
+        presentation="modal"
+        organization={organization}
+        projects={projectCatalog}
+        parentProject={createProjectParent}
+        allowParentSelection
+        onClose={() => setIsCreateProjectWizardOpen(false)}
+        onCreate={handleInlineProjectCreated}
+      />
+    )
+  }
+
+  const renderNetworkCreateModals = () => {
+    if (!canManageNetworkObjects) {
+      return null
+    }
+
+    const virtualNetworks = networkInventory.getVirtualNetworks()
+    const selectedVirtualNetworkId = networkSelections.virtualNetworkId
+
+    return (
+      <>
+        <CreateVirtualNetworkWizard
+          isOpen={networkCreateKind === 'virtual-network'}
+          presentation="modal"
+          tenantSlug={networkInventoryTenantSlug}
+          onClose={() => setNetworkCreateKind(null)}
+          onCreated={(network) => handleNetworkObjectCreated('virtual-network', network.id)}
+        />
+        <CreateSubnetWizard
+          isOpen={networkCreateKind === 'subnet'}
+          presentation="modal"
+          virtualNetworks={virtualNetworks}
+          defaultVirtualNetworkId={selectedVirtualNetworkId}
+          tenantSlug={networkInventoryTenantSlug}
+          onClose={() => setNetworkCreateKind(null)}
+          onCreated={(subnet) => handleNetworkObjectCreated('subnet', subnet.id)}
+        />
+        <CreateSecurityGroupWizard
+          isOpen={networkCreateKind === 'security-group'}
+          presentation="modal"
+          virtualNetworks={virtualNetworks}
+          defaultVirtualNetworkId={selectedVirtualNetworkId}
+          tenantSlug={networkInventoryTenantSlug}
+          onClose={() => setNetworkCreateKind(null)}
+          onCreated={(group) => handleNetworkObjectCreated('security-group', group.id)}
+        />
+        <CreateExternalIpPoolWizard
+          isOpen={networkCreateKind === 'external-ip-pool'}
+          presentation="modal"
+          tenantSlug={networkInventoryTenantSlug}
+          onClose={() => setNetworkCreateKind(null)}
+          onCreated={(pool) => handleNetworkObjectCreated('external-ip-pool', pool.id)}
+        />
+      </>
+    )
   }
 
   const renderProjectField = (fieldId: string) => (
@@ -811,12 +1080,12 @@ export function TenantUserLaunchInstanceWizard({
               treeRows={buildTenantUserProjectTreeRows(allProjects ?? projects, projects)}
               selectedProjectId={selectedProjectId}
             />
-            {onNavigateToCreateProject ? (
+            {canCreateProjectInline || onNavigateToCreateProject ? (
               <>
                 {projects.length > 0 ? (
                   <Divider component="li" key="create-project-separator" />
                 ) : null}
-                <DropdownItem icon={<PlusIcon />} onClick={handleNavigateToCreateProject}>
+                <DropdownItem icon={<PlusIcon />} onClick={handleOpenCreateProject}>
                   {TENANT_PROJECTS_TEAMS_DEMO.createProjectLabel}
                 </DropdownItem>
               </>
@@ -1110,99 +1379,26 @@ export function TenantUserLaunchInstanceWizard({
     </div>
   )
 
-  const renderPlacementNetworkingFields = (idPrefix: string) => {
-    const virtualNetworkField = networkContext.fields.find(
-      (field) => field.kind === 'virtual-network',
-    )
-    const subnetField = networkContext.fields.find((field) => field.kind === 'subnet')
-    const securityGroupField = networkContext.fields.find(
-      (field) => field.kind === 'security-group',
-    )
-    const externalIpPoolField = networkContext.fields.find(
-      (field) => field.kind === 'external-ip-pool',
-    )
-    const virtualNetworkOptions =
-      virtualNetworkField?.options ?? networkInventory.getVirtualNetworkOptions()
-    const subnetOptions =
-      subnetField?.options ??
-      networkInventory.getSubnetOptions(networkSelections.virtualNetworkId)
-    const securityGroupOptions =
-      securityGroupField?.options ?? networkInventory.getSecurityGroupOptions()
-    const externalIpPoolOptions =
-      externalIpPoolField?.options ?? networkInventory.getExternalIpPoolOptions()
-
-    return (
-      <>
-        <FormGroup label="Virtual network" fieldId={`${idPrefix}-virtual-network`} isRequired>
-          <FormSelect
-            id={`${idPrefix}-virtual-network`}
-            value={networkSelections.virtualNetworkId}
-            onChange={(_event, value) => updateNetworkSelection('virtual-network', value)}
-            aria-label="Virtual network"
-          >
-            {virtualNetworkOptions.map((option) => (
-              <FormSelectOption
-                key={option.id}
-                value={option.id}
-                label={getCatalogOptionLabel(option.name, option.detail)}
-              />
-            ))}
-          </FormSelect>
-        </FormGroup>
-
-        <FormGroup label="Subnet" fieldId={`${idPrefix}-subnet`} isRequired>
-          <FormSelect
-            id={`${idPrefix}-subnet`}
-            value={networkSelections.subnetId}
-            onChange={(_event, value) => updateNetworkSelection('subnet', value)}
-            aria-label="Subnet"
-          >
-            {subnetOptions.map((option) => (
-              <FormSelectOption
-                key={option.id}
-                value={option.id}
-                label={getCatalogOptionLabel(option.name, option.detail)}
-              />
-            ))}
-          </FormSelect>
-        </FormGroup>
-
-        <FormGroup label="Security group" fieldId={`${idPrefix}-security-group`} isRequired>
-          <FormSelect
-            id={`${idPrefix}-security-group`}
-            value={networkSelections.securityGroupId}
-            onChange={(_event, value) => updateNetworkSelection('security-group', value)}
-            aria-label="Security group"
-          >
-            {securityGroupOptions.map((option) => (
-              <FormSelectOption
-                key={option.id}
-                value={option.id}
-                label={getCatalogOptionLabel(option.name, option.detail)}
-              />
-            ))}
-          </FormSelect>
-        </FormGroup>
-
-        <FormGroup label="External IP pool" fieldId={`${idPrefix}-external-ip-pool`} isRequired>
-          <FormSelect
-            id={`${idPrefix}-external-ip-pool`}
-            value={networkSelections.externalIpPoolId}
-            onChange={(_event, value) => updateNetworkSelection('external-ip-pool', value)}
-            aria-label="External IP pool"
-          >
-            {externalIpPoolOptions.map((option) => (
-              <FormSelectOption
-                key={option.id}
-                value={option.id}
-                label={getCatalogOptionLabel(option.name, option.detail)}
-              />
-            ))}
-          </FormSelect>
-        </FormGroup>
-      </>
-    )
-  }
+  const renderPlacementNetworkingFields = (idPrefix: string) => (
+    <>
+      {renderNetworkObjectField(
+        'virtual-network',
+        'Virtual network',
+        `${idPrefix}-virtual-network`,
+      )}
+      {renderNetworkObjectField('subnet', 'Subnet', `${idPrefix}-subnet`)}
+      {renderNetworkObjectField(
+        'security-group',
+        'Security group',
+        `${idPrefix}-security-group`,
+      )}
+      {renderNetworkObjectField(
+        'external-ip-pool',
+        'External IP pool',
+        `${idPrefix}-external-ip-pool`,
+      )}
+    </>
+  )
 
   const renderVmNetworkingStep = () => (
     <div className="tenant-user-launch-wizard__step">
@@ -1649,36 +1845,13 @@ export function TenantUserLaunchInstanceWizard({
       </Content>
 
       <Form autoComplete="off" className="tenant-user-launch-wizard__form">
-        {networkContext.fields.map((field) => {
-          const fieldId = `launch-instance-${field.kind}`
-          const selectedId = getSelectedIdForField(field)
-
-          return (
-            <FormGroup key={field.kind} label={field.label} fieldId={fieldId} isRequired>
-              <FormSelect
-                id={fieldId}
-                value={selectedId}
-                onChange={(_event, value) => updateNetworkSelection(field.kind, value)}
-                aria-label={field.label}
-              >
-                {field.options.map((option) => (
-                  <FormSelectOption
-                    key={option.id}
-                    value={option.id}
-                    label={getCatalogOptionLabel(option.name, option.detail)}
-                  />
-                ))}
-              </FormSelect>
-              <FormHelperText>
-                <HelperText>
-                  <HelperTextItem>
-                    Choose the {field.label.toLowerCase()} for this instance.
-                  </HelperTextItem>
-                </HelperText>
-              </FormHelperText>
-            </FormGroup>
-          )
-        })}
+        {networkContext.fields.map((field) =>
+          renderNetworkObjectField(
+            field.kind,
+            field.label,
+            `launch-instance-${field.kind}`,
+          ),
+        )}
       </Form>
     </div>
   )
@@ -2236,6 +2409,8 @@ export function TenantUserLaunchInstanceWizard({
         </CatalogWizardPageShell>
         {leaveConfirmModal}
         {createProjectConfirmModal}
+        {renderCreateProjectWizard()}
+        {renderNetworkCreateModals()}
       </>
     )
   }
@@ -2255,6 +2430,8 @@ export function TenantUserLaunchInstanceWizard({
       </Modal>
       {leaveConfirmModal}
       {createProjectConfirmModal}
+      {renderCreateProjectWizard()}
+      {renderNetworkCreateModals()}
     </>
   )
 }

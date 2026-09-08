@@ -57,7 +57,7 @@ import {
 import { LAUNCH_INSTANCE_PROVISIONING_DURATION_MS, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS } from '../tenantUser/launchInstanceWizard'
 import type { WorkspaceTransition } from '../providerAdmin/workspace'
 import type { BmaasTemplateLookup } from '../providerAdmin/bmaasTemplates'
-import { ensureTenantDemoProjects } from '../tenantAdmin/storage'
+import { ensureTenantDemoProjects, addTenantProject } from '../tenantAdmin/storage'
 import type { TenantProject } from '../tenantAdmin/projects'
 import { getWorkspaceOrganization } from '../tenantAdmin/organizations'
 import {
@@ -462,7 +462,10 @@ export function ProviderAdminWorkspacePage() {
             projects={projects}
             initialProjectId={isAllProjectsScope(projectScopeId) ? null : projectScopeId}
             onProjectScopeChange={handleProjectScopeChange}
-            onNavigateToCreateProject={() => handleNavChange('projects-teams')}
+            onCreateProject={(project) => {
+              addTenantProject(PROVIDER_SERVICES_DEMO_TENANT, project)
+              setProjects((current) => [...current, project])
+            }}
             onEditLeaveAttemptChange={(attemptLeave) => {
               catalogEditLeaveAttemptRef.current = attemptLeave
             }}

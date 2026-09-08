@@ -80,6 +80,8 @@ export const CREATE_PROJECT_WIZARD_DEMO = {
   editProjectLabel: 'Edit project',
   saveProjectLabel: 'Save',
   parentProjectLabel: 'Parent project',
+  parentProjectHelper: 'Choose where the new project sits in your project tree.',
+  reviewLocationLabel: 'Location',
 } as const
 
 export const DEFAULT_PROJECT_IP_SLICE = '203.0.113.0/26'

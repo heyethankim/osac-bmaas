@@ -56,6 +56,7 @@ const TENANT_CREATE_EXTERNAL_IP_POOL_STEPS = [
 
 type CreateExternalIpPoolWizardProps = {
   isOpen: boolean
+  presentation?: 'modal' | 'page'
   parentLabel?: string
   tenantSlug?: string
   organizations?: RegisteredOrganization[]
@@ -76,6 +77,7 @@ function buildFormFromPool(pool: ExternalIpPool): CreatePoolForm {
 
 export function CreateExternalIpPoolWizard({
   isOpen,
+  presentation = 'page',
   parentLabel = 'External IP pools',
   tenantSlug,
   organizations = [],
@@ -340,6 +342,7 @@ export function CreateExternalIpPoolWizard({
   return (
     <NetworkInventoryCreateWizardShell
       isOpen={isOpen}
+      presentation={presentation}
       parentLabel={parentLabel}
       title={isEditMode ? 'Edit external IP pool' : 'Create external IP pool'}
       titleId="create-external-ip-pool-wizard-title"

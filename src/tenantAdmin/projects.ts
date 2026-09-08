@@ -419,6 +419,27 @@ export function getTenantProjectById(
   return projects.find((project) => project.id === projectId) ?? null
 }
 
+/** Breadcrumb-style path for create review, e.g. Root / ml-dev-team / edge-inference (new). */
+export function getTenantProjectLocationPath(
+  projects: readonly TenantProject[],
+  parentProject: TenantProject | null | undefined,
+  projectName = '',
+): string {
+  const segments: string[] = []
+  let current = parentProject ?? null
+
+  while (current) {
+    segments.unshift(current.name)
+    current = current.parentProjectId
+      ? getTenantProjectById(projects, current.parentProjectId)
+      : null
+  }
+
+  const trimmedName = projectName.trim()
+  segments.push(trimmedName ? `${trimmedName} (new)` : '(new project)')
+  return segments.join(' / ')
+}
+
 export function getRootTenantProjects(projects: readonly TenantProject[]): TenantProject[] {
   return projects.filter((project) => !project.parentProjectId)
 }

@@ -42,6 +42,7 @@ const VIRTUAL_NETWORK_WIZARD_STEPS = [
 
 type CreateVirtualNetworkWizardProps = {
   isOpen: boolean
+  presentation?: 'modal' | 'page'
   parentLabel?: string
   tenantSlug?: string
   resource?: ProviderVirtualNetwork | null
@@ -60,6 +61,7 @@ function buildFormFromNetwork(network: ProviderVirtualNetwork): CreateVirtualNet
 
 export function CreateVirtualNetworkWizard({
   isOpen,
+  presentation = 'page',
   parentLabel = 'Virtual networks',
   tenantSlug,
   resource = null,
@@ -219,6 +221,7 @@ export function CreateVirtualNetworkWizard({
   return (
     <NetworkInventoryCreateWizardShell
       isOpen={isOpen}
+      presentation={presentation}
       parentLabel={parentLabel}
       title={isEditMode ? 'Edit virtual network' : 'Create virtual network'}
       titleId="create-virtual-network-wizard-title"

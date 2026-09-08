@@ -33,13 +33,22 @@ type CreateSubnetForm = {
   virtualNetworkId: string
 }
 
-function buildDemoForm(virtualNetworks: ProviderVirtualNetwork[]): CreateSubnetForm {
+function buildDemoForm(
+  virtualNetworks: ProviderVirtualNetwork[],
+  defaultVirtualNetworkId?: string,
+): CreateSubnetForm {
+  const preferredVirtualNetworkId =
+    defaultVirtualNetworkId &&
+    virtualNetworks.some((network) => network.id === defaultVirtualNetworkId)
+      ? defaultVirtualNetworkId
+      : (virtualNetworks[0]?.id ?? '')
+
   return {
     name: 'bm-compute-c',
     detail: 'Demo subnet for additional tenant compute capacity',
     cidr: '10.42.2.0/24',
     vlan: '202',
-    virtualNetworkId: virtualNetworks[0]?.id ?? '',
+    virtualNetworkId: preferredVirtualNetworkId,
   }
 }
 
@@ -60,8 +69,10 @@ const SUBNET_WIZARD_STEPS = [
 
 type CreateSubnetWizardProps = {
   isOpen: boolean
+  presentation?: 'modal' | 'page'
   parentLabel?: string
   virtualNetworks: ProviderVirtualNetwork[]
+  defaultVirtualNetworkId?: string
   tenantSlug?: string
   resource?: ProviderSubnet | null
   onClose: () => void
@@ -70,24 +81,32 @@ type CreateSubnetWizardProps = {
 
 export function CreateSubnetWizard({
   isOpen,
+  presentation = 'page',
   parentLabel = 'Subnets',
   virtualNetworks,
+  defaultVirtualNetworkId,
   tenantSlug,
   resource = null,
   onClose,
   onCreated,
 }: CreateSubnetWizardProps) {
   const isEditMode = resource !== null
-  const [form, setForm] = useState<CreateSubnetForm>(() => buildDemoForm(virtualNetworks))
+  const [form, setForm] = useState<CreateSubnetForm>(() =>
+    buildDemoForm(virtualNetworks, defaultVirtualNetworkId),
+  )
 
   useEffect(() => {
     if (!isOpen) {
-      setForm(buildDemoForm(virtualNetworks))
+      setForm(buildDemoForm(virtualNetworks, defaultVirtualNetworkId))
       return
     }
 
-    setForm(resource ? buildFormFromSubnet(resource) : buildDemoForm(virtualNetworks))
-  }, [isOpen, resource, virtualNetworks])
+    setForm(
+      resource
+        ? buildFormFromSubnet(resource)
+        : buildDemoForm(virtualNetworks, defaultVirtualNetworkId),
+    )
+  }, [defaultVirtualNetworkId, isOpen, resource, virtualNetworks])
 
   const isNameValid = isValidKubernetesResourceName(form.name)
   const isDetailsStepValid =
@@ -101,7 +120,7 @@ export function CreateSubnetWizard({
     virtualNetworks.find((network) => network.id === form.virtualNetworkId) ?? null
 
   const handleClose = () => {
-    setForm(buildDemoForm(virtualNetworks))
+    setForm(buildDemoForm(virtualNetworks, defaultVirtualNetworkId))
     onClose()
   }
 
@@ -263,6 +282,7 @@ export function CreateSubnetWizard({
   return (
     <NetworkInventoryCreateWizardShell
       isOpen={isOpen}
+      presentation={presentation}
       parentLabel={parentLabel}
       title={isEditMode ? 'Edit subnet' : 'Create subnet'}
       titleId="create-subnet-wizard-title"

@@ -150,7 +150,13 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   networkingLede:
     'Choose the virtual network, subnet, security group, and external IP pool for this instance.',
   networkingAdminLede:
-    'Choose a virtual network, subnet, security group, and IP pool. Add objects in Networking.',
+    'Choose network objects for this instance. Use Create in each list to add one without leaving launch.',
+  createVirtualNetworkLabel: 'Create virtual network',
+  createSubnetLabel: 'Create subnet',
+  createSecurityGroupLabel: 'Create security group',
+  createExternalIpPoolLabel: 'Create external IP pool',
+  createSubnetRequiresVirtualNetworkHelper:
+    'Create a virtual network first, then add a subnet.',
   networkingAssignedHelper: 'Set by your tenant',
   reviewTitle: 'Review',
   reviewHardware: 'Dell PowerEdge R750',
@@ -203,7 +209,7 @@ export const CLUSTER_LAUNCH_INSTANCE_DEMO = {
   infrastructureNetworkingLede:
     'Attach this cluster to your tenant network objects.',
   infrastructureNetworkingAdminLede:
-    'Attach this cluster to tenant network objects. Add objects in Networking.',
+    'Attach this cluster to tenant network objects. Use Create in each list to add objects during launch.',
   clusterNetworkTitle: 'Cluster network',
   clusterNetworkLede: 'Address ranges used inside the cluster for pods and services.',
   podCidr: '10.128.0.0/24',

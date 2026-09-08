@@ -32,11 +32,20 @@ type CreateSecurityGroupForm = {
   outboundRules: string
 }
 
-function buildDemoForm(virtualNetworks: ProviderVirtualNetwork[]): CreateSecurityGroupForm {
+function buildDemoForm(
+  virtualNetworks: ProviderVirtualNetwork[],
+  defaultVirtualNetworkId?: string,
+): CreateSecurityGroupForm {
+  const preferredVirtualNetworkId =
+    defaultVirtualNetworkId &&
+    virtualNetworks.some((network) => network.id === defaultVirtualNetworkId)
+      ? defaultVirtualNetworkId
+      : (virtualNetworks[0]?.id ?? '')
+
   return {
     name: 'allow-demo-workload',
     detail: 'Demo ingress for SSH, HTTPS, and API',
-    virtualNetworkId: virtualNetworks[0]?.id ?? '',
+    virtualNetworkId: preferredVirtualNetworkId,
     inboundRules: 'SSH (22), HTTPS (443), API (6443)',
     outboundRules: 'Allow all',
   }
@@ -59,8 +68,10 @@ const SECURITY_GROUP_WIZARD_STEPS = [
 
 type CreateSecurityGroupWizardProps = {
   isOpen: boolean
+  presentation?: 'modal' | 'page'
   parentLabel?: string
   virtualNetworks: ProviderVirtualNetwork[]
+  defaultVirtualNetworkId?: string
   tenantSlug?: string
   resource?: ProviderSecurityGroup | null
   onClose: () => void
@@ -69,24 +80,32 @@ type CreateSecurityGroupWizardProps = {
 
 export function CreateSecurityGroupWizard({
   isOpen,
+  presentation = 'page',
   parentLabel = 'Security groups',
   virtualNetworks,
+  defaultVirtualNetworkId,
   tenantSlug,
   resource = null,
   onClose,
   onCreated,
 }: CreateSecurityGroupWizardProps) {
   const isEditMode = resource !== null
-  const [form, setForm] = useState<CreateSecurityGroupForm>(() => buildDemoForm(virtualNetworks))
+  const [form, setForm] = useState<CreateSecurityGroupForm>(() =>
+    buildDemoForm(virtualNetworks, defaultVirtualNetworkId),
+  )
 
   useEffect(() => {
     if (!isOpen) {
-      setForm(buildDemoForm(virtualNetworks))
+      setForm(buildDemoForm(virtualNetworks, defaultVirtualNetworkId))
       return
     }
 
-    setForm(resource ? buildFormFromSecurityGroup(resource) : buildDemoForm(virtualNetworks))
-  }, [isOpen, resource, virtualNetworks])
+    setForm(
+      resource
+        ? buildFormFromSecurityGroup(resource)
+        : buildDemoForm(virtualNetworks, defaultVirtualNetworkId),
+    )
+  }, [defaultVirtualNetworkId, isOpen, resource, virtualNetworks])
 
   const isNameValid = isValidKubernetesResourceName(form.name)
   const isDetailsStepValid =
@@ -96,7 +115,7 @@ export function CreateSecurityGroupWizard({
     virtualNetworks.find((network) => network.id === form.virtualNetworkId) ?? null
 
   const handleClose = () => {
-    setForm(buildDemoForm(virtualNetworks))
+    setForm(buildDemoForm(virtualNetworks, defaultVirtualNetworkId))
     onClose()
   }
 
@@ -260,6 +279,7 @@ export function CreateSecurityGroupWizard({
   return (
     <NetworkInventoryCreateWizardShell
       isOpen={isOpen}
+      presentation={presentation}
       parentLabel={parentLabel}
       title={isEditMode ? 'Edit security group' : 'Create security group'}
       titleId="create-security-group-wizard-title"

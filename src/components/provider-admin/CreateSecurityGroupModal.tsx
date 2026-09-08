@@ -31,11 +31,20 @@ type CreateSecurityGroupForm = {
 }
 
 /** Demo prefills so the create flow is ready to submit. */
-function buildDemoForm(virtualNetworks: ProviderVirtualNetwork[]): CreateSecurityGroupForm {
+function buildDemoForm(
+  virtualNetworks: ProviderVirtualNetwork[],
+  defaultVirtualNetworkId?: string,
+): CreateSecurityGroupForm {
+  const preferredVirtualNetworkId =
+    defaultVirtualNetworkId &&
+    virtualNetworks.some((network) => network.id === defaultVirtualNetworkId)
+      ? defaultVirtualNetworkId
+      : (virtualNetworks[0]?.id ?? '')
+
   return {
     name: 'allow-demo-workload',
     detail: 'Demo ingress for SSH, HTTPS, and API',
-    virtualNetworkId: virtualNetworks[0]?.id ?? '',
+    virtualNetworkId: preferredVirtualNetworkId,
     inboundRules: 'SSH (22), HTTPS (443), API (6443)',
     outboundRules: 'Allow all',
   }
@@ -44,6 +53,7 @@ function buildDemoForm(virtualNetworks: ProviderVirtualNetwork[]): CreateSecurit
 type CreateSecurityGroupModalProps = {
   isOpen: boolean
   virtualNetworks: ProviderVirtualNetwork[]
+  defaultVirtualNetworkId?: string
   onClose: () => void
   onCreated: (group: ProviderSecurityGroup) => void
   tenantSlug?: string
@@ -52,17 +62,20 @@ type CreateSecurityGroupModalProps = {
 export function CreateSecurityGroupModal({
   isOpen,
   virtualNetworks,
+  defaultVirtualNetworkId,
   onClose,
   onCreated,
   tenantSlug,
 }: CreateSecurityGroupModalProps) {
-  const [form, setForm] = useState<CreateSecurityGroupForm>(() => buildDemoForm(virtualNetworks))
+  const [form, setForm] = useState<CreateSecurityGroupForm>(() =>
+    buildDemoForm(virtualNetworks, defaultVirtualNetworkId),
+  )
 
   useEffect(() => {
     if (isOpen) {
-      setForm(buildDemoForm(virtualNetworks))
+      setForm(buildDemoForm(virtualNetworks, defaultVirtualNetworkId))
     }
-  }, [isOpen, virtualNetworks])
+  }, [defaultVirtualNetworkId, isOpen, virtualNetworks])
 
   const isNameValid = isValidKubernetesResourceName(form.name)
   const isCreateDisabled =
