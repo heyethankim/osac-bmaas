@@ -2,6 +2,7 @@ import { type CSSProperties } from 'react'
 import { DropdownItem, Label } from '@patternfly/react-core'
 import {
   buildTenantProjectScopeTreeRows,
+  isNestedTenantProject,
   TENANT_PROJECTS_TEAMS_DEMO,
   type TenantProject,
   type TenantProjectScopeTreeRow,
@@ -18,7 +19,8 @@ export function ProjectTreeDropdownItems({
   treeRows,
   selectedProjectId = null,
 }: ProjectTreeDropdownItemsProps) {
-  const resolvedTreeRows = treeRows ?? buildTenantProjectScopeTreeRows(projects)
+  const resolvedTreeRows =
+    treeRows ?? buildTenantProjectScopeTreeRows(projects, { excludeRoot: true })
 
   return (
     <>
@@ -34,7 +36,7 @@ export function ProjectTreeDropdownItems({
             style={{ '--tenant-project-tree-depth': depth } as CSSProperties}
           >
             <span className="project-tree-dropdown__name">{project.name}</span>
-            {project.parentProjectId ? (
+            {isNestedTenantProject(projects, project) ? (
               <Label color="grey" isCompact className="project-tree-dropdown__nested-badge">
                 {TENANT_PROJECTS_TEAMS_DEMO.nestedBadgeLabel}
               </Label>

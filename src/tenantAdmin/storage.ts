@@ -27,9 +27,15 @@ import {
   DEMO_TENANT_PROJECT_ID_02,
   DEMO_TENANT_PROJECT_NAME,
   DEMO_TENANT_PROJECT_NAME_02,
+  DEMO_TENANT_ROOT_PROJECT_DESCRIPTION,
+  DEMO_TENANT_ROOT_PROJECT_ENVIRONMENT,
+  DEMO_TENANT_ROOT_PROJECT_ID,
+  DEMO_TENANT_ROOT_PROJECT_NAME,
   collectDescendantProjectIds,
+  createDefaultTenantRootProject,
   isTenantProjectEnvironment,
   migrateTenantProjectMemberRole,
+  normalizeTenantProjectHierarchy,
 } from './projects'
 
 export {
@@ -53,6 +59,10 @@ export {
   DEMO_TENANT_PROJECT_ID_02,
   DEMO_TENANT_PROJECT_NAME,
   DEMO_TENANT_PROJECT_NAME_02,
+  DEMO_TENANT_ROOT_PROJECT_DESCRIPTION,
+  DEMO_TENANT_ROOT_PROJECT_ENVIRONMENT,
+  DEMO_TENANT_ROOT_PROJECT_ID,
+  DEMO_TENANT_ROOT_PROJECT_NAME,
 }
 
 const TENANT_ONBOARDING_COMPLETE_KEY_PREFIX = 'bmaas-tenant-onboarding-complete-'
@@ -424,6 +434,10 @@ const DEMO_TENANT_PROJECT_MEMBERS: TenantProject['members'] = [
   },
 ]
 
+function createDemoRootTenantProject(): TenantProject {
+  return createDefaultTenantRootProject(20)
+}
+
 function createDemoTenantProject(): TenantProject {
   return {
     id: DEMO_TENANT_PROJECT_ID,
@@ -445,7 +459,7 @@ function createDemoTenantProject(): TenantProject {
       },
     ],
     members: ensureDemoTenantUserMembership(DEMO_TENANT_PROJECT_MEMBERS, 'viewer'),
-    parentProjectId: null,
+    parentProjectId: DEMO_TENANT_ROOT_PROJECT_ID,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 12).toISOString(),
   }
 }
@@ -510,7 +524,7 @@ function createDemoFraudDetectionProject(): TenantProject {
     externalIpPoolCidr: null,
     catalogItems: [],
     members: [DEMO_TENANT_PROJECT_MEMBERS[0]!],
-    parentProjectId: null,
+    parentProjectId: DEMO_TENANT_ROOT_PROJECT_ID,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 8).toISOString(),
   }
 }
@@ -535,7 +549,7 @@ function createDemoTenantProject02(): TenantProject {
       ...DEMO_TENANT_PROJECT_MEMBERS.slice(0, 4),
       DEMO_TENANT_USER_PROJECT_MEMBER,
     ],
-    parentProjectId: null,
+    parentProjectId: DEMO_TENANT_ROOT_PROJECT_ID,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
   }
 }
@@ -570,6 +584,7 @@ function withDemoProjectDefaults(project: TenantProject): TenantProject {
     description: DEMO_TENANT_PROJECT_DESCRIPTION,
     environmentType: DEMO_TENANT_PROJECT_ENVIRONMENT,
     instanceQuota: 10,
+    parentProjectId: DEMO_TENANT_ROOT_PROJECT_ID,
     members: ensureDemoTenantUserMembership(
       project.members.length < DEMO_TENANT_PROJECT_MEMBERS.length
         ? [...DEMO_TENANT_PROJECT_MEMBERS]
@@ -593,7 +608,7 @@ function withDemoProject02Defaults(project: TenantProject): TenantProject {
         : project.members,
       'manager',
     ),
-    parentProjectId: null,
+    parentProjectId: DEMO_TENANT_ROOT_PROJECT_ID,
   }
 }
 
@@ -654,9 +669,22 @@ function withDemoFraudDetectionDefaults(project: TenantProject): TenantProject {
     environmentType: DEMO_FRAUD_DETECTION_PROJECT_ENVIRONMENT,
     instanceQuota: 3,
     catalogItems: [],
-    parentProjectId: null,
+    parentProjectId: DEMO_TENANT_ROOT_PROJECT_ID,
     members:
       project.members.length === 0 ? [DEMO_TENANT_PROJECT_MEMBERS[0]!] : project.members,
+  }
+}
+
+function withDemoRootProjectDefaults(project: TenantProject): TenantProject {
+  return {
+    ...createDemoRootTenantProject(),
+    ...project,
+    id: DEMO_TENANT_ROOT_PROJECT_ID,
+    name: DEMO_TENANT_ROOT_PROJECT_NAME,
+    description: DEMO_TENANT_ROOT_PROJECT_DESCRIPTION,
+    environmentType: DEMO_TENANT_ROOT_PROJECT_ENVIRONMENT,
+    parentProjectId: null,
+    instanceQuota: 20,
   }
 }
 
@@ -669,6 +697,12 @@ function isLegacyDemoProject(project: TenantProject): boolean {
       project.name as (typeof LEGACY_DEMO_TENANT_PROJECT_NAMES)[number],
     )
   )
+}
+
+function persistTenantProjects(slug: string, projects: TenantProject[]): TenantProject[] {
+  const normalized = normalizeTenantProjectHierarchy(projects, 20)
+  setTenantProjects(slug, normalized)
+  return normalized
 }
 
 export function ensureTenantDemoProjects(slug: string): TenantProject[] {
@@ -699,9 +733,27 @@ export function ensureTenantDemoProjects(slug: string): TenantProject[] {
           project.id === DEMO_FRAUD_DETECTION_PROJECT_ID ||
           project.name === DEMO_FRAUD_DETECTION_PROJECT_NAME,
       )
+      const hasRootDemo = current.some(
+        (project) =>
+          project.id === DEMO_TENANT_ROOT_PROJECT_ID ||
+          project.name === DEMO_TENANT_ROOT_PROJECT_NAME,
+      )
 
       let updated = current
       let changed = false
+
+      if (hasRootDemo) {
+        updated = updated.map((project) =>
+          project.id === DEMO_TENANT_ROOT_PROJECT_ID ||
+          project.name === DEMO_TENANT_ROOT_PROJECT_NAME
+            ? withDemoRootProjectDefaults(project)
+            : project,
+        )
+        changed = changed || updated.some((project, index) => project !== current[index])
+      } else {
+        updated = [createDemoRootTenantProject(), ...updated]
+        changed = true
+      }
 
       if (legacyDemo && legacyDemo.name !== DEMO_TENANT_PROJECT_NAME) {
         updated = updated.map((project) =>
@@ -771,25 +823,23 @@ export function ensureTenantDemoProjects(slug: string): TenantProject[] {
       }
 
       if (changed) {
-        setTenantProjects(slug, updated)
-        return updated
+        return persistTenantProjects(slug, updated)
       }
 
-      return current
+      return persistTenantProjects(slug, current)
     }
   } catch {
     /* fall through to seed */
   }
 
-  const demoProjects = [
+  return persistTenantProjects(slug, [
+    createDemoRootTenantProject(),
     createDemoFraudDetectionProject(),
     createDemoTenantProject02(),
     createDemoFeatureSandboxProject(),
     createDemoTenantProject(),
     createDemoNestedTenantProject(),
-  ]
-  setTenantProjects(slug, demoProjects)
-  return demoProjects
+  ])
 }
 
 export function setTenantProjects(slug: string, projects: TenantProject[]): void {

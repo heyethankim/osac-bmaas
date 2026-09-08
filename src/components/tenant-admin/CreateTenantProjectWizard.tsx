@@ -44,6 +44,8 @@ import {
   getAvailableInstanceQuotaForProject,
   getEffectiveProjectMembers,
   getTenantProjectById,
+  getTenantRootProject,
+  isTenantRootProject,
   resolveOrganizationExternalIpPool,
   resolveOrganizationExternalIpPools,
   type TenantProject,
@@ -94,7 +96,10 @@ export function CreateTenantProjectWizard({
     if (isEditMode && editingProject?.parentProjectId) {
       return getTenantProjectById(projects, editingProject.parentProjectId)
     }
-    return parentProject
+    if (parentProject) {
+      return parentProject
+    }
+    return getTenantRootProject(projects)
   }, [editingProject, isEditMode, parentProject, projects])
 
   const maxInstanceQuota = useMemo(
@@ -264,7 +269,7 @@ export function CreateTenantProjectWizard({
       externalIpPoolCidr: form.ipPoolSlice.trim(),
       catalogItems: [],
       members: [],
-      parentProjectId: parentProject?.id ?? null,
+      parentProjectId: resolvedParentProject?.id ?? null,
       createdAt: new Date().toISOString(),
     })
   }
@@ -293,7 +298,7 @@ export function CreateTenantProjectWizard({
 
   const renderProjectInfoStep = () => (
     <Form autoComplete="off" className="tenant-admin-projects-teams__wizard-form">
-      {resolvedParentProject ? (
+      {resolvedParentProject && !isTenantRootProject(resolvedParentProject) ? (
         <FormGroup label={CREATE_PROJECT_WIZARD_DEMO.parentProjectLabel} fieldId="new-project-parent">
           <TextInput
             id="new-project-parent"
@@ -385,7 +390,7 @@ export function CreateTenantProjectWizard({
       ) : (
         <Fragment>
           <DescriptionList isCompact className="tenant-admin-projects-teams__wizard-review-list">
-          {resolvedParentProject ? (
+          {resolvedParentProject && !isTenantRootProject(resolvedParentProject) ? (
             <DescriptionListGroup>
               <DescriptionListTerm>Parent project</DescriptionListTerm>
               <DescriptionListDescription>{resolvedParentProject.name}</DescriptionListDescription>
@@ -407,7 +412,9 @@ export function CreateTenantProjectWizard({
             <DescriptionListTerm>Instance quota</DescriptionListTerm>
             <DescriptionListDescription>
               {form.instanceQuota} instance{form.instanceQuota === 1 ? '' : 's'}
-              {resolvedParentProject ? ` from ${resolvedParentProject.name}` : ''}
+              {resolvedParentProject && !isTenantRootProject(resolvedParentProject)
+                ? ` from ${resolvedParentProject.name}`
+                : ''}
             </DescriptionListDescription>
           </DescriptionListGroup>
           <DescriptionListGroup>
@@ -523,12 +530,12 @@ export function CreateTenantProjectWizard({
 
   const wizardTitle = isEditMode
     ? CREATE_PROJECT_WIZARD_DEMO.editProjectLabel
-    : parentProject
+    : resolvedParentProject && !isTenantRootProject(resolvedParentProject)
       ? CREATE_PROJECT_WIZARD_DEMO.createNestedProjectLabel
       : 'New project'
   const createActionLabel = isEditMode
     ? CREATE_PROJECT_WIZARD_DEMO.saveProjectLabel
-    : parentProject
+    : resolvedParentProject && !isTenantRootProject(resolvedParentProject)
       ? CREATE_PROJECT_WIZARD_DEMO.createNestedProjectLabel
       : CREATE_PROJECT_WIZARD_DEMO.createProjectLabel
   const isPage = presentation === 'page'

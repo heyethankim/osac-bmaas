@@ -478,6 +478,14 @@
   padding-inline-start: calc(var(--tenant-project-tree-depth, 0) * var(--tenant-project-tree-indent));
 }
 
+.tenant-admin-projects-teams__tree-row--root {
+  padding-inline-start: 0;
+}
+
+.tenant-admin-projects-teams__root-badge.pf-v6-c-label {
+  margin-inline-start: 0;
+}
+
 .tenant-admin-projects-teams__name-cell {
   display: flex;
   align-items: flex-start;

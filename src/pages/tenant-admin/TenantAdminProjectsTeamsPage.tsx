@@ -42,6 +42,9 @@ import {
   getTenantProjectMemberCountLabel,
   getTenantProjectPoolLabel,
   getTenantProjectServicesLabel,
+  getTenantRootProject,
+  isNestedTenantProject,
+  isTenantRootProject,
   matchesProjectListFilter,
   PROJECT_LIST_FILTER_OPTIONS,
   projectMatchesSearch,
@@ -115,7 +118,7 @@ export function TenantAdminProjectsTeamsPage({
   const filteredProjects = useMemo(
     () =>
       sortedProjects.filter((project) => {
-        if (!matchesProjectListFilter(project, selectedProjectFilter, instances)) {
+        if (!matchesProjectListFilter(sortedProjects, project, selectedProjectFilter, instances)) {
           return false
         }
 
@@ -286,8 +289,9 @@ export function TenantAdminProjectsTeamsPage({
   }
 
   const openCreateProject = (parent: TenantProject | null = null, fromDetails = false) => {
+    const rootProject = getTenantRootProject(projectCatalog)
     setEditingProject(null)
-    setNestedCreateParent(parent)
+    setNestedCreateParent(parent ?? rootProject)
     if (fromDetails && parent) {
       setReturnToProjectAfterWizard(parent)
       setIsDetailsOpen(false)
@@ -374,7 +378,7 @@ export function TenantAdminProjectsTeamsPage({
     const project =
       projects.find((entry) => entry.id === projectId) ??
       (selectedProject?.id === projectId ? selectedProject : null)
-    if (!project) {
+    if (!project || isTenantRootProject(project)) {
       return
     }
     setProjectPendingDelete(project)
@@ -636,18 +640,21 @@ export function TenantAdminProjectsTeamsPage({
             </Thead>
             <Tbody>
               {treeRows.map(({ project, depth, hasChildren, isExpanded }) => {
-                const parentProject = project.parentProjectId
-                  ? getTenantProjectById(projectCatalog, project.parentProjectId)
-                  : null
+                const isRootProject = isTenantRootProject(project)
 
                 return (
                   <Tr key={project.id}>
                     <Td dataLabel="Name">
                       <div
-                        className="tenant-admin-projects-teams__tree-row"
+                        className={[
+                          'tenant-admin-projects-teams__tree-row',
+                          isRootProject ? 'tenant-admin-projects-teams__tree-row--root' : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
                         style={
                           {
-                            '--tenant-project-tree-depth': depth,
+                            '--tenant-project-tree-depth': isRootProject ? 0 : depth,
                           } as CSSProperties
                         }
                       >
@@ -686,7 +693,15 @@ export function TenantAdminProjectsTeamsPage({
                               >
                                 {project.name}
                               </Button>
-                              {parentProject ? (
+                              {isRootProject ? (
+                                <Label
+                                  color="blue"
+                                  isCompact
+                                  className="tenant-admin-projects-teams__root-badge"
+                                >
+                                  {TENANT_PROJECTS_TEAMS_DEMO.rootBadgeLabel}
+                                </Label>
+                              ) : isNestedTenantProject(projectCatalog, project) ? (
                                 <Label
                                   color="grey"
                                   isCompact

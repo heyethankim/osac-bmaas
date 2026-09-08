@@ -126,6 +126,13 @@ export function isTenantProjectEnvironment(value: unknown): value is TenantProje
   )
 }
 
+/** Auto-created top-level project for every tenant; all user projects nest beneath it. */
+export const DEMO_TENANT_ROOT_PROJECT_ID = 'project_root'
+export const DEMO_TENANT_ROOT_PROJECT_NAME = 'Root'
+export const DEMO_TENANT_ROOT_PROJECT_DESCRIPTION =
+  'Default tenant workspace for global resource scope and the top of the project hierarchy.'
+export const DEMO_TENANT_ROOT_PROJECT_ENVIRONMENT: TenantProjectEnvironment = 'production'
+
 /** Stable demo project for Catalog/Services project-scope switcher. */
 export const DEMO_TENANT_PROJECT_ID = 'project_ml-project'
 export const DEMO_TENANT_PROJECT_NAME = 'ml-project'
@@ -206,6 +213,10 @@ const NESTED_PROJECT_NAME_CANDIDATES_BY_PARENT: Record<string, readonly string[]
 }
 
 function getNestedProjectNameCandidates(parentProject: TenantProject): string[] {
+  if (isTenantRootProject(parentProject)) {
+    return [...ROOT_PROJECT_NAME_CANDIDATES]
+  }
+
   const parentKey = normalizeTenantProjectName(parentProject.name)
   const specific = NESTED_PROJECT_NAME_CANDIDATES_BY_PARENT[parentKey] ?? []
   const merged = [...specific]
@@ -361,6 +372,11 @@ export function getTenantProjectPoolLabel(project: TenantProject): string {
 }
 
 export function getTotalAllocatedInstanceQuota(projects: readonly TenantProject[]): number {
+  const root = getTenantRootProject(projects)
+  if (root) {
+    return getDirectChildInstanceQuotaAllocated(projects, root.id)
+  }
+
   return getRootTenantProjects(projects).reduce(
     (total, project) => total + project.instanceQuota,
     0,
@@ -405,6 +421,90 @@ export function getTenantProjectById(
 
 export function getRootTenantProjects(projects: readonly TenantProject[]): TenantProject[] {
   return projects.filter((project) => !project.parentProjectId)
+}
+
+export function getTenantRootProject(
+  projects: readonly TenantProject[],
+): TenantProject | null {
+  return (
+    projects.find(
+      (project) =>
+        project.id === DEMO_TENANT_ROOT_PROJECT_ID ||
+        (project.parentProjectId === null && project.name === DEMO_TENANT_ROOT_PROJECT_NAME),
+    ) ?? getRootTenantProjects(projects)[0] ?? null
+  )
+}
+
+export function isTenantRootProject(project: TenantProject): boolean {
+  return (
+    project.id === DEMO_TENANT_ROOT_PROJECT_ID ||
+    (project.parentProjectId === null && project.name === DEMO_TENANT_ROOT_PROJECT_NAME)
+  )
+}
+
+export function isNestedTenantProject(
+  projects: readonly TenantProject[],
+  project: TenantProject,
+): boolean {
+  if (isTenantRootProject(project) || !project.parentProjectId) {
+    return false
+  }
+
+  const root = getTenantRootProject(projects)
+  return Boolean(root && project.parentProjectId !== root.id)
+}
+
+export function createDefaultTenantRootProject(instanceQuota: number): TenantProject {
+  return {
+    id: DEMO_TENANT_ROOT_PROJECT_ID,
+    name: DEMO_TENANT_ROOT_PROJECT_NAME,
+    description: DEMO_TENANT_ROOT_PROJECT_DESCRIPTION,
+    environmentType: DEMO_TENANT_ROOT_PROJECT_ENVIRONMENT,
+    instanceQuota,
+    externalIpPoolId: null,
+    externalIpPoolName: null,
+    externalIpPoolCidr: null,
+    catalogItems: [],
+    members: [],
+    parentProjectId: null,
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString(),
+  }
+}
+
+/** Ensure a single Root project exists and former top-level projects nest beneath it. */
+export function normalizeTenantProjectHierarchy(
+  projects: readonly TenantProject[],
+  instanceQuota = 20,
+): TenantProject[] {
+  let root =
+    projects.find((project) => project.id === DEMO_TENANT_ROOT_PROJECT_ID) ??
+    projects.find(
+      (project) =>
+        project.parentProjectId === null && project.name === DEMO_TENANT_ROOT_PROJECT_NAME,
+    ) ??
+    null
+
+  if (!root) {
+    root = createDefaultTenantRootProject(instanceQuota)
+  } else {
+    root = {
+      ...root,
+      id: DEMO_TENANT_ROOT_PROJECT_ID,
+      name: DEMO_TENANT_ROOT_PROJECT_NAME,
+      description: DEMO_TENANT_ROOT_PROJECT_DESCRIPTION,
+      environmentType: DEMO_TENANT_ROOT_PROJECT_ENVIRONMENT,
+      parentProjectId: null,
+      instanceQuota: Math.max(root.instanceQuota, instanceQuota),
+    }
+  }
+
+  const normalized = projects
+    .filter((project) => project.id !== root.id)
+    .map((project) =>
+      project.parentProjectId === null ? { ...project, parentProjectId: root.id } : project,
+    )
+
+  return [root, ...normalized]
 }
 
 export function getChildTenantProjects(
@@ -461,6 +561,16 @@ export function getAvailableInstanceQuotaForProject(
       excludeProjectId,
     )
     return Math.max(0, parentProject.instanceQuota - allocatedToChildren)
+  }
+
+  const root = getTenantRootProject(projects)
+  if (root) {
+    const allocatedToChildren = getDirectChildInstanceQuotaAllocated(
+      projects,
+      root.id,
+      excludeProjectId,
+    )
+    return Math.max(0, root.instanceQuota - allocatedToChildren)
   }
 
   const allocatedToRoots = getRootTenantProjects(projects).reduce((total, project) => {
@@ -538,7 +648,7 @@ function projectMatchesFilters(
   selectedFilter: ProjectListFilter,
   instances: readonly TenantInstance[],
 ): boolean {
-  if (!matchesProjectListFilter(project, selectedFilter, instances)) {
+  if (!matchesProjectListFilter(projects, project, selectedFilter, instances)) {
     return false
   }
 
@@ -595,13 +705,24 @@ export type TenantProjectScopeTreeRow = {
 /** Flat, fully expanded project tree for scope dropdowns and pickers. */
 export function buildTenantProjectScopeTreeRows(
   projects: readonly TenantProject[],
+  options?: { excludeRoot?: boolean },
 ): TenantProjectScopeTreeRow[] {
   const rows: TenantProjectScopeTreeRow[] = []
+  const root = getTenantRootProject(projects)
+  const startParentId = options?.excludeRoot && root ? root.id : null
 
   const appendRows = (parentId: string | null, depth: number) => {
     const siblings = projects
       .filter((project) => (project.parentProjectId ?? null) === parentId)
-      .sort((left, right) => left.name.localeCompare(right.name))
+      .sort((left, right) => {
+        if (isTenantRootProject(left)) {
+          return -1
+        }
+        if (isTenantRootProject(right)) {
+          return 1
+        }
+        return left.name.localeCompare(right.name)
+      })
 
     for (const project of siblings) {
       rows.push({ project, depth })
@@ -609,7 +730,7 @@ export function buildTenantProjectScopeTreeRows(
     }
   }
 
-  appendRows(null, 0)
+  appendRows(startParentId, 0)
   return rows
 }
 
@@ -634,7 +755,15 @@ export function buildTenantProjectTreeRows(
           instances,
         ),
       )
-      .sort((left, right) => left.name.localeCompare(right.name))
+      .sort((left, right) => {
+        if (isTenantRootProject(left)) {
+          return -1
+        }
+        if (isTenantRootProject(right)) {
+          return 1
+        }
+        return left.name.localeCompare(right.name)
+      })
 
     for (const project of siblings) {
       const children = getChildTenantProjects(projects, project.id)
@@ -743,6 +872,7 @@ export function getTenantProjectActions(
   const showCreateNested = handlers.showCreateNested ?? Boolean(handlers.onCreateNested)
   const showEdit = handlers.showEdit ?? Boolean(handlers.onEdit)
   const showDelete = handlers.showDelete ?? Boolean(handlers.onDelete)
+  const isRootProject = isTenantRootProject(project)
 
   return [
     {
@@ -771,14 +901,18 @@ export function getTenantProjectActions(
       ? [
           {
             title: 'Edit',
-            onClick: handlers.editDisabled
+            onClick: handlers.editDisabled || isRootProject
               ? undefined
               : () => {
                   handlers.onEdit?.(project)
                 },
-            isDisabled: handlers.editDisabled,
+            isDisabled: handlers.editDisabled || isRootProject,
             ...disabledActionExplanation(
-              handlers.editDisabled ? handlers.editDisabledTooltip : undefined,
+              isRootProject
+                ? TENANT_PROJECTS_TEAMS_DEMO.rootProjectEditDeniedTooltip
+                : handlers.editDisabled
+                  ? handlers.editDisabledTooltip
+                  : undefined,
             ),
           },
         ]
@@ -790,15 +924,19 @@ export function getTenantProjectActions(
           },
           {
             title: 'Delete',
-            isDanger: !handlers.deleteDisabled,
-            onClick: handlers.deleteDisabled
+            isDanger: !(handlers.deleteDisabled || isRootProject),
+            onClick: handlers.deleteDisabled || isRootProject
               ? undefined
               : () => {
                   handlers.onDelete?.(project.id)
                 },
-            isDisabled: handlers.deleteDisabled,
+            isDisabled: handlers.deleteDisabled || isRootProject,
             ...disabledActionExplanation(
-              handlers.deleteDisabled ? handlers.deleteDisabledTooltip : undefined,
+              isRootProject
+                ? TENANT_PROJECTS_TEAMS_DEMO.rootProjectDeleteDeniedTooltip
+                : handlers.deleteDisabled
+                  ? handlers.deleteDisabledTooltip
+                  : undefined,
             ),
           },
         ]
@@ -813,7 +951,7 @@ export const PROJECT_LIST_FILTER_OPTIONS: ReadonlyArray<{
   label: string
 }> = [
   { value: 'all', label: 'All projects' },
-  { value: 'root', label: 'Root projects' },
+  { value: 'root', label: 'Root' },
   { value: 'nested', label: 'Nested projects' },
   { value: 'with-services', label: 'With services' },
   { value: 'no-services', label: 'No services' },
@@ -846,6 +984,7 @@ export function projectMatchesSearch(
 }
 
 export function matchesProjectListFilter(
+  projects: readonly TenantProject[],
   project: TenantProject,
   selectedFilter: ProjectListFilter,
   instances: readonly TenantInstance[],
@@ -854,9 +993,9 @@ export function matchesProjectListFilter(
     case 'all':
       return true
     case 'root':
-      return !project.parentProjectId
+      return isTenantRootProject(project)
     case 'nested':
-      return Boolean(project.parentProjectId)
+      return isNestedTenantProject(projects, project)
     case 'with-services':
       return getInstancesForTenantProject(instances, project).length > 0
     case 'no-services':
@@ -896,6 +1035,9 @@ export const TENANT_PROJECTS_TEAMS_DEMO = {
   nestedProjectsTitle: 'Nested projects',
   nestedProjectsEmpty: 'No nested projects yet.',
   nestedBadgeLabel: 'Nested',
+  rootBadgeLabel: 'Root',
+  rootProjectDeleteDeniedTooltip: 'The Root project cannot be deleted.',
+  rootProjectEditDeniedTooltip: 'Root project settings are managed by the platform.',
   inheritedMembersHelp:
     'Members inherited from parent projects keep access here. Add project-specific managers or viewers below.',
   detailsFallbackDescription: 'Project workspace for scoped catalog access and team collaboration.',

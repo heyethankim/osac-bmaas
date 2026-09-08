@@ -35,6 +35,7 @@ import {
   CREATE_PROJECT_WIZARD_DEMO,
 } from '../../tenantAdmin/createProjectWizard'
 import {
+  DEMO_TENANT_ROOT_PROJECT_DESCRIPTION,
   getChildTenantProjects,
   getEffectiveProjectMembers,
   getInstancesForTenantProject,
@@ -45,6 +46,7 @@ import {
   getTenantProjectMemberCountLabel,
   getTenantProjectPoolLabel,
   getTenantProjectServicesLabel,
+  isTenantRootProject,
   TENANT_PROJECTS_TEAMS_DEMO,
   type EffectiveTenantProjectMember,
   type TenantProject,
@@ -209,6 +211,7 @@ export function TenantProjectDetailsPage({
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
   const [memberPendingRemove, setMemberPendingRemove] = useState<TenantProjectMember | null>(null)
   const showAddMembersPrompt = promptAddMembers && !readOnly
+  const isRootProject = isTenantRootProject(project)
 
   const parentProject = useMemo(
     () =>
@@ -294,24 +297,40 @@ export function TenantProjectDetailsPage({
         onBack={onBack}
         title={project.name}
         titleId="tenant-project-details-title"
-        description={TENANT_PROJECTS_TEAMS_DEMO.detailsLede}
+        description={
+          isRootProject
+            ? DEMO_TENANT_ROOT_PROJECT_DESCRIPTION
+            : TENANT_PROJECTS_TEAMS_DEMO.detailsLede
+        }
         actions={
           readOnly ? (
             currentUserMembership ? (
               <EntityDetailsActionsDropdown
                 onEdit={() => onEdit(project)}
-                editDisabled={currentUserMembership.role !== 'manager'}
-                editDisabledReason={TENANT_PROJECTS_TEAMS_DEMO.editProjectDeniedTooltip}
+                editDisabled={isRootProject || currentUserMembership.role !== 'manager'}
+                editDisabledReason={
+                  isRootProject
+                    ? TENANT_PROJECTS_TEAMS_DEMO.rootProjectEditDeniedTooltip
+                    : TENANT_PROJECTS_TEAMS_DEMO.editProjectDeniedTooltip
+                }
                 onRemove={() => onDelete(project.id)}
-                removeDisabled={currentUserMembership.role !== 'manager'}
-                removeDisabledReason={TENANT_PROJECTS_TEAMS_DEMO.deleteProjectDeniedTooltip}
+                removeDisabled={isRootProject || currentUserMembership.role !== 'manager'}
+                removeDisabledReason={
+                  isRootProject
+                    ? TENANT_PROJECTS_TEAMS_DEMO.rootProjectDeleteDeniedTooltip
+                    : TENANT_PROJECTS_TEAMS_DEMO.deleteProjectDeniedTooltip
+                }
                 removeLabel="Delete"
               />
             ) : undefined
           ) : (
             <EntityDetailsActionsDropdown
               onEdit={() => onEdit(project)}
+              editDisabled={isRootProject}
+              editDisabledReason={TENANT_PROJECTS_TEAMS_DEMO.rootProjectEditDeniedTooltip}
               onRemove={() => onDelete(project.id)}
+              removeDisabled={isRootProject}
+              removeDisabledReason={TENANT_PROJECTS_TEAMS_DEMO.rootProjectDeleteDeniedTooltip}
               removeLabel="Delete"
             />
           )
