@@ -225,20 +225,27 @@ export function CreateTenantProjectWizard({
 
   const canSaveProjectEdit = !isEditMode || editChanges.length > 0
 
-  const resetWizard = () => {
+  const resetWizard = (parentOverride?: TenantProject | null) => {
+    const parent = parentOverride ?? resolvedParentProject
+    const quota = getAvailableInstanceQuotaForProject(
+      projects,
+      organization,
+      parent,
+      editingProject?.id,
+    )
     const defaultPool = resolveOrganizationExternalIpPool(organization)
     const defaultQuota = Math.max(
       1,
-      Math.min(DEFAULT_CREATE_PROJECT_WIZARD_FORM.instanceQuota, maxInstanceQuota),
+      Math.min(DEFAULT_CREATE_PROJECT_WIZARD_FORM.instanceQuota, quota),
     )
     setForm({
       ...DEFAULT_CREATE_PROJECT_WIZARD_FORM,
-      name: generateUniqueTenantProjectName(projects, resolvedParentProject),
+      name: generateUniqueTenantProjectName(projects, parent),
       environmentType:
-        resolvedParentProject?.environmentType ??
+        parent?.environmentType ??
         parentProject?.environmentType ??
         DEFAULT_CREATE_PROJECT_WIZARD_FORM.environmentType,
-      instanceQuota: defaultQuota,
+      instanceQuota: quota < 1 ? 0 : defaultQuota,
       externalIpPoolId: defaultPool?.id ?? organizationPools[0]?.id ?? '',
     })
   }
@@ -271,8 +278,9 @@ export function CreateTenantProjectWizard({
       return
     }
 
+    const initialParent = parentProject ?? getTenantRootProject(projects)
+
     if (allowParentSelection) {
-      const initialParent = parentProject ?? getTenantRootProject(projects)
       setSelectedParentProjectId(initialParent?.id ?? null)
       setIsParentMenuOpen(false)
     }
@@ -282,8 +290,30 @@ export function CreateTenantProjectWizard({
       return
     }
 
-    resetWizard()
-  }, [editingProject, isOpen, maxInstanceQuota, resolvedParentProject?.id, projects])
+    resetWizard(initialParent)
+    // Re-init only when the wizard opens or launch context parent changes — not when
+    // the user picks a different parent inside allowParentSelection.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- init snapshot
+  }, [isOpen, editingProject?.id, parentProject?.id, allowParentSelection, projects])
+
+  const handleParentProjectSelect = (projectId: string) => {
+    setSelectedParentProjectId(projectId)
+    setIsParentMenuOpen(false)
+
+    const parent = getTenantProjectById(projects, projectId) ?? getTenantRootProject(projects)
+    const quota = getAvailableInstanceQuotaForProject(projects, organization, parent)
+    const defaultQuota = Math.max(
+      1,
+      Math.min(DEFAULT_CREATE_PROJECT_WIZARD_FORM.instanceQuota, quota),
+    )
+
+    setForm((current) => ({
+      ...current,
+      name: generateUniqueTenantProjectName(projects, parent),
+      environmentType: parent?.environmentType ?? current.environmentType,
+      instanceQuota: quota < 1 ? 0 : defaultQuota,
+    }))
+  }
 
   const parentProjectToggleLabel = resolvedParentProject?.name ?? 'Select parent project'
 
@@ -350,8 +380,7 @@ export function CreateTenantProjectWizard({
                 if (value == null) {
                   return
                 }
-                setSelectedParentProjectId(String(value))
-                setIsParentMenuOpen(false)
+                handleParentProjectSelect(String(value))
               }}
               toggle={(toggleRef) => (
                 <MenuToggle
@@ -634,11 +663,7 @@ export function CreateTenantProjectWizard({
 
   const wizard = isOpen ? (
     <Wizard
-      key={
-        editingProject?.id ??
-        (allowParentSelection ? selectedParentProjectId : parentProject?.id) ??
-        'create-tenant-project-wizard'
-      }
+      key={editingProject?.id ?? 'create-tenant-project-wizard'}
       className="tenant-admin-projects-teams__wizard"
       height={isPage ? '100%' : '40rem'}
       isPlain={isPage}
