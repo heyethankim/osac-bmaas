@@ -905,6 +905,10 @@ export const TENANT_PROJECTS_TEAMS_DEMO = {
   membersEmpty: 'No project members yet. Add someone to grant project access.',
   addMemberLabel: 'Add',
   removeMemberLabel: 'Remove',
+  postCreateMembersPromptTitle: 'Project created',
+  postCreateMembersPromptBody:
+    'Invite team members to grant scoped access to this project.',
+  postCreateMembersPromptAction: 'Add member',
 } as const
 
 const ORG_VCPU_TOTAL = 240

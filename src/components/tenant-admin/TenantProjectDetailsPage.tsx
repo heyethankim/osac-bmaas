@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react'
 import {
+  Alert,
+  AlertActionCloseButton,
+  AlertActionLink,
   Button,
   Content,
   DescriptionList,
@@ -69,6 +72,8 @@ type TenantProjectDetailsPageProps = {
   onNavigateToInstance: (instance: TenantInstance) => void
   readOnly?: boolean
   currentUserEmail?: string
+  promptAddMembers?: boolean
+  onDismissAddMembersPrompt?: () => void
 }
 
 function formatCreatedAt(iso: string): string {
@@ -198,9 +203,12 @@ export function TenantProjectDetailsPage({
   onNavigateToInstance,
   readOnly = false,
   currentUserEmail,
+  promptAddMembers = false,
+  onDismissAddMembersPrompt,
 }: TenantProjectDetailsPageProps) {
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
   const [memberPendingRemove, setMemberPendingRemove] = useState<TenantProjectMember | null>(null)
+  const showAddMembersPrompt = promptAddMembers && !readOnly
 
   const parentProject = useMemo(
     () =>
@@ -309,6 +317,33 @@ export function TenantProjectDetailsPage({
           )
         }
       >
+        {showAddMembersPrompt ? (
+          <Alert
+            variant="success"
+            isInline
+            title={TENANT_PROJECTS_TEAMS_DEMO.postCreateMembersPromptTitle}
+            className="tenant-admin-project-details__post-create-alert"
+            actionClose={
+              onDismissAddMembersPrompt ? (
+                <AlertActionCloseButton
+                  onClose={onDismissAddMembersPrompt}
+                  aria-label="Dismiss project created notice"
+                />
+              ) : undefined
+            }
+          >
+            {TENANT_PROJECTS_TEAMS_DEMO.postCreateMembersPromptBody}{' '}
+            <AlertActionLink
+              component="button"
+              onClick={() => {
+                onDismissAddMembersPrompt?.()
+                setIsAddMemberOpen(true)
+              }}
+            >
+              {TENANT_PROJECTS_TEAMS_DEMO.postCreateMembersPromptAction}
+            </AlertActionLink>
+          </Alert>
+        ) : null}
         <div className="entity-details-page__columns entity-details-page__columns--with-rail">
           <div className="entity-details-page__main-stack">
             <div className="entity-details-page__columns entity-details-page__columns--2">

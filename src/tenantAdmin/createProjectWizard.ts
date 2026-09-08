@@ -5,7 +5,7 @@ import type {
   TenantProjectMemberRole,
 } from './projects'
 
-export type CreateProjectWizardStepId = 'project-info' | 'team-members' | 'review'
+export type CreateProjectWizardStepId = 'project-info' | 'review'
 
 export type { TenantProjectEnvironment, TenantProjectMemberRole } from './projects'
 
@@ -24,11 +24,6 @@ export const CREATE_PROJECT_WIZARD_STEPS: ReadonlyArray<{
   {
     id: 'project-info',
     label: 'Project Info',
-    description: '',
-  },
-  {
-    id: 'team-members',
-    label: 'Team Members',
     description: '',
   },
   {
@@ -70,13 +65,14 @@ export const CREATE_PROJECT_WIZARD_DEMO = {
   descriptionPlaceholder: "Optional — describe this project's purpose",
   memberNamePlaceholder: 'Full name',
   memberEmailPlaceholder: 'email@northsummitbank.com',
-  membersEmptyTitle: 'No members added yet. You can also add them later.',
-  membersInviteNote:
-    'Invitees will receive an email to join the platform and be scoped to this project.',
   reviewLede: 'Confirm project details before creating.',
   reviewEditLede: 'Review your changes before saving.',
   reviewNoDescription: 'No description',
-  reviewNoMembers: 'No members yet — you can invite them later.',
+  reviewMembersAlertTitle: 'Team members',
+  reviewMembersAlertBody:
+    'You can invite managers and viewers on the project details page after creation.',
+  reviewInheritedMembersAlertBody:
+    'Members inherited from the parent project keep access. Add project-specific members on the details page after creation.',
   addMemberLabel: 'Add',
   continueLabel: 'Continue',
   createProjectLabel: 'Create project',
@@ -97,10 +93,6 @@ export type CreateProjectWizardForm = {
   instanceQuota: number
   externalIpPoolId: string
   ipPoolSlice: string
-  memberName: string
-  memberEmail: string
-  memberRole: TenantProjectMemberRole
-  members: TenantProjectWizardMember[]
 }
 
 export const DEFAULT_CREATE_PROJECT_WIZARD_FORM: CreateProjectWizardForm = {
@@ -112,17 +104,6 @@ export const DEFAULT_CREATE_PROJECT_WIZARD_FORM: CreateProjectWizardForm = {
   instanceQuota: 7,
   externalIpPoolId: '',
   ipPoolSlice: DEFAULT_PROJECT_IP_SLICE,
-  memberName: 'Jordan Lee',
-  memberEmail: 'jordan@northsummitbank.com',
-  memberRole: 'manager',
-  members: [
-    {
-      id: 'project-member-demo',
-      name: 'Chris Morgan',
-      email: 'cmorgan@northsummitbank.com',
-      role: 'manager',
-    },
-  ],
 }
 
 export function formFromTenantProject(project: TenantProject): CreateProjectWizardForm {
@@ -135,15 +116,6 @@ export function formFromTenantProject(project: TenantProject): CreateProjectWiza
     instanceQuota: project.instanceQuota,
     externalIpPoolId: project.externalIpPoolId ?? '',
     ipPoolSlice: project.externalIpPoolCidr ?? DEFAULT_PROJECT_IP_SLICE,
-    memberName: '',
-    memberEmail: '',
-    memberRole: 'manager',
-    members: project.members.map((member) => ({
-      id: member.id,
-      name: member.name,
-      email: member.email,
-      role: member.role,
-    })),
   }
 }
 

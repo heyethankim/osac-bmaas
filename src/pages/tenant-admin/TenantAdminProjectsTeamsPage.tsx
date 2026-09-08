@@ -100,6 +100,7 @@ export function TenantAdminProjectsTeamsPage({
   const [selectedProject, setSelectedProject] = useState<TenantProject | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [projectPendingDelete, setProjectPendingDelete] = useState<TenantProject | null>(null)
+  const [promptAddMembersProjectId, setPromptAddMembersProjectId] = useState<string | null>(null)
   const [searchValue, setSearchValue] = useState('')
   const [selectedProjectFilter, setSelectedProjectFilter] = useState<ProjectListFilter>('all')
   const [expandedProjectIds, setExpandedProjectIds] = useState<Set<string>>(() => new Set())
@@ -267,6 +268,7 @@ export function TenantAdminProjectsTeamsPage({
 
   const closeDetails = () => {
     setIsDetailsOpen(false)
+    setPromptAddMembersProjectId(null)
   }
 
   const closeCreateWizard = () => {
@@ -343,6 +345,13 @@ export function TenantAdminProjectsTeamsPage({
 
     addTenantProject(tenantSlug, nextProject)
     onProjectsChange([...projectCatalog, nextProject])
+    setIsCreateModalOpen(false)
+    setEditingProject(null)
+    setNestedCreateParent(null)
+    setReturnToProjectAfterWizard(null)
+    setSelectedProject(nextProject)
+    setIsDetailsOpen(true)
+    setPromptAddMembersProjectId(nextProject.id)
   }
 
   const handleUpdateProject = (project: TenantProject) => {
@@ -500,6 +509,8 @@ export function TenantAdminProjectsTeamsPage({
           onNavigateToInstance={onNavigateToInstance}
           readOnly={readOnly}
           currentUserEmail={currentUserEmail}
+          promptAddMembers={promptAddMembersProjectId === selectedProject.id}
+          onDismissAddMembersPrompt={() => setPromptAddMembersProjectId(null)}
         />
         {deleteConfirmModal}
       </>

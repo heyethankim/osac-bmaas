@@ -3,9 +3,7 @@ import type { CreateProjectWizardStepId } from './createProjectWizard'
 import {
   CREATE_PROJECT_WIZARD_DEMO,
   formFromTenantProject,
-  getTenantProjectMemberRoleShortLabel,
   type CreateProjectWizardForm,
-  type TenantProjectWizardMember,
 } from './createProjectWizard'
 import {
   resolveOrganizationExternalIpPools,
@@ -22,7 +20,6 @@ export type ProjectEditSnapshot = {
   description: SnapshotValue
   instanceQuota: SnapshotValue
   externalIpPool: SnapshotValue
-  members: SnapshotValue
 }
 
 export type ProjectEditChangeRow = {
@@ -71,33 +68,6 @@ function formatExternalIpPool(
   return `${resolved.name} (${cidr})`
 }
 
-function serializeMembers(members: readonly TenantProjectWizardMember[]): string {
-  return JSON.stringify(
-    [...members]
-      .sort((left, right) => left.email.localeCompare(right.email))
-      .map((member) => ({
-        id: member.id,
-        name: member.name.trim(),
-        email: member.email.trim().toLowerCase(),
-        role: member.role,
-      })),
-  )
-}
-
-function formatMembers(members: readonly TenantProjectWizardMember[]): string {
-  if (members.length === 0) {
-    return CREATE_PROJECT_WIZARD_DEMO.reviewNoMembers
-  }
-
-  return [...members]
-    .sort((left, right) => left.email.localeCompare(right.email))
-    .map(
-      (member) =>
-        `${member.name} · ${member.email} · ${getTenantProjectMemberRoleShortLabel(member.role)}`,
-    )
-    .join('; ')
-}
-
 export function buildProjectEditSnapshotFromForm(
   form: CreateProjectWizardForm,
   organization: RegisteredOrganization,
@@ -124,7 +94,6 @@ export function buildProjectEditSnapshotFromForm(
         organization,
       ),
     ),
-    members: snapshotValue(serializeMembers(form.members), formatMembers(form.members)),
   }
 }
 
@@ -149,7 +118,6 @@ const PROJECT_EDIT_FIELD_CONFIG: ReadonlyArray<{
   { id: 'description', stepId: 'project-info', label: 'Description' },
   { id: 'instanceQuota', stepId: 'project-info', label: 'Instance quota' },
   { id: 'externalIpPool', stepId: 'project-info', label: 'External IP pool' },
-  { id: 'members', stepId: 'team-members', label: 'Team members' },
 ]
 
 export function getProjectEditChanges(
