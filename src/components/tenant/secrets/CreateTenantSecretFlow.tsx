@@ -100,11 +100,8 @@ function getSecretWizardLede(type: TenantSecretType): string {
   }
 }
 
-function buildInitialSecretFormState(
-  presentation: CreateTenantSecretFlowProps['presentation'],
-  type: TenantSecretType,
-): TenantSecretFormState {
-  return createSecretFormState(type, { prefill: presentation === 'modal' })
+function buildInitialSecretFormState(type: TenantSecretType): TenantSecretFormState {
+  return createSecretFormState(type, { prefill: true })
 }
 
 function getSecretName(type: TenantSecretType, form: TenantSecretFormState): string {
@@ -583,7 +580,7 @@ function renderSecretReview(type: TenantSecretType, form: TenantSecretFormState)
           </DescriptionListGroup>
           <DescriptionListGroup>
             <DescriptionListTerm>Values</DescriptionListTerm>
-            <DescriptionListDescription>Provided</DescriptionListDescription>
+            <DescriptionListDescription>Set (hidden)</DescriptionListDescription>
           </DescriptionListGroup>
         </DescriptionList>
       )
@@ -647,7 +644,7 @@ function renderSecretReview(type: TenantSecretType, form: TenantSecretFormState)
               </DescriptionListGroup>
               <DescriptionListGroup>
                 <DescriptionListTerm>Password or token</DescriptionListTerm>
-                <DescriptionListDescription>Provided</DescriptionListDescription>
+                <DescriptionListDescription>Set (hidden)</DescriptionListDescription>
               </DescriptionListGroup>
             </>
           ) : (
@@ -670,7 +667,7 @@ function renderSecretReview(type: TenantSecretType, form: TenantSecretFormState)
           </DescriptionListGroup>
           <DescriptionListGroup>
             <DescriptionListTerm>Webhook secret key</DescriptionListTerm>
-            <DescriptionListDescription>Provided</DescriptionListDescription>
+            <DescriptionListDescription>Set (hidden)</DescriptionListDescription>
           </DescriptionListGroup>
         </DescriptionList>
       )
@@ -802,7 +799,7 @@ export function CreateTenantSecretFlow({
   const [selectedType, setSelectedType] = useState<TenantSecretType | null>(defaultType)
   const activeType = selectedType ?? initialType ?? null
   const [formState, setFormState] = useState<TenantSecretFormState>(() =>
-    buildInitialSecretFormState(presentation, defaultType ?? 'key-value'),
+    buildInitialSecretFormState(defaultType ?? 'key-value'),
   )
 
   const wizardTitle = activeType
@@ -816,7 +813,7 @@ export function CreateTenantSecretFlow({
 
   const resetFlow = (type: TenantSecretType | null = initialType ?? (isModal ? 'key-value' : null)) => {
     setSelectedType(type)
-    setFormState(buildInitialSecretFormState(presentation, type ?? 'key-value'))
+    setFormState(buildInitialSecretFormState(type ?? 'key-value'))
   }
 
   const handleClose = () => {
@@ -837,12 +834,12 @@ export function CreateTenantSecretFlow({
 
     const type = initialType ?? (isModal ? 'key-value' : null)
     setSelectedType(type)
-    setFormState(buildInitialSecretFormState(presentation, type ?? 'key-value'))
-  }, [initialType, isModal, isOpen, presentation])
+    setFormState(buildInitialSecretFormState(type ?? 'key-value'))
+  }, [initialType, isModal, isOpen])
 
   const handleTypeChange = (type: TenantSecretType) => {
     setSelectedType(type)
-    setFormState(buildInitialSecretFormState(presentation, type))
+    setFormState(buildInitialSecretFormState(type))
   }
 
   const handleCreate = () => {

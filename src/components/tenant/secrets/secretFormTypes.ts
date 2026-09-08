@@ -75,6 +75,16 @@ export function createImagePullCredential(): ImagePullCredential {
   }
 }
 
+function createDemoImagePullCredential(): ImagePullCredential {
+  return {
+    id: createRowId('cred'),
+    registryServer: 'quay.io',
+    username: 'platform+pull',
+    password: 'demo-pull-password',
+    email: 'brotman@redhat.com',
+  }
+}
+
 export const DEFAULT_KEY_VALUE_SECRET_FORM: KeyValueSecretForm = {
   name: '',
   pairs: [createKeyValuePair()],
@@ -117,7 +127,12 @@ export function createDefaultSecretFormState(type: TenantSecretType): TenantSecr
 
 const DEMO_WEBHOOK_SECRET_KEY = 'whsec_demo_ci_webhook_8f2c91a4b7e3d056'
 
-/** Demo prefills so the modal create flow is ready to submit. */
+const DEMO_SSH_PRIVATE_KEY = `-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
+QyNTUxOQAAACBExampleDemoKeyOnlyNotRealPrivateKeyMaterial==
+-----END OPENSSH PRIVATE KEY-----`
+
+/** Demo prefills so the create flow is ready to submit for every secret type. */
 export function createDemoSecretFormState(type: TenantSecretType): TenantSecretFormState {
   const base = createDefaultSecretFormState(type)
 
@@ -141,8 +156,8 @@ export function createDemoSecretFormState(type: TenantSecretType): TenantSecretF
         ...base,
         imagePull: {
           name: 'ocp-pull-secret',
-          authMode: 'upload-configuration',
-          credentials: [createImagePullCredential()],
+          authMode: 'registry-credentials',
+          credentials: [createDemoImagePullCredential()],
           configurationFileName: 'pull-secret.json',
           configurationFileContents: CLUSTER_LAUNCH_DEMO_PULL_SECRET,
         },
@@ -155,8 +170,8 @@ export function createDemoSecretFormState(type: TenantSecretType): TenantSecretF
           authMode: 'basic',
           username: 'platform-bot',
           passwordOrToken: 'ghp_demo_platform_bot_token',
-          sshPrivateKeyFileName: '',
-          sshPrivateKeyContents: '',
+          sshPrivateKeyFileName: 'id_ed25519',
+          sshPrivateKeyContents: DEMO_SSH_PRIVATE_KEY,
         },
       }
     case 'webhook':
