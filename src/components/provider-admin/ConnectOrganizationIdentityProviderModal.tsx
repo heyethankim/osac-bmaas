@@ -18,15 +18,11 @@ import {
   TextInput,
 } from '@patternfly/react-core'
 import {
-  areAdditionalDomainsValid,
-  buildDefaultAdditionalDomains,
   buildDefaultIdentityProviderClientId,
   buildDemoIdentityProviderName,
-  getTakenEmailDomains,
-  normalizeAdditionalDomains,
   type RegisteredOrganization,
 } from '../../providerAdmin/organizations'
-import { getProviderRegisteredOrganizations, updateProviderRegisteredOrganization } from '../../providerSetup/storage'
+import { updateProviderRegisteredOrganization } from '../../providerSetup/storage'
 import {
   ORGANIZATION_ACTION_SUCCESS_AUTO_CLOSE_MS,
   ORGANIZATION_ACTION_WORKING_MS,
@@ -34,10 +30,7 @@ import {
   OrganizationActionWorkingState,
   type OrganizationActionCompletionPhase,
 } from './OrganizationActionSuccessState'
-import {
-  AdditionalEmailDomainsField,
-  AdditionalEmailDomainsValue,
-} from './AdditionalEmailDomainsField'
+import { AdditionalEmailDomainsValue } from './AdditionalEmailDomainsField'
 
 type IdentityProviderProtocol = 'OIDC' | 'SAML'
 
@@ -98,7 +91,6 @@ export function ConnectOrganizationIdentityProviderModal({
     issuerUrl: '',
     clientId: '',
   })
-  const [additionalDomains, setAdditionalDomains] = useState<string[]>([])
   const [completionPhase, setCompletionPhase] =
     useState<OrganizationActionCompletionPhase>('idle')
   const completionTimersRef = useRef<number[]>([])
@@ -122,7 +114,6 @@ export function ConnectOrganizationIdentityProviderModal({
     clearCompletionTimers()
     setCompletionPhase('idle')
     setForm(buildDefaultForm(organization))
-    setAdditionalDomains(buildDefaultAdditionalDomains(organization))
     setMode(organization.identityProviderConnected ? 'view' : 'connect')
   }, [isOpen, organization])
 
@@ -130,20 +121,8 @@ export function ConnectOrganizationIdentityProviderModal({
     return null
   }
 
-  const takenEmailDomains = getTakenEmailDomains(
-    getProviderRegisteredOrganizations(),
-    organization.id,
-  )
-  const additionalDomainsValid = areAdditionalDomainsValid(
-    additionalDomains,
-    organization.primaryDomain,
-    takenEmailDomains,
-  )
   const isFormDisabled =
-    !form.displayName.trim() ||
-    !form.issuerUrl.trim() ||
-    !form.clientId.trim() ||
-    !additionalDomainsValid
+    !form.displayName.trim() || !form.issuerUrl.trim() || !form.clientId.trim()
   const issuerLabel = form.protocol === 'SAML' ? 'Metadata URL' : 'Issuer URL'
   const clientLabel = form.protocol === 'SAML' ? 'Entity ID' : 'Client ID'
   const isCompleting = completionPhase !== 'idle'
@@ -156,7 +135,6 @@ export function ConnectOrganizationIdentityProviderModal({
 
   const handleCancelEdit = () => {
     setForm(buildDefaultForm(organization))
-    setAdditionalDomains(buildDefaultAdditionalDomains(organization))
     setMode('view')
   }
 
@@ -177,10 +155,6 @@ export function ConnectOrganizationIdentityProviderModal({
       identityProviderProtocol: form.protocol,
       identityProviderIssuerUrl: form.issuerUrl.trim(),
       identityProviderClientId: form.clientId.trim(),
-      additionalDomains: normalizeAdditionalDomains(
-        additionalDomains,
-        organization.primaryDomain,
-      ),
       idpInviteStatus: organization.idpInviteToken ? 'accepted' : organization.idpInviteStatus,
     })
 
@@ -313,14 +287,6 @@ export function ConnectOrganizationIdentityProviderModal({
                   aria-readonly="true"
                 />
               </FormGroup>
-              <AdditionalEmailDomainsField
-                idPrefix="connect-idp-additional-domain"
-                primaryDomain={organization.primaryDomain}
-                domains={additionalDomains}
-                onChange={setAdditionalDomains}
-                takenDomains={takenEmailDomains}
-                isDisabled={isCompleting}
-              />
               <FormGroup label="Protocol" fieldId="connect-idp-protocol" isRequired>
                 <FormSelect
                   id="connect-idp-protocol"

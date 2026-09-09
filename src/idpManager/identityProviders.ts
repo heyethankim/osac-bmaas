@@ -1,7 +1,6 @@
 import {
   buildDemoIdentityProviderName,
   buildDefaultIdentityProviderClientId,
-  normalizeAdditionalDomains,
   resolveOrganizationIdentityProviders,
   type IdentityProviderConnectedBy,
   type OrganizationIdentityProvider,
@@ -81,7 +80,6 @@ function primaryIdentityProviderPatch(
 export function addOrganizationIdentityProvider(
   organization: RegisteredOrganization,
   draft: IdentityProviderDraft,
-  additionalDomains: string[],
   connectedBy: IdentityProviderConnectedBy,
 ): RegisteredOrganization | null {
   const nextProviders = [
@@ -91,7 +89,6 @@ export function addOrganizationIdentityProvider(
 
   return updateProviderRegisteredOrganization(organization.id, {
     identityProviders: nextProviders,
-    additionalDomains: normalizeAdditionalDomains(additionalDomains, organization.primaryDomain),
     ...primaryIdentityProviderPatch(nextProviders, {
       existingConnectedBy: organization.identityProviderConnectedBy,
       connectedBy,
@@ -103,7 +100,6 @@ export function updateOrganizationIdentityProvider(
   organization: RegisteredOrganization,
   providerId: string,
   draft: IdentityProviderDraft,
-  additionalDomains: string[],
 ): RegisteredOrganization | null {
   const currentProviders = resolveOrganizationIdentityProviders(organization)
   const nextProviders = currentProviders.map((provider) =>
@@ -118,7 +114,6 @@ export function updateOrganizationIdentityProvider(
 
   return updateProviderRegisteredOrganization(organization.id, {
     identityProviders: nextProviders,
-    additionalDomains: normalizeAdditionalDomains(additionalDomains, organization.primaryDomain),
     ...primaryIdentityProviderPatch(nextProviders, {
       existingConnectedBy: organization.identityProviderConnectedBy,
     }),

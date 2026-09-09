@@ -800,6 +800,7 @@ export type RegisterOrganizationStepId = (typeof REGISTER_ORGANIZATION_STEPS)[nu
 export type RegisterOrganizationForm = {
   organizationName: string
   primaryDomain: string
+  additionalDomains: string[]
   billingAccountId: string
   billingAccountName: string
   externalIpPoolId: string
@@ -834,6 +835,7 @@ function registerFormBreakGlassFields(
 export const DEFAULT_REGISTER_ORGANIZATION_FORM: RegisterOrganizationForm = {
   organizationName: DEMO_BLUESOLACE_ORG_NAME,
   primaryDomain: DEMO_BLUESOLACE_PRIMARY_DOMAIN,
+  additionalDomains: [buildDemoSubsidiaryDomain('silverpinetrust.com')],
   billingAccountId: '',
   billingAccountName: DEMO_BLUESOLACE_BILLING_ACCOUNT_NAME,
   externalIpPoolId: 'eipool-northsummit-edge',
@@ -1344,6 +1346,8 @@ export function formFromRegisteredOrganization(
   return {
     organizationName: organization.name,
     primaryDomain: organization.primaryDomain,
+    additionalDomains:
+      organization.additionalDomains.length > 0 ? [...organization.additionalDomains] : [],
     billingAccountId: organization.billingAccountId,
     billingAccountName: organization.billingAccountName,
     externalIpPoolId: organization.externalIpPoolId ?? '',

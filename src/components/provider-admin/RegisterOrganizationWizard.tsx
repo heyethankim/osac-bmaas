@@ -38,9 +38,11 @@ import {
   generateOrganizationId,
   generateTenantId,
   generateBillingAccountId,
+  getTakenEmailDomains,
   isOrganizationDomainTaken,
   isOrganizationNameTaken,
   isOrganizationSlugTaken,
+  areAdditionalDomainsValid,
   isValidPrimaryDomain,
   normalizeAdditionalDomains,
   normalizePrimaryDomain,
@@ -55,6 +57,10 @@ import {
   isValidKubernetesResourceName,
 } from '../../shared/kubernetesResourceName'
 import { TenantCompanyLogoField } from './TenantCompanyLogoField'
+import {
+  AdditionalEmailDomainsField,
+  AdditionalEmailDomainsValue,
+} from './AdditionalEmailDomainsField'
 
 type RegisterOrganizationWizardProps = {
   isOpen: boolean
@@ -144,6 +150,10 @@ export function RegisterOrganizationWizard({
 
   const excludeOrganizationId = editingOrganization?.id
   const primaryDomain = normalizePrimaryDomain(form.primaryDomain)
+  const takenEmailDomains = useMemo(
+    () => getTakenEmailDomains(existingOrganizations, excludeOrganizationId),
+    [existingOrganizations, excludeOrganizationId],
+  )
   const nameTaken = isOrganizationNameTaken(
     form.organizationName,
     existingOrganizations,
@@ -160,10 +170,16 @@ export function RegisterOrganizationWizard({
     excludeOrganizationId,
   )
   const nameFormat = getKubernetesResourceNameValidation(form.organizationName)
+  const additionalDomainsValid = areAdditionalDomainsValid(
+    form.additionalDomains,
+    form.primaryDomain,
+    takenEmailDomains,
+  )
   const isOrganizationStepValid =
     isValidKubernetesResourceName(form.organizationName) &&
     isValidKubernetesResourceName(form.billingAccountName) &&
     isValidPrimaryDomain(form.primaryDomain) &&
+    additionalDomainsValid &&
     !nameTaken &&
     !domainTaken &&
     !slugTaken
@@ -200,6 +216,10 @@ export function RegisterOrganizationWizard({
 
     const logoSrc = form.logoSrc.trim() || null
     const logoFileName = form.logoFileName.trim() || null
+    const normalizedAdditionalDomains = normalizeAdditionalDomains(
+      form.additionalDomains,
+      primaryDomain,
+    )
 
     if (editingOrganization) {
       const updated: RegisteredOrganization = {
@@ -207,10 +227,7 @@ export function RegisterOrganizationWizard({
         name: form.organizationName.trim(),
         slug: slugifyOrganizationName(form.organizationName),
         primaryDomain,
-        additionalDomains: normalizeAdditionalDomains(
-          editingOrganization.additionalDomains,
-          primaryDomain,
-        ),
+        additionalDomains: normalizedAdditionalDomains,
         billingAccountName: form.billingAccountName.trim(),
         logoSrc,
         logoFileName,
@@ -226,7 +243,7 @@ export function RegisterOrganizationWizard({
       tenantId: generateTenantId(),
       slug: slugifyOrganizationName(form.organizationName),
       primaryDomain,
-      additionalDomains: [],
+      additionalDomains: normalizedAdditionalDomains,
       billingAccountId: form.billingAccountId.trim() || generateBillingAccountId(),
       billingAccountName: form.billingAccountName.trim(),
       logoSrc,
@@ -346,11 +363,20 @@ export function RegisterOrganizationWizard({
                     <HelperTextItem variant={domainTaken ? 'error' : 'default'}>
                       {domainTaken
                         ? 'This email domain is already mapped to another tenant.'
-                        : 'Used to map this tenant to an identity provider. Add more domains when you connect the IdP.'}
+                        : 'Primary domain for tenant sign-in and IdP association.'}
                     </HelperTextItem>
                   </HelperText>
                 </FormHelperText>
               </FormGroup>
+              <AdditionalEmailDomainsField
+                idPrefix="register-additional-domain"
+                primaryDomain={form.primaryDomain}
+                domains={form.additionalDomains}
+                onChange={(additionalDomains) =>
+                  setForm((current) => ({ ...current, additionalDomains }))
+                }
+                takenDomains={takenEmailDomains}
+              />
               <TenantCompanyLogoField
                 id="register-company-logo"
                 logoSrc={form.logoSrc}
@@ -398,6 +424,14 @@ export function RegisterOrganizationWizard({
               <DescriptionListTerm>Primary email domain</DescriptionListTerm>
               <DescriptionListDescription>
                 {primaryDomain || '—'}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Additional email domains</DescriptionListTerm>
+              <DescriptionListDescription>
+                <AdditionalEmailDomainsValue
+                  domains={normalizeAdditionalDomains(form.additionalDomains, primaryDomain)}
+                />
               </DescriptionListDescription>
             </DescriptionListGroup>
             <DescriptionListGroup>

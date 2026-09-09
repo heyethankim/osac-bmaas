@@ -619,6 +619,7 @@ export function ProviderAdminOrganizationsPage({
                     className="provider-admin-catalog-items__card provider-admin-organizations__card"
                   >
                     <CardBody>
+                      <div className="provider-admin-organizations__card-main">
                       <div className="provider-admin-catalog-items__card-header">
                         <span
                           className="provider-admin-catalog-items__card-icon provider-admin-organizations__card-logo provider-admin-organizations__card-logo--initial"
@@ -669,12 +670,6 @@ export function ProviderAdminOrganizationsPage({
                           {org.name}
                         </Button>
                       </Content>
-                      <Content
-                        component="p"
-                        className="provider-admin-organizations__secondary-cell provider-admin-organizations__card-tenant-id"
-                      >
-                        <code>{org.tenantId}</code>
-                      </Content>
                       <CatalogSpecRowsList
                         rows={[
                           { label: 'Domain', value: org.primaryDomain || '—' },
@@ -684,14 +679,15 @@ export function ProviderAdminOrganizationsPage({
                           },
                           { label: 'Registered', value: formatRegisteredAt(org.createdAt) },
                         ]}
-                        className="provider-admin-catalog-items__specs-list"
+                        className="provider-admin-catalog-items__specs-list provider-admin-organizations__card-specs"
                         rowClassName="provider-admin-catalog-items__spec-row"
                         labelClassName="provider-admin-catalog-items__spec-label"
                         valueClassName="provider-admin-catalog-items__spec-value"
                       />
+                      </div>
                       {setupSignal ? (
                         <div
-                          className="provider-admin-catalog-items__card-footer"
+                          className="provider-admin-catalog-items__card-footer provider-admin-organizations__card-footer"
                           aria-label="Setup"
                         >
                           {nextAction ? (
@@ -770,9 +766,6 @@ export function ProviderAdminOrganizationsPage({
                         >
                           {org.name}
                         </Button>
-                      </Content>
-                      <Content component="p" className="provider-admin-organizations__secondary-cell">
-                        <code>{org.tenantId}</code>
                       </Content>
                     </Td>
                     <Td modifier="wrap" dataLabel="Status">

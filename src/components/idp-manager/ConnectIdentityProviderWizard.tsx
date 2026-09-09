@@ -13,7 +13,7 @@ import {
   FormSelectOption,
   TextInput,
 } from '@patternfly/react-core'
-import { AdditionalEmailDomainsField, AdditionalEmailDomainsValue } from '../provider-admin/AdditionalEmailDomainsField'
+import { AdditionalEmailDomainsValue } from '../provider-admin/AdditionalEmailDomainsField'
 import {
   ORGANIZATION_ACTION_SUCCESS_AUTO_CLOSE_MS,
   ORGANIZATION_ACTION_WORKING_MS,
@@ -29,15 +29,11 @@ import { NETWORK_INVENTORY_CREATE_REVIEW_STEP } from '../../networking/networkIn
 import { ResourceCreatePageShell } from '../shared/ResourceCreatePageShell'
 import { IDP_MANAGER_IDENTITY_PROVIDER_COPY } from '../../idpManager/constants'
 import {
-  areAdditionalDomainsValid,
-  buildDefaultAdditionalDomains,
-  getTakenEmailDomains,
   identityProviderProtocolLabel,
   type IdentityProviderConnectedBy,
   type OrganizationIdentityProvider,
   type RegisteredOrganization,
 } from '../../providerAdmin/organizations'
-import { getProviderRegisteredOrganizations } from '../../providerSetup/storage'
 import {
   addOrganizationIdentityProvider,
   buildDefaultIdentityProviderDraft,
@@ -76,9 +72,6 @@ export function ConnectIdentityProviderWizard({
       ? draftFromIdentityProvider(editingProvider)
       : buildDefaultIdentityProviderDraft(organization),
   )
-  const [additionalDomains, setAdditionalDomains] = useState(() =>
-    buildDefaultAdditionalDomains(organization),
-  )
   const [completionPhase, setCompletionPhase] =
     useState<OrganizationActionCompletionPhase>('idle')
   const completionTimersRef = useRef<number[]>([])
@@ -94,20 +87,10 @@ export function ConnectIdentityProviderWizard({
     }
   }, [])
 
-  const takenEmailDomains = getTakenEmailDomains(
-    getProviderRegisteredOrganizations(),
-    organization.id,
-  )
-  const additionalDomainsValid = areAdditionalDomainsValid(
-    additionalDomains,
-    organization.primaryDomain,
-    takenEmailDomains,
-  )
   const isDetailsStepValid =
     Boolean(form.displayName.trim()) &&
     Boolean(form.issuerUrl.trim()) &&
-    Boolean(form.clientId.trim()) &&
-    additionalDomainsValid
+    Boolean(form.clientId.trim())
   const issuerLabel = form.protocol === 'SAML' ? 'Metadata URL' : 'Issuer URL'
   const clientLabel = form.protocol === 'SAML' ? 'Entity ID' : 'Client ID'
   const parentLabel = IDP_MANAGER_IDENTITY_PROVIDER_COPY.title
@@ -122,13 +105,8 @@ export function ConnectIdentityProviderWizard({
 
   const persistProvider = () => {
     return editingProvider
-      ? updateOrganizationIdentityProvider(
-          organization,
-          editingProvider.id,
-          form,
-          additionalDomains,
-        )
-      : addOrganizationIdentityProvider(organization, form, additionalDomains, connectedBy)
+      ? updateOrganizationIdentityProvider(organization, editingProvider.id, form)
+      : addOrganizationIdentityProvider(organization, form, connectedBy)
   }
 
   const handleSave = () => {
@@ -182,13 +160,6 @@ export function ConnectIdentityProviderWizard({
                 aria-readonly="true"
               />
             </FormGroup>
-            <AdditionalEmailDomainsField
-              idPrefix="connect-idp-additional-domain"
-              primaryDomain={organization.primaryDomain}
-              domains={additionalDomains}
-              onChange={setAdditionalDomains}
-              takenDomains={takenEmailDomains}
-            />
             <FormGroup label="Protocol" fieldId="connect-idp-protocol" isRequired>
               <FormSelect
                 id="connect-idp-protocol"
@@ -248,7 +219,7 @@ export function ConnectIdentityProviderWizard({
         <DescriptionListGroup>
           <DescriptionListTerm>Additional email domains</DescriptionListTerm>
           <DescriptionListDescription>
-            <AdditionalEmailDomainsValue domains={additionalDomains} />
+            <AdditionalEmailDomainsValue domains={organization.additionalDomains ?? []} />
           </DescriptionListDescription>
         </DescriptionListGroup>
         <DescriptionListGroup>

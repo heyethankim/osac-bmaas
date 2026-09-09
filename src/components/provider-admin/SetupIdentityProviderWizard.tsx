@@ -24,21 +24,18 @@ import {
   WizardStep,
 } from '@patternfly/react-core'
 import {
-  areAdditionalDomainsValid,
   buildBreakGlassIssuePatch,
-  buildDefaultAdditionalDomains,
   buildDefaultIdentityProviderClientId,
   buildDemoIdentityProviderName,
   createIdpInviteTimestamps,
   generateIdpInviteToken,
   getIdpManagerSetupPath,
-  getTakenEmailDomains,
   hasBreakGlassAccount,
   hasPendingIdpInvite,
   normalizeAdditionalDomains,
   type RegisteredOrganization,
 } from '../../providerAdmin/organizations'
-import { getProviderRegisteredOrganizations, updateProviderRegisteredOrganization } from '../../providerSetup/storage'
+import { updateProviderRegisteredOrganization } from '../../providerSetup/storage'
 import { identityProviderFromDraft } from '../../idpManager/identityProviders'
 import {
   ORGANIZATION_ACTION_WORKING_MS,
@@ -48,7 +45,6 @@ import {
 } from './OrganizationActionSuccessState'
 import { ResourceCreatePageShell } from '../shared/ResourceCreatePageShell'
 import { useWizardLeaveConfirm } from '../shared/useWizardLeaveConfirm'
-import { AdditionalEmailDomainsField } from './AdditionalEmailDomainsField'
 import {
   BreakGlassCredentialsPanel,
   issuedBreakGlassFromOrganization,
@@ -123,7 +119,6 @@ export function SetupIdentityProviderWizard({
     issuerUrl: '',
     clientId: '',
   })
-  const [additionalDomains, setAdditionalDomains] = useState<string[]>([])
   const [completionPhase, setCompletionPhase] =
     useState<OrganizationActionCompletionPhase>('idle')
   const [wizardKey, setWizardKey] = useState(0)
@@ -160,7 +155,6 @@ export function SetupIdentityProviderWizard({
     setJustSent(false)
     setIssuedBreakGlass(issuedBreakGlassFromOrganization(organization))
     setConnectForm(buildDefaultConnectForm(organization))
-    setAdditionalDomains(buildDefaultAdditionalDomains(organization))
 
     const pending = hasPendingIdpInvite(organization)
     setSetupPath(pending ? 'invite' : null)
@@ -182,20 +176,10 @@ export function SetupIdentityProviderWizard({
       ? `${window.location.origin}${invitePath}`
       : invitePath
 
-  const takenEmailDomains = getTakenEmailDomains(
-    getProviderRegisteredOrganizations(),
-    organization.id,
-  )
-  const additionalDomainsValid = areAdditionalDomainsValid(
-    additionalDomains,
-    organization.primaryDomain,
-    takenEmailDomains,
-  )
   const isConnectDisabled =
     !connectForm.displayName.trim() ||
     !connectForm.issuerUrl.trim() ||
-    !connectForm.clientId.trim() ||
-    !additionalDomainsValid
+    !connectForm.clientId.trim()
   const isCompleting = completionPhase !== 'idle'
   const issuerLabel = connectForm.protocol === 'SAML' ? 'Metadata URL' : 'Issuer URL'
   const clientLabel = connectForm.protocol === 'SAML' ? 'Entity ID' : 'Client ID'
@@ -269,10 +253,6 @@ export function SetupIdentityProviderWizard({
           organization.primaryDomain,
         ),
       ],
-      additionalDomains: normalizeAdditionalDomains(
-        additionalDomains,
-        organization.primaryDomain,
-      ),
       idpInviteStatus: 'none',
       idpInviteToken: null,
       idpInviteSentAt: null,
@@ -495,13 +475,6 @@ export function SetupIdentityProviderWizard({
               aria-readonly="true"
             />
           </FormGroup>
-          <AdditionalEmailDomainsField
-            idPrefix="setup-idp-additional-domain"
-            primaryDomain={organization.primaryDomain}
-            domains={additionalDomains}
-            onChange={setAdditionalDomains}
-            takenDomains={takenEmailDomains}
-          />
           <FormGroup label="Protocol" fieldId="setup-idp-protocol" isRequired>
             <FormSelect
               id="setup-idp-protocol"
@@ -587,9 +560,10 @@ export function SetupIdentityProviderWizard({
             <DescriptionBlock
               label="Additional email domains"
               value={
-                normalizeAdditionalDomains(additionalDomains, organization.primaryDomain).join(
-                  ', ',
-                ) || 'None'
+                normalizeAdditionalDomains(
+                  organization.additionalDomains ?? [],
+                  organization.primaryDomain,
+                ).join(', ') || 'None'
               }
             />
             <DescriptionBlock label={issuerLabel} value={connectForm.issuerUrl.trim() || '—'} />
