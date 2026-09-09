@@ -6,9 +6,10 @@ export function formatFilteredResultCount(
   totalCount: number,
   singular: string,
   plural = `${singular}s`,
+  forceOfFormat = false,
 ): string {
   const noun = filteredCount === 1 ? singular : plural
-  if (filteredCount === totalCount) {
+  if (!forceOfFormat && filteredCount === totalCount) {
     return `${filteredCount} ${noun}`
   }
   return `${filteredCount} of ${totalCount} ${plural}`

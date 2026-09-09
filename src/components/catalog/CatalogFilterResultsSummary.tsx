@@ -9,6 +9,8 @@ type CatalogFilterResultsSummaryProps = {
   filterParts: string[]
   onClearFilters?: () => void
   className?: string
+  /** Always show "X of Y" even when the filtered count matches the total. */
+  forceOfFormat?: boolean
 }
 
 export function CatalogFilterResultsSummary({
@@ -19,10 +21,17 @@ export function CatalogFilterResultsSummary({
   filterParts,
   onClearFilters,
   className,
+  forceOfFormat = false,
 }: CatalogFilterResultsSummaryProps) {
-  const countLabel = formatFilteredResultCount(filteredCount, totalCount, singular, plural)
-  const description = buildFilterDescription(filterParts)
   const hasActiveFilters = filterParts.length > 0
+  const countLabel = formatFilteredResultCount(
+    filteredCount,
+    totalCount,
+    singular,
+    plural,
+    forceOfFormat || hasActiveFilters,
+  )
+  const description = buildFilterDescription(filterParts)
 
   return (
     <Content

@@ -567,6 +567,9 @@ export function TenantUserInstancesPage({
     specFilterSelections,
   ])
 
+  const showFilterResultsSummary =
+    filterDescriptionParts.length > 0 && filteredInstances.length > 0
+
   const clearAllFilters = () => {
     setSearchValue('')
     setOrganizationFilter('')
@@ -1052,6 +1055,17 @@ export function TenantUserInstancesPage({
           </Alert>
         ) : null}
 
+        {showFilterResultsSummary ? (
+          <CatalogFilterResultsSummary
+            filteredCount={filteredInstances.length}
+            totalCount={serviceFilteredInstances.length}
+            singular="instance"
+            filterParts={filterDescriptionParts}
+            onClearFilters={clearAllFilters}
+            forceOfFormat
+          />
+        ) : null}
+
         {filteredInstances.length === 0 ? (
           filterDescriptionParts.length > 0 ? (
             <CatalogFilterEmptyState
@@ -1081,14 +1095,6 @@ export function TenantUserInstancesPage({
           </EmptyState>
           )
         ) : viewMode === 'grid' ? (
-            <>
-            <CatalogFilterResultsSummary
-              filteredCount={filteredInstances.length}
-              totalCount={serviceFilteredInstances.length}
-              singular="instance"
-              filterParts={filterDescriptionParts}
-              onClearFilters={clearAllFilters}
-            />
             <div className="catalog-card-grid tenant-user-instances__grid">
               {filteredInstances.map((instance) => {
                 const serviceId = getTenantInstanceServiceId(instance)
@@ -1173,16 +1179,8 @@ export function TenantUserInstancesPage({
                 )
               })}
             </div>
-            </>
           ) : (
             <div className="catalog-table-panel">
-              <CatalogFilterResultsSummary
-                filteredCount={filteredInstances.length}
-                totalCount={serviceFilteredInstances.length}
-                singular="instance"
-                filterParts={filterDescriptionParts}
-                onClearFilters={clearAllFilters}
-              />
               <Table
                 aria-label="My instances"
                 className="catalog-data-table tenant-user-instances__table"
