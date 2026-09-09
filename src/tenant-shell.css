@@ -217,7 +217,7 @@
   gap: 0.25rem;
 }
 
-.pf-v6-c-masthead__main .pf-v6-c-masthead__logo.northsummit-masthead-logo {
+.pf-v6-c-masthead__main .pf-v6-c-masthead__brand .pf-v6-c-masthead__logo.northsummit-masthead-logo {
   display: inline-flex;
   align-items: center;
   width: auto;
@@ -226,15 +226,7 @@
   height: auto;
 }
 
-.pf-v6-c-masthead__main .pf-v6-c-masthead__logo.northsummit-masthead-logo .pf-v6-c-masthead__brand {
-  display: flex;
-  align-items: center;
-  align-self: auto;
-  line-height: 0;
-  padding-block-end: 0;
-}
-
-.pf-v6-c-masthead__main .pf-v6-c-masthead__logo.northsummit-masthead-logo > * {
+.pf-v6-c-masthead__main .pf-v6-c-masthead__brand .pf-v6-c-masthead__logo.northsummit-masthead-logo > * {
   max-height: var(--pf-v6-c-masthead__logo--MaxHeight);
 }
 
@@ -243,15 +235,15 @@
   flex-direction: row;
   align-items: center;
   gap: 0.5rem;
+  color: var(--pf-t--global--text--color--regular);
   max-height: var(--pf-v6-c-masthead__logo--MaxHeight, 2.375rem);
 }
 
-.northsummit-masthead-brand__img {
+.northsummit-masthead-brand__svg {
   display: block;
   height: 2.5rem;
   width: auto;
   max-width: min(100%, 16rem);
-  object-fit: contain;
 }
 
 .northsummit-masthead-brand__mark {
@@ -303,7 +295,7 @@
   color: var(--pf-t--global--text--color--regular);
 }
 
-.pf-v6-c-masthead__main .pf-v6-c-masthead__logo.bluesolace-masthead-logo {
+.pf-v6-c-masthead__main .pf-v6-c-masthead__brand .pf-v6-c-masthead__logo.bluesolace-masthead-logo {
   display: inline-flex;
   align-items: center;
   width: auto;
@@ -312,15 +304,7 @@
   height: auto;
 }
 
-.pf-v6-c-masthead__main .pf-v6-c-masthead__logo.bluesolace-masthead-logo .pf-v6-c-masthead__brand {
-  display: flex;
-  align-items: center;
-  align-self: auto;
-  line-height: 0;
-  padding-block-end: 0;
-}
-
-.pf-v6-c-masthead__main .pf-v6-c-masthead__logo.bluesolace-masthead-logo > * {
+.pf-v6-c-masthead__main .pf-v6-c-masthead__brand .pf-v6-c-masthead__logo.bluesolace-masthead-logo > * {
   max-height: 2.5rem;
 }
 

@@ -72,11 +72,11 @@ export function ProviderAdminShell({
             <BarsIcon />
           </PageToggleButton>
         </MastheadToggle>
-        <MastheadLogo className="vertexa-masthead-logo">
-          <MastheadBrand>
+        <MastheadBrand>
+          <MastheadLogo className="vertexa-masthead-logo">
             <VertexaCloudMastheadLogo />
-          </MastheadBrand>
-        </MastheadLogo>
+          </MastheadLogo>
+        </MastheadBrand>
       </MastheadMain>
 
       <MastheadContent className="provider-admin-masthead-content">

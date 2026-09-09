@@ -125,6 +125,7 @@ function IdpManagerWorkspaceSession({ orgSlug }: { orgSlug: string }) {
       onNavChange={handleNavChange}
       companyLogoSrc={resolveOrganizationCompanyLogo(organization)}
       companyLogoAlt={organization.name}
+      organizationSlug={organization.slug}
     >
       <div key={navContentKey}>{renderWorkspaceContent()}</div>
     </TenantShell>

@@ -1,5 +1,8 @@
 export type ViewMode = 'grid' | 'list'
 
+/** Projects page browse mode. */
+export type ProjectsViewMode = 'topology' | 'list'
+
 /** @deprecated Prefer ViewMode */
 export type CatalogViewMode = ViewMode
 
@@ -11,6 +14,8 @@ const SECRETS_VIEW_MODE_KEY = 'bmaas-secrets-view-mode'
 
 /** Grid is the default browse mode across personas. */
 const DEFAULT_VIEW_MODE: ViewMode = 'grid'
+/** Topology is the default Projects browse mode for tenant admin and tenant user. */
+export const DEFAULT_PROJECTS_VIEW_MODE: ProjectsViewMode = 'topology'
 
 function isViewMode(value: string | null): value is ViewMode {
   return value === 'grid' || value === 'list'

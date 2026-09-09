@@ -539,6 +539,279 @@
   margin-block-start: 0;
 }
 
+.tenant-admin-projects-teams--topology > .catalog-table-panel {
+  width: 100%;
+}
+
+.tenant-project-topology-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+}
+
+.tenant-project-topology-panel .tenant-project-topology-view {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--pf-t--global--border--color--default);
+  border-radius: var(--pf-t--global--border--radius--medium);
+  background: var(--pf-t--global--background--color--primary--default);
+  background-clip: padding-box;
+}
+
+.tenant-project-topology-panel .pf-topology-container,
+.tenant-project-topology-panel .pf-topology-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.tenant-project-topology-panel .pf-topology-content {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: stretch;
+  background-color: transparent;
+}
+
+.tenant-project-topology-panel .pf-topology-content > :first-child {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tenant-project-topology-panel .pf-topology-visualization-surface {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.tenant-project-topology-node--dimmed {
+  opacity: 0.45;
+}
+
+/* PatternFly topology: white nodes by default; selected uses brand blue. */
+.tenant-project-topology-panel .pf-topology__node__background {
+  --pf-topology__node__background--Fill: var(--pf-t--global--background--color--primary--default);
+  --pf-topology__node__background--Stroke: var(--pf-t--global--border--color--default);
+}
+
+.tenant-project-topology-panel .pf-topology__node.pf-m-selected .pf-topology__node__background {
+  --pf-topology__node__background--Fill: var(--pf-t--global--background--color--primary--default);
+  --pf-topology__node__background--Stroke: var(--pf-t--global--border--color--brand--default);
+  --pf-topology__node__background--StrokeWidth: var(--pf-t--global--border--width--strong);
+}
+
+.tenant-project-topology-panel .pf-topology__node__label__background {
+  --pf-topology__node__label__background--Fill: var(--pf-t--global--background--color--primary--default);
+  --pf-topology__node__label__background--Stroke: var(--pf-t--global--border--color--default);
+}
+
+.tenant-project-topology-panel .pf-topology__node.pf-m-selected .pf-topology__node__label__background {
+  --pf-topology__node__label__background--Fill: var(--pf-t--global--color--brand--default);
+  --pf-topology__node__label__background--Stroke: var(--pf-t--global--border--color--brand--default);
+}
+
+.tenant-project-topology-panel .pf-topology__node.pf-m-selected .tenant-project-topology-node__label > text {
+  fill: var(--pf-t--global--text--color--on-brand--default);
+}
+
+.tenant-project-topology-panel .pf-topology__node.pf-m-selected .pf-topology__node__separator {
+  stroke: var(--pf-t--global--text--color--on-brand--default);
+}
+
+.tenant-project-topology-panel .pf-topology__node.pf-m-selected .pf-topology__node__action-icon__icon {
+  color: var(--pf-t--global--icon--color--on-brand--default);
+}
+
+.tenant-project-topology-panel .pf-topology__group__background {
+  --pf-topology__group__background--Fill: var(--pf-t--global--background--color--secondary--default);
+  --pf-topology__group__background--Stroke: var(--pf-t--global--border--color--default);
+  --pf-topology__group__background--StrokeWidth: var(--pf-t--global--border--width--regular);
+}
+
+.tenant-project-topology-panel .pf-topology__group.pf-m-alt-group .pf-topology__group__background {
+  --pf-topology__group__background--Fill: var(--pf-t--global--background--color--secondary--default);
+  --pf-topology__group__background--Stroke: var(--pf-t--global--border--color--default);
+}
+
+/* Single-row label + kebab matches PatternFly topology node label pattern. */
+.tenant-project-topology-panel .tenant-project-topology-node__label > text {
+  font-size: var(--pf-t--global--font--size--body--default);
+}
+
+.tenant-project-topology-panel .tenant-project-topology-node__label .pf-topology__node__separator {
+  stroke: var(--pf-t--global--border--color--default);
+}
+
+.tenant-project-topology-panel .tenant-project-topology-node__label .pf-topology__node__action-icon__background {
+  fill: transparent;
+}
+
+.tenant-project-topology-panel .tenant-project-topology-node__label .pf-topology__node__action-icon:hover .pf-topology__node__action-icon__background,
+.tenant-project-topology-panel
+  .tenant-project-topology-node__label
+  .pf-topology__node__action-icon:focus-within
+  .pf-topology__node__action-icon__background {
+  fill: var(--pf-t--global--background--color--control--default);
+}
+
+.tenant-project-topology-panel .tenant-project-topology-node__label .pf-topology__node__action-icon__icon svg {
+  width: 1em;
+  height: 1em;
+}
+
+.tenant-project-topology-panel .pf-topology-container__with-sidebar {
+  background-color: transparent !important;
+}
+
+.tenant-project-topology-panel .pf-topology-side-bar {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--pf-t--global--background--color--primary--default);
+}
+
+.tenant-project-topology-panel .pf-topology-side-bar.shown {
+  overflow: hidden;
+}
+
+.tenant-project-topology-side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+  width: 100%;
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  padding-block: var(--pf-t--global--spacer--lg);
+  padding-inline: var(--pf-t--global--spacer--lg);
+  padding-inline-end: var(--pf-t--global--spacer--2xl);
+}
+
+.tenant-project-topology-side-panel__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.tenant-project-topology-side-panel__lede.pf-v6-c-content--p {
+  margin: 0;
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.tenant-project-topology-side-panel__actions {
+  margin-block-start: var(--pf-t--global--spacer--sm);
+}
+
+.tenant-project-details-body--sidebar.entity-details-page__columns,
+.tenant-project-details-body--sidebar .entity-details-page__columns,
+.tenant-project-details-body--sidebar .entity-details-page__columns--2,
+.tenant-project-details-body--sidebar .entity-details-page__columns--with-rail,
+.tenant-project-details-body--sidebar .entity-details-page__main-stack,
+.tenant-project-details-body--sidebar .entity-details-page__rail-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--pf-t--global--spacer--lg);
+  width: 100%;
+  max-width: none;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.tenant-project-details-body--sidebar .entity-details-page__column,
+.tenant-project-details-body--sidebar .entity-details-page__column--config,
+.tenant-project-details-body--sidebar .entity-details-page__main-stack,
+.tenant-project-details-body--sidebar .entity-details-page__rail-stack {
+  width: 100%;
+  max-width: none;
+  grid-column: auto;
+  grid-row: auto;
+}
+
+.tenant-project-details-body--sidebar .entity-details-page__columns--2 > .entity-details-page__column:last-child {
+  padding: var(--pf-t--global--spacer--lg) 0 0;
+  border-radius: 0;
+  background-color: transparent;
+  border-block-start: var(--pf-t--global--border--width--regular) solid
+    var(--pf-t--global--border--color--default);
+}
+
+.tenant-project-details-body--sidebar .entity-details-page__column.entity-details-page__column--config {
+  padding: 0;
+  border-radius: 0;
+  background-color: transparent;
+  gap: var(--pf-t--global--spacer--md);
+}
+
+.tenant-project-details-body--sidebar .entity-details-page__rail-stack {
+  padding-block-start: var(--pf-t--global--spacer--lg);
+  border-block-start: var(--pf-t--global--border--width--regular) solid
+    var(--pf-t--global--border--color--default);
+}
+
+.tenant-project-details-body--sidebar .entity-details-page__section-header--config {
+  padding-block-end: 0;
+  border-block-end: none;
+}
+
+.tenant-project-details-body--sidebar
+  .entity-details-page__section-header--config
+  .entity-details-page__section-title--config.pf-v6-c-title {
+  color: var(--pf-t--global--text--color--regular);
+  font-size: var(--pf-t--global--font--size--heading--md);
+}
+
+.tenant-project-details-body--sidebar .provider-admin-organizations__account-person-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--pf-t--global--spacer--sm);
+  align-items: start;
+}
+
+.tenant-project-details-body--sidebar
+  .provider-admin-organizations__account-person-main
+  > .provider-admin-organizations__primary-cell,
+.tenant-project-details-body--sidebar
+  .provider-admin-organizations__account-person-main
+  > .provider-admin-organizations__secondary-cell {
+  grid-column: 1;
+}
+
+.tenant-project-details-body--sidebar .provider-admin-organizations__account-person-role {
+  grid-column: 2;
+  grid-row: 1;
+  margin-block-start: 0;
+  justify-self: end;
+}
+
+@media (min-width: 768px) {
+  .tenant-project-details-body--sidebar.entity-details-page__columns,
+  .tenant-project-details-body--sidebar .entity-details-page__columns,
+  .tenant-project-details-body--sidebar .entity-details-page__columns.entity-details-page__columns--2,
+  .tenant-project-details-body--sidebar .entity-details-page__columns.entity-details-page__columns--with-rail {
+    display: flex;
+    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .tenant-project-details-body--sidebar .entity-details-page__columns--with-rail > .entity-details-page__rail-stack,
+  .tenant-project-details-body--sidebar .entity-details-page__columns--with-rail > .entity-details-page__column--config {
+    grid-column: auto;
+    grid-row: auto;
+    width: 100%;
+  }
+}
+
 .tenant-admin-projects-teams__header .tenant-admin-projects-teams__lede.pf-v6-c-content--p {
   margin: 0;
 }

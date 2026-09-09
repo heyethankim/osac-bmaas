@@ -49,7 +49,10 @@ import {
   setProjectScopeId,
   type ProjectScopeId,
 } from '../tenantUser/projectScope'
-import { getTenantUserAccessibleProjects } from '../tenantUser/projects'
+import {
+  getTenantUserAccessibleProjects,
+  getTenantUserProjectsPageProjects,
+} from '../tenantUser/projects'
 import { TENANT_USER_PROJECTS_PAGE } from '../tenantUser/constants'
 
 function isTenantUserNavId(value: string | null): value is TenantUserNavId {
@@ -380,6 +383,10 @@ export function TenantUserWorkspacePage() {
     () => getTenantUserAccessibleProjects(projects, userEmail),
     [projects, userEmail],
   )
+  const projectsPageProjects = useMemo(
+    () => getTenantUserProjectsPageProjects(projects, userEmail),
+    [projects, userEmail],
+  )
   const lockedServiceId = getLockedServiceIdFromNav(activeNavId)
 
   const renderWorkspaceContent = () => {
@@ -414,7 +421,7 @@ export function TenantUserWorkspacePage() {
           <TenantAdminProjectsTeamsPage
             tenantSlug={tenantSlug}
             organization={organization}
-            projects={accessibleProjects}
+            projects={projectsPageProjects}
             allProjects={projects}
             instances={instances}
             onProjectsChange={setProjects}
@@ -492,6 +499,7 @@ export function TenantUserWorkspacePage() {
       onNavChange={handleNavChange}
       companyLogoSrc={organization ? resolveOrganizationCompanyLogo(organization) : null}
       companyLogoAlt={organization?.name}
+      organizationSlug={organization?.slug}
     >
       <div key={navContentKey}>{renderWorkspaceContent()}</div>
     </TenantShell>

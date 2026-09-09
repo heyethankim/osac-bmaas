@@ -36,6 +36,7 @@ import {
 } from '@patternfly/react-core'
 import type { TenantNavGroup, TenantNavItem } from '../../tenantShell/constants'
 import { flattenTenantNavItems } from '../../tenantShell/constants'
+import { isNorthSummitBankOrganization } from '../../providerAdmin/organizations'
 import { UserPreferencesModal } from '../shared/UserPreferencesModal'
 import { BlueSolaceMastheadLogo } from './BlueSolaceMastheadLogo'
 import { NorthsummitBankMastheadLogo } from './NorthsummitBankMastheadLogo'
@@ -54,6 +55,7 @@ type TenantShellProps = {
   onNavChange?: (navId: string) => void
   disabledNavIds?: string[]
   isOnboardingLayout?: boolean
+  organizationSlug?: string
   companyLogoSrc?: string | null
   companyLogoAlt?: string
 }
@@ -76,6 +78,7 @@ export function TenantShell({
   onNavChange,
   disabledNavIds = [],
   isOnboardingLayout = false,
+  organizationSlug,
   companyLogoSrc = null,
   companyLogoAlt,
 }: TenantShellProps) {
@@ -152,6 +155,10 @@ export function TenantShell({
   }
 
   const roleLabel = accountRoleLabel ?? roleLabels[role]
+  const showNorthSummitBrand =
+    organizationSlug != null
+      ? isNorthSummitBankOrganization({ slug: organizationSlug })
+      : !companyLogoSrc && role !== 'idp-manager'
 
   const masthead = (
     <Masthead>
@@ -161,15 +168,21 @@ export function TenantShell({
             <BarsIcon />
           </PageToggleButton>
         </MastheadToggle>
-        <MastheadLogo
-          className={
-            companyLogoSrc || role === 'idp-manager'
-              ? 'bluesolace-masthead-logo'
-              : 'northsummit-masthead-logo'
-          }
-        >
-          <MastheadBrand>
-            {companyLogoSrc ? (
+        <MastheadBrand>
+          <MastheadLogo
+            className={
+              showNorthSummitBrand
+                ? 'northsummit-masthead-logo'
+                : role === 'idp-manager' || companyLogoSrc
+                  ? 'bluesolace-masthead-logo'
+                  : 'northsummit-masthead-logo'
+            }
+          >
+            {showNorthSummitBrand ? (
+              <NorthsummitBankMastheadLogo />
+            ) : role === 'idp-manager' ? (
+              <BlueSolaceMastheadLogo />
+            ) : companyLogoSrc ? (
               <div
                 className="bluesolace-masthead-brand"
                 role="img"
@@ -182,13 +195,11 @@ export function TenantShell({
                   draggable={false}
                 />
               </div>
-            ) : role === 'idp-manager' ? (
-              <BlueSolaceMastheadLogo />
             ) : (
               <NorthsummitBankMastheadLogo />
             )}
-          </MastheadBrand>
-        </MastheadLogo>
+          </MastheadLogo>
+        </MastheadBrand>
       </MastheadMain>
 
       <MastheadContent className="northsummit-masthead-content">

@@ -387,6 +387,7 @@ export function TenantAdminWorkspacePage() {
       onNavChange={handleNavChange}
       companyLogoSrc={resolveOrganizationCompanyLogo(organization)}
       companyLogoAlt={organization.name}
+      organizationSlug={organization.slug}
     >
       <div key={navContentKey}>{renderWorkspaceContent()}</div>
     </TenantShell>

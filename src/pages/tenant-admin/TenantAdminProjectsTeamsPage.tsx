@@ -27,6 +27,9 @@ import { CreateTenantProjectWizard } from '../../components/tenant-admin/CreateT
 import { TenantProjectDetailsPage } from '../../components/tenant-admin/TenantProjectDetailsPage'
 import { CatalogFilterEmptyState } from '../../components/catalog/CatalogFilterEmptyState'
 import { CatalogFilterResultsSummary } from '../../components/catalog/CatalogFilterResultsSummary'
+import { ProjectsViewToggle } from '../../components/tenant-admin/ProjectsViewToggle'
+import { TenantProjectTopologyView } from '../../components/tenant-admin/TenantProjectTopologyView'
+import { DEFAULT_PROJECTS_VIEW_MODE, type ProjectsViewMode } from '../../catalog/viewMode'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import {
   buildProjectFilterParts,
@@ -63,6 +66,7 @@ import {
 } from '../../tenantAdmin/storage'
 import type { TenantInstance } from '../../tenantUser/instances'
 import { buildTenantUserProjectTreeRows, getProjectMembershipForEmail, isTenantUserProjectManager, normalizeMemberEmail } from '../../tenantUser/projects'
+import { getProjectTopologyVisibleIds } from '../../tenantAdmin/projectTopology'
 
 type TenantAdminProjectsTeamsPageProps = {
   tenantSlug: string
@@ -107,6 +111,8 @@ export function TenantAdminProjectsTeamsPage({
   const [searchValue, setSearchValue] = useState('')
   const [selectedProjectFilter, setSelectedProjectFilter] = useState<ProjectListFilter>('all')
   const [expandedProjectIds, setExpandedProjectIds] = useState<Set<string>>(() => new Set())
+  const [viewMode, setViewMode] = useState<ProjectsViewMode>(DEFAULT_PROJECTS_VIEW_MODE)
+  const [sidebarProject, setSidebarProject] = useState<TenantProject | null>(null)
 
   const projectCatalog = allProjects ?? projects
 
@@ -139,6 +145,11 @@ export function TenantAdminProjectsTeamsPage({
     }
 
     const visibleIds = new Set(filteredProjects.map((project) => project.id))
+    for (const project of filteredProjects) {
+      for (const ancestor of getTenantProjectAncestors(projectCatalog, project.id)) {
+        visibleIds.add(ancestor.id)
+      }
+    }
     return buildTenantUserProjectTreeRows(
       projectCatalog,
       sortedProjects,
@@ -159,6 +170,26 @@ export function TenantAdminProjectsTeamsPage({
     () => buildProjectFilterParts(searchValue, selectedProjectFilter),
     [searchValue, selectedProjectFilter],
   )
+
+  const topologyVisibleIds = useMemo(
+    () =>
+      getProjectTopologyVisibleIds(filteredProjects, (projectId) =>
+        getTenantProjectAncestors(projectCatalog, projectId),
+      ),
+    [filteredProjects, projectCatalog],
+  )
+
+  const highlightedProjectIds = useMemo(
+    () => new Set(filteredProjects.map((project) => project.id)),
+    [filteredProjects],
+  )
+
+  const handleViewModeChange = (nextViewMode: ProjectsViewMode) => {
+    setViewMode(nextViewMode)
+    if (nextViewMode !== 'topology') {
+      setSidebarProject(null)
+    }
+  }
 
   const showActionsColumn = !readOnly || Boolean(currentUserEmail)
 
@@ -264,6 +295,22 @@ export function TenantAdminProjectsTeamsPage({
     }
   }, [projects, selectedProject])
 
+  useEffect(() => {
+    if (!sidebarProject) {
+      return
+    }
+
+    const next = projectCatalog.find((project) => project.id === sidebarProject.id) ?? null
+    if (!next || !topologyVisibleIds.has(next.id)) {
+      setSidebarProject(null)
+      return
+    }
+
+    if (next !== sidebarProject) {
+      setSidebarProject(next)
+    }
+  }, [projectCatalog, sidebarProject, topologyVisibleIds])
+
   const openDetails = (project: TenantProject) => {
     setSelectedProject(project)
     setIsDetailsOpen(true)
@@ -282,8 +329,12 @@ export function TenantAdminProjectsTeamsPage({
     if (returnToProjectAfterWizard) {
       const latest =
         getTenantProjectById(projects, returnToProjectAfterWizard.id) ?? returnToProjectAfterWizard
-      setSelectedProject(latest)
-      setIsDetailsOpen(true)
+      if (viewMode === 'topology') {
+        setSidebarProject(latest)
+      } else {
+        setSelectedProject(latest)
+        setIsDetailsOpen(true)
+      }
       setReturnToProjectAfterWizard(null)
     }
   }
@@ -354,7 +405,12 @@ export function TenantAdminProjectsTeamsPage({
     setNestedCreateParent(null)
     setReturnToProjectAfterWizard(null)
     setSelectedProject(nextProject)
-    setIsDetailsOpen(true)
+    if (viewMode === 'topology') {
+      setSidebarProject(nextProject)
+      setIsDetailsOpen(false)
+    } else {
+      setIsDetailsOpen(true)
+    }
     setPromptAddMembersProjectId(nextProject.id)
   }
 
@@ -399,6 +455,9 @@ export function TenantAdminProjectsTeamsPage({
     if (selectedProject?.id === projectId) {
       setSelectedProject(null)
       setIsDetailsOpen(false)
+    }
+    if (sidebarProject?.id === projectId) {
+      setSidebarProject(null)
     }
   }
 
@@ -522,7 +581,15 @@ export function TenantAdminProjectsTeamsPage({
   }
 
   return (
-    <div className="tenant-admin-workspace-page tenant-admin-projects-teams">
+    <div
+      className={[
+        'tenant-admin-workspace-page',
+        'tenant-admin-projects-teams',
+        viewMode === 'topology' ? 'tenant-admin-projects-teams--topology' : null,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
       {sortedProjects.length > 0 ? (
         <Flex
           className="tenant-admin-projects-teams__header"
@@ -584,6 +651,7 @@ export function TenantAdminProjectsTeamsPage({
               aria-label="Search projects"
             />
           </div>
+          <ProjectsViewToggle viewMode={viewMode} onChange={handleViewModeChange} />
         </div>
       ) : null}
 
@@ -609,7 +677,7 @@ export function TenantAdminProjectsTeamsPage({
             </EmptyStateActions>
           </EmptyStateFooter>
         </EmptyState>
-      ) : treeRows.length === 0 ? (
+      ) : (viewMode === 'topology' ? topologyVisibleIds.size === 0 : treeRows.length === 0) ? (
         <CatalogFilterEmptyState
           title="No projects match your filters"
           description={TENANT_PROJECTS_TEAMS_DEMO.filterEmptyDescription}
@@ -624,6 +692,40 @@ export function TenantAdminProjectsTeamsPage({
             filterParts={filterDescriptionParts}
             onClearFilters={clearAllFilters}
           />
+          {viewMode === 'topology' ? (
+              <TenantProjectTopologyView
+                projectCatalog={projectCatalog}
+                instances={instances}
+                visibleProjectIds={topologyVisibleIds}
+                highlightedProjectIds={highlightedProjectIds}
+                getProjectActions={getProjectRowActions}
+                showActions={showActionsColumn}
+                selectedProjectId={sidebarProject?.id ?? null}
+                onSelectProject={setSidebarProject}
+                sideBar={
+                  sidebarProject ? (
+                    <TenantProjectDetailsPage
+                      variant="sidebar"
+                      project={sidebarProject}
+                      projects={projectCatalog}
+                      instances={instances}
+                      onBack={() => setSidebarProject(null)}
+                      onOpenProject={setSidebarProject}
+                      onCreateNested={(parent) => openCreateProject(parent, true)}
+                      onEdit={(project) => openEditProject(project, true)}
+                      onDelete={openDeleteProject}
+                      onAddMember={handleAddMember}
+                      onRemoveMember={handleRemoveMember}
+                      onNavigateToInstance={onNavigateToInstance}
+                      readOnly={readOnly}
+                      currentUserEmail={currentUserEmail}
+                      promptAddMembers={promptAddMembersProjectId === sidebarProject.id}
+                      onDismissAddMembersPrompt={() => setPromptAddMembersProjectId(null)}
+                    />
+                  ) : null
+                }
+              />
+          ) : (
           <Table
             aria-label="Tenant projects"
             className="catalog-data-table tenant-admin-projects-teams__table"
@@ -741,6 +843,7 @@ export function TenantAdminProjectsTeamsPage({
               })}
             </Tbody>
           </Table>
+          )}
         </div>
       )}
 

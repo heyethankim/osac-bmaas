@@ -4,7 +4,7 @@ export const TENANT_USER_CATALOG_PAGE = {
 } as const
 
 export const TENANT_USER_PROJECTS_PAGE = {
-  lede: 'Projects you belong to. Open a project to see services, catalog items, and teammates.',
+  lede: 'Projects in your tenant hierarchy. Open a project to see services, catalog items, and teammates.',
 } as const
 
 export const DEMO_TENANT_USER_PROJECT_INVITATION = {

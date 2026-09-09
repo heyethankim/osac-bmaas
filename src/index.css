@@ -13,6 +13,30 @@ body {
   background-color: var(--pf-t--global--background--color--primary--default);
 }
 
+/* PatternFly 6 masthead logos — brand wraps logo, not the other way around. */
+.pf-v6-c-masthead__brand > .pf-v6-c-masthead__logo[class*='-masthead-logo'] {
+  display: inline-flex !important;
+  align-items: center;
+  visibility: visible !important;
+  opacity: 1 !important;
+  overflow: visible;
+  width: auto !important;
+  min-width: 7rem;
+  height: auto;
+  min-height: 2rem;
+  max-height: 2.75rem !important;
+}
+
+.pf-v6-c-masthead__brand > .pf-v6-c-masthead__logo[class*='-masthead-logo'] > * {
+  max-height: 2.75rem !important;
+}
+
+.pf-v6-c-masthead .northsummit-masthead-brand,
+.pf-v6-c-masthead .vertexa-masthead-brand,
+.pf-v6-c-masthead .bluesolace-masthead-brand {
+  color: var(--pf-t--global--text--color--regular);
+}
+
 /* Form-style dropdowns: rounded rectangle with caret (not pill). */
 :root {
   --bmaas-dropdown-border-radius: var(--pf-t--global--border--radius--small);
