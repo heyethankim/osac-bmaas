@@ -1278,6 +1278,16 @@
   min-inline-size: 0;
 }
 
+.tenant-admin-catalog-manager__launch-button {
+  width: 100%;
+  margin-block-start: 0;
+}
+
+.tenant-admin-catalog-manager__card:has(.tenant-admin-catalog-manager__launch-button)
+  .pf-v6-c-card__body {
+  padding-block-end: var(--pf-t--global--spacer--md);
+}
+
 .tenant-admin-catalog-manager__scope {
   min-inline-size: 0;
 }

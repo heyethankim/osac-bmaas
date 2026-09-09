@@ -25,6 +25,7 @@ import {
   Tooltip,
 } from '@patternfly/react-core'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
+import { RocketIcon } from '@patternfly/react-icons/dist/esm/icons/rocket-icon'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
 import {
   CatalogServiceFilterToggle,
@@ -955,6 +956,17 @@ export function TenantAdminCatalogPage({
                         />
                       </div>
                     </div>
+                    {item.status !== 'Unpublished' ? (
+                      <Button
+                        variant="secondary"
+                        icon={<RocketIcon aria-hidden />}
+                        isBlock
+                        onClick={() => openLaunchWizard(item)}
+                        className="tenant-admin-catalog-manager__launch-button"
+                      >
+                        {LAUNCH_INSTANCE_WIZARD_DEMO.launchInstanceLabel}
+                      </Button>
+                    ) : null}
                   </CardBody>
                   )}
                 </Card>
