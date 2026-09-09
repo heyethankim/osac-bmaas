@@ -1,27 +1,23 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { syncWorkspaceCatalogItemParam, syncWorkspaceNavParam } from '../shared/workspaceNavUrl'
+import { syncWorkspaceNavParam } from '../shared/workspaceNavUrl'
 import { ProviderAdminShell } from '../components/provider-admin/ProviderAdminShell'
 import { ProviderSetupWizardPanel } from '../components/provider-setup/ProviderSetupWizardPanel'
 import type { ProviderAdminNavId } from '../providerAdmin/constants'
+import { resolveProviderAdminNavId } from '../providerAdmin/constants'
 import { ProviderAdminCatalogPage } from './ProviderAdminCatalogPage'
 import { ProviderAdminOverviewPage } from './ProviderAdminOverviewPage'
 import { ProviderAdminBmaasTemplatesPage } from './infrastructure/ProviderAdminBmaasTemplatesPage'
 import { ProviderAdminDataCentersPage } from './infrastructure/ProviderAdminDataCentersPage'
-import { ProviderAdminExternalNetworksPage } from './infrastructure/ProviderAdminExternalNetworksPage'
 import { ProviderAdminHardwareInventoryPage } from './infrastructure/ProviderAdminHardwareInventoryPage'
-import { ProviderAdminVirtualNetworksPage } from './infrastructure/ProviderAdminVirtualNetworksPage'
 import { ProviderAdminBillingMeteringPage } from './ProviderAdminBillingMeteringPage'
 import { ProviderAdminOrganizationsPage } from './ProviderAdminOrganizationsPage'
 import { ProviderAdminQuotasPage } from './ProviderAdminQuotasPage'
 import { PlaceholderProviderAdminPage } from './PlaceholderProviderAdminPage'
 import { ProviderServiceSelectionPage } from './provider-setup/ProviderServiceSelectionPage'
-import { TenantUserInstancesPage } from './tenant-user/TenantUserInstancesPage'
-import { TenantAdminProjectsTeamsPage } from './tenant-admin/TenantAdminProjectsTeamsPage'
 import { TenantSecretsPage } from './tenant/TenantSecretsPage'
 import type { ProviderServiceId } from '../providerSetup/constants'
 import { generateCatalogItemId, type PublishedTemplatePayload } from '../providerSetup/templateDemo'
-import type { CatalogServiceId } from '../providerSetup/templateDemo'
 import { DEFAULT_CATALOG_NETWORK_POLICY } from '../providerAdmin/catalogNetworkPolicy'
 import {
   ensureProviderCatalogDemoItems,
@@ -31,7 +27,6 @@ import {
 import {
   getProviderActiveNav,
   getProviderCatalogItems,
-  getProviderRegisteredOrganizations,
   getProviderSelectedServices,
   isProviderServicesSelected,
   isProviderSetupComplete,
@@ -42,69 +37,19 @@ import {
   setProviderSelectedServices,
   setProviderSetupComplete,
 } from '../providerSetup/storage'
-import {
-  addProviderServiceInstance,
-  ensureProviderServicesInstances,
-  patchProviderServiceInstance,
-} from '../tenantUser/providerServicesInstances'
-import {
-  getTenantInstanceServiceId,
-  isStickyDemoProvisioningInstance,
-  type TenantInstance,
-} from '../tenantUser/instances'
-import { LAUNCH_INSTANCE_PROVISIONING_DURATION_MS, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS } from '../tenantUser/launchInstanceWizard'
 import type { WorkspaceTransition } from '../providerAdmin/workspace'
 import type { BmaasTemplateLookup } from '../providerAdmin/bmaasTemplates'
-import { ensureTenantDemoProjects, addTenantProject } from '../tenantAdmin/storage'
-import type { TenantProject } from '../tenantAdmin/projects'
-import { getWorkspaceOrganization } from '../tenantAdmin/organizations'
-import {
-  getProjectScopeId,
-  isAllProjectsScope,
-  setProjectScopeId,
-  type ProjectScopeId,
-} from '../tenantUser/projectScope'
-
-function getServicesNavId(serviceId: CatalogServiceId): ProviderAdminNavId {
-  switch (serviceId) {
-    case 'cluster':
-      return 'services-clusters'
-    case 'models':
-      return 'services-models'
-    case 'virtual-machine':
-      return 'services-virtual-machines'
-    default:
-      return 'services-baremetal'
-  }
-}
-
-const PUBLISH_PHASE_MS = 900
-const ENTER_PHASE_MS = 700
-const PROVIDER_SERVICES_DEMO_TENANT = 'northsummit'
 
 function normalizeProviderNavParam(value: string | null): ProviderAdminNavId | null {
   const normalizedNav =
     value === 'administration-rbac' || value === 'administration-roles'
       ? 'administration-organizations'
-      : value === 'services' || value === 'my-instances' || value === 'instances'
-        ? 'services-baremetal'
-        : value
-  return isProviderAdminNavId(normalizedNav) ? normalizedNav : null
-}
-
-function getLockedServiceIdFromNav(navId: ProviderAdminNavId): CatalogServiceId | null {
-  switch (navId) {
-    case 'services-baremetal':
-      return 'baremetal'
-    case 'services-clusters':
-      return 'cluster'
-    case 'services-models':
-      return 'models'
-    case 'services-virtual-machines':
-      return 'virtual-machine'
-    default:
-      return null
+      : value
+  if (!isProviderAdminNavId(normalizedNav)) {
+    return null
   }
+
+  return resolveProviderAdminNavId(normalizedNav)
 }
 
 function readInitialProviderNav(searchParams: URLSearchParams): ProviderAdminNavId {
@@ -116,6 +61,10 @@ function readInitialProviderNav(searchParams: URLSearchParams): ProviderAdminNav
 
   return getProviderActiveNav()
 }
+
+const PUBLISH_PHASE_MS = 900
+const ENTER_PHASE_MS = 700
+const PROVIDER_SERVICES_DEMO_TENANT = 'northsummit'
 
 export function ProviderAdminWorkspacePage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -132,33 +81,8 @@ export function ProviderAdminWorkspacePage() {
   )
   const [workspaceTransition, setWorkspaceTransition] = useState<WorkspaceTransition>('idle')
   const [openTemplateLookup, setOpenTemplateLookup] = useState<BmaasTemplateLookup | null>(null)
-  const [openVirtualNetworkId, setOpenVirtualNetworkId] = useState<string | null>(null)
-  const [openSubnetId, setOpenSubnetId] = useState<string | null>(null)
-  const [openSecurityGroupId, setOpenSecurityGroupId] = useState<string | null>(null)
   const [openCatalogItemKey, setOpenCatalogItemKey] = useState<string | null>(null)
-  const [openInstanceId, setOpenInstanceId] = useState<string | null>(null)
-  const [openProjectId, setOpenProjectId] = useState<string | null>(null)
-  const providerOrganizations = useMemo(() => getProviderRegisteredOrganizations(), [])
-  const providerProjects = useMemo(() => {
-    const byId = new Map<string, TenantProject>()
-    for (const organization of providerOrganizations) {
-      for (const project of ensureTenantDemoProjects(organization.slug)) {
-        byId.set(project.id, project)
-      }
-    }
-    return [...byId.values()]
-  }, [providerOrganizations])
-  const [instances, setInstances] = useState(() =>
-    ensureProviderServicesInstances(getProviderRegisteredOrganizations()),
-  )
-  const [projects, setProjects] = useState<TenantProject[]>(() =>
-    ensureTenantDemoProjects(PROVIDER_SERVICES_DEMO_TENANT),
-  )
-  const [projectScopeId, setProjectScopeIdState] = useState<ProjectScopeId>(() =>
-    getProjectScopeId(PROVIDER_SERVICES_DEMO_TENANT),
-  )
   const [navContentKey, setNavContentKey] = useState(0)
-  const provisioningTimersRef = useRef<Map<string, number>>(new Map())
   const catalogEditLeaveAttemptRef = useRef<((onConfirmed: () => void) => void) | null>(null)
 
   const navParam = searchParams.get('nav')
@@ -179,9 +103,6 @@ export function ProviderAdminWorkspacePage() {
       setServicesSelected(true)
       setSetupComplete(true)
       setActiveNavId(requestedNav)
-      setInstances(ensureProviderServicesInstances(getProviderRegisteredOrganizations()))
-      setProjects(ensureTenantDemoProjects(PROVIDER_SERVICES_DEMO_TENANT))
-      setProjectScopeIdState(getProjectScopeId(PROVIDER_SERVICES_DEMO_TENANT))
       return
     }
 
@@ -196,8 +117,6 @@ export function ProviderAdminWorkspacePage() {
     }
     // Only react when `nav` changes — not when `item=` opens catalog details.
   }, [navParam, setSearchParams])
-
-  const lockedServiceId = getLockedServiceIdFromNav(activeNavId)
 
   const handleServicesContinue = (nextSelectedServices: ProviderServiceId[]) => {
     setProviderSelectedServices(nextSelectedServices)
@@ -295,24 +214,12 @@ export function ProviderAdminWorkspacePage() {
     handleNavChange('administration-organizations')
   }
 
-  const handleProjectScopeChange = (scopeId: ProjectScopeId) => {
-    setProjectScopeIdState(scopeId)
-    setProjectScopeId(PROVIDER_SERVICES_DEMO_TENANT, scopeId)
-  }
-
   const performNavChange = (navId: ProviderAdminNavId) => {
-    setActiveNavId(navId)
-    setProviderActiveNav(navId)
+    const resolvedNavId = resolveProviderAdminNavId(navId)
+    setActiveNavId(resolvedNavId)
+    setProviderActiveNav(resolvedNavId)
     setNavContentKey((current) => current + 1)
-    syncWorkspaceNavParam(setSearchParams, navId, { showLanding: true })
-    if (
-      navId === 'services-baremetal' ||
-      navId === 'services-clusters' ||
-      navId === 'services-models' ||
-      navId === 'services-virtual-machines'
-    ) {
-      setInstances(ensureProviderServicesInstances(getProviderRegisteredOrganizations()))
-    }
+    syncWorkspaceNavParam(setSearchParams, resolvedNavId, { showLanding: true })
   }
 
   const handleNavChange = (navId: ProviderAdminNavId) => {
@@ -326,60 +233,6 @@ export function ProviderAdminWorkspacePage() {
     performNavChange(navId)
   }
 
-  const clearProvisioningTimer = (instanceId: string) => {
-    const timeoutId = provisioningTimersRef.current.get(instanceId)
-    if (timeoutId !== undefined) {
-      window.clearTimeout(timeoutId)
-      provisioningTimersRef.current.delete(instanceId)
-    }
-  }
-
-  const scheduleProvisioningCompletion = (instanceId: string, delayMs: number) => {
-    if (isStickyDemoProvisioningInstance(instanceId)) {
-      return
-    }
-    clearProvisioningTimer(instanceId)
-    const timeoutId = window.setTimeout(() => {
-      setInstances((current) =>
-        patchProviderServiceInstance(
-          current,
-          instanceId,
-          {
-            status: 'running',
-            provisionedAt: new Date().toISOString(),
-          },
-          PROVIDER_SERVICES_DEMO_TENANT,
-        ),
-      )
-      provisioningTimersRef.current.delete(instanceId)
-    }, Math.max(0, delayMs))
-    provisioningTimersRef.current.set(instanceId, timeoutId)
-  }
-
-  const handleProvisioningStarted = (instance: TenantInstance) => {
-    setInstances((current) =>
-      addProviderServiceInstance(current, PROVIDER_SERVICES_DEMO_TENANT, instance),
-    )
-    scheduleProvisioningCompletion(instance.id, LAUNCH_INSTANCE_PROVISIONING_DURATION_MS)
-  }
-
-  const handleNavigateToServices = (instanceId: string, serviceId: CatalogServiceId) => {
-    clearProvisioningTimer(instanceId)
-    setInstances((current) =>
-      patchProviderServiceInstance(
-        current,
-        instanceId,
-        {
-          status: 'provisioning',
-          provisionedAt: null,
-        },
-        PROVIDER_SERVICES_DEMO_TENANT,
-      ),
-    )
-    scheduleProvisioningCompletion(instanceId, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS)
-    handleNavChange(getServicesNavId(serviceId))
-  }
-
   const renderPostSetupContent = () => {
     if (catalogItems.length === 0) {
       return (
@@ -388,60 +241,6 @@ export function ProviderAdminWorkspacePage() {
     }
 
     switch (activeNavId) {
-      case 'services-baremetal':
-      case 'services-clusters':
-      case 'services-models':
-      case 'services-virtual-machines':
-        return (
-          <TenantUserInstancesPage
-            tenantSlug={PROVIDER_SERVICES_DEMO_TENANT}
-            instances={instances}
-            onInstancesChange={setInstances}
-            projects={providerProjects}
-            allProjects={providerProjects}
-            projectScopeId={projectScopeId}
-            onProjectScopeChange={handleProjectScopeChange}
-            organization={getWorkspaceOrganization(PROVIDER_SERVICES_DEMO_TENANT)}
-            showTenantFilter
-            organizations={providerOrganizations}
-            lockedServiceId={lockedServiceId ?? 'baremetal'}
-            activeNavId={activeNavId}
-            instanceNetworkingVariant="summary"
-            onNavigateToCatalogItem={(catalogItemDisplayName) => {
-              handleNavChange('catalog')
-              syncWorkspaceCatalogItemParam(setSearchParams, catalogItemDisplayName)
-            }}
-            openInstanceId={openInstanceId}
-            onOpenInstanceConsumed={() => setOpenInstanceId(null)}
-            onNavigateToProject={(project) => {
-              setOpenProjectId(project.id)
-              handleNavChange('projects-teams')
-            }}
-            onNavigateToCreateProject={() => {
-              handleNavChange('projects-teams')
-            }}
-          />
-        )
-      case 'projects-teams':
-        return (
-          <TenantAdminProjectsTeamsPage
-            tenantSlug={PROVIDER_SERVICES_DEMO_TENANT}
-            organization={getWorkspaceOrganization(PROVIDER_SERVICES_DEMO_TENANT)}
-            projects={projects}
-            instances={instances}
-            onProjectsChange={setProjects}
-            openProjectId={openProjectId}
-            onOpenProjectConsumed={() => setOpenProjectId(null)}
-            onNavigateToInstance={(instance) => {
-              const project = projects.find((entry) => entry.name === instance.projectName)
-              if (project) {
-                handleProjectScopeChange(project.id)
-              }
-              setOpenInstanceId(instance.id)
-              handleNavChange(getServicesNavId(getTenantInstanceServiceId(instance)))
-            }}
-          />
-        )
       case 'catalog':
         return (
           <ProviderAdminCatalogPage
@@ -453,17 +252,6 @@ export function ProviderAdminWorkspacePage() {
             onRegisterOrganization={handleRegisterOrganization}
             openCatalogItemKey={openCatalogItemKey}
             onOpenCatalogItemConsumed={() => setOpenCatalogItemKey(null)}
-            onProvisioningStarted={handleProvisioningStarted}
-            onDismissDuringProvisioning={handleNavigateToServices}
-            onWizardFinished={handleNavigateToServices}
-            tenantSlug={PROVIDER_SERVICES_DEMO_TENANT}
-            projects={projects}
-            initialProjectId={isAllProjectsScope(projectScopeId) ? null : projectScopeId}
-            onProjectScopeChange={handleProjectScopeChange}
-            onCreateProject={(project) => {
-              addTenantProject(PROVIDER_SERVICES_DEMO_TENANT, project)
-              setProjects((current) => [...current, project])
-            }}
             onEditLeaveAttemptChange={(attemptLeave) => {
               catalogEditLeaveAttemptRef.current = attemptLeave
             }}
@@ -480,19 +268,6 @@ export function ProviderAdminWorkspacePage() {
             isPublishing={workspaceTransition !== 'idle'}
             openTemplateLookup={openTemplateLookup}
             onOpenTemplateConsumed={() => setOpenTemplateLookup(null)}
-          />
-        )
-      case 'networking-external-ip-pools':
-        return <ProviderAdminExternalNetworksPage />
-      case 'networking-virtual-networks':
-        return (
-          <ProviderAdminVirtualNetworksPage
-            openVirtualNetworkId={openVirtualNetworkId}
-            openSubnetId={openSubnetId}
-            openSecurityGroupId={openSecurityGroupId}
-            onOpenVirtualNetworkConsumed={() => setOpenVirtualNetworkId(null)}
-            onOpenSubnetConsumed={() => setOpenSubnetId(null)}
-            onOpenSecurityGroupConsumed={() => setOpenSecurityGroupId(null)}
           />
         )
       case 'secrets':

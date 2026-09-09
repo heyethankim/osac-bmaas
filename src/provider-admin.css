@@ -4945,9 +4945,7 @@
 .provider-admin-network-inventory__card .provider-admin-catalog-items__card-icon,
 .provider-admin-external-networks-hub__card .provider-admin-catalog-items__card-icon,
 .provider-admin-organizations__card
-  .provider-admin-catalog-items__card-icon:not(.provider-admin-organizations__card-logo--northsummit):not(
-    .provider-admin-organizations__card-logo--harborline
-  ) {
+  .provider-admin-catalog-items__card-icon:not(.provider-admin-organizations__card-logo--initial) {
   color: var(--pf-t--global--icon--color--regular);
 }
 
@@ -4958,24 +4956,23 @@
   object-fit: contain;
 }
 
-.provider-admin-organizations__card-logo--placeholder {
-  color: var(--pf-t--global--icon--color--regular);
+.provider-admin-organizations__card-logo--initial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--pf-t--global--background--color--secondary--default);
+  color: var(--pf-t--global--text--color--regular);
 }
 
-.provider-admin-organizations__card-logo--northsummit {
-  background-color: var(--pf-t--global--background--color--primary--default);
-}
-
-.provider-admin-organizations__card-logo--harborline {
-  background-color: #eaf3f3;
-  color: #106868;
-}
-
-.harborline-capital-mark {
+.provider-admin-organizations__card-initial {
   font-family: var(--pf-t--global--font--family--heading, 'Red Hat Display', Helvetica, Arial, sans-serif);
   font-size: 1.375rem;
   font-weight: var(--pf-t--global--font--weight--heading--bold, 700);
   line-height: 1;
+}
+
+.provider-admin-organizations__card-logo--placeholder {
+  color: var(--pf-t--global--icon--color--regular);
 }
 
 .provider-admin-organizations__card-tenant-id.pf-v6-c-content--p {

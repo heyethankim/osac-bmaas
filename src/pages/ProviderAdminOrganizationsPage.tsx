@@ -27,11 +27,8 @@ import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@p
 import { CatalogFilterEmptyState } from '../components/catalog/CatalogFilterEmptyState'
 import { CatalogFilterResultsSummary } from '../components/catalog/CatalogFilterResultsSummary'
 import { CatalogSpecRowsList } from '../components/catalog/CatalogSpecRowsList'
-import { renderInventoryCardIcon, TENANT_PLACEHOLDER_CARD_ICON } from '../components/catalog/inventoryCardIcons'
 import { ViewModeToggle } from '../components/catalog/CatalogViewToggle'
 import { getAdministrationViewMode, setAdministrationViewMode, type ViewMode } from '../catalog/viewMode'
-import { HarborlineCapitalMark } from '../components/tenant/HarborlineCapitalMark'
-import { NorthSummitBankStarMark } from '../components/tenant/NorthSummitBankStarMark'
 import { OrganizationDetailsPage } from '../components/provider-admin/OrganizationDetailsPage'
 import { RegisterOrganizationWizard } from '../components/provider-admin/RegisterOrganizationWizard'
 import { SetupIdentityProviderWizard } from '../components/provider-admin/SetupIdentityProviderWizard'
@@ -42,13 +39,11 @@ import {
   getOrganizationSetupNextAction,
   getOrganizationSetupSignal,
   buildOrganizationFilterParts,
-  isHarborlineCapitalOrganization,
-  isNorthSummitBankOrganization,
+  getOrganizationNameInitial,
   matchesOrganizationSetupFilter,
   ORGANIZATION_SETUP_FILTER_OPTIONS,
   organizationMatchesSearch,
   PROVIDER_ORGANIZATIONS_DEMO,
-  resolveOrganizationCompanyLogo,
   type OrganizationSetupFilter,
   type OrganizationSetupNextAction,
   type RegisteredOrganization,
@@ -616,12 +611,6 @@ export function ProviderAdminOrganizationsPage({
                 const setupSignal = isRegistering || isActivating ? null : getOrganizationSetupSignal(org)
                 const nextAction =
                   isRegistering || isActivating ? null : getOrganizationSetupNextAction(org)
-                const isNorthSummitBank = isNorthSummitBankOrganization(org)
-                const isHarborlineCapital = isHarborlineCapitalOrganization(org)
-                const companyLogoSrc =
-                  isNorthSummitBank || isHarborlineCapital
-                    ? null
-                    : resolveOrganizationCompanyLogo(org)
 
                 return (
                   <Card
@@ -632,33 +621,12 @@ export function ProviderAdminOrganizationsPage({
                     <CardBody>
                       <div className="provider-admin-catalog-items__card-header">
                         <span
-                          className={[
-                            'provider-admin-catalog-items__card-icon',
-                            'provider-admin-organizations__card-logo',
-                            isNorthSummitBank
-                              ? 'provider-admin-organizations__card-logo--northsummit'
-                              : isHarborlineCapital
-                                ? 'provider-admin-organizations__card-logo--harborline'
-                                : companyLogoSrc
-                                  ? ''
-                                  : 'provider-admin-organizations__card-logo--placeholder',
-                          ]
-                            .filter(Boolean)
-                            .join(' ')}
+                          className="provider-admin-catalog-items__card-icon provider-admin-organizations__card-logo provider-admin-organizations__card-logo--initial"
                           aria-hidden
                         >
-                          {isNorthSummitBank ? (
-                            <NorthSummitBankStarMark />
-                          ) : isHarborlineCapital ? (
-                            <HarborlineCapitalMark />
-                          ) : companyLogoSrc ? (
-                            <img
-                              src={companyLogoSrc}
-                              alt=""
-                            />
-                          ) : (
-                            renderInventoryCardIcon(TENANT_PLACEHOLDER_CARD_ICON)
-                          )}
+                          <span className="provider-admin-organizations__card-initial">
+                            {getOrganizationNameInitial(org.name)}
+                          </span>
                         </span>
                         <div className="provider-admin-catalog-items__card-header-actions">
                           {isActivating || isRegistering ? (

@@ -1,5 +1,6 @@
 import type { ProviderServiceId } from './constants'
 import type { ProviderAdminNavId } from '../providerAdmin/constants'
+import { resolveProviderAdminNavId } from '../providerAdmin/constants'
 import {
   createDemoBlueSolaceOnboardingOrganization,
   createDemoHarborlineCapitalOrganization,
@@ -179,7 +180,7 @@ export function getProviderActiveNav(): ProviderAdminNavId {
       value === 'billing-metering' ||
       value === 'system'
     ) {
-      return value
+      return resolveProviderAdminNavId(value)
     }
 
     if (value === 'infrastructure-compute-images') {
@@ -187,7 +188,7 @@ export function getProviderActiveNav(): ProviderAdminNavId {
     }
 
     if (value === 'services' || value === 'my-instances' || value === 'instances') {
-      return 'services-baremetal'
+      return 'catalog'
     }
 
     if (value === 'administration-rbac' || value === 'administration-roles') {
@@ -199,7 +200,7 @@ export function getProviderActiveNav(): ProviderAdminNavId {
     }
 
     if (value === 'infrastructure-virtual-networks') {
-      return 'networking-virtual-networks'
+      return 'catalog'
     }
 
     if (
@@ -208,11 +209,11 @@ export function getProviderActiveNav(): ProviderAdminNavId {
       value === 'infrastructure-security-groups' ||
       value === 'networking-security-groups'
     ) {
-      return 'networking-virtual-networks'
+      return 'catalog'
     }
 
     if (value === 'infrastructure-external-ip-pools') {
-      return 'networking-external-ip-pools'
+      return 'catalog'
     }
 
     if (value === 'administration-organizations-quotas') {

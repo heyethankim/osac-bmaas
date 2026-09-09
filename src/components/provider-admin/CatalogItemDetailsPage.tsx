@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { RocketIcon } from '@patternfly/react-icons/dist/esm/icons/rocket-icon'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -51,12 +50,11 @@ import {
   resolveVmCatalogHighlightRows,
 } from '../../catalog/catalogSpecs'
 import { formatCatalogFieldPolicyMode } from '../../catalog/catalogPublishConfig'
-import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
 
-/** Demo delay for Publish → Publishing ... → Launch instance. */
+/** Demo delay for Publish → Publishing ... */
 const DETAIL_PUBLISH_REVEAL_MS = 1500
 
-type DetailPublishCtaPhase = 'publish' | 'publishing' | 'launch'
+type DetailPublishCtaPhase = 'publish' | 'publishing' | 'live'
 
 type CatalogItemDetailsPageProps = {
   catalog: ProviderCatalogDraft
@@ -66,14 +64,13 @@ type CatalogItemDetailsPageProps = {
   onPublish: () => void
   onUnpublish: () => void
   isPublishing?: boolean
-  onLaunch: () => void
   onEdit: () => void
   onDuplicate: () => void
   onDelete: () => void
 }
 
 function getInitialPublishCtaPhase(catalog: ProviderCatalogDraft): DetailPublishCtaPhase {
-  return getCatalogItemStatus(catalog) === 'live' ? 'launch' : 'publish'
+  return getCatalogItemStatus(catalog) === 'live' ? 'live' : 'publish'
 }
 
 function getCatalogPublishingExtras(
@@ -116,7 +113,6 @@ export function CatalogItemDetailsPage({
   onBackToCatalog,
   onPublish,
   onUnpublish,
-  onLaunch,
   onEdit,
   onDuplicate,
   onDelete,
@@ -165,7 +161,7 @@ export function CatalogItemDetailsPage({
         : specRows
   const specsSectionLabel = getCatalogSpecsSectionLabel(serviceId)
   const [isActionsOpen, setIsActionsOpen] = useState(false)
-  // Detail page owns the CTA so Publish → Publishing ... → Launch cannot be stolen by
+  // Detail page owns the CTA so Publish → Publishing ... cannot be stolen by
   // lagging list props. Parent still persists status for cards / navigation.
   const [publishCtaPhase, setPublishCtaPhase] = useState<DetailPublishCtaPhase>(() =>
     getInitialPublishCtaPhase(catalog),
@@ -185,7 +181,7 @@ export function CatalogItemDetailsPage({
     if (publishCtaPhase === 'publishing') {
       return
     }
-    setPublishCtaPhase(isLive ? 'launch' : 'publish')
+    setPublishCtaPhase(isLive ? 'live' : 'publish')
   }, [isLive, publishCtaPhase, catalog.catalogItemId])
 
   useEffect(() => {
@@ -208,14 +204,14 @@ export function CatalogItemDetailsPage({
       window.clearTimeout(publishCtaTimerRef.current)
     }
     publishCtaTimerRef.current = window.setTimeout(() => {
-      setPublishCtaPhase('launch')
+      setPublishCtaPhase('live')
       publishCtaTimerRef.current = null
     }, DETAIL_PUBLISH_REVEAL_MS)
   }
 
-  // Local phase is the source of truth for the primary CTA during Publish → Launch.
   const showPublishing = publishCtaPhase === 'publishing'
-  const showLaunch = publishCtaPhase === 'launch'
+  const showPublish = publishCtaPhase === 'publish'
+  const showLive = publishCtaPhase === 'live'
 
   return (
     <div className="provider-admin-catalog-item-details">
@@ -259,26 +255,22 @@ export function CatalogItemDetailsPage({
         </FlexItem>
         <FlexItem alignSelf={{ default: 'alignSelfFlexStart' }}>
           <div className="provider-admin-catalog-item-details__actions">
-            {showLaunch ? (
-              <Button variant="primary" icon={<RocketIcon />} onClick={onLaunch}>
-                {LAUNCH_INSTANCE_WIZARD_DEMO.launchInstanceLabel}
-              </Button>
-            ) : (
+            {showPublish ? (
               <Button
                 variant="primary"
                 onClick={handlePublishClick}
                 isDisabled={showPublishing}
               >
-                {showPublishing ? (
-                  <span className="provider-admin-catalog__submit-label">
-                    <Spinner size="sm" aria-label={`Publishing ${catalog.displayName}`} />
-                    <span>Publishing ...</span>
-                  </span>
-                ) : (
-                  'Publish'
-                )}
+                Publish
               </Button>
-            )}
+            ) : showPublishing ? (
+              <Button variant="primary" isDisabled>
+                <span className="provider-admin-catalog__submit-label">
+                  <Spinner size="sm" aria-label={`Publishing ${catalog.displayName}`} />
+                  <span>Publishing ...</span>
+                </span>
+              </Button>
+            ) : null}
             <Dropdown
               isOpen={isActionsOpen}
               onOpenChange={setIsActionsOpen}
@@ -308,7 +300,7 @@ export function CatalogItemDetailsPage({
                   Duplicate
                 </DropdownItem>
                 <Divider component="li" key="separator" />
-                {showLaunch ? (
+                {showLive ? (
                   <DropdownItem value="unpublish" onClick={onUnpublish}>
                     Unpublish
                   </DropdownItem>
@@ -333,8 +325,8 @@ export function CatalogItemDetailsPage({
               variant="provider"
               content={{
                 service: CATALOG_SERVICE_FILTER_LABELS[serviceId],
-                statusLabel: showLaunch ? 'Live' : showPublishing ? 'Publishing' : 'Unpublished',
-                statusColor: showLaunch ? 'green' : showPublishing ? 'blue' : 'grey',
+                statusLabel: showLive ? 'Live' : showPublishing ? 'Publishing' : 'Unpublished',
+                statusColor: showLive ? 'green' : showPublishing ? 'blue' : 'grey',
                 rateSummary: formatRateCardSummary(catalog.rateCard),
                 scope: catalog.scope,
                 visibilityLabel: scopeLabel,
@@ -348,8 +340,8 @@ export function CatalogItemDetailsPage({
               variant="provider"
               content={{
                 service: CATALOG_SERVICE_FILTER_LABELS[serviceId],
-                statusLabel: showLaunch ? 'Live' : showPublishing ? 'Publishing' : 'Unpublished',
-                statusColor: showLaunch ? 'green' : showPublishing ? 'blue' : 'grey',
+                statusLabel: showLive ? 'Live' : showPublishing ? 'Publishing' : 'Unpublished',
+                statusColor: showLive ? 'green' : showPublishing ? 'blue' : 'grey',
                 rateSummary: formatRateCardSummary(catalog.rateCard),
                 scope: catalog.scope,
                 visibilityLabel: scopeLabel,
@@ -384,10 +376,10 @@ export function CatalogItemDetailsPage({
                   <DescriptionListTerm>Status</DescriptionListTerm>
                   <DescriptionListDescription>
                     <Label
-                      color={showLaunch ? 'green' : showPublishing ? 'blue' : 'grey'}
+                      color={showLive ? 'green' : showPublishing ? 'blue' : 'grey'}
                       isCompact
                     >
-                      {showLaunch ? 'Live' : showPublishing ? 'Publishing' : 'Unpublished'}
+                      {showLive ? 'Live' : showPublishing ? 'Publishing' : 'Unpublished'}
                     </Label>
                   </DescriptionListDescription>
                 </DescriptionListGroup>

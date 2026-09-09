@@ -118,8 +118,8 @@ export function BmaasLandingPage() {
       to: '/provider/workspace?nav=catalog',
     },
     {
-      label: 'Projects',
-      to: '/provider/workspace?nav=projects-teams',
+      label: 'Tenants',
+      to: '/provider/workspace?nav=administration-organizations',
     },
     {
       label: 'Tenant onboarding (IdP Manager)',

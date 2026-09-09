@@ -35,6 +35,7 @@ import {
   isOrganizationReadyForLogin,
   resolveBreakGlassUsername,
   resolveIdentityProviderConnectedBy,
+  isHarborlineCapitalOrganization,
   resolveOrganizationCompanyLogo,
   type OrganizationActivationStep,
   type RegisteredOrganization,
@@ -257,7 +258,9 @@ export function OrganizationDetailsPage({
 }: OrganizationDetailsPageProps) {
   const activationSteps = getOrganizationActivationSteps(organization)
   const roleAssignments = listRoleAssignments(organization)
-  const companyLogoSrc = resolveOrganizationCompanyLogo(organization)
+  const companyLogoSrc = isHarborlineCapitalOrganization(organization)
+    ? null
+    : resolveOrganizationCompanyLogo(organization)
   const breakGlassUsername = getDetailsBreakGlassUsername(organization)
   const showBreakGlassAccount = Boolean(breakGlassUsername)
   const [isAssignRolesOpen, setIsAssignRolesOpen] = useState(false)

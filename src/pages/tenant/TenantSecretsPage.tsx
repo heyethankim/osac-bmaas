@@ -9,9 +9,6 @@ import {
   EmptyStateActions,
   EmptyStateBody,
   EmptyStateFooter,
-  FormSelect,
-  FormSelectOption,
-  Label,
   SearchInput,
   Title,
 } from '@patternfly/react-core'
@@ -28,15 +25,10 @@ import { TenantSecretDetailsPage } from '../../components/tenant/secrets/TenantS
 import {
   buildTenantSecretFilterParts,
   ensureTenantDemoSecrets,
+  formatTenantSecretKeyNames,
   getTenantSecretById,
-  getTenantSecretTypeLabel,
-  getTenantSecretUsageLabel,
-  TENANT_SECRET_TYPE_OPTIONS,
-  TENANT_SECRET_USAGE_OPTIONS,
   TENANT_SECRETS_COPY,
   type TenantSecret,
-  type TenantSecretTypeFilter,
-  type TenantSecretUsageFilter,
 } from '../../tenant/secrets'
 
 type TenantSecretsPageProps = {
@@ -57,6 +49,15 @@ function formatSecretCreatedAt(value: string): string {
   })
 }
 
+function getSecretSearchHaystack(secret: TenantSecret): string {
+  const keyNames =
+    secret.data.kind === 'key-value'
+      ? secret.data.pairs.map((pair) => pair.key).join(' ')
+      : ''
+
+  return [secret.name, keyNames].join(' ').toLowerCase()
+}
+
 export function TenantSecretsPage({
   tenantSlug,
   readOnly = false,
@@ -65,47 +66,26 @@ export function TenantSecretsPage({
   const [isCreating, setIsCreating] = useState(false)
   const [selectedSecretId, setSelectedSecretId] = useState<string | null>(null)
   const [searchValue, setSearchValue] = useState('')
-  const [selectedType, setSelectedType] = useState<TenantSecretTypeFilter>('all')
-  const [selectedUsage, setSelectedUsage] = useState<TenantSecretUsageFilter>('all')
   const [viewMode, setViewMode] = useState<ViewMode>(() => getSecretsViewMode())
 
   const filteredSecrets = useMemo(() => {
     const query = searchValue.trim().toLowerCase()
+    if (!query) {
+      return secrets
+    }
 
-    return secrets.filter((secret) => {
-      if (selectedType !== 'all' && secret.type !== selectedType) {
-        return false
-      }
-
-      if (selectedUsage !== 'all' && secret.usage !== selectedUsage) {
-        return false
-      }
-
-      if (!query) {
-        return true
-      }
-
-      return (
-        secret.name.toLowerCase().includes(query) ||
-        getTenantSecretTypeLabel(secret.type).toLowerCase().includes(query) ||
-        getTenantSecretUsageLabel(secret.usage).toLowerCase().includes(query) ||
-        secret.summary.toLowerCase().includes(query)
-      )
-    })
-  }, [searchValue, secrets, selectedType, selectedUsage])
+    return secrets.filter((secret) => getSecretSearchHaystack(secret).includes(query))
+  }, [searchValue, secrets])
 
   const filterDescriptionParts = useMemo(
-    () => buildTenantSecretFilterParts(searchValue, selectedType, selectedUsage),
-    [searchValue, selectedType, selectedUsage],
+    () => buildTenantSecretFilterParts(searchValue),
+    [searchValue],
   )
 
-  const hasActiveFilters =
-    Boolean(searchValue.trim()) || selectedType !== 'all' || selectedUsage !== 'all'
+  const hasActiveFilters = Boolean(searchValue.trim())
 
   const clearAllFilters = () => {
     setSearchValue('')
-    setSelectedType('all')
-    setSelectedUsage('all')
   }
 
   const handleViewModeChange = (mode: ViewMode) => {
@@ -186,30 +166,6 @@ export function TenantSecretsPage({
         <>
           <div className="catalog-view-toolbar">
             <div className="catalog-view-toolbar__start">
-              <FormSelect
-                className="catalog-status-filter"
-                id="tenant-secrets-type-filter"
-                value={selectedType}
-                onChange={(_event, value) => setSelectedType(value as TenantSecretTypeFilter)}
-                aria-label="Filter secrets by type"
-              >
-                <FormSelectOption value="all" label="All types" />
-                {TENANT_SECRET_TYPE_OPTIONS.map((option) => (
-                  <FormSelectOption key={option.id} value={option.id} label={option.label} />
-                ))}
-              </FormSelect>
-              <FormSelect
-                className="catalog-status-filter"
-                id="tenant-secrets-usage-filter"
-                value={selectedUsage}
-                onChange={(_event, value) => setSelectedUsage(value as TenantSecretUsageFilter)}
-                aria-label="Filter secrets by use"
-              >
-                <FormSelectOption value="all" label="All uses" />
-                {TENANT_SECRET_USAGE_OPTIONS.map((option) => (
-                  <FormSelectOption key={option.id} value={option.id} label={option.label} />
-                ))}
-              </FormSelect>
               <SearchInput
                 className="catalog-search"
                 placeholder="Search secrets"
@@ -230,7 +186,7 @@ export function TenantSecretsPage({
           {filteredSecrets.length === 0 ? (
             <CatalogFilterEmptyState
               title="No secrets match your filters"
-              description="Try a different type, use, or search term."
+              description="Try a different search term."
               onClearFilters={clearAllFilters}
             />
           ) : viewMode === 'grid' ? (
@@ -250,11 +206,6 @@ export function TenantSecretsPage({
                         <span className="tenant-secrets__card-icon" aria-hidden>
                           {renderInventoryCardIcon(SECRET_CARD_ICON)}
                         </span>
-                        <div className="tenant-secrets__card-header-actions">
-                          <Label color="blue" isCompact className="tenant-secrets__card-label">
-                            {getTenantSecretTypeLabel(secret.type)}
-                          </Label>
-                        </div>
                       </div>
                       <Content component="p" className="tenant-secrets__primary-cell">
                         <Button
@@ -268,8 +219,7 @@ export function TenantSecretsPage({
                       </Content>
                       <CatalogSpecRowsList
                         rows={[
-                          { label: 'Use', value: getTenantSecretUsageLabel(secret.usage) },
-                          { label: 'Details', value: secret.summary },
+                          { label: 'Keys', value: formatTenantSecretKeyNames(secret) },
                           { label: 'Added', value: formatSecretCreatedAt(secret.createdAt) },
                         ]}
                         className="tenant-secrets__specs-list"
@@ -298,9 +248,7 @@ export function TenantSecretsPage({
                 <Thead>
                   <Tr>
                     <Th>Name</Th>
-                    <Th>Type</Th>
-                    <Th>Use</Th>
-                    <Th>Details</Th>
+                    <Th>Keys</Th>
                     <Th>Added</Th>
                   </Tr>
                 </Thead>
@@ -319,11 +267,7 @@ export function TenantSecretsPage({
                           </Button>
                         </Content>
                       </Td>
-                      <Td dataLabel="Type">
-                        <Label color="blue">{getTenantSecretTypeLabel(secret.type)}</Label>
-                      </Td>
-                      <Td dataLabel="Use">{getTenantSecretUsageLabel(secret.usage)}</Td>
-                      <Td dataLabel="Details">{secret.summary}</Td>
+                      <Td dataLabel="Keys">{formatTenantSecretKeyNames(secret)}</Td>
                       <Td dataLabel="Added">{formatSecretCreatedAt(secret.createdAt)}</Td>
                     </Tr>
                   ))}

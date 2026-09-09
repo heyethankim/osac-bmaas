@@ -36,11 +36,8 @@ import {
 } from '@patternfly/react-core'
 import {
   PROVIDER_ADMIN_ADMINISTRATION_NAV_ITEMS,
-  PROVIDER_ADMIN_NETWORKING_NAV_ITEMS,
-  PROVIDER_ADMIN_SERVICES_NAV_ITEMS,
+  resolveProviderAdminNavId,
   isAdministrationNavId,
-  isNetworkingNavId,
-  isServicesNavId,
   type ProviderAdminNavId,
 } from '../../providerAdmin/constants'
 import { clearProviderOnboardingState } from '../../providerSetup/storage'
@@ -158,7 +155,7 @@ export function ProviderAdminShell({
         <Nav
           aria-label="Provider admin"
           onSelect={(_event, item) => {
-            const navId = String(item.itemId) as ProviderAdminNavId
+            const navId = resolveProviderAdminNavId(String(item.itemId) as ProviderAdminNavId)
             onNavChange?.(navId)
           }}
         >
@@ -175,56 +172,12 @@ export function ProviderAdminShell({
               Catalog
             </NavItem>
             <NavExpandable
-              id="provider-admin-services-nav"
-              title="Services"
-              isExpanded
-              isActive={isServicesNavId(activeNavId)}
-            >
-              {PROVIDER_ADMIN_SERVICES_NAV_ITEMS.map((item) => (
-                <NavItem
-                  key={item.id}
-                  itemId={item.id}
-                  isActive={activeNavId === item.id}
-                  to="#"
-                  preventDefault
-                >
-                  {item.label}
-                </NavItem>
-              ))}
-            </NavExpandable>
-            <NavItem
-              itemId="projects-teams"
-              isActive={activeNavId === 'projects-teams'}
-              to="#"
-              preventDefault
-            >
-              Projects
-            </NavItem>
-            <NavExpandable
               id="provider-admin-administration-nav"
               title="Administration"
               isExpanded
               isActive={isAdministrationNavId(activeNavId)}
             >
               {PROVIDER_ADMIN_ADMINISTRATION_NAV_ITEMS.map((item) => (
-                <NavItem
-                  key={item.id}
-                  itemId={item.id}
-                  isActive={activeNavId === item.id}
-                  to="#"
-                  preventDefault
-                >
-                  {item.label}
-                </NavItem>
-              ))}
-            </NavExpandable>
-            <NavExpandable
-              id="provider-admin-networking-nav"
-              title="Networking"
-              isExpanded
-              isActive={isNetworkingNavId(activeNavId)}
-            >
-              {PROVIDER_ADMIN_NETWORKING_NAV_ITEMS.map((item) => (
                 <NavItem
                   key={item.id}
                   itemId={item.id}

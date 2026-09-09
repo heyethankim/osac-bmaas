@@ -340,6 +340,15 @@ export function isHarborlineCapitalOrganization(
   return slug === 'harborline' || slug === 'harborline-capital'
 }
 
+export function getOrganizationNameInitial(name: string): string {
+  const trimmed = name.trim()
+  if (!trimmed) {
+    return '?'
+  }
+
+  return trimmed.charAt(0).toUpperCase()
+}
+
 export function resolveOrganizationCompanyLogo(
   organization: Pick<RegisteredOrganization, 'slug'> & {
     name?: string

@@ -61,6 +61,8 @@ export type TenantSecret = {
 
 export const DEMO_TENANT_CLUSTER_SSH_SECRET_ID = 'demo-tenant-secret-cluster-ssh'
 export const DEMO_TENANT_CLUSTER_PULL_SECRET_ID = 'demo-tenant-secret-cluster-pull'
+export const DEMO_TENANT_PLATFORM_API_TOKEN_SECRET_ID = 'demo-tenant-secret-platform-api'
+export const DEMO_TENANT_OBSERVABILITY_SECRET_ID = 'demo-tenant-secret-observability'
 export const DEMO_TENANT_GITHUB_SOURCE_SECRET_ID = 'demo-tenant-secret-github-source'
 export const DEMO_TENANT_CI_WEBHOOK_SECRET_ID = 'demo-tenant-secret-ci-webhook'
 
@@ -76,8 +78,6 @@ export type TenantSecretTypeFilter = 'all' | TenantSecretType
 export type TenantSecretUsageFilter = 'all' | TenantSecretUsage
 
 const TENANT_SECRETS_KEY_PREFIX = 'bmaas-tenant-secrets-'
-
-const DEMO_WEBHOOK_SECRET_KEY = 'whsec_demo_ci_webhook_8f2c91a4b7e3d056'
 
 function getStorageKey(tenantSlug: string): string {
   return `${TENANT_SECRETS_KEY_PREFIX}${tenantSlug}`
@@ -144,77 +144,77 @@ export function getTenantSecretUsageLabel(usage: TenantSecretUsage): string {
   return match?.label ?? usage
 }
 
-function createDemoTenantSecrets(): TenantSecret[] {
+const LEGACY_REMOVED_SECRET_IDS = new Set([
+  DEMO_TENANT_GITHUB_SOURCE_SECRET_ID,
+  DEMO_TENANT_CI_WEBHOOK_SECRET_ID,
+])
+
+const DEMO_PLATFORM_API_TOKEN = 'bmaas_demo_platform_token_8f2c91a4'
+const DEMO_PROMETHEUS_TOKEN = 'prom_demo_ns_bank_001'
+const DEMO_GRAFANA_API_KEY = 'glc_demo_grafana_key_9a2b'
+
+function createSampleTenantSecrets(): TenantSecret[] {
   return [
-    {
-      id: DEMO_TENANT_CLUSTER_PULL_SECRET_ID,
-      name: 'ocp-pull-secret',
-      type: 'image-pull',
-      usage: 'cluster-launch',
-      createdAt: '2026-03-12T14:18:00.000Z',
-      summary: 'Pull secret',
-      data: {
-        kind: 'image-pull',
-        authMode: 'upload-configuration',
-        credentials: [],
-        configurationFileName: 'pull-secret.json',
-        configurationFileContents: CLUSTER_LAUNCH_DEMO_PULL_SECRET,
-      },
-    },
     {
       id: DEMO_TENANT_CLUSTER_SSH_SECRET_ID,
       name: 'cluster-admin-ssh',
       type: 'key-value',
       usage: 'cluster-launch',
       createdAt: '2026-03-12T14:20:00.000Z',
-      summary: 'SSH public key',
+      summary: 'SSH public key for cluster nodes',
+      data: {
+        kind: 'key-value',
+        pairs: [{ key: 'ssh-public-key', value: CLUSTER_LAUNCH_DEMO_SSH_PUBLIC_KEY }],
+      },
+    },
+    {
+      id: DEMO_TENANT_CLUSTER_PULL_SECRET_ID,
+      name: 'ocp-pull-secret',
+      type: 'key-value',
+      usage: 'cluster-launch',
+      createdAt: '2026-03-12T14:18:00.000Z',
+      summary: 'OpenShift pull secret',
+      data: {
+        kind: 'key-value',
+        pairs: [{ key: 'pull-secret', value: CLUSTER_LAUNCH_DEMO_PULL_SECRET }],
+      },
+    },
+    {
+      id: DEMO_TENANT_PLATFORM_API_TOKEN_SECRET_ID,
+      name: 'platform-api-token',
+      type: 'key-value',
+      usage: 'general',
+      createdAt: '2026-02-28T09:45:00.000Z',
+      summary: 'Platform automation token',
+      data: {
+        kind: 'key-value',
+        pairs: [{ key: 'api-token', value: DEMO_PLATFORM_API_TOKEN }],
+      },
+    },
+    {
+      id: DEMO_TENANT_OBSERVABILITY_SECRET_ID,
+      name: 'observability-credentials',
+      type: 'key-value',
+      usage: 'general',
+      createdAt: '2026-02-15T16:30:00.000Z',
+      summary: 'Monitoring stack credentials',
       data: {
         kind: 'key-value',
         pairs: [
-          {
-            key: 'ssh-public-key',
-            value: CLUSTER_LAUNCH_DEMO_SSH_PUBLIC_KEY,
-          },
+          { key: 'prometheus-token', value: DEMO_PROMETHEUS_TOKEN },
+          { key: 'grafana-api-key', value: DEMO_GRAFANA_API_KEY },
         ],
-      },
-    },
-    {
-      id: DEMO_TENANT_GITHUB_SOURCE_SECRET_ID,
-      name: 'github-source',
-      type: 'source',
-      usage: 'general',
-      createdAt: '2026-02-28T09:45:00.000Z',
-      summary: 'Basic authentication',
-      data: {
-        kind: 'source',
-        authMode: 'basic',
-        username: 'platform-bot',
-        passwordOrToken: 'ghp_demo_platform_bot_token',
-        sshPrivateKeyFileName: '',
-        sshPrivateKeyContents: '',
-      },
-    },
-    {
-      id: DEMO_TENANT_CI_WEBHOOK_SECRET_ID,
-      name: 'ci-webhook',
-      type: 'webhook',
-      usage: 'general',
-      createdAt: '2026-02-15T16:30:00.000Z',
-      summary: 'Webhook key',
-      data: {
-        kind: 'webhook',
-        webhookSecretKey: DEMO_WEBHOOK_SECRET_KEY,
       },
     },
   ]
 }
 
-const DEMO_TENANT_SECRET_ORDER = createDemoTenantSecrets().map((secret) => secret.id)
+const SAMPLE_TENANT_SECRET_ORDER = createSampleTenantSecrets().map((secret) => secret.id)
 
 function sortTenantSecrets(secrets: TenantSecret[]): TenantSecret[] {
   return [...secrets].sort((left, right) => {
-    const leftIndex = DEMO_TENANT_SECRET_ORDER.indexOf(left.id)
-    const rightIndex = DEMO_TENANT_SECRET_ORDER.indexOf(right.id)
+    const leftIndex = SAMPLE_TENANT_SECRET_ORDER.indexOf(left.id)
+    const rightIndex = SAMPLE_TENANT_SECRET_ORDER.indexOf(right.id)
 
     if (leftIndex !== -1 && rightIndex !== -1) {
       return leftIndex - rightIndex
@@ -230,6 +230,12 @@ function sortTenantSecrets(secrets: TenantSecret[]): TenantSecret[] {
 
     return right.createdAt.localeCompare(left.createdAt)
   })
+}
+
+function migrateTenantSecrets(secrets: TenantSecret[]): TenantSecret[] {
+  return secrets.filter(
+    (secret) => secret.type === 'key-value' && !LEGACY_REMOVED_SECRET_IDS.has(secret.id),
+  )
 }
 
 function saveTenantSecrets(tenantSlug: string, secrets: TenantSecret[]): void {
@@ -266,55 +272,66 @@ export function getTenantSecretById(
 }
 
 export function ensureTenantDemoSecrets(tenantSlug: string): TenantSecret[] {
-  const existing = getTenantSecrets(tenantSlug)
-  const demos = createDemoTenantSecrets()
+  const existing = migrateTenantSecrets(getTenantSecrets(tenantSlug))
+  const samples = createSampleTenantSecrets()
   let next = [...existing]
   let changed = false
 
-  for (const demo of demos) {
-    const existingIndex = next.findIndex((secret) => secret.id === demo.id)
+  for (const sample of samples) {
+    const existingIndex = next.findIndex((secret) => secret.id === sample.id)
     if (existingIndex === -1) {
-      next.push(demo)
+      next.push(sample)
       changed = true
       continue
     }
 
     const current = next[existingIndex]!
-    if (!current.data || JSON.stringify(current) !== JSON.stringify(demo)) {
-      next[existingIndex] = demo
+    if (JSON.stringify(current) !== JSON.stringify(sample)) {
+      next[existingIndex] = sample
       changed = true
     }
   }
 
-  if (changed) {
-    next = sortTenantSecrets(next)
-    saveTenantSecrets(tenantSlug, next)
-    return next
-  }
+  next = sortTenantSecrets(next)
 
-  const sorted = sortTenantSecrets(next)
-  if (sorted.some((secret, index) => secret.id !== next[index]?.id)) {
-    saveTenantSecrets(tenantSlug, sorted)
-    return sorted
+  if (
+    changed ||
+    next.length !== existing.length ||
+    next.some((secret, index) => secret.id !== existing[index]?.id)
+  ) {
+    saveTenantSecrets(tenantSlug, next)
   }
 
   return next
 }
 
-export function buildTenantSecretFilterParts(
-  searchValue: string,
-  selectedType: TenantSecretTypeFilter,
-  selectedUsage: TenantSecretUsageFilter,
-): string[] {
+export function formatTenantSecretKeyNames(secret: TenantSecret): string {
+  if (secret.data.kind !== 'key-value') {
+    return '—'
+  }
+
+  const keys = secret.data.pairs.map((pair) => pair.key.trim()).filter(Boolean)
+  if (keys.length === 0) {
+    return '—'
+  }
+
+  if (keys.length <= 3) {
+    return keys.join(', ')
+  }
+
+  return `${keys.slice(0, 3).join(', ')} +${keys.length - 3} more`
+}
+
+export function getTenantSecretPairCount(secret: TenantSecret): number {
+  if (secret.data.kind !== 'key-value') {
+    return 0
+  }
+
+  return secret.data.pairs.filter((pair) => pair.key.trim()).length
+}
+
+export function buildTenantSecretFilterParts(searchValue: string): string[] {
   const parts: string[] = []
-
-  if (selectedType !== 'all') {
-    parts.push(`type: ${getTenantSecretTypeLabel(selectedType)}`)
-  }
-
-  if (selectedUsage !== 'all') {
-    parts.push(`use: ${getTenantSecretUsageLabel(selectedUsage)}`)
-  }
 
   if (searchValue.trim()) {
     parts.push(`search: "${searchValue.trim()}"`)
@@ -334,9 +351,9 @@ export const MASKED_SECRET_VALUE = '•'.repeat(24)
 export type LaunchSecretPurpose = 'ssh-public-key' | 'pull-secret'
 
 export function getTenantSecretTypeForLaunchPurpose(
-  purpose: LaunchSecretPurpose,
+  _purpose: LaunchSecretPurpose,
 ): TenantSecretType {
-  return purpose === 'ssh-public-key' ? 'key-value' : 'image-pull'
+  return 'key-value'
 }
 
 export function filterTenantSecretsForLaunch(
@@ -345,10 +362,10 @@ export function filterTenantSecretsForLaunch(
 ): TenantSecret[] {
   return secrets.filter((secret) => {
     if (purpose === 'ssh-public-key') {
-      return secret.type === 'key-value' && Boolean(resolveSshPublicKeySecretValue(secret))
+      return Boolean(resolveSshPublicKeySecretValue(secret))
     }
 
-    return secret.type === 'image-pull' && Boolean(resolvePullSecretValue(secret))
+    return Boolean(resolvePullSecretValue(secret))
   })
 }
 
@@ -365,6 +382,17 @@ export function resolveSshPublicKeySecretValue(secret: TenantSecret): string | n
 }
 
 export function resolvePullSecretValue(secret: TenantSecret): string | null {
+  if (secret.data.kind === 'key-value') {
+    const pullPair =
+      secret.data.pairs.find((pair) => pair.key.trim() === 'pull-secret') ??
+      secret.data.pairs.find((pair) => {
+        const value = pair.value.trim()
+        return value.startsWith('{') && value.includes('"auths"')
+      })
+    const value = pullPair?.value.trim()
+    return value || null
+  }
+
   if (secret.data.kind !== 'image-pull') {
     return null
   }

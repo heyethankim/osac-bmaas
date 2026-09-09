@@ -27,7 +27,6 @@ export type ProviderAdminNavItem = {
 export const PROVIDER_ADMIN_NAV_ITEMS: ProviderAdminNavItem[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'catalog', label: 'Catalog' },
-  { id: 'projects-teams', label: 'Projects' },
 ]
 
 export const PROVIDER_ADMIN_SERVICES_NAV_ITEMS: ProviderAdminNavItem[] = [
@@ -72,4 +71,17 @@ export function isAdministrationNavId(navId: string): boolean {
 
 export function isOrganizationsNavId(navId: string): boolean {
   return navId === 'administration-organizations'
+}
+
+/** Provider admin no longer exposes tenant workspace sections in the shell. */
+export function resolveProviderAdminNavId(navId: ProviderAdminNavId): ProviderAdminNavId {
+  if (
+    isServicesNavId(navId) ||
+    isNetworkingNavId(navId) ||
+    navId === 'projects-teams'
+  ) {
+    return 'catalog'
+  }
+
+  return navId
 }
