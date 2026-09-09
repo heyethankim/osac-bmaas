@@ -2474,6 +2474,166 @@
   font-family: var(--pf-t--global--font--family--monospace);
 }
 
+.provider-admin-external-networks-hub > .catalog-view-toolbar {
+  margin-block-end: 0;
+}
+
+.provider-admin-external-networks-hub > .catalog-table-panel {
+  margin-block-start: 0;
+}
+
+.provider-admin-external-networks-hub__card .pf-v6-c-card__body {
+  display: flex;
+  flex-direction: column;
+  padding-block-end: 0;
+}
+
+.provider-admin-external-networks-hub__card-meta.pf-v6-c-content--p {
+  margin-block-start: var(--pf-t--global--spacer--xs);
+}
+
+.provider-admin-external-networks-hub__card .provider-admin-catalog-items__specs-list {
+  border-block-end: none;
+  padding-block-end: 0;
+}
+
+.provider-admin-external-networks-hub__card-ips.provider-admin-catalog-items__card-footer {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.provider-admin-external-networks-hub__card-ip-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.provider-admin-external-networks-hub__card-ip-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--xs);
+  padding-block: var(--pf-t--global--spacer--sm);
+}
+
+.provider-admin-external-networks-hub__card-ip-item:not(:last-child) {
+  border-block-end: var(--pf-t--global--border--width--divider--default) solid
+    var(--pf-t--global--border--color--default);
+}
+
+.provider-admin-external-networks-hub__card-ip-item:first-child {
+  padding-block-start: 0;
+}
+
+.provider-admin-external-networks-hub__card-ip-item:last-child {
+  padding-block-end: 0;
+}
+
+.provider-admin-external-networks-hub__card-ip-primary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.provider-admin-external-networks-hub__card-ip-primary code {
+  color: var(--pf-t--global--text--color--regular);
+  font-family: var(--pf-t--global--font--family--monospace);
+  font-size: var(--pf-t--global--font--size--body--default);
+}
+
+.provider-admin-external-networks-hub__card-ip-meta {
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.provider-admin-external-networks-hub__card-ips .provider-admin-external-networks-hub__ip-empty {
+  padding-inline-start: 0;
+}
+
+.provider-admin-external-networks-hub__pool-row .pf-v6-c-table__td {
+  vertical-align: middle;
+}
+
+.provider-admin-external-networks-hub__tree-row {
+  --external-network-tree-indent: 1.5rem;
+  padding-inline-start: calc(
+    var(--external-network-tree-depth, 0) * var(--external-network-tree-indent)
+  );
+}
+
+.provider-admin-external-networks-hub__name-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--pf-t--global--spacer--xs);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.provider-admin-external-networks-hub__tree-toggle.pf-v6-c-button {
+  flex: 0 0 auto;
+  margin-block-start: 0.125rem;
+  padding-inline: 0.25rem;
+}
+
+.provider-admin-external-networks-hub__tree-spacer {
+  display: inline-block;
+  flex: 0 0 1.75rem;
+}
+
+.provider-admin-external-networks-hub__pool-name {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--xs);
+  min-width: 0;
+}
+
+.provider-admin-external-networks-hub__pool-meta {
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.provider-admin-external-networks-hub__nested-badge.pf-v6-c-label {
+  margin-inline-start: 0;
+}
+
+.provider-admin-external-networks-hub__ip-row .pf-v6-c-table__td {
+  vertical-align: middle;
+}
+
+.provider-admin-external-networks-hub__ip-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--xs);
+  min-width: 0;
+}
+
+.provider-admin-external-networks-hub__ip-name code,
+.provider-admin-external-networks-hub__ip-row .pf-v6-c-table__td code {
+  font-family: var(--pf-t--global--font--family--monospace);
+}
+
+.provider-admin-external-networks-hub__ip-type {
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+  font-weight: var(--pf-t--global--font--weight--body--default);
+}
+
+.provider-admin-external-networks-hub__ip-pool-meta {
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.provider-admin-external-networks-hub__ip-empty {
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+  font-style: italic;
+}
+
 .provider-admin-external-ip-pools__table {
   --pf-v6-c-table--cell--PaddingBlock: var(--pf-t--global--spacer--md);
 }
@@ -2533,6 +2693,12 @@
 
 .provider-admin-network-inventory > .catalog-table-panel {
   margin-block-start: 0;
+}
+
+.provider-admin-network-inventory__card .pf-v6-c-card__body {
+  display: flex;
+  flex-direction: column;
+  padding-block-end: 0;
 }
 
 .provider-admin-network-inventory__table {
@@ -4768,6 +4934,52 @@
 
 .provider-admin-organizations__header .provider-admin-organizations__lede.pf-v6-c-content--p {
   margin: 0;
+}
+
+.provider-admin-organizations__card .pf-v6-c-card__body {
+  display: flex;
+  flex-direction: column;
+  padding-block-end: 0;
+}
+
+.provider-admin-network-inventory__card .provider-admin-catalog-items__card-icon,
+.provider-admin-external-networks-hub__card .provider-admin-catalog-items__card-icon,
+.provider-admin-organizations__card
+  .provider-admin-catalog-items__card-icon:not(.provider-admin-organizations__card-logo--northsummit):not(
+    .provider-admin-organizations__card-logo--harborline
+  ) {
+  color: var(--pf-t--global--icon--color--regular);
+}
+
+.provider-admin-organizations__card-logo img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.provider-admin-organizations__card-logo--placeholder {
+  color: var(--pf-t--global--icon--color--regular);
+}
+
+.provider-admin-organizations__card-logo--northsummit {
+  background-color: var(--pf-t--global--background--color--primary--default);
+}
+
+.provider-admin-organizations__card-logo--harborline {
+  background-color: #eaf3f3;
+  color: #106868;
+}
+
+.harborline-capital-mark {
+  font-family: var(--pf-t--global--font--family--heading, 'Red Hat Display', Helvetica, Arial, sans-serif);
+  font-size: 1.375rem;
+  font-weight: var(--pf-t--global--font--weight--heading--bold, 700);
+  line-height: 1;
+}
+
+.provider-admin-organizations__card-tenant-id.pf-v6-c-content--p {
+  margin-block-start: var(--pf-t--global--spacer--xs);
 }
 
 .provider-admin-organizations__table {

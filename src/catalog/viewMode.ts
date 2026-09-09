@@ -5,6 +5,9 @@ export type CatalogViewMode = ViewMode
 
 const CATALOG_VIEW_MODE_KEY = 'bmaas-catalog-view-mode'
 const INSTANCES_VIEW_MODE_KEY = 'bmaas-instances-view-mode'
+const ADMINISTRATION_VIEW_MODE_KEY = 'bmaas-administration-view-mode'
+const NETWORKING_VIEW_MODE_KEY = 'bmaas-networking-view-mode'
+const SECRETS_VIEW_MODE_KEY = 'bmaas-secrets-view-mode'
 
 function isViewMode(value: string | null): value is ViewMode {
   return value === 'grid' || value === 'list'
@@ -47,4 +50,31 @@ export function getInstancesViewMode(fallback: ViewMode = 'grid'): ViewMode {
 
 export function setInstancesViewMode(viewMode: ViewMode): void {
   setStoredViewMode(INSTANCES_VIEW_MODE_KEY, viewMode)
+}
+
+/** Administration pages default to list — dense operator tables. */
+export function getAdministrationViewMode(fallback: ViewMode = 'list'): ViewMode {
+  return getStoredViewMode(ADMINISTRATION_VIEW_MODE_KEY, fallback)
+}
+
+export function setAdministrationViewMode(viewMode: ViewMode): void {
+  setStoredViewMode(ADMINISTRATION_VIEW_MODE_KEY, viewMode)
+}
+
+/** Networking inventory defaults to list. */
+export function getNetworkingViewMode(fallback: ViewMode = 'list'): ViewMode {
+  return getStoredViewMode(NETWORKING_VIEW_MODE_KEY, fallback)
+}
+
+export function setNetworkingViewMode(viewMode: ViewMode): void {
+  setStoredViewMode(NETWORKING_VIEW_MODE_KEY, viewMode)
+}
+
+/** Secrets inventory defaults to list. */
+export function getSecretsViewMode(fallback: ViewMode = 'list'): ViewMode {
+  return getStoredViewMode(SECRETS_VIEW_MODE_KEY, fallback)
+}
+
+export function setSecretsViewMode(viewMode: ViewMode): void {
+  setStoredViewMode(SECRETS_VIEW_MODE_KEY, viewMode)
 }

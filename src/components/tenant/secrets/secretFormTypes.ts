@@ -4,10 +4,14 @@ import {
   CLUSTER_LAUNCH_DEMO_SSH_PUBLIC_KEY,
 } from '../../../tenantUser/clusterLaunchDemoSecrets'
 
+export type KeyValueValueMode = 'paste' | 'upload-file'
+
 export type KeyValuePair = {
   id: string
   key: string
   value: string
+  valueMode: KeyValueValueMode
+  valueFileName: string
 }
 
 export type ImagePullCredential = {
@@ -62,7 +66,7 @@ function createRowId(prefix: string): string {
 }
 
 export function createKeyValuePair(): KeyValuePair {
-  return { id: createRowId('kv'), key: '', value: '' }
+  return { id: createRowId('kv'), key: '', value: '', valueMode: 'paste', valueFileName: '' }
 }
 
 export function createImagePullCredential(): ImagePullCredential {
@@ -147,6 +151,8 @@ export function createDemoSecretFormState(type: TenantSecretType): TenantSecretF
               id: createRowId('kv'),
               key: 'ssh-public-key',
               value: CLUSTER_LAUNCH_DEMO_SSH_PUBLIC_KEY,
+              valueMode: 'paste',
+              valueFileName: '',
             },
           ],
         },

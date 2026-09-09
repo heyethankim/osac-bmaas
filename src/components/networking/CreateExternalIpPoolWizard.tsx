@@ -78,7 +78,7 @@ function buildFormFromPool(pool: ExternalIpPool): CreatePoolForm {
 export function CreateExternalIpPoolWizard({
   isOpen,
   presentation = 'page',
-  parentLabel = 'External IP pools',
+  parentLabel = 'External networks',
   tenantSlug,
   organizations = [],
   resource = null,
@@ -327,7 +327,7 @@ export function CreateExternalIpPoolWizard({
         nextButtonText: (
           <span className="provider-admin-network-inventory__wizard-footer-label">
             <GlobeIcon aria-hidden />
-            <span>{isEditMode ? 'Save changes' : 'Create pool'}</span>
+            <span>{isEditMode ? 'Save changes' : 'Create external IP pool'}</span>
             <ArrowRightIcon aria-hidden />
           </span>
         ),

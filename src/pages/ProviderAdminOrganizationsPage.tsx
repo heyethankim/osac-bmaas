@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
   Button,
+  Card,
+  CardBody,
   Content,
   EmptyState,
   EmptyStateActions,
@@ -24,6 +26,12 @@ import {
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
 import { CatalogFilterEmptyState } from '../components/catalog/CatalogFilterEmptyState'
 import { CatalogFilterResultsSummary } from '../components/catalog/CatalogFilterResultsSummary'
+import { CatalogSpecRowsList } from '../components/catalog/CatalogSpecRowsList'
+import { renderInventoryCardIcon, TENANT_PLACEHOLDER_CARD_ICON } from '../components/catalog/inventoryCardIcons'
+import { ViewModeToggle } from '../components/catalog/CatalogViewToggle'
+import { getAdministrationViewMode, setAdministrationViewMode, type ViewMode } from '../catalog/viewMode'
+import { HarborlineCapitalMark } from '../components/tenant/HarborlineCapitalMark'
+import { NorthSummitBankStarMark } from '../components/tenant/NorthSummitBankStarMark'
 import { OrganizationDetailsPage } from '../components/provider-admin/OrganizationDetailsPage'
 import { RegisterOrganizationWizard } from '../components/provider-admin/RegisterOrganizationWizard'
 import { SetupIdentityProviderWizard } from '../components/provider-admin/SetupIdentityProviderWizard'
@@ -34,10 +42,13 @@ import {
   getOrganizationSetupNextAction,
   getOrganizationSetupSignal,
   buildOrganizationFilterParts,
+  isHarborlineCapitalOrganization,
+  isNorthSummitBankOrganization,
   matchesOrganizationSetupFilter,
   ORGANIZATION_SETUP_FILTER_OPTIONS,
   organizationMatchesSearch,
   PROVIDER_ORGANIZATIONS_DEMO,
+  resolveOrganizationCompanyLogo,
   type OrganizationSetupFilter,
   type OrganizationSetupNextAction,
   type RegisteredOrganization,
@@ -129,6 +140,7 @@ export function ProviderAdminOrganizationsPage({
     'all',
   )
   const [selectedSetup, setSelectedSetup] = useState<OrganizationSetupFilter>('all')
+  const [viewMode, setViewMode] = useState<ViewMode>(() => getAdministrationViewMode())
   const [registeringOrganizationId, setRegisteringOrganizationId] = useState<string | null>(null)
   const registeringTimerRef = useRef<number | null>(null)
   const [activatingOrganizationId, setActivatingOrganizationId] = useState<string | null>(null)
@@ -159,6 +171,11 @@ export function ProviderAdminOrganizationsPage({
     setSearchValue('')
     setSelectedStatus('all')
     setSelectedSetup('all')
+  }
+
+  const handleViewModeChange = (mode: ViewMode) => {
+    setViewMode(mode)
+    setAdministrationViewMode(mode)
   }
 
   const clearRegisteringTimer = () => {
@@ -552,6 +569,12 @@ export function ProviderAdminOrganizationsPage({
                 aria-label="Search tenants"
               />
             </div>
+            <ViewModeToggle
+              viewMode={viewMode}
+              onChange={handleViewModeChange}
+              idPrefix="tenants-view"
+              ariaLabel="Tenants view"
+            />
           </div>
         ) : null}
 
@@ -577,6 +600,157 @@ export function ProviderAdminOrganizationsPage({
             description="Try a different status, setup state, or search term."
             onClearFilters={clearAllFilters}
           />
+        ) : viewMode === 'grid' ? (
+          <>
+            <CatalogFilterResultsSummary
+              filteredCount={filteredOrganizations.length}
+              totalCount={organizations.length}
+              singular="tenant"
+              filterParts={filterDescriptionParts}
+              onClearFilters={clearAllFilters}
+            />
+            <div className="catalog-card-grid catalog-card-grid--stable provider-admin-organizations__grid">
+              {filteredOrganizations.map((org) => {
+                const isRegistering = registeringOrganizationId === org.id
+                const isActivating = activatingOrganizationId === org.id
+                const setupSignal = isRegistering || isActivating ? null : getOrganizationSetupSignal(org)
+                const nextAction =
+                  isRegistering || isActivating ? null : getOrganizationSetupNextAction(org)
+                const isNorthSummitBank = isNorthSummitBankOrganization(org)
+                const isHarborlineCapital = isHarborlineCapitalOrganization(org)
+                const companyLogoSrc =
+                  isNorthSummitBank || isHarborlineCapital
+                    ? null
+                    : resolveOrganizationCompanyLogo(org)
+
+                return (
+                  <Card
+                    key={org.id}
+                    isCompact={false}
+                    className="provider-admin-catalog-items__card provider-admin-organizations__card"
+                  >
+                    <CardBody>
+                      <div className="provider-admin-catalog-items__card-header">
+                        <span
+                          className={[
+                            'provider-admin-catalog-items__card-icon',
+                            'provider-admin-organizations__card-logo',
+                            isNorthSummitBank
+                              ? 'provider-admin-organizations__card-logo--northsummit'
+                              : isHarborlineCapital
+                                ? 'provider-admin-organizations__card-logo--harborline'
+                                : companyLogoSrc
+                                  ? ''
+                                  : 'provider-admin-organizations__card-logo--placeholder',
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
+                          aria-hidden
+                        >
+                          {isNorthSummitBank ? (
+                            <NorthSummitBankStarMark />
+                          ) : isHarborlineCapital ? (
+                            <HarborlineCapitalMark />
+                          ) : companyLogoSrc ? (
+                            <img
+                              src={companyLogoSrc}
+                              alt=""
+                            />
+                          ) : (
+                            renderInventoryCardIcon(TENANT_PLACEHOLDER_CARD_ICON)
+                          )}
+                        </span>
+                        <div className="provider-admin-catalog-items__card-header-actions">
+                          {isActivating || isRegistering ? (
+                            <Spinner
+                              size="sm"
+                              aria-label={
+                                isActivating ? `Activating ${org.name}` : `Registering ${org.name}`
+                              }
+                            />
+                          ) : (
+                            <Label
+                              color={org.status === 'Active' ? 'green' : 'orange'}
+                              isCompact
+                              className="provider-admin-catalog-items__card-label"
+                            >
+                              {org.status}
+                            </Label>
+                          )}
+                          <ActionsColumn
+                            items={getOrganizationActions(
+                              org,
+                              openDetails,
+                              openEdit,
+                              openRemove,
+                              (organization) => openIdpDirectory(organization),
+                            )}
+                          />
+                        </div>
+                      </div>
+                      <Content
+                        component="p"
+                        className="provider-admin-catalog-items__primary-cell"
+                      >
+                        <Button
+                          variant="link"
+                          isInline
+                          className="provider-admin-catalog-items__name-link catalog-item-name-link"
+                          onClick={() => openDetails(org)}
+                        >
+                          {org.name}
+                        </Button>
+                      </Content>
+                      <Content
+                        component="p"
+                        className="provider-admin-organizations__secondary-cell provider-admin-organizations__card-tenant-id"
+                      >
+                        <code>{org.tenantId}</code>
+                      </Content>
+                      <CatalogSpecRowsList
+                        rows={[
+                          { label: 'Domain', value: org.primaryDomain || '—' },
+                          {
+                            label: 'Billing',
+                            value: `${org.billingAccountName} (${org.billingAccountId})`,
+                          },
+                          { label: 'Registered', value: formatRegisteredAt(org.createdAt) },
+                        ]}
+                        className="provider-admin-catalog-items__specs-list"
+                        rowClassName="provider-admin-catalog-items__spec-row"
+                        labelClassName="provider-admin-catalog-items__spec-label"
+                        valueClassName="provider-admin-catalog-items__spec-value"
+                      />
+                      {setupSignal ? (
+                        <div
+                          className="provider-admin-catalog-items__card-footer"
+                          aria-label="Setup"
+                        >
+                          {nextAction ? (
+                            <Button
+                              variant="link"
+                              isInline
+                              className="provider-admin-organizations__setup-signal-link"
+                              onClick={() => handleSetupNextAction(org, nextAction)}
+                            >
+                              {setupSignal}
+                            </Button>
+                          ) : (
+                            <Content
+                              component="p"
+                              className="provider-admin-organizations__setup-signal"
+                            >
+                              {setupSignal}
+                            </Content>
+                          )}
+                        </div>
+                      ) : null}
+                    </CardBody>
+                  </Card>
+                )
+              })}
+            </div>
+          </>
         ) : (
           <div className="catalog-table-panel">
             <CatalogFilterResultsSummary

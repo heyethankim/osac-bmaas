@@ -57,7 +57,7 @@ export function ExternalIpPoolDetailsPage({
 
   return (
     <EntityDetailsPageShell
-      parentLabel="External IP pools"
+      parentLabel="External networks"
       onBack={onBack}
       title={pool.name}
       titleId="external-ip-pool-details-title"

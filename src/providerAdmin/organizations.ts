@@ -312,6 +312,7 @@ export type BreakGlassIssuePatch = Pick<
 
 export const DEMO_BLUESOLACE_COMPANY_LOGO_FILE_NAME = 'bluesolace-financial-group-logo.png'
 export const DEMO_NORTH_SUMMIT_BANK_COMPANY_LOGO_FILE_NAME = 'north-summit-bank-logo.svg'
+export const DEMO_HARBORLINE_CAPITAL_COMPANY_LOGO_FILE_NAME = 'harborline-capital-logo.svg'
 
 export function getDemoBluesolaceCompanyLogoSrc(): string {
   return `${import.meta.env.BASE_URL}${DEMO_BLUESOLACE_COMPANY_LOGO_FILE_NAME}`
@@ -319,6 +320,24 @@ export function getDemoBluesolaceCompanyLogoSrc(): string {
 
 export function getDemoNorthSummitBankCompanyLogoSrc(): string {
   return `${import.meta.env.BASE_URL}${DEMO_NORTH_SUMMIT_BANK_COMPANY_LOGO_FILE_NAME}`
+}
+
+export function getDemoHarborlineCapitalCompanyLogoSrc(): string {
+  return `${import.meta.env.BASE_URL}${DEMO_HARBORLINE_CAPITAL_COMPANY_LOGO_FILE_NAME}`
+}
+
+export function isNorthSummitBankOrganization(
+  organization: Pick<RegisteredOrganization, 'slug'>,
+): boolean {
+  const slug = organization.slug.trim().toLowerCase()
+  return slug === 'northsummit' || slug === 'northstar' || slug === 'north-summit-bank'
+}
+
+export function isHarborlineCapitalOrganization(
+  organization: Pick<RegisteredOrganization, 'slug'>,
+): boolean {
+  const slug = organization.slug.trim().toLowerCase()
+  return slug === 'harborline' || slug === 'harborline-capital'
 }
 
 export function resolveOrganizationCompanyLogo(
@@ -346,6 +365,10 @@ export function resolveOrganizationCompanyLogo(
     slug === 'north-summit-bank'
   ) {
     return getDemoNorthSummitBankCompanyLogoSrc()
+  }
+
+  if (slug === 'harborline' || slug === 'harborline-capital') {
+    return getDemoHarborlineCapitalCompanyLogoSrc()
   }
 
   return null
@@ -960,8 +983,8 @@ export function createDemoHarborlineCapitalOrganization(
     additionalDomains: ['harborline.com'],
     billingAccountId: 'ACCT-HLC-3910',
     billingAccountName: 'harborline-capital-enterprise-billing',
-    logoSrc: null,
-    logoFileName: null,
+    logoSrc: getDemoHarborlineCapitalCompanyLogoSrc(),
+    logoFileName: DEMO_HARBORLINE_CAPITAL_COMPANY_LOGO_FILE_NAME,
     catalogItemId: options.catalogItemId ?? null,
     catalogDisplayName: options.catalogDisplayName ?? null,
     externalIpPoolId: options.externalIpPoolId ?? 'eipool-standby-a',

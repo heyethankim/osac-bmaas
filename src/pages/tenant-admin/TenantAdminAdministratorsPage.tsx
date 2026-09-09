@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
   Button,
+  Card,
+  CardBody,
   Content,
   EmptyState,
   EmptyStateActions,
@@ -18,9 +20,16 @@ import {
   SearchInput,
   Title,
 } from '@patternfly/react-core'
-import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table'
+import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
 import { CatalogFilterEmptyState } from '../../components/catalog/CatalogFilterEmptyState'
 import { CatalogFilterResultsSummary } from '../../components/catalog/CatalogFilterResultsSummary'
+import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
+import {
+  ADMINISTRATOR_CARD_ICON,
+  renderInventoryCardIcon,
+} from '../../components/catalog/inventoryCardIcons'
+import { ViewModeToggle } from '../../components/catalog/CatalogViewToggle'
+import { getAdministrationViewMode, setAdministrationViewMode, type ViewMode } from '../../catalog/viewMode'
 import { AddTenantAdministratorWizard } from '../../components/tenant-admin/AddTenantAdministratorWizard'
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
@@ -53,6 +62,34 @@ type TenantAdminAdministratorsPageProps = {
   showRoleCatalog?: boolean
 }
 
+function canRemoveAdministrator(
+  admin: TenantAdministrator,
+  allowRemovePrimary: boolean,
+): boolean {
+  return !admin.isPrimary || allowRemovePrimary
+}
+
+function getAdministratorActions(
+  admin: TenantAdministrator,
+  allowRemovePrimary: boolean,
+  onRequestRemove: (admin: TenantAdministrator) => void,
+): IAction[] {
+  const canRemove = canRemoveAdministrator(admin, allowRemovePrimary)
+
+  return [
+    {
+      title: 'Remove',
+      isDanger: true,
+      isAriaDisabled: !canRemove,
+      onClick: () => {
+        if (canRemove) {
+          onRequestRemove(admin)
+        }
+      },
+    },
+  ]
+}
+
 export function TenantAdminAdministratorsPage({
   organization,
   onOrganizationChange,
@@ -73,6 +110,7 @@ export function TenantAdminAdministratorsPage({
   const [selectedStatus, setSelectedStatus] = useState<AdministratorStatusFilter>('all')
   const [administratorPendingRemove, setAdministratorPendingRemove] =
     useState<TenantAdministrator | null>(null)
+  const [viewMode, setViewMode] = useState<ViewMode>(() => getAdministrationViewMode())
   const administrators = showRoleCatalog
     ? listRoleAssignments(organization)
     : listTenantAdministrators(organization)
@@ -124,6 +162,11 @@ export function TenantAdminAdministratorsPage({
     setSearchValue('')
     setSelectedRole('all')
     setSelectedStatus('all')
+  }
+
+  const handleViewModeChange = (mode: ViewMode) => {
+    setViewMode(mode)
+    setAdministrationViewMode(mode)
   }
 
   const closeRemoveAdministrator = () => {
@@ -282,6 +325,12 @@ export function TenantAdminAdministratorsPage({
                 aria-label="Search administrators"
               />
             </div>
+            <ViewModeToggle
+              viewMode={viewMode}
+              onChange={handleViewModeChange}
+              idPrefix="administration-view"
+              ariaLabel="Administration view"
+            />
           </div>
 
           {filteredAdministrators.length === 0 ? (
@@ -294,6 +343,83 @@ export function TenantAdminAdministratorsPage({
               description={TENANT_ADMINISTRATORS_DEMO.emptyBody}
               onClearFilters={clearAllFilters}
             />
+          ) : viewMode === 'grid' ? (
+            <>
+              <CatalogFilterResultsSummary
+                filteredCount={filteredAdministrators.length}
+                totalCount={administrators.length}
+                singular={showRoleCatalog ? 'assignment' : 'administrator'}
+                filterParts={filterDescriptionParts}
+                onClearFilters={clearAllFilters}
+              />
+              <div className="catalog-card-grid catalog-card-grid--stable tenant-admin-administration__grid">
+                {filteredAdministrators.map((admin) => {
+                  const role = getAssignableTenantRole(admin.roleId)
+
+                  return (
+                    <Card
+                      key={`${admin.roleId}:${admin.email}`}
+                      isCompact={false}
+                      className="tenant-admin-administration__card"
+                    >
+                      <CardBody>
+                        <div className="tenant-admin-administration__card-header">
+                          <span className="tenant-admin-administration__card-icon" aria-hidden>
+                            {renderInventoryCardIcon(ADMINISTRATOR_CARD_ICON)}
+                          </span>
+                          <div className="tenant-admin-administration__card-header-actions">
+                            {showAssignmentStatus ? (
+                              <Label
+                                color={assignmentStatus === 'Active' ? 'green' : 'orange'}
+                                isCompact
+                                className="tenant-admin-administration__card-label"
+                              >
+                                {assignmentStatus}
+                              </Label>
+                            ) : null}
+                            <Label
+                              color={role.color}
+                              isCompact
+                              className="tenant-admin-administration__card-label"
+                            >
+                              {role.label}
+                            </Label>
+                            <ActionsColumn
+                              items={getAdministratorActions(
+                                admin,
+                                showRoleCatalog,
+                                setAdministratorPendingRemove,
+                              )}
+                            />
+                          </div>
+                        </div>
+                        <Content
+                          component="p"
+                          className="tenant-admin-administration__name-cell"
+                        >
+                          {admin.name}
+                        </Content>
+                        <Content
+                          component="p"
+                          className="tenant-admin-administration__meta-cell tenant-admin-administration__card-email"
+                        >
+                          {admin.email}
+                        </Content>
+                        {showAssignmentStatus ? (
+                          <CatalogSpecRowsList
+                            rows={[{ label: 'Description', value: role.description }]}
+                            className="tenant-admin-administration__specs-list"
+                            rowClassName="tenant-admin-administration__spec-row"
+                            labelClassName="tenant-admin-administration__spec-label"
+                            valueClassName="tenant-admin-administration__spec-value"
+                          />
+                        ) : null}
+                      </CardBody>
+                    </Card>
+                  )
+                })}
+              </div>
+            </>
           ) : (
             <div className="catalog-table-panel">
               <CatalogFilterResultsSummary
@@ -398,17 +524,9 @@ function AdministratorRow({
         </Td>
       ) : null}
       <Td isActionCell>
-        {admin.isPrimary && !allowRemovePrimary ? null : (
-          <ActionsColumn
-            items={[
-              {
-                title: 'Remove',
-                isDanger: true,
-                onClick: () => onRequestRemove(admin),
-              },
-            ]}
-          />
-        )}
+        <ActionsColumn
+          items={getAdministratorActions(admin, allowRemovePrimary, onRequestRemove)}
+        />
       </Td>
     </Tr>
   )

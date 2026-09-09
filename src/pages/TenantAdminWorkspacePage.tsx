@@ -4,7 +4,7 @@ import { syncWorkspaceCatalogItemParam, syncWorkspaceNavParam } from '../shared/
 import { TenantShell } from '../components/tenant/TenantShell'
 import { DEMO_TENANT_DISPLAY_ADMIN, isDemoTenantId } from '../demoTenant'
 import { PlaceholderTenantAdminPage } from './PlaceholderTenantAdminPage'
-import { ProviderAdminExternalIpPoolsPage } from './infrastructure/ProviderAdminExternalIpPoolsPage'
+import { ProviderAdminExternalNetworksPage } from './infrastructure/ProviderAdminExternalNetworksPage'
 import { ProviderAdminVirtualNetworksPage } from './infrastructure/ProviderAdminVirtualNetworksPage'
 import { TenantAdminCatalogPage } from './tenant-admin/TenantAdminCatalogPage'
 import { TenantAdminOverviewPage } from './tenant-admin/TenantAdminOverviewPage'
@@ -364,7 +364,7 @@ export function TenantAdminWorkspacePage() {
         )
       case 'networking-external-ip-pools':
         return (
-          <ProviderAdminExternalIpPoolsPage
+          <ProviderAdminExternalNetworksPage
             tenantSlug={tenant}
             scopeOrganization={organization}
           />

@@ -40,7 +40,7 @@ export const TENANT_ADMIN_NETWORKING_NAV_ITEMS: ReadonlyArray<{
   label: string
 }> = [
   { id: 'networking-virtual-networks', label: 'Virtual networks' },
-  { id: 'networking-external-ip-pools', label: 'External IP pools' },
+  { id: 'networking-external-ip-pools', label: 'External networks' },
 ]
 
 export const TENANT_ADMIN_NAV_ITEMS: TenantAdminNavItem[] = [

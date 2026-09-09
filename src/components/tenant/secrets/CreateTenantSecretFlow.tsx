@@ -88,7 +88,7 @@ function getSecretWizardSteps(options: {
 function getSecretWizardLede(type: TenantSecretType): string {
   switch (type) {
     case 'key-value':
-      return 'Add key/value pairs.'
+      return 'Add key/value pairs. Paste a value or upload a file.'
     case 'image-pull':
       return 'Add registry credentials or upload a pull secret.'
     case 'source':
@@ -143,7 +143,13 @@ function isKeyValueFormValid(form: TenantSecretFormState['keyValue']): boolean {
     return false
   }
 
-  return form.pairs.some((pair) => pair.key.trim() && pair.value.trim())
+  return form.pairs.some((pair) => {
+    if (!pair.key.trim()) {
+      return false
+    }
+
+    return Boolean(pair.value.trim())
+  })
 }
 
 function isImagePullFormValid(form: TenantSecretFormState['imagePull']): boolean {
@@ -225,12 +231,55 @@ function KeyValuePairsField({
             />
           </FormGroup>
           <FormGroup label="Value" fieldId={`secret-value-${pair.id}`} isRequired={index === 0}>
-            <SecretFieldInput
-              id={`secret-value-${pair.id}`}
-              value={pair.value}
-              onChange={(_event, value) => updatePair(pair.id, { value })}
-              aria-label={`Secret value ${index + 1}`}
-            />
+            <div className="tenant-secrets__radio-group">
+              <Radio
+                id={`secret-value-mode-paste-${pair.id}`}
+                name={`secret-value-mode-${pair.id}`}
+                label="Enter value"
+                isChecked={pair.valueMode === 'paste'}
+                onChange={() => updatePair(pair.id, { valueMode: 'paste' })}
+              />
+              <Radio
+                id={`secret-value-mode-upload-${pair.id}`}
+                name={`secret-value-mode-${pair.id}`}
+                label="Upload file"
+                isChecked={pair.valueMode === 'upload-file'}
+                onChange={() => updatePair(pair.id, { valueMode: 'upload-file' })}
+              />
+            </div>
+            {pair.valueMode === 'paste' ? (
+              <SecretFieldInput
+                id={`secret-value-${pair.id}`}
+                value={pair.value}
+                onChange={(_event, value) => updatePair(pair.id, { value })}
+                aria-label={`Secret value ${index + 1}`}
+              />
+            ) : (
+              <FileUpload
+                id={`secret-value-file-${pair.id}`}
+                type="text"
+                value={pair.value}
+                filename={pair.valueFileName}
+                filenamePlaceholder="Drag and drop a file or upload one"
+                browseButtonText="Upload"
+                clearButtonText="Remove"
+                onFileInputChange={(_event, file) =>
+                  updatePair(pair.id, { valueFileName: file.name })
+                }
+                onReadStarted={() => undefined}
+                onReadFinished={(_event, file) => {
+                  file.text().then((text) => {
+                    updatePair(pair.id, { value: text })
+                  })
+                }}
+                onClearClick={() =>
+                  updatePair(pair.id, {
+                    value: '',
+                    valueFileName: '',
+                  })
+                }
+              />
+            )}
           </FormGroup>
           {pairs.length > 1 ? (
             <Button
@@ -580,7 +629,18 @@ function renderSecretReview(type: TenantSecretType, form: TenantSecretFormState)
           </DescriptionListGroup>
           <DescriptionListGroup>
             <DescriptionListTerm>Values</DescriptionListTerm>
-            <DescriptionListDescription>Set (hidden)</DescriptionListDescription>
+            <DescriptionListDescription>
+              {pairs.length > 0
+                ? pairs
+                    .map((pair) =>
+                      pair.valueMode === 'upload-file' && pair.valueFileName.trim()
+                        ? `${pair.key.trim()}: ${pair.valueFileName.trim()}`
+                        : pair.key.trim(),
+                    )
+                    .join(', ')
+                : '—'}
+              {pairs.some((pair) => pair.value.trim()) ? ' · Set (hidden)' : ''}
+            </DescriptionListDescription>
           </DescriptionListGroup>
         </DescriptionList>
       )

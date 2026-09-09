@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react'
+import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
   Button,
+  Card,
+  CardBody,
   Content,
   EmptyState,
   EmptyStateActions,
@@ -15,8 +18,11 @@ import {
 import { Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table'
 import { CatalogFilterEmptyState } from '../../components/catalog/CatalogFilterEmptyState'
 import { CatalogFilterResultsSummary } from '../../components/catalog/CatalogFilterResultsSummary'
+import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
+import { renderInventoryCardIcon, SECRET_CARD_ICON } from '../../components/catalog/inventoryCardIcons'
+import { ViewModeToggle } from '../../components/catalog/CatalogViewToggle'
+import { getSecretsViewMode, setSecretsViewMode, type ViewMode } from '../../catalog/viewMode'
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
-import { CreateSecretDropdown } from '../../components/tenant/secrets/CreateSecretDropdown'
 import { CreateTenantSecretFlow } from '../../components/tenant/secrets/CreateTenantSecretFlow'
 import { TenantSecretDetailsPage } from '../../components/tenant/secrets/TenantSecretDetailsPage'
 import {
@@ -29,7 +35,6 @@ import {
   TENANT_SECRET_USAGE_OPTIONS,
   TENANT_SECRETS_COPY,
   type TenantSecret,
-  type TenantSecretType,
   type TenantSecretTypeFilter,
   type TenantSecretUsageFilter,
 } from '../../tenant/secrets'
@@ -57,11 +62,12 @@ export function TenantSecretsPage({
   readOnly = false,
 }: TenantSecretsPageProps) {
   const [secrets, setSecrets] = useState<TenantSecret[]>(() => ensureTenantDemoSecrets(tenantSlug))
-  const [createType, setCreateType] = useState<TenantSecretType | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
   const [selectedSecretId, setSelectedSecretId] = useState<string | null>(null)
   const [searchValue, setSearchValue] = useState('')
   const [selectedType, setSelectedType] = useState<TenantSecretTypeFilter>('all')
   const [selectedUsage, setSelectedUsage] = useState<TenantSecretUsageFilter>('all')
+  const [viewMode, setViewMode] = useState<ViewMode>(() => getSecretsViewMode())
 
   const filteredSecrets = useMemo(() => {
     const query = searchValue.trim().toLowerCase()
@@ -102,20 +108,25 @@ export function TenantSecretsPage({
     setSelectedUsage('all')
   }
 
+  const handleViewModeChange = (mode: ViewMode) => {
+    setViewMode(mode)
+    setSecretsViewMode(mode)
+  }
+
   const selectedSecret = useMemo(
     () => (selectedSecretId ? getTenantSecretById(tenantSlug, selectedSecretId) : null),
     [selectedSecretId, secrets, tenantSlug],
   )
 
-  if (createType && !readOnly) {
+  if (isCreating && !readOnly) {
     return (
       <CreateTenantSecretFlow
         tenantSlug={tenantSlug}
-        initialType={createType}
-        onClose={() => setCreateType(null)}
+        initialType="key-value"
+        onClose={() => setIsCreating(false)}
         onCreated={() => {
           setSecrets(ensureTenantDemoSecrets(tenantSlug))
-          setCreateType(null)
+          setIsCreating(false)
         }}
       />
     )
@@ -137,11 +148,14 @@ export function TenantSecretsPage({
         lede={TENANT_SECRETS_COPY.lede}
         action={
           secrets.length > 0 && !readOnly ? (
-            <CreateSecretDropdown
-              buttonLabel={TENANT_SECRETS_COPY.createSecretTypeLabel}
+            <Button
+              variant="primary"
+              icon={<PlusIcon aria-hidden />}
               className="provider-admin-workspace-page__action"
-              onSelectType={setCreateType}
-            />
+              onClick={() => setIsCreating(true)}
+            >
+              {TENANT_SECRETS_COPY.createSecretTypeLabel}
+            </Button>
           ) : undefined
         }
       />
@@ -157,10 +171,13 @@ export function TenantSecretsPage({
           {readOnly ? null : (
             <EmptyStateFooter>
               <EmptyStateActions>
-                <CreateSecretDropdown
-                  buttonLabel={TENANT_SECRETS_COPY.createSecretTypeLabel}
-                  onSelectType={setCreateType}
-                />
+                <Button
+                  variant="primary"
+                  icon={<PlusIcon aria-hidden />}
+                  onClick={() => setIsCreating(true)}
+                >
+                  {TENANT_SECRETS_COPY.createSecretTypeLabel}
+                </Button>
               </EmptyStateActions>
             </EmptyStateFooter>
           )}
@@ -202,6 +219,12 @@ export function TenantSecretsPage({
                 aria-label="Search secrets"
               />
             </div>
+            <ViewModeToggle
+              viewMode={viewMode}
+              onChange={handleViewModeChange}
+              idPrefix="secrets-view"
+              ariaLabel="Secrets view"
+            />
           </div>
 
           {filteredSecrets.length === 0 ? (
@@ -210,6 +233,55 @@ export function TenantSecretsPage({
               description="Try a different type, use, or search term."
               onClearFilters={clearAllFilters}
             />
+          ) : viewMode === 'grid' ? (
+            <>
+              <CatalogFilterResultsSummary
+                filteredCount={filteredSecrets.length}
+                totalCount={secrets.length}
+                singular="secret"
+                filterParts={filterDescriptionParts}
+                onClearFilters={hasActiveFilters ? clearAllFilters : undefined}
+              />
+              <div className="catalog-card-grid catalog-card-grid--stable tenant-secrets__grid">
+                {filteredSecrets.map((secret) => (
+                  <Card key={secret.id} isCompact={false} className="tenant-secrets__card">
+                    <CardBody>
+                      <div className="tenant-secrets__card-header">
+                        <span className="tenant-secrets__card-icon" aria-hidden>
+                          {renderInventoryCardIcon(SECRET_CARD_ICON)}
+                        </span>
+                        <div className="tenant-secrets__card-header-actions">
+                          <Label color="blue" isCompact className="tenant-secrets__card-label">
+                            {getTenantSecretTypeLabel(secret.type)}
+                          </Label>
+                        </div>
+                      </div>
+                      <Content component="p" className="tenant-secrets__primary-cell">
+                        <Button
+                          variant="link"
+                          isInline
+                          className="tenant-secrets__name-link catalog-item-name-link"
+                          onClick={() => setSelectedSecretId(secret.id)}
+                        >
+                          {secret.name}
+                        </Button>
+                      </Content>
+                      <CatalogSpecRowsList
+                        rows={[
+                          { label: 'Use', value: getTenantSecretUsageLabel(secret.usage) },
+                          { label: 'Details', value: secret.summary },
+                          { label: 'Added', value: formatSecretCreatedAt(secret.createdAt) },
+                        ]}
+                        className="tenant-secrets__specs-list"
+                        rowClassName="tenant-secrets__spec-row"
+                        labelClassName="tenant-secrets__spec-label"
+                        valueClassName="tenant-secrets__spec-value"
+                      />
+                    </CardBody>
+                  </Card>
+                ))}
+              </div>
+            </>
           ) : (
             <div className="catalog-table-panel">
               <CatalogFilterResultsSummary

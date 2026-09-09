@@ -130,6 +130,98 @@
   margin-block-start: 0;
 }
 
+.tenant-admin-administration__card .pf-v6-c-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+  padding-block-end: var(--pf-t--global--spacer--lg);
+}
+
+.tenant-admin-administration__card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pf-t--global--spacer--sm);
+  min-block-size: 2.75rem;
+}
+
+.tenant-admin-administration__card-header-actions {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  gap: var(--pf-t--global--spacer--sm);
+  margin-inline-start: auto;
+}
+
+.tenant-admin-administration__card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
+  border-radius: var(--pf-t--global--border--radius--medium);
+  background-color: var(--pf-t--global--background--color--secondary--default);
+  color: var(--pf-t--global--icon--color--regular);
+}
+
+.tenant-admin-administration__card-icon svg {
+  width: 1.5rem;
+  height: 1.5rem;
+  fill: currentcolor;
+}
+
+.tenant-admin-administration__card-label.pf-v6-c-label {
+  --pf-v6-c-label--FontSize: var(--pf-t--global--font--size--body--sm);
+  --pf-v6-c-label--PaddingBlockStart: 0.25rem;
+  --pf-v6-c-label--PaddingBlockEnd: 0.25rem;
+  --pf-v6-c-label--PaddingInlineStart: 0.5rem;
+  --pf-v6-c-label--PaddingInlineEnd: 0.5rem;
+  font-weight: var(--pf-t--global--font--weight--body--default);
+  white-space: nowrap;
+}
+
+.tenant-admin-administration__name-cell.pf-v6-c-content--p {
+  margin: 0;
+  font-size: var(--pf-t--global--font--size--md);
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+  line-height: 1.35;
+}
+
+.tenant-admin-administration__card-email.pf-v6-c-content--p {
+  margin-block-start: calc(-1 * var(--pf-t--global--spacer--sm));
+}
+
+.tenant-admin-administration__specs-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--sm);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.tenant-admin-administration__spec-row {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  column-gap: var(--pf-t--global--spacer--lg);
+  align-items: center;
+}
+
+.tenant-admin-administration__spec-label {
+  margin: 0;
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+}
+
+.tenant-admin-administration__spec-value {
+  margin: 0;
+  font-size: var(--pf-t--global--font--size--body--sm);
+  font-weight: var(--pf-t--global--font--weight--body--default);
+}
+
 .tenant-admin-administration__table {
   --pf-v6-c-table--cell--PaddingBlock: var(--pf-t--global--spacer--md);
   table-layout: fixed;
@@ -1640,6 +1732,87 @@
   margin-block-start: 0;
 }
 
+.tenant-secrets__card .pf-v6-c-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+  padding-block-end: var(--pf-t--global--spacer--lg);
+}
+
+.tenant-secrets__card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pf-t--global--spacer--sm);
+  min-block-size: 2.75rem;
+}
+
+.tenant-secrets__card-header-actions {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  gap: var(--pf-t--global--spacer--sm);
+  margin-inline-start: auto;
+}
+
+.tenant-secrets__card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
+  border-radius: var(--pf-t--global--border--radius--medium);
+  background-color: var(--pf-t--global--background--color--secondary--default);
+  color: var(--pf-t--global--icon--color--regular);
+}
+
+.tenant-secrets__card-icon svg {
+  width: 1.5rem;
+  height: 1.5rem;
+  fill: currentcolor;
+}
+
+.tenant-secrets__card-label.pf-v6-c-label {
+  --pf-v6-c-label--FontSize: var(--pf-t--global--font--size--body--sm);
+  --pf-v6-c-label--PaddingBlockStart: 0.25rem;
+  --pf-v6-c-label--PaddingBlockEnd: 0.25rem;
+  --pf-v6-c-label--PaddingInlineStart: 0.5rem;
+  --pf-v6-c-label--PaddingInlineEnd: 0.5rem;
+  font-weight: var(--pf-t--global--font--weight--body--default);
+  white-space: nowrap;
+}
+
+.tenant-secrets__specs-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--sm);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.tenant-secrets__spec-row {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  column-gap: var(--pf-t--global--spacer--lg);
+  align-items: center;
+}
+
+.tenant-secrets__spec-label {
+  margin: 0;
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+}
+
+.tenant-secrets__spec-value {
+  margin: 0;
+  font-size: var(--pf-t--global--font--size--body--sm);
+  font-weight: var(--pf-t--global--font--weight--body--default);
+}
+
 .tenant-secrets__empty.pf-v6-c-empty-state {
   margin-block-start: 0;
 }
@@ -1697,6 +1870,13 @@
 
 .tenant-secrets__add-row {
   margin-block-start: var(--pf-t--global--spacer--xs);
+}
+
+.tenant-secrets__radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--sm);
+  margin-block-end: var(--pf-t--global--spacer--sm);
 }
 
 .tenant-secrets__webhook-key-row {

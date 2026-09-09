@@ -39,7 +39,7 @@ export const PROVIDER_ADMIN_SERVICES_NAV_ITEMS: ProviderAdminNavItem[] = [
 
 export const PROVIDER_ADMIN_NETWORKING_NAV_ITEMS: ProviderAdminNavItem[] = [
   { id: 'networking-virtual-networks', label: 'Virtual networks' },
-  { id: 'networking-external-ip-pools', label: 'External IP pools' },
+  { id: 'networking-external-ip-pools', label: 'External networks' },
 ]
 
 export const PROVIDER_ADMIN_INFRASTRUCTURE_NAV_ITEMS: ProviderAdminNavItem[] = [

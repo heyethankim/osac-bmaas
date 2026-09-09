@@ -150,7 +150,7 @@ export function CreateExternalIpPoolModal({
           Cancel
         </Button>
         <Button variant="primary" isDisabled={isCreateDisabled} onClick={handleCreatePool}>
-          Create pool
+          Create external IP pool
         </Button>
       </ModalFooter>
     </Modal>

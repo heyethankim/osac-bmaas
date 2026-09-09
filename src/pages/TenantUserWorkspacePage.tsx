@@ -34,7 +34,7 @@ import {
   type TenantUserNavId,
 } from '../tenantUser/storage'
 import { TENANT_USER_NAV_ITEMS } from '../tenantShell/constants'
-import { ProviderAdminExternalIpPoolsPage } from './infrastructure/ProviderAdminExternalIpPoolsPage'
+import { ProviderAdminExternalNetworksPage } from './infrastructure/ProviderAdminExternalNetworksPage'
 import { ProviderAdminVirtualNetworksPage } from './infrastructure/ProviderAdminVirtualNetworksPage'
 import { TenantUserActivityLogPage } from './tenant-user/TenantUserActivityLogPage'
 import { TenantSecretsPage } from './tenant/TenantSecretsPage'
@@ -448,7 +448,7 @@ export function TenantUserWorkspacePage() {
         )
       case 'networking-external-ip-pools':
         return (
-          <ProviderAdminExternalIpPoolsPage
+          <ProviderAdminExternalNetworksPage
             tenantSlug={tenantSlug}
             scopeOrganization={organization}
           />

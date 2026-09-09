@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
   Button,
+  Card,
+  CardBody,
   Content,
   EmptyState,
   EmptyStateBody,
@@ -12,7 +14,7 @@ import {
   Title,
 } from '@patternfly/react-core'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
-import { AttachNatGatewayModal } from '../../components/networking/AttachNatGatewayModal'
+import { AttachNatGatewayWizard } from '../../components/networking/AttachNatGatewayWizard'
 import { DetachNatGatewayModal } from '../../components/networking/DetachNatGatewayModal'
 import { NetworkInventoryDeleteModal } from '../../components/networking/NetworkInventoryDeleteModal'
 import { CreateSecurityGroupWizard } from '../../components/networking/CreateSecurityGroupWizard'
@@ -24,6 +26,10 @@ import { VirtualNetworkDetailsPage } from '../../components/provider-admin/Virtu
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
 import { CatalogFilterEmptyState } from '../../components/catalog/CatalogFilterEmptyState'
 import { CatalogFilterResultsSummary } from '../../components/catalog/CatalogFilterResultsSummary'
+import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
+import { renderInventoryCardIcon, VIRTUAL_NETWORK_CARD_ICON } from '../../components/catalog/inventoryCardIcons'
+import { ViewModeToggle } from '../../components/catalog/CatalogViewToggle'
+import { getNetworkingViewMode, setNetworkingViewMode, type ViewMode } from '../../catalog/viewMode'
 import { buildInventoryFilterParts } from '../../catalog/catalogFilterSummary'
 import type {
   NatGatewayProfile,
@@ -59,7 +65,7 @@ type ProviderAdminVirtualNetworksPageProps = {
 
 type NetworkDetailView = 'network' | 'subnet' | 'security-group'
 
-type NatGatewayModalState = {
+type NatGatewayWizardState = {
   network: ProviderVirtualNetwork
   mode: 'attach' | 'edit'
 }
@@ -116,6 +122,7 @@ export function ProviderAdminVirtualNetworksPage({
   const [isCreateWizardOpen, setIsCreateWizardOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<'all' | NetworkInventoryStatus>('all')
+  const [viewMode, setViewMode] = useState<ViewMode>(() => getNetworkingViewMode())
   const [selectedNetwork, setSelectedNetwork] = useState<ProviderVirtualNetwork | null>(null)
   const [selectedSubnet, setSelectedSubnet] = useState<ProviderSubnet | null>(null)
   const [selectedSecurityGroup, setSelectedSecurityGroup] = useState<ProviderSecurityGroup | null>(
@@ -134,7 +141,7 @@ export function ProviderAdminVirtualNetworksPage({
   const [createSecurityGroupNetworkId, setCreateSecurityGroupNetworkId] = useState<
     string | undefined
   >()
-  const [natGatewayModal, setNatGatewayModal] = useState<NatGatewayModalState | null>(null)
+  const [natGatewayWizard, setNatGatewayWizard] = useState<NatGatewayWizardState | null>(null)
   const [networkPendingNatDetach, setNetworkPendingNatDetach] =
     useState<ProviderVirtualNetwork | null>(null)
   const [subnetPendingDelete, setSubnetPendingDelete] = useState<ProviderSubnet | null>(null)
@@ -226,15 +233,15 @@ export function ProviderAdminVirtualNetworksPage({
   }
 
   const openAttachNatGateway = (network: ProviderVirtualNetwork) => {
-    setNatGatewayModal({ network, mode: 'attach' })
+    setNatGatewayWizard({ network, mode: 'attach' })
   }
 
   const openEditNatGateway = (network: ProviderVirtualNetwork) => {
-    setNatGatewayModal({ network, mode: 'edit' })
+    setNatGatewayWizard({ network, mode: 'edit' })
   }
 
-  const closeNatGatewayModal = () => {
-    setNatGatewayModal(null)
+  const closeNatGatewayWizard = () => {
+    setNatGatewayWizard(null)
   }
 
   const openDetachNatGateway = (network: ProviderVirtualNetwork) => {
@@ -328,23 +335,16 @@ export function ProviderAdminVirtualNetworksPage({
     profile: NatGatewayProfile,
   ) => {
     const updatedNetwork =
-      natGatewayModal?.mode === 'edit'
+      natGatewayWizard?.mode === 'edit'
         ? updateNatGatewayProfileOnVirtualNetwork(network, profile)
         : attachNatGatewayProfileToVirtualNetwork(network, profile)
     inventory.updateVirtualNetwork(updatedNetwork)
     refreshInventory()
-    closeNatGatewayModal()
+    closeNatGatewayWizard()
   }
 
   const networkInventoryModals = (
     <>
-      <AttachNatGatewayModal
-        network={natGatewayModal?.network ?? null}
-        mode={natGatewayModal?.mode ?? 'attach'}
-        isOpen={natGatewayModal !== null}
-        onClose={closeNatGatewayModal}
-        onAttach={handleNatGatewaySubmit}
-      />
       <DetachNatGatewayModal
         network={networkPendingNatDetach}
         isOpen={networkPendingNatDetach !== null}
@@ -406,6 +406,11 @@ export function ProviderAdminVirtualNetworksPage({
   const clearAllFilters = () => {
     setSearchValue('')
     setSelectedStatus('all')
+  }
+
+  const handleViewModeChange = (mode: ViewMode) => {
+    setViewMode(mode)
+    setNetworkingViewMode(mode)
   }
 
   const openDetails = (network: ProviderVirtualNetwork) => {
@@ -570,6 +575,28 @@ export function ProviderAdminVirtualNetworksPage({
     )
   }
 
+  if (natGatewayWizard && !readOnly) {
+    return (
+      <AttachNatGatewayWizard
+        isOpen
+        network={natGatewayWizard.network}
+        mode={natGatewayWizard.mode}
+        parentLabel={natGatewayWizard.network.name}
+        ancestors={[
+          {
+            label: 'Virtual networks',
+            onNavigate: () => {
+              closeNatGatewayWizard()
+              closeDetails()
+            },
+          },
+        ]}
+        onClose={closeNatGatewayWizard}
+        onAttach={handleNatGatewaySubmit}
+      />
+    )
+  }
+
   if (isDetailsOpen && selectedNetwork && detailView === 'subnet' && selectedSubnet) {
     const parentNetwork =
       virtualNetworks.find((network) => network.id === selectedSubnet.virtualNetworkId) ??
@@ -701,6 +728,12 @@ export function ProviderAdminVirtualNetworksPage({
             aria-label="Search virtual networks"
           />
         </div>
+        <ViewModeToggle
+          viewMode={viewMode}
+          onChange={handleViewModeChange}
+          idPrefix="virtual-networks-view"
+          ariaLabel="Virtual networks view"
+        />
       </div>
 
       {filteredNetworks.length === 0 ? (
@@ -718,6 +751,86 @@ export function ProviderAdminVirtualNetworksPage({
           <EmptyStateBody>Create a virtual network to get started.</EmptyStateBody>
         </EmptyState>
         )
+      ) : viewMode === 'grid' ? (
+        <>
+          <CatalogFilterResultsSummary
+            filteredCount={filteredNetworks.length}
+            totalCount={networks.length}
+            singular="virtual network"
+            filterParts={filterDescriptionParts}
+            onClearFilters={clearAllFilters}
+          />
+          <div className="catalog-card-grid catalog-card-grid--stable provider-admin-network-inventory__grid">
+            {filteredNetworks.map((network) => {
+              const status = getNetworkInventoryStatus(network)
+              const natGateway = hasVirtualNetworkNatGateway(network) ? network.natGateway : null
+
+              return (
+                <Card
+                  key={network.id}
+                  isCompact={false}
+                  className="provider-admin-catalog-items__card provider-admin-network-inventory__card"
+                >
+                  <CardBody>
+                    <div className="provider-admin-catalog-items__card-header">
+                      <span className="provider-admin-catalog-items__card-icon" aria-hidden>
+                        {renderInventoryCardIcon(VIRTUAL_NETWORK_CARD_ICON)}
+                      </span>
+                      <div className="provider-admin-catalog-items__card-header-actions">
+                        <Label
+                          color={getNetworkInventoryStatusLabelColor(status)}
+                          isCompact
+                          className="provider-admin-catalog-items__card-label"
+                        >
+                          {status}
+                        </Label>
+                        <ActionsColumn
+                          items={getVirtualNetworkActions(network, {
+                            readOnly,
+                            onViewDetails: openDetails,
+                            onEdit: openEdit,
+                          })}
+                        />
+                      </div>
+                    </div>
+                    <Content
+                      component="p"
+                      className="provider-admin-catalog-items__primary-cell"
+                    >
+                      <Button
+                        variant="link"
+                        isInline
+                        className="provider-admin-catalog-items__name-link catalog-item-name-link"
+                        onClick={() => openDetails(network)}
+                      >
+                        {network.name}
+                      </Button>
+                    </Content>
+                    <CatalogSpecRowsList
+                      rows={[
+                        { label: 'IPv4', value: network.cidr },
+                        {
+                          label: 'IPv6',
+                          value: network.ipv6Cidr?.trim() ? network.ipv6Cidr : '—',
+                        },
+                        {
+                          label: 'NAT',
+                          value: natGateway
+                            ? `${natGateway.name} · ${natGateway.publicIp}`
+                            : '—',
+                        },
+                      ]}
+                      className="provider-admin-catalog-items__specs-list"
+                      rowClassName="provider-admin-catalog-items__spec-row"
+                      labelClassName="provider-admin-catalog-items__spec-label"
+                      valueClassName="provider-admin-catalog-items__spec-value"
+                    />
+                  </CardBody>
+                </Card>
+              )
+            })}
+          </div>
+        </>
       ) : (
         <div className="catalog-table-panel">
           <CatalogFilterResultsSummary

@@ -8,7 +8,7 @@ import { ProviderAdminCatalogPage } from './ProviderAdminCatalogPage'
 import { ProviderAdminOverviewPage } from './ProviderAdminOverviewPage'
 import { ProviderAdminBmaasTemplatesPage } from './infrastructure/ProviderAdminBmaasTemplatesPage'
 import { ProviderAdminDataCentersPage } from './infrastructure/ProviderAdminDataCentersPage'
-import { ProviderAdminExternalIpPoolsPage } from './infrastructure/ProviderAdminExternalIpPoolsPage'
+import { ProviderAdminExternalNetworksPage } from './infrastructure/ProviderAdminExternalNetworksPage'
 import { ProviderAdminHardwareInventoryPage } from './infrastructure/ProviderAdminHardwareInventoryPage'
 import { ProviderAdminVirtualNetworksPage } from './infrastructure/ProviderAdminVirtualNetworksPage'
 import { ProviderAdminBillingMeteringPage } from './ProviderAdminBillingMeteringPage'
@@ -483,7 +483,7 @@ export function ProviderAdminWorkspacePage() {
           />
         )
       case 'networking-external-ip-pools':
-        return <ProviderAdminExternalIpPoolsPage />
+        return <ProviderAdminExternalNetworksPage />
       case 'networking-virtual-networks':
         return (
           <ProviderAdminVirtualNetworksPage
