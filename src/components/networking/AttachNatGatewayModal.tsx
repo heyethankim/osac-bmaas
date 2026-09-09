@@ -14,13 +14,18 @@ import {
   ModalVariant,
 } from '@patternfly/react-core'
 import {
+  findNatGatewayProfileForGateway,
+  hasVirtualNetworkNatGateway,
   NAT_GATEWAY_PROFILES,
   type NatGatewayProfile,
   type ProviderVirtualNetwork,
 } from '../../providerAdmin/networkInventory'
 
+type NatGatewayModalMode = 'attach' | 'edit'
+
 type AttachNatGatewayModalProps = {
   network: ProviderVirtualNetwork | null
+  mode?: NatGatewayModalMode
   isOpen: boolean
   onClose: () => void
   onAttach: (network: ProviderVirtualNetwork, profile: NatGatewayProfile) => void
@@ -28,26 +33,34 @@ type AttachNatGatewayModalProps = {
 
 export function AttachNatGatewayModal({
   network,
+  mode = 'attach',
   isOpen,
   onClose,
   onAttach,
 }: AttachNatGatewayModalProps) {
   const [selectedProfileId, setSelectedProfileId] = useState(NAT_GATEWAY_PROFILES[0]?.id ?? '')
+  const isEditMode = mode === 'edit'
 
   useEffect(() => {
     if (!isOpen) {
       return
     }
 
+    if (network && isEditMode && hasVirtualNetworkNatGateway(network)) {
+      const matchingProfile = findNatGatewayProfileForGateway(network.natGateway)
+      setSelectedProfileId(matchingProfile?.id ?? NAT_GATEWAY_PROFILES[0]?.id ?? '')
+      return
+    }
+
     setSelectedProfileId(NAT_GATEWAY_PROFILES[0]?.id ?? '')
-  }, [isOpen, network?.id])
+  }, [isOpen, isEditMode, network?.id, network?.natGateway?.id])
 
   const selectedProfile =
     NAT_GATEWAY_PROFILES.find((profile) => profile.id === selectedProfileId) ??
     NAT_GATEWAY_PROFILES[0] ??
     null
 
-  const handleAttach = () => {
+  const handleSubmit = () => {
     if (!network || !selectedProfile) {
       return
     }
@@ -64,12 +77,17 @@ export function AttachNatGatewayModal({
       aria-labelledby="attach-nat-gateway-title"
       className="provider-admin-network-inventory__modal"
     >
-      <ModalHeader title="Attach NAT gateway" labelId="attach-nat-gateway-title" />
+      <ModalHeader
+        title={isEditMode ? 'Change NAT gateway' : 'Attach NAT gateway'}
+        labelId="attach-nat-gateway-title"
+      />
       <ModalBody>
         {network ? (
           <>
             <Content component="p" className="provider-admin-network-inventory__modal-lede">
-              Provides outbound internet access for workloads in this virtual network.
+              {isEditMode
+                ? 'Select a different NAT gateway profile for outbound internet access.'
+                : 'Provides outbound internet access for workloads in this virtual network.'}
             </Content>
             <Form autoComplete="off" className="provider-admin-network-inventory__form">
               <FormGroup label="Virtual network" fieldId="attach-nat-gateway-network">
@@ -105,9 +123,9 @@ export function AttachNatGatewayModal({
         <Button
           variant="primary"
           isDisabled={!network || !selectedProfile}
-          onClick={handleAttach}
+          onClick={handleSubmit}
         >
-          Attach
+          {isEditMode ? 'Save' : 'Attach'}
         </Button>
         <Button variant="link" onClick={onClose}>
           Cancel

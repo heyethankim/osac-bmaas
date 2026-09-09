@@ -172,8 +172,6 @@ export function getProviderActiveNav(): ProviderAdminNavId {
       value === 'infrastructure-hardware-inventory' ||
       value === 'infrastructure-bmaas-templates' ||
       value === 'networking-virtual-networks' ||
-      value === 'networking-subnets' ||
-      value === 'networking-security-groups' ||
       value === 'networking-external-ip-pools' ||
       value === 'secrets' ||
       value === 'administration-organizations' ||
@@ -204,12 +202,13 @@ export function getProviderActiveNav(): ProviderAdminNavId {
       return 'networking-virtual-networks'
     }
 
-    if (value === 'infrastructure-subnets') {
-      return 'networking-subnets'
-    }
-
-    if (value === 'infrastructure-security-groups') {
-      return 'networking-security-groups'
+    if (
+      value === 'infrastructure-subnets' ||
+      value === 'networking-subnets' ||
+      value === 'infrastructure-security-groups' ||
+      value === 'networking-security-groups'
+    ) {
+      return 'networking-virtual-networks'
     }
 
     if (value === 'infrastructure-external-ip-pools') {
@@ -2268,7 +2267,7 @@ function normalizeProviderVirtualNetwork(network: ProviderVirtualNetwork): Provi
           ...network.natGateway,
           status: getNetworkInventoryStatus(network.natGateway),
         }
-      : network.natGateway ?? null,
+      : network.natGateway,
   }
 }
 
@@ -2433,6 +2432,10 @@ export function updateProviderSubnet(subnet: ProviderSubnet): void {
   setProviderSubnets(replaceInventoryItemById(getProviderSubnets(), subnet))
 }
 
+export function deleteProviderSubnet(subnetId: string): void {
+  setProviderSubnets(removeInventoryItemById(getProviderSubnets(), subnetId))
+}
+
 export function getProviderSecurityGroups(): ProviderSecurityGroup[] {
   try {
     const raw = sessionStorage.getItem(PROVIDER_SECURITY_GROUPS_KEY)
@@ -2494,6 +2497,10 @@ export function addProviderSecurityGroup(group: ProviderSecurityGroup): void {
 
 export function updateProviderSecurityGroup(group: ProviderSecurityGroup): void {
   setProviderSecurityGroups(replaceInventoryItemById(getProviderSecurityGroups(), group))
+}
+
+export function deleteProviderSecurityGroup(groupId: string): void {
+  setProviderSecurityGroups(removeInventoryItemById(getProviderSecurityGroups(), groupId))
 }
 
 export function getCatalogVirtualNetworkOptions(): CatalogNetworkResourceOption[] {

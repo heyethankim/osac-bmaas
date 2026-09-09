@@ -10,8 +10,6 @@ import { ProviderAdminBmaasTemplatesPage } from './infrastructure/ProviderAdminB
 import { ProviderAdminDataCentersPage } from './infrastructure/ProviderAdminDataCentersPage'
 import { ProviderAdminExternalIpPoolsPage } from './infrastructure/ProviderAdminExternalIpPoolsPage'
 import { ProviderAdminHardwareInventoryPage } from './infrastructure/ProviderAdminHardwareInventoryPage'
-import { ProviderAdminSecurityGroupsPage } from './infrastructure/ProviderAdminSecurityGroupsPage'
-import { ProviderAdminSubnetsPage } from './infrastructure/ProviderAdminSubnetsPage'
 import { ProviderAdminVirtualNetworksPage } from './infrastructure/ProviderAdminVirtualNetworksPage'
 import { ProviderAdminBillingMeteringPage } from './ProviderAdminBillingMeteringPage'
 import { ProviderAdminOrganizationsPage } from './ProviderAdminOrganizationsPage'
@@ -490,37 +488,11 @@ export function ProviderAdminWorkspacePage() {
         return (
           <ProviderAdminVirtualNetworksPage
             openVirtualNetworkId={openVirtualNetworkId}
-            onOpenVirtualNetworkConsumed={() => setOpenVirtualNetworkId(null)}
-            onNavigateToSubnet={(subnetId) => {
-              setOpenSubnetId(subnetId)
-              handleNavChange('networking-subnets')
-            }}
-            onNavigateToSecurityGroup={(securityGroupId) => {
-              setOpenSecurityGroupId(securityGroupId)
-              handleNavChange('networking-security-groups')
-            }}
-          />
-        )
-      case 'networking-subnets':
-        return (
-          <ProviderAdminSubnetsPage
             openSubnetId={openSubnetId}
-            onOpenSubnetConsumed={() => setOpenSubnetId(null)}
-            onNavigateToVirtualNetwork={(virtualNetworkId) => {
-              setOpenVirtualNetworkId(virtualNetworkId)
-              handleNavChange('networking-virtual-networks')
-            }}
-          />
-        )
-      case 'networking-security-groups':
-        return (
-          <ProviderAdminSecurityGroupsPage
             openSecurityGroupId={openSecurityGroupId}
+            onOpenVirtualNetworkConsumed={() => setOpenVirtualNetworkId(null)}
+            onOpenSubnetConsumed={() => setOpenSubnetId(null)}
             onOpenSecurityGroupConsumed={() => setOpenSecurityGroupId(null)}
-            onNavigateToVirtualNetwork={(virtualNetworkId) => {
-              setOpenVirtualNetworkId(virtualNetworkId)
-              handleNavChange('networking-virtual-networks')
-            }}
           />
         )
       case 'secrets':

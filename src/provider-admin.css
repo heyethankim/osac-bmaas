@@ -2658,6 +2658,59 @@
   margin-block-end: var(--pf-t--global--spacer--lg);
 }
 
+.provider-admin-virtual-network-details__related-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--lg);
+  min-width: 0;
+}
+
+.provider-admin-virtual-network-details__related-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+  min-width: 0;
+}
+
+.provider-admin-virtual-network-details__related-section
+  .provider-admin-network-inventory__drawer-related {
+  margin-block-end: 0;
+}
+
+.provider-admin-virtual-network-details__related-list.entity-details-page__node-set-list {
+  gap: 0;
+}
+
+.provider-admin-virtual-network-details__related-item.entity-details-page__node-set-item {
+  padding-block: var(--pf-t--global--spacer--md);
+  border-block-end: var(--pf-t--global--border--width--regular) solid
+    var(--pf-t--global--border--color--default);
+}
+
+.provider-admin-virtual-network-details__related-item.entity-details-page__node-set-item:first-child {
+  padding-block-start: 0;
+}
+
+.provider-admin-virtual-network-details__related-item.entity-details-page__node-set-item:last-child {
+  padding-block-end: 0;
+  border-block-end: none;
+}
+
+.provider-admin-virtual-network-details__related-item-title {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--pf-t--global--spacer--sm);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.provider-admin-virtual-network-details__related-item
+  .entity-details-page__node-set-meta
+  code {
+  font-family: var(--pf-t--global--font--family--monospace);
+}
+
 .provider-admin-network-inventory__drawer-related:last-child {
   margin-block-end: 0;
 }
@@ -2679,19 +2732,44 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--pf-t--global--spacer--md);
+  gap: 0;
 }
 
 .provider-admin-network-inventory__drawer-related-item {
   display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--pf-t--global--spacer--sm);
   min-width: 0;
+  padding-block: var(--pf-t--global--spacer--md);
+  border-block-end: var(--pf-t--global--border--width--regular) solid
+    var(--pf-t--global--border--color--default);
+}
+
+.provider-admin-network-inventory__drawer-related-item:first-child {
+  padding-block-start: 0;
+}
+
+.provider-admin-network-inventory__drawer-related-item:last-child {
+  padding-block-end: 0;
+  border-block-end: none;
+}
+
+.provider-admin-network-inventory__drawer-related-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--xs);
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .provider-admin-network-inventory__drawer-related-name {
   margin: 0;
   line-height: 1.25;
+}
+
+.provider-admin-network-inventory__drawer-related-status {
+  align-self: flex-start;
 }
 
 .provider-admin-network-inventory__drawer-related-name
@@ -3447,6 +3525,7 @@
 }
 
 .entity-details-page__section-header--config {
+  align-items: center;
   padding-block-end: var(--pf-t--global--spacer--sm);
   border-block-end: var(--pf-t--global--border--width--regular) solid
     var(--pf-t--global--border--color--default);
@@ -3466,6 +3545,34 @@
 .entity-details-page__add-node-set {
   padding-inline-start: 0;
   font-weight: var(--pf-t--global--font--weight--body--default);
+}
+
+.entity-details-page__section-actions-kebab.pf-v6-c-menu-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  min-block-size: 2.25rem;
+  padding: 0;
+  border-radius: 50%;
+  margin-inline-end: calc(-1 * var(--pf-t--global--spacer--sm));
+  flex-shrink: 0;
+}
+
+.entity-details-page__section-header--related-resources {
+  align-items: center;
+}
+
+.entity-details-page__section-title--related-resources.pf-v6-c-title {
+  margin: 0;
+  font-size: var(--pf-t--global--font--size--heading--sm);
+  font-weight: var(--pf-t--global--font--weight--heading--bold);
+  line-height: var(--pf-t--global--font--line-height--heading);
+}
+
+.entity-details-page__column--related-resources {
+  gap: var(--pf-t--global--spacer--xl);
 }
 
 .entity-details-page__upgrade-cluster-link {

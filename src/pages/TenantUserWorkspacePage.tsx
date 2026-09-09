@@ -35,8 +35,6 @@ import {
 } from '../tenantUser/storage'
 import { TENANT_USER_NAV_ITEMS } from '../tenantShell/constants'
 import { ProviderAdminExternalIpPoolsPage } from './infrastructure/ProviderAdminExternalIpPoolsPage'
-import { ProviderAdminSecurityGroupsPage } from './infrastructure/ProviderAdminSecurityGroupsPage'
-import { ProviderAdminSubnetsPage } from './infrastructure/ProviderAdminSubnetsPage'
 import { ProviderAdminVirtualNetworksPage } from './infrastructure/ProviderAdminVirtualNetworksPage'
 import { TenantUserActivityLogPage } from './tenant-user/TenantUserActivityLogPage'
 import { TenantSecretsPage } from './tenant/TenantSecretsPage'
@@ -63,8 +61,6 @@ function isTenantUserNavId(value: string | null): value is TenantUserNavId {
     value === 'services-virtual-machines' ||
     value === 'projects-teams' ||
     value === 'networking-virtual-networks' ||
-    value === 'networking-subnets' ||
-    value === 'networking-security-groups' ||
     value === 'networking-external-ip-pools' ||
     value === 'secrets' ||
     value === 'activity-log'
@@ -117,6 +113,9 @@ function normalizeTenantUserNavParam(value: string | null): TenantUserNavId | nu
   }
   if (value === 'my-instances' || value === 'services') {
     return 'services-baremetal'
+  }
+  if (value === 'networking-subnets' || value === 'networking-security-groups') {
+    return 'networking-virtual-networks'
   }
   return null
 }
@@ -440,41 +439,11 @@ export function TenantUserWorkspacePage() {
             tenantSlug={tenantSlug}
             readOnly
             openVirtualNetworkId={openVirtualNetworkId}
-            onOpenVirtualNetworkConsumed={() => setOpenVirtualNetworkId(null)}
-            onNavigateToSubnet={(subnetId) => {
-              setOpenSubnetId(subnetId)
-              handleNavChange('networking-subnets')
-            }}
-            onNavigateToSecurityGroup={(securityGroupId) => {
-              setOpenSecurityGroupId(securityGroupId)
-              handleNavChange('networking-security-groups')
-            }}
-          />
-        )
-      case 'networking-subnets':
-        return (
-          <ProviderAdminSubnetsPage
-            tenantSlug={tenantSlug}
-            readOnly
             openSubnetId={openSubnetId}
-            onOpenSubnetConsumed={() => setOpenSubnetId(null)}
-            onNavigateToVirtualNetwork={(virtualNetworkId) => {
-              setOpenVirtualNetworkId(virtualNetworkId)
-              handleNavChange('networking-virtual-networks')
-            }}
-          />
-        )
-      case 'networking-security-groups':
-        return (
-          <ProviderAdminSecurityGroupsPage
-            tenantSlug={tenantSlug}
-            readOnly
             openSecurityGroupId={openSecurityGroupId}
+            onOpenVirtualNetworkConsumed={() => setOpenVirtualNetworkId(null)}
+            onOpenSubnetConsumed={() => setOpenSubnetId(null)}
             onOpenSecurityGroupConsumed={() => setOpenSecurityGroupId(null)}
-            onNavigateToVirtualNetwork={(virtualNetworkId) => {
-              setOpenVirtualNetworkId(virtualNetworkId)
-              handleNavChange('networking-virtual-networks')
-            }}
           />
         )
       case 'networking-external-ip-pools':

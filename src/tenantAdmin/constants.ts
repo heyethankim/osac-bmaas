@@ -40,8 +40,6 @@ export const TENANT_ADMIN_NETWORKING_NAV_ITEMS: ReadonlyArray<{
   label: string
 }> = [
   { id: 'networking-virtual-networks', label: 'Virtual networks' },
-  { id: 'networking-subnets', label: 'Subnets' },
-  { id: 'networking-security-groups', label: 'Security groups' },
   { id: 'networking-external-ip-pools', label: 'External IP pools' },
 ]
 

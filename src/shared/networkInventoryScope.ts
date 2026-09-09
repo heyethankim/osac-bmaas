@@ -11,6 +11,8 @@ import {
   addProviderSubnet,
   addProviderVirtualNetwork,
   deleteProviderExternalIpPool,
+  deleteProviderSecurityGroup,
+  deleteProviderSubnet,
   getCatalogExternalIpPoolOptions,
   getCatalogSecurityGroupOptions,
   getCatalogSubnetOptions,
@@ -30,6 +32,8 @@ import {
   addTenantSubnet,
   addTenantVirtualNetwork,
   deleteTenantExternalIpPool,
+  deleteTenantSecurityGroup,
+  deleteTenantSubnet,
   getTenantExternalIpPoolOptions,
   getTenantExternalIpPools,
   getTenantSecurityGroupOptions,
@@ -55,8 +59,10 @@ export type NetworkInventoryScope = {
   updateVirtualNetwork: (network: ProviderVirtualNetwork) => void
   addSubnet: (subnet: ProviderSubnet) => void
   updateSubnet: (subnet: ProviderSubnet) => void
+  deleteSubnet: (subnetId: string) => void
   addSecurityGroup: (group: ProviderSecurityGroup) => void
   updateSecurityGroup: (group: ProviderSecurityGroup) => void
+  deleteSecurityGroup: (groupId: string) => void
   addExternalIpPool: (pool: ExternalIpPool) => void
   updateExternalIpPool: (pool: ExternalIpPool) => void
   deleteExternalIpPool: (poolId: string) => void
@@ -81,8 +87,10 @@ export function resolveNetworkInventoryScope(
       updateVirtualNetwork: (network) => updateTenantVirtualNetwork(tenantSlug, network),
       addSubnet: (subnet) => addTenantSubnet(tenantSlug, subnet),
       updateSubnet: (subnet) => updateTenantSubnet(tenantSlug, subnet),
+      deleteSubnet: (subnetId) => deleteTenantSubnet(tenantSlug, subnetId),
       addSecurityGroup: (group) => addTenantSecurityGroup(tenantSlug, group),
       updateSecurityGroup: (group) => updateTenantSecurityGroup(tenantSlug, group),
+      deleteSecurityGroup: (groupId) => deleteTenantSecurityGroup(tenantSlug, groupId),
       addExternalIpPool: (pool) => addTenantExternalIpPool(tenantSlug, pool),
       updateExternalIpPool: (pool) => updateTenantExternalIpPool(tenantSlug, pool),
       deleteExternalIpPool: (poolId) => deleteTenantExternalIpPool(tenantSlug, poolId),
@@ -104,8 +112,10 @@ export function resolveNetworkInventoryScope(
     updateVirtualNetwork: updateProviderVirtualNetwork,
     addSubnet: addProviderSubnet,
     updateSubnet: updateProviderSubnet,
+    deleteSubnet: deleteProviderSubnet,
     addSecurityGroup: addProviderSecurityGroup,
     updateSecurityGroup: updateProviderSecurityGroup,
+    deleteSecurityGroup: deleteProviderSecurityGroup,
     addExternalIpPool: addProviderExternalIpPool,
     updateExternalIpPool: updateProviderExternalIpPool,
     deleteExternalIpPool: deleteProviderExternalIpPool,

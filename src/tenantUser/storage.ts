@@ -58,8 +58,6 @@ const TENANT_USER_NAV_IDS: TenantUserNavId[] = [
   'services-virtual-machines',
   'projects-teams',
   'networking-virtual-networks',
-  'networking-subnets',
-  'networking-security-groups',
   'networking-external-ip-pools',
   'secrets',
   'activity-log',
@@ -68,6 +66,8 @@ const TENANT_USER_NAV_IDS: TenantUserNavId[] = [
 const LEGACY_TENANT_USER_NAV_IDS: Record<string, TenantUserNavId> = {
   'my-instances': 'services-baremetal',
   services: 'services-baremetal',
+  'networking-subnets': 'networking-virtual-networks',
+  'networking-security-groups': 'networking-virtual-networks',
 }
 
 function getSlugKey(prefix: string, slug: string): string {

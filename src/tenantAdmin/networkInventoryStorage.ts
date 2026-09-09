@@ -196,6 +196,10 @@ export function updateTenantSubnet(slug: string, subnet: ProviderSubnet): void {
   setTenantSubnets(slug, replaceInventoryItemById(getTenantSubnets(slug), subnet))
 }
 
+export function deleteTenantSubnet(slug: string, subnetId: string): void {
+  setTenantSubnets(slug, removeInventoryItemById(getTenantSubnets(slug), subnetId))
+}
+
 export function getTenantSecurityGroups(slug: string): ProviderSecurityGroup[] {
   return readJsonArray(
     tenantKey(TENANT_SECURITY_GROUPS_KEY_PREFIX, slug),
@@ -228,6 +232,13 @@ export function updateTenantSecurityGroup(
   setTenantSecurityGroups(
     slug,
     replaceInventoryItemById(getTenantSecurityGroups(slug), group),
+  )
+}
+
+export function deleteTenantSecurityGroup(slug: string, groupId: string): void {
+  setTenantSecurityGroups(
+    slug,
+    removeInventoryItemById(getTenantSecurityGroups(slug), groupId),
   )
 }
 

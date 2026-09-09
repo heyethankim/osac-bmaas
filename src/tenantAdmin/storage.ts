@@ -138,6 +138,8 @@ const LEGACY_TENANT_ADMIN_NAV_IDS: Record<string, TenantAdminNavId> = {
   services: 'services-baremetal',
   'services-bare-metal': 'services-baremetal',
   'my-instances': 'services-baremetal',
+  'networking-subnets': 'networking-virtual-networks',
+  'networking-security-groups': 'networking-virtual-networks',
 }
 
 const VALID_TENANT_ADMIN_NAV_IDS = new Set<TenantAdminNavId>(
