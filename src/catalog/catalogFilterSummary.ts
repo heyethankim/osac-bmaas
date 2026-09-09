@@ -52,6 +52,11 @@ function humanizeFilterPart(part: string): string {
     return `items for ${organizationMatch[1].trim()}`
   }
 
+  const projectMatch = part.match(/^project:\s*(.+)$/i)
+  if (projectMatch) {
+    return `items in the ${projectMatch[1].trim()} project`
+  }
+
   const statusMatch = part.match(/^status:\s*(.+)$/i)
   if (statusMatch) {
     const status = statusMatch[1].trim()

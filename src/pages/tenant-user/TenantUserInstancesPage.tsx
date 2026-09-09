@@ -38,6 +38,7 @@ import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import {
   createCatalogServiceFilterSet,
   describeCatalogServiceFilter,
+  isCatalogServiceFilterActive,
 } from '../../catalog/catalogFilterSummary'
 import {
   getInstancesViewMode,
@@ -90,6 +91,7 @@ import { ensureTenantDemoProjects } from '../../tenantAdmin/storage'
 import type { TenantProject } from '../../tenantAdmin/projects'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import {
+  ALL_PROJECTS_SCOPE_ID,
   filterInstancesByProjectScope,
   isAllProjectsScope,
   type ProjectScopeId,
@@ -420,6 +422,14 @@ export function TenantUserInstancesPage({
     [scopedInstances],
   )
 
+  const selectedScopeProject = useMemo(() => {
+    if (isAllProjectsScope(projectScopeId)) {
+      return null
+    }
+
+    return (allProjects ?? projects).find((project) => project.id === projectScopeId) ?? null
+  }, [allProjects, projectScopeId, projects])
+
   const serviceCounts = useMemo(
     () => countCatalogServices(instanceServiceIds),
     [instanceServiceIds],
@@ -516,6 +526,20 @@ export function TenantUserInstancesPage({
   const filterDescriptionParts = useMemo(() => {
     const parts: string[] = []
 
+    const hasNonProjectFilters =
+      organizationFilter !== '' ||
+      specFilterSelections.size > 0 ||
+      (hasServiceSpecFilters && powerStateFilter !== 'all') ||
+      searchValue.trim() !== '' ||
+      (!lockedServiceId && isCatalogServiceFilterActive(selectedFilters, instanceServiceIds))
+
+    if (
+      !isAllProjectsScope(projectScopeId) &&
+      (filteredInstances.length === 0 || hasNonProjectFilters)
+    ) {
+      parts.push(`project: ${selectedScopeProject?.name ?? projectScopeId}`)
+    }
+
     if (!lockedServiceId) {
       const serviceDescription = describeCatalogServiceFilter(selectedFilters, instanceServiceIds)
       if (serviceDescription) {
@@ -554,6 +578,7 @@ export function TenantUserInstancesPage({
 
     return parts
   }, [
+    filteredInstances.length,
     hasServiceSpecFilters,
     instanceServiceIds,
     isClustersPage,
@@ -561,9 +586,11 @@ export function TenantUserInstancesPage({
     organizationFilter,
     organizations,
     powerStateFilter,
+    projectScopeId,
     searchValue,
     selectedFilters,
     selectedOrganization?.name,
+    selectedScopeProject?.name,
     specFilterSelections,
   ])
 
@@ -571,6 +598,9 @@ export function TenantUserInstancesPage({
     filterDescriptionParts.length > 0 && filteredInstances.length > 0
 
   const clearAllFilters = () => {
+    if (!isAllProjectsScope(projectScopeId)) {
+      onProjectScopeChange(ALL_PROJECTS_SCOPE_ID)
+    }
     setSearchValue('')
     setOrganizationFilter('')
     setPowerStateFilter('all')
