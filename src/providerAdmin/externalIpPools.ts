@@ -159,12 +159,12 @@ export function getExternalIpPoolAvailableAddresses(
   return Math.max(getExternalIpPoolTotalAddresses(pool) - inUseCount, 0)
 }
 
-export type ExternalIpPoolLifecycleStatus = 'Available' | 'Ready'
+export type ExternalIpPoolLifecycleStatus = 'Unassigned' | 'Ready'
 
 export function getExternalIpPoolLifecycleStatus(
   pool: ExternalIpPool,
 ): ExternalIpPoolLifecycleStatus {
-  return pool.assignedOrganizationId !== null ? 'Ready' : 'Available'
+  return pool.assignedOrganizationId !== null ? 'Ready' : 'Unassigned'
 }
 
 export function getExternalIpPoolLifecycleStatusLabelColor(

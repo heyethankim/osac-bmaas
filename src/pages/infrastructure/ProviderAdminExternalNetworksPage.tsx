@@ -56,10 +56,14 @@ import { getProviderRegisteredOrganizations } from '../../providerSetup/storage'
 import { PROVIDER_ADMIN_NETWORKING_NAV_LABEL } from '../../providerAdmin/constants'
 import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope'
 
-const EXTERNAL_NETWORK_STATUS_FILTERS = ['Ready', 'Available', 'In use'] as const
+const PROVIDER_EXTERNAL_IP_POOL_STATUS_FILTERS = ['Ready', 'Unassigned'] as const
+const TENANT_EXTERNAL_IP_STATUS_FILTERS = ['In use', 'Available'] as const
 
-type ExternalIpPoolStatus = 'Available' | 'Ready'
-type ExternalNetworkStatusFilter = 'all' | (typeof EXTERNAL_NETWORK_STATUS_FILTERS)[number]
+type ExternalIpPoolLifecycleStatus = 'Unassigned' | 'Ready'
+type ExternalNetworkStatusFilter =
+  | 'all'
+  | (typeof PROVIDER_EXTERNAL_IP_POOL_STATUS_FILTERS)[number]
+  | (typeof TENANT_EXTERNAL_IP_STATUS_FILTERS)[number]
 type ExternalNetworkResourceFilter = 'all' | 'ip-pool' | 'ip'
 
 type FilteredExternalNetworkGroup = ExternalIpPoolGroup & {
@@ -98,11 +102,11 @@ function orderPoolGroupsForDisplay(
     .filter((group): group is ExternalIpPoolGroup => Boolean(group))
 }
 
-function getExternalIpPoolStatus(pool: ExternalIpPool): ExternalIpPoolStatus {
+function getExternalIpPoolStatus(pool: ExternalIpPool): ExternalIpPoolLifecycleStatus {
   return getExternalIpPoolLifecycleStatus(pool)
 }
 
-function getExternalIpPoolStatusLabelColor(status: ExternalIpPoolStatus): 'blue' | 'green' {
+function getExternalIpPoolStatusLabelColor(status: ExternalIpPoolLifecycleStatus): 'blue' | 'green' {
   return getExternalIpPoolLifecycleStatusLabelColor(status)
 }
 
@@ -168,11 +172,15 @@ function filterExternalNetworkGroups(
       return []
     }
 
+    if (selectedStatus === 'Unassigned' && poolStatus !== 'Unassigned') {
+      return []
+    }
+
     if (selectedStatus === 'In use' && visibleIps.length === 0) {
       return []
     }
 
-    if (selectedStatus === 'Available' && poolStatus !== 'Available' && visibleIps.length === 0) {
+    if (selectedStatus === 'Available' && visibleIps.length === 0) {
       return []
     }
 
@@ -181,11 +189,11 @@ function filterExternalNetworkGroups(
     }
 
     if (selectedResource === 'ip-pool') {
-      if (selectedStatus === 'In use') {
+      if (selectedStatus === 'In use' || selectedStatus === 'Available') {
         return []
       }
 
-      if (selectedStatus === 'Available' && poolStatus !== 'Available') {
+      if (selectedStatus === 'Unassigned' && poolStatus !== 'Unassigned') {
         return []
       }
 
@@ -413,6 +421,10 @@ export function ProviderAdminExternalNetworksPage({
     () => orderPoolGroupsForDisplay(poolGroups, poolDisplayOrderRef),
     [poolGroups],
   )
+
+  const statusFilterOptions = isTenantScope
+    ? TENANT_EXTERNAL_IP_STATUS_FILTERS
+    : PROVIDER_EXTERNAL_IP_POOL_STATUS_FILTERS
 
   const filteredGroups = useMemo(
     () =>
@@ -739,7 +751,7 @@ export function ProviderAdminExternalNetworksPage({
               aria-label="Filter external networks by status"
             >
               <FormSelectOption value="all" label="All statuses" />
-              {EXTERNAL_NETWORK_STATUS_FILTERS.map((status) => (
+              {statusFilterOptions.map((status) => (
                 <FormSelectOption key={status} value={status} label={status} />
               ))}
             </FormSelect>
