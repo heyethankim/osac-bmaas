@@ -43,6 +43,10 @@ import {
   detachNatGatewayFromVirtualNetwork,
   getNetworkInventoryStatus,
   getNetworkInventoryStatusLabelColor,
+  getSecurityGroupsForVirtualNetwork,
+  getSubnetsForVirtualNetwork,
+  formatVirtualNetworkSecurityGroupsSummary,
+  formatVirtualNetworkSubnetsSummary,
   hasVirtualNetworkNatGateway,
   isNetworkInventoryResourceDeletable,
   NETWORK_INVENTORY_STATUSES,
@@ -764,6 +768,14 @@ export function ProviderAdminVirtualNetworksPage({
             {filteredNetworks.map((network) => {
               const status = getNetworkInventoryStatus(network)
               const natGateway = hasVirtualNetworkNatGateway(network) ? network.natGateway : null
+              const subnetCount = getSubnetsForVirtualNetwork(
+                inventory.getSubnets(),
+                network.id,
+              ).length
+              const securityGroupCount = getSecurityGroupsForVirtualNetwork(
+                inventory.getSecurityGroups(),
+                network.id,
+              ).length
 
               return (
                 <Card
@@ -806,25 +818,60 @@ export function ProviderAdminVirtualNetworksPage({
                         {network.name}
                       </Button>
                     </Content>
-                    <CatalogSpecRowsList
-                      rows={[
-                        { label: 'IPv4', value: network.cidr },
-                        {
-                          label: 'IPv6',
-                          value: network.ipv6Cidr?.trim() ? network.ipv6Cidr : '—',
-                        },
-                        {
-                          label: 'NAT',
-                          value: natGateway
-                            ? `${natGateway.name} · ${natGateway.publicIp}`
-                            : '—',
-                        },
-                      ]}
-                      className="provider-admin-catalog-items__specs-list"
-                      rowClassName="provider-admin-catalog-items__spec-row"
-                      labelClassName="provider-admin-catalog-items__spec-label"
-                      valueClassName="provider-admin-catalog-items__spec-value"
-                    />
+                    <div className="provider-admin-network-inventory__card-specs">
+                      <CatalogSpecRowsList
+                        rows={[
+                          { label: 'IPv4', value: network.cidr },
+                          {
+                            label: 'IPv6',
+                            value: network.ipv6Cidr?.trim() ? network.ipv6Cidr : '—',
+                          },
+                        ]}
+                        className="provider-admin-catalog-items__specs-list"
+                        rowClassName="provider-admin-catalog-items__spec-row"
+                        labelClassName="provider-admin-catalog-items__spec-label"
+                        valueClassName="provider-admin-catalog-items__spec-value"
+                      />
+                      <CatalogSpecRowsList
+                        rows={[
+                          {
+                            label: 'Subnets',
+                            value: formatVirtualNetworkSubnetsSummary(subnetCount),
+                          },
+                          {
+                            label: 'Security groups',
+                            value: formatVirtualNetworkSecurityGroupsSummary(securityGroupCount),
+                          },
+                        ]}
+                        className={[
+                          'provider-admin-catalog-items__specs-list',
+                          'provider-admin-network-inventory__card-specs-section',
+                          'provider-admin-network-inventory__card-specs-section--band',
+                        ].join(' ')}
+                        rowClassName="provider-admin-catalog-items__spec-row"
+                        labelClassName="provider-admin-catalog-items__spec-label"
+                        valueClassName="provider-admin-catalog-items__spec-value"
+                      />
+                    </div>
+                    <div
+                      className="provider-admin-catalog-items__card-footer provider-admin-network-inventory__card-footer"
+                      aria-label="NAT gateway"
+                    >
+                      <CatalogSpecRowsList
+                        rows={[
+                          {
+                            label: 'NAT',
+                            value: natGateway
+                              ? `${natGateway.name} · ${natGateway.publicIp}`
+                              : '—',
+                          },
+                        ]}
+                        className="provider-admin-catalog-items__specs-list"
+                        rowClassName="provider-admin-catalog-items__spec-row"
+                        labelClassName="provider-admin-catalog-items__spec-label"
+                        valueClassName="provider-admin-catalog-items__spec-value"
+                      />
+                    </div>
                   </CardBody>
                 </Card>
               )
@@ -848,9 +895,11 @@ export function ProviderAdminVirtualNetworksPage({
               <Tr>
                 <Th className="provider-admin-network-inventory__col-name">Name</Th>
                 <Th className="provider-admin-network-inventory__col-status">Status</Th>
-                <Th width={20}>IPv4 CIDR</Th>
-                <Th width={20}>IPv6 CIDR</Th>
-                <Th width={20}>NAT gateway</Th>
+                <Th width={15}>IPv4 CIDR</Th>
+                <Th width={15}>IPv6 CIDR</Th>
+                <Th width={15}>Subnets</Th>
+                <Th width={15}>Security groups</Th>
+                <Th width={15}>NAT gateway</Th>
                 <Th screenReaderText="Actions" />
               </Tr>
             </Thead>
@@ -858,6 +907,14 @@ export function ProviderAdminVirtualNetworksPage({
               {filteredNetworks.map((network) => {
                 const status = getNetworkInventoryStatus(network)
                 const natGateway = hasVirtualNetworkNatGateway(network) ? network.natGateway : null
+                const subnetCount = getSubnetsForVirtualNetwork(
+                  inventory.getSubnets(),
+                  network.id,
+                ).length
+                const securityGroupCount = getSecurityGroupsForVirtualNetwork(
+                  inventory.getSecurityGroups(),
+                  network.id,
+                ).length
                 return (
                   <Tr key={network.id}>
                     <Td
@@ -891,6 +948,12 @@ export function ProviderAdminVirtualNetworksPage({
                     </Td>
                     <Td dataLabel="IPv6 CIDR">
                       <code>{network.ipv6Cidr?.trim() ? network.ipv6Cidr : '—'}</code>
+                    </Td>
+                    <Td dataLabel="Subnets">
+                      {formatVirtualNetworkSubnetsSummary(subnetCount)}
+                    </Td>
+                    <Td dataLabel="Security groups">
+                      {formatVirtualNetworkSecurityGroupsSummary(securityGroupCount)}
                     </Td>
                     <Td dataLabel="NAT gateway">
                       {natGateway ? (

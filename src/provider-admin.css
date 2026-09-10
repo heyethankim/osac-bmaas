@@ -2557,26 +2557,25 @@
 }
 
 .provider-admin-external-networks-hub__card-specs .provider-admin-catalog-items__spec-row {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  gap: var(--pf-t--global--spacer--sm);
   align-items: baseline;
-  gap: var(--pf-t--global--spacer--md);
 }
 
 .provider-admin-external-networks-hub__card-specs .provider-admin-catalog-items__spec-label {
-  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .provider-admin-external-networks-hub__card-specs .provider-admin-catalog-items__spec-value {
-  flex: 1 1 auto;
   min-width: 0;
-  text-align: end;
+  text-align: start;
 }
 
 .provider-admin-external-networks-hub__card-specs
   .provider-admin-network-inventory__tenant-ref {
-  justify-content: flex-end;
-  margin-inline-start: auto;
+  justify-content: flex-start;
+  margin-inline-start: 0;
 }
 
 .provider-admin-external-networks-hub__details-specs.provider-admin-catalog-items__specs-list {
@@ -2994,6 +2993,72 @@
   display: flex;
   flex-direction: column;
   padding-block-end: 0;
+}
+
+.provider-admin-network-inventory__card-specs {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+}
+
+.provider-admin-network-inventory__card-specs .provider-admin-catalog-items__spec-row,
+.provider-admin-network-inventory__card-footer .provider-admin-catalog-items__spec-row {
+  display: grid;
+  grid-template-columns: 7.25rem minmax(0, 1fr);
+  gap: var(--pf-t--global--spacer--sm);
+  align-items: baseline;
+}
+
+.provider-admin-network-inventory__card-specs .provider-admin-catalog-items__spec-label,
+.provider-admin-network-inventory__card-footer .provider-admin-catalog-items__spec-label {
+  white-space: nowrap;
+}
+
+.provider-admin-network-inventory__card-specs .provider-admin-catalog-items__spec-value,
+.provider-admin-network-inventory__card-footer .provider-admin-catalog-items__spec-value {
+  min-width: 0;
+  text-align: start;
+}
+
+.provider-admin-network-inventory__card-specs-section {
+  margin: 0;
+}
+
+.provider-admin-network-inventory__card-specs .provider-admin-catalog-items__specs-list {
+  margin: 0;
+  padding-block-end: var(--pf-t--global--spacer--md);
+  border-block-end: none;
+}
+
+.provider-admin-network-inventory__card-specs > .provider-admin-catalog-items__specs-list:first-child {
+  margin-block-start: var(--pf-t--global--spacer--md);
+}
+
+.provider-admin-network-inventory__card-specs-section--band {
+  padding-block-start: var(--pf-t--global--spacer--md);
+  margin-block-start: var(--pf-t--global--spacer--sm);
+  border-block-start: var(--pf-t--global--border--width--divider--default) solid
+    var(--pf-t--global--border--color--default);
+}
+
+.provider-admin-network-inventory__card-specs
+  .provider-admin-catalog-items__specs-list.provider-admin-network-inventory__card-specs-section--band {
+  padding-block-end: var(--pf-t--global--spacer--sm);
+}
+
+.provider-admin-network-inventory__card-footer {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  margin-block-start: auto;
+  flex-shrink: 0;
+}
+
+.provider-admin-network-inventory__card-footer .provider-admin-catalog-items__specs-list {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
 }
 
 .provider-admin-network-inventory__table {

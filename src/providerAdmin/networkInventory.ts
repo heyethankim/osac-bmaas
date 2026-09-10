@@ -350,6 +350,22 @@ export function getSecurityGroupsForVirtualNetwork(
   return securityGroups.filter((group) => group.virtualNetworkId === virtualNetworkId)
 }
 
+export function formatVirtualNetworkResourceCount(count: number): string {
+  if (count === 0) {
+    return '—'
+  }
+
+  return String(count)
+}
+
+export function formatVirtualNetworkSubnetsSummary(count: number): string {
+  return formatVirtualNetworkResourceCount(count)
+}
+
+export function formatVirtualNetworkSecurityGroupsSummary(count: number): string {
+  return formatVirtualNetworkResourceCount(count)
+}
+
 export function formatSubnetDetail(cidr: string, vlan: string): string {
   return `${cidr} · VLAN ${vlan}`
 }
