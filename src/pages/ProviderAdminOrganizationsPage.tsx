@@ -681,7 +681,7 @@ export function ProviderAdminOrganizationsPage({
                           { label: 'Domain', value: org.primaryDomain || '—' },
                           {
                             label: 'Billing',
-                            value: `${org.billingAccountName} (${org.billingAccountId})`,
+                            value: org.billingAccountId,
                           },
                           { label: 'Registered', value: formatRegisteredAt(org.createdAt) },
                         ]}

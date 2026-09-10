@@ -2218,8 +2218,7 @@
 }
 
 /* Parent gap spaces sections; toolbar margin handled by workspace flex gap. */
-.provider-admin-catalog-items > .catalog-view-toolbar,
-.provider-admin-catalog-items > .catalog-filter-results.pf-v6-c-content--p {
+.provider-admin-catalog-items > .catalog-view-toolbar {
   margin-block-end: 0;
 }
 

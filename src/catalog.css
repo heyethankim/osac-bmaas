@@ -294,6 +294,13 @@
   line-height: var(--pf-t--global--font--line-height--body);
 }
 
+/* Flex column page shells already gap sections; don't stack filter margin on top. */
+.provider-admin-catalog-items > .catalog-filter-results.pf-v6-c-content--p,
+.provider-admin-workspace-page > .catalog-filter-results.pf-v6-c-content--p,
+.tenant-admin-projects-teams > .catalog-filter-results.pf-v6-c-content--p {
+  margin-block-end: 0;
+}
+
 .catalog-table-panel > .catalog-filter-results.pf-v6-c-content--p {
   margin-block-start: 0;
   margin-block-end: var(--pf-t--global--spacer--md);
