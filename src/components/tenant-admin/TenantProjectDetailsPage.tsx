@@ -168,17 +168,19 @@ function ProjectMemberPersonRow({
       }`}
     >
       <div className="provider-admin-organizations__account-person-main">
-        <Content component="p" className="provider-admin-organizations__primary-cell">
-          {member.name}
-        </Content>
-        <Content component="p" className="provider-admin-organizations__secondary-cell">
-          {member.email}
-        </Content>
-        {member.inherited ? (
-          <Content component="p" className="provider-admin-organizations__secondary-cell">
-            Inherited from {member.inheritedFromProjectName ?? parentProject?.name ?? 'parent'}
+        <div className="provider-admin-organizations__account-person-text">
+          <Content component="p" className="provider-admin-organizations__primary-cell">
+            {member.name}
           </Content>
-        ) : null}
+          <Content component="p" className="provider-admin-organizations__secondary-cell">
+            {member.email}
+          </Content>
+          {member.inherited ? (
+            <Content component="p" className="provider-admin-organizations__secondary-cell">
+              Inherited from {member.inheritedFromProjectName ?? parentProject?.name ?? 'parent'}
+            </Content>
+          ) : null}
+        </div>
         <Label
           isCompact
           color={getTenantProjectMemberRoleLabelColor(member.role)}

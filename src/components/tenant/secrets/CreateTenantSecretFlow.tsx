@@ -33,10 +33,12 @@ import { NETWORK_INVENTORY_CREATE_REVIEW_STEP } from '../../../networking/networ
 import { KubernetesResourceNameField } from '../../shared/KubernetesResourceNameHelper'
 import { isValidKubernetesResourceName } from '../../../shared/kubernetesResourceName'
 import {
-  addTenantSecret,
+  addSecret,
   generateTenantSecretId,
   getTenantSecretTypeLabel,
   TENANT_SECRET_TYPE_OPTIONS,
+  updateSecret,
+  type SecretVaultScope,
   type TenantSecret,
   type TenantSecretType,
   type TenantSecretUsage,
@@ -48,6 +50,7 @@ import {
   createKeyValuePair,
   createSecretFormState,
   generateWebhookSecretKey,
+  secretFormStateFromTenantSecret,
   type ImagePullCredential,
   type KeyValuePair,
   type TenantSecretFormState,
@@ -55,12 +58,15 @@ import {
 
 type CreateTenantSecretFlowProps = {
   tenantSlug: string
+  scope?: SecretVaultScope
   initialType?: TenantSecretType
+  editingSecret?: TenantSecret | null
   presentation?: 'page' | 'modal'
   isOpen?: boolean
   usage?: TenantSecretUsage
   onClose: () => void
   onCreated: (secret: TenantSecret) => void
+  onUpdated?: (secret: TenantSecret) => void
 }
 
 const TYPE_SELECTION_STEP_ID = 'type'
@@ -846,34 +852,52 @@ function SecretTypeStep({
 
 export function CreateTenantSecretFlow({
   tenantSlug,
+  scope = 'tenant',
   initialType,
+  editingSecret = null,
   presentation = 'page',
   isOpen = true,
   usage = 'general',
   onClose,
   onCreated,
+  onUpdated,
 }: CreateTenantSecretFlowProps) {
-  const includeTypeStep = initialType == null
+  const isEditMode = editingSecret !== null
+  const includeTypeStep = !isEditMode && initialType == null
   const isModal = presentation === 'modal'
-  const defaultType = initialType ?? (isModal ? 'key-value' : null)
+  const defaultType = isEditMode
+    ? editingSecret.type
+    : (initialType ?? (isModal ? 'key-value' : null))
   const [selectedType, setSelectedType] = useState<TenantSecretType | null>(defaultType)
-  const activeType = selectedType ?? initialType ?? null
+  const activeType = selectedType ?? initialType ?? editingSecret?.type ?? null
   const [formState, setFormState] = useState<TenantSecretFormState>(() =>
-    buildInitialSecretFormState(defaultType ?? 'key-value'),
+    editingSecret
+      ? secretFormStateFromTenantSecret(editingSecret)
+      : buildInitialSecretFormState(defaultType ?? 'key-value'),
   )
 
-  const wizardTitle = activeType
-    ? `Create ${getTenantSecretTypeLabel(activeType).toLowerCase()}`
-    : 'Create secret'
+  const wizardTitle = isEditMode
+    ? `Edit ${editingSecret.name}`
+    : activeType
+      ? `Create ${getTenantSecretTypeLabel(activeType).toLowerCase()}`
+      : 'Create secret'
   const wizardSteps = useMemo(
     () => getSecretWizardSteps({ includeTypeStep, type: activeType }),
     [activeType, includeTypeStep],
   )
   const isDetailsStepValid = activeType ? isFormValid(activeType, formState) : false
 
-  const resetFlow = (type: TenantSecretType | null = initialType ?? (isModal ? 'key-value' : null)) => {
+  const resetFlow = (
+    type: TenantSecretType | null = isEditMode
+      ? editingSecret.type
+      : (initialType ?? (isModal ? 'key-value' : null)),
+  ) => {
     setSelectedType(type)
-    setFormState(buildInitialSecretFormState(type ?? 'key-value'))
+    setFormState(
+      isEditMode && editingSecret
+        ? secretFormStateFromTenantSecret(editingSecret)
+        : buildInitialSecretFormState(type ?? 'key-value'),
+    )
   }
 
   const handleClose = () => {
@@ -883,7 +907,7 @@ export function CreateTenantSecretFlow({
 
   const { requestClose, leaveConfirmModal, wrapStepFooter } = useWizardLeaveConfirm({
     onLeave: handleClose,
-    primaryActionLabel: 'Leave',
+    primaryActionLabel: isEditMode ? 'Discard changes' : 'Leave',
     titleId: 'create-secret-wizard-title',
   })
 
@@ -892,33 +916,53 @@ export function CreateTenantSecretFlow({
       return
     }
 
+    if (editingSecret) {
+      setSelectedType(editingSecret.type)
+      setFormState(secretFormStateFromTenantSecret(editingSecret))
+      return
+    }
+
     const type = initialType ?? (isModal ? 'key-value' : null)
     setSelectedType(type)
     setFormState(buildInitialSecretFormState(type ?? 'key-value'))
-  }, [initialType, isModal, isOpen])
+  }, [editingSecret, initialType, isModal, isOpen])
 
   const handleTypeChange = (type: TenantSecretType) => {
     setSelectedType(type)
     setFormState(buildInitialSecretFormState(type))
   }
 
-  const handleCreate = () => {
+  const handleSave = () => {
     if (!activeType || !isDetailsStepValid) {
       return
     }
 
-    const secret: TenantSecret = {
-      id: generateTenantSecretId(),
-      name: getSecretName(activeType, formState),
-      type: activeType,
-      usage,
-      createdAt: new Date().toISOString(),
-      summary: buildSecretSummary(activeType, formState),
-      data: buildTenantSecretData(activeType, formState),
+    const secret: TenantSecret = isEditMode
+      ? {
+          ...editingSecret,
+          name: getSecretName(activeType, formState),
+          type: activeType,
+          summary: buildSecretSummary(activeType, formState),
+          data: buildTenantSecretData(activeType, formState),
+        }
+      : {
+          id: generateTenantSecretId(),
+          name: getSecretName(activeType, formState),
+          type: activeType,
+          usage,
+          createdAt: new Date().toISOString(),
+          summary: buildSecretSummary(activeType, formState),
+          data: buildTenantSecretData(activeType, formState),
+        }
+
+    if (isEditMode) {
+      updateSecret(scope, tenantSlug, secret)
+      onUpdated?.(secret)
+    } else {
+      addSecret(scope, tenantSlug, secret)
+      onCreated(secret)
     }
 
-    addTenantSecret(tenantSlug, secret)
-    onCreated(secret)
     handleClose()
   }
 
@@ -967,11 +1011,11 @@ export function CreateTenantSecretFlow({
         nextButtonText: (
           <span className="provider-admin-network-inventory__wizard-footer-label">
             <KeyIcon aria-hidden />
-            <span>Create secret</span>
+            <span>{isEditMode ? 'Save changes' : 'Create secret'}</span>
             <ArrowRightIcon aria-hidden />
           </span>
         ),
-        onNext: handleCreate,
+        onNext: handleSave,
         isNextDisabled: !activeType || !isDetailsStepValid,
       })
     }
@@ -980,7 +1024,7 @@ export function CreateTenantSecretFlow({
   }
 
   const isPage = presentation === 'page'
-  const wizardKey = `create-secret-${activeType ?? 'type'}-${includeTypeStep ? 'picker' : 'fixed'}`
+  const wizardKey = `${isEditMode ? 'edit' : 'create'}-secret-${editingSecret?.id ?? activeType ?? 'type'}-${includeTypeStep ? 'picker' : 'fixed'}`
 
   const wizard = isOpen ? (
     <Wizard
@@ -992,10 +1036,10 @@ export function CreateTenantSecretFlow({
       header={
         isPage ? undefined : (
           <WizardHeader
-            title="Create secret"
+            title={wizardTitle}
             titleId="create-secret-wizard-title"
             onClose={requestClose}
-            closeButtonAriaLabel="Close create secret wizard"
+            closeButtonAriaLabel={isEditMode ? 'Close edit secret wizard' : 'Close create secret wizard'}
           />
         )
       }
@@ -1026,7 +1070,7 @@ export function CreateTenantSecretFlow({
           getStepFooter={getStepFooter}
           onClose={handleClose}
           className="tenant-secrets__wizard"
-          leaveConfirmPrimaryActionLabel="Leave"
+          leaveConfirmPrimaryActionLabel={isEditMode ? 'Discard changes' : 'Leave'}
         />
       ) : (
         <>

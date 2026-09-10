@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ArrowRightIcon } from '@patternfly/react-icons/dist/esm/icons/arrow-right-icon'
 import { RouteIcon } from '@patternfly/react-icons/dist/esm/icons/route-icon'
 import {
@@ -14,6 +14,13 @@ import {
   FormSelectOption,
 } from '@patternfly/react-core'
 import { NETWORK_INVENTORY_CREATE_REVIEW_STEP } from '../../networking/networkInventoryCreateWizard'
+import {
+  buildNatGatewayEditSnapshot,
+  getNatGatewayEditChanges,
+  getNetworkInventoryEditModifiedStepIds,
+  type NetworkInventoryEditStepId,
+} from '../../networking/networkInventoryEditDiff'
+import { NetworkInventoryEditReviewPanel } from '../../networking/NetworkInventoryEditReviewPanel'
 import {
   findNatGatewayProfileForGateway,
   hasVirtualNetworkNatGateway,
@@ -77,6 +84,38 @@ export function AttachNatGatewayWizard({
     NAT_GATEWAY_PROFILES[0] ??
     null
 
+  const editBaseline = useMemo(() => {
+    if (!isEditMode || !hasVirtualNetworkNatGateway(network)) {
+      return null
+    }
+
+    const matchingProfile = findNatGatewayProfileForGateway(network.natGateway)
+    return buildNatGatewayEditSnapshot(matchingProfile ?? null)
+  }, [isEditMode, network])
+
+  const currentEditSnapshot = useMemo(() => {
+    if (!isEditMode) {
+      return null
+    }
+
+    return buildNatGatewayEditSnapshot(selectedProfile)
+  }, [isEditMode, selectedProfile])
+
+  const editChanges = useMemo(() => {
+    if (!editBaseline || !currentEditSnapshot) {
+      return []
+    }
+
+    return getNatGatewayEditChanges(editBaseline, currentEditSnapshot)
+  }, [currentEditSnapshot, editBaseline])
+
+  const modifiedStepIds = useMemo(
+    () => getNetworkInventoryEditModifiedStepIds(editChanges),
+    [editChanges],
+  )
+
+  const canSaveEdit = !isEditMode || editChanges.length > 0
+
   const isDetailsStepValid = selectedProfile !== null
 
   const handleClose = () => {
@@ -134,32 +173,38 @@ export function AttachNatGatewayWizard({
     }
 
     return (
-      <DescriptionList isCompact className="provider-admin-network-inventory__wizard-review">
-        <DescriptionListGroup>
-          <DescriptionListTerm>Virtual network</DescriptionListTerm>
-          <DescriptionListDescription>{network.name}</DescriptionListDescription>
-        </DescriptionListGroup>
-        <DescriptionListGroup>
-          <DescriptionListTerm>IPv4 CIDR</DescriptionListTerm>
-          <DescriptionListDescription>
-            <code>{network.cidr}</code>
-          </DescriptionListDescription>
-        </DescriptionListGroup>
-        <DescriptionListGroup>
-          <DescriptionListTerm>NAT gateway</DescriptionListTerm>
-          <DescriptionListDescription>
-            {selectedProfile
-              ? `${selectedProfile.name} · ${selectedProfile.publicIp}`
-              : '—'}
-          </DescriptionListDescription>
-        </DescriptionListGroup>
-        <DescriptionListGroup>
-          <DescriptionListTerm>Description</DescriptionListTerm>
-          <DescriptionListDescription>
-            {selectedProfile?.description ?? '—'}
-          </DescriptionListDescription>
-        </DescriptionListGroup>
-      </DescriptionList>
+      <NetworkInventoryEditReviewPanel
+        isEditMode={isEditMode}
+        editChanges={editChanges}
+        createReview={
+          <DescriptionList isCompact className="provider-admin-network-inventory__wizard-review">
+            <DescriptionListGroup>
+              <DescriptionListTerm>Virtual network</DescriptionListTerm>
+              <DescriptionListDescription>{network.name}</DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>IPv4 CIDR</DescriptionListTerm>
+              <DescriptionListDescription>
+                <code>{network.cidr}</code>
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>NAT gateway</DescriptionListTerm>
+              <DescriptionListDescription>
+                {selectedProfile
+                  ? `${selectedProfile.name} · ${selectedProfile.publicIp}`
+                  : '—'}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Description</DescriptionListTerm>
+              <DescriptionListDescription>
+                {selectedProfile?.description ?? '—'}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+          </DescriptionList>
+        }
+      />
     )
   }
 
@@ -178,7 +223,7 @@ export function AttachNatGatewayWizard({
           </span>
         ),
         onNext: handleSubmit,
-        isNextDisabled: !isDetailsStepValid,
+        isNextDisabled: !isDetailsStepValid || !canSaveEdit,
       }
     }
 
@@ -198,6 +243,11 @@ export function AttachNatGatewayWizard({
       getStepFooter={getStepFooter}
       onClose={handleClose}
       leaveConfirmPrimaryActionLabel={isEditMode ? 'Discard changes' : 'Leave'}
+      getStepName={(step) =>
+        isEditMode && modifiedStepIds.has(step.id as NetworkInventoryEditStepId)
+          ? `${step.label} (modified)`
+          : step.label
+      }
     />
   )
 }

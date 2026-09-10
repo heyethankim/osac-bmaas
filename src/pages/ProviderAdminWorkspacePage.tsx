@@ -64,8 +64,6 @@ function readInitialProviderNav(searchParams: URLSearchParams): ProviderAdminNav
 
 const PUBLISH_PHASE_MS = 900
 const ENTER_PHASE_MS = 700
-const PROVIDER_SERVICES_DEMO_TENANT = 'northsummit'
-
 export function ProviderAdminWorkspacePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [setupComplete, setSetupComplete] = useState(() => isProviderSetupComplete())
@@ -271,7 +269,7 @@ export function ProviderAdminWorkspacePage() {
           />
         )
       case 'secrets':
-        return <TenantSecretsPage tenantSlug={PROVIDER_SERVICES_DEMO_TENANT} />
+        return <TenantSecretsPage scope="provider" tenantSlug="" />
       case 'administration-organizations':
         return <ProviderAdminOrganizationsPage onNavigate={handleNavChange} />
       case 'administration-quotas':

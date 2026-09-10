@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowRightIcon } from '@patternfly/react-icons/dist/esm/icons/arrow-right-icon'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
@@ -26,6 +26,12 @@ import {
   type NetworkInventoryCreateBreadcrumbAncestor,
 } from '../networking/NetworkInventoryCreateWizardShell'
 import { NETWORK_INVENTORY_CREATE_REVIEW_STEP } from '../../networking/networkInventoryCreateWizard'
+import {
+  buildIdentityProviderEditSnapshot,
+  getIdentityProviderEditChanges,
+  getIdentityProviderEditModifiedStepIds,
+} from '../../networking/networkInventoryEditDiff'
+import { NetworkInventoryEditReviewPanel } from '../../networking/NetworkInventoryEditReviewPanel'
 import { ResourceCreatePageShell } from '../shared/ResourceCreatePageShell'
 import { IDP_MANAGER_IDENTITY_PROVIDER_COPY } from '../../idpManager/constants'
 import {
@@ -86,6 +92,49 @@ export function ConnectIdentityProviderWizard({
       clearCompletionTimers()
     }
   }, [])
+
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+
+    setForm(
+      editingProvider
+        ? draftFromIdentityProvider(editingProvider)
+        : buildDefaultIdentityProviderDraft(organization),
+    )
+  }, [editingProvider, isOpen, organization])
+
+  const editBaseline = useMemo(() => {
+    if (!isEditing || !editingProvider) {
+      return null
+    }
+
+    return buildIdentityProviderEditSnapshot(draftFromIdentityProvider(editingProvider))
+  }, [editingProvider, isEditing])
+
+  const currentEditSnapshot = useMemo(() => {
+    if (!isEditing) {
+      return null
+    }
+
+    return buildIdentityProviderEditSnapshot(form)
+  }, [form, isEditing])
+
+  const editChanges = useMemo(() => {
+    if (!editBaseline || !currentEditSnapshot) {
+      return []
+    }
+
+    return getIdentityProviderEditChanges(editBaseline, currentEditSnapshot)
+  }, [currentEditSnapshot, editBaseline])
+
+  const modifiedStepIds = useMemo(
+    () => getIdentityProviderEditModifiedStepIds(editChanges),
+    [editChanges],
+  )
+
+  const canSaveEdit = !isEditing || editChanges.length > 0
 
   const isDetailsStepValid =
     Boolean(form.displayName.trim()) &&
@@ -209,42 +258,49 @@ export function ConnectIdentityProviderWizard({
     }
 
     return (
-      <DescriptionList isCompact className="provider-admin-organizations__wizard-review">
-        <DescriptionListGroup>
-          <DescriptionListTerm>Primary email domain</DescriptionListTerm>
-          <DescriptionListDescription>
-            {organization.primaryDomain || '—'}
-          </DescriptionListDescription>
-        </DescriptionListGroup>
-        <DescriptionListGroup>
-          <DescriptionListTerm>Additional email domains</DescriptionListTerm>
-          <DescriptionListDescription>
-            <AdditionalEmailDomainsValue domains={organization.additionalDomains ?? []} />
-          </DescriptionListDescription>
-        </DescriptionListGroup>
-        <DescriptionListGroup>
-          <DescriptionListTerm>Protocol</DescriptionListTerm>
-          <DescriptionListDescription>
-            {identityProviderProtocolLabel(form.protocol)}
-          </DescriptionListDescription>
-        </DescriptionListGroup>
-        <DescriptionListGroup>
-          <DescriptionListTerm>Display name</DescriptionListTerm>
-          <DescriptionListDescription>{form.displayName.trim() || '—'}</DescriptionListDescription>
-        </DescriptionListGroup>
-        <DescriptionListGroup>
-          <DescriptionListTerm>{issuerLabel}</DescriptionListTerm>
-          <DescriptionListDescription>
-            {form.issuerUrl.trim() || '—'}
-          </DescriptionListDescription>
-        </DescriptionListGroup>
-        <DescriptionListGroup>
-          <DescriptionListTerm>{clientLabel}</DescriptionListTerm>
-          <DescriptionListDescription>
-            {form.clientId.trim() || '—'}
-          </DescriptionListDescription>
-        </DescriptionListGroup>
-      </DescriptionList>
+      <NetworkInventoryEditReviewPanel
+        isEditMode={isEditing}
+        editChanges={editChanges}
+        ariaLabel="Identity provider changes"
+        createReview={
+          <DescriptionList isCompact className="provider-admin-organizations__wizard-review">
+            <DescriptionListGroup>
+              <DescriptionListTerm>Primary email domain</DescriptionListTerm>
+              <DescriptionListDescription>
+                {organization.primaryDomain || '—'}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Additional email domains</DescriptionListTerm>
+              <DescriptionListDescription>
+                <AdditionalEmailDomainsValue domains={organization.additionalDomains ?? []} />
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Protocol</DescriptionListTerm>
+              <DescriptionListDescription>
+                {identityProviderProtocolLabel(form.protocol)}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Display name</DescriptionListTerm>
+              <DescriptionListDescription>{form.displayName.trim() || '—'}</DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>{issuerLabel}</DescriptionListTerm>
+              <DescriptionListDescription>
+                {form.issuerUrl.trim() || '—'}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>{clientLabel}</DescriptionListTerm>
+              <DescriptionListDescription>
+                {form.clientId.trim() || '—'}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+          </DescriptionList>
+        }
+      />
     )
   }
 
@@ -263,7 +319,7 @@ export function ConnectIdentityProviderWizard({
           </span>
         ),
         onNext: handleSave,
-        isNextDisabled: !isDetailsStepValid,
+        isNextDisabled: !isDetailsStepValid || !canSaveEdit,
       }
     }
 
@@ -318,6 +374,11 @@ export function ConnectIdentityProviderWizard({
       getStepFooter={getStepFooter}
       onClose={handleClose}
       className="idp-manager-identity-provider__wizard"
+      getStepName={(step) =>
+        isEditing && modifiedStepIds.has('identity-provider') && step.id === 'identity-provider'
+          ? `${step.label} (modified)`
+          : step.label
+      }
     />
   )
 }

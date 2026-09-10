@@ -1,4 +1,5 @@
 import type { TenantSecretType } from '../../../tenant/secretTypes'
+import type { TenantSecret } from '../../../tenant/secrets'
 import {
   CLUSTER_LAUNCH_DEMO_PULL_SECRET,
   CLUSTER_LAUNCH_DEMO_SSH_PUBLIC_KEY,
@@ -208,4 +209,78 @@ export function generateWebhookSecretKey(): string {
     .replace(/\//g, '_')
     .replace(/=+$/g, '')
   return `whsec_${encoded}`
+}
+
+function createRowIdFromKey(prefix: string, key: string): string {
+  return `${prefix}_${key.replace(/\W/g, '').slice(0, 12) || createRowId(prefix)}`
+}
+
+export function secretFormStateFromTenantSecret(secret: TenantSecret): TenantSecretFormState {
+  const base = createDefaultSecretFormState(secret.type)
+
+  switch (secret.data.kind) {
+    case 'key-value':
+      return {
+        ...base,
+        type: 'key-value',
+        keyValue: {
+          name: secret.name,
+          pairs:
+            secret.data.pairs.length > 0
+              ? secret.data.pairs.map((pair) => ({
+                  id: createRowIdFromKey('kv', pair.key),
+                  key: pair.key,
+                  value: pair.value,
+                  valueMode: 'paste' as const,
+                  valueFileName: '',
+                }))
+              : [createKeyValuePair()],
+        },
+      }
+    case 'image-pull':
+      return {
+        ...base,
+        type: 'image-pull',
+        imagePull: {
+          name: secret.name,
+          authMode: secret.data.authMode,
+          credentials:
+            secret.data.credentials.length > 0
+              ? secret.data.credentials.map((credential) => ({
+                  id: createRowIdFromKey('cred', credential.registryServer),
+                  registryServer: credential.registryServer,
+                  username: credential.username,
+                  password: credential.password,
+                  email: credential.email,
+                }))
+              : [createImagePullCredential()],
+          configurationFileName: secret.data.configurationFileName,
+          configurationFileContents: secret.data.configurationFileContents,
+        },
+      }
+    case 'source':
+      return {
+        ...base,
+        type: 'source',
+        source: {
+          name: secret.name,
+          authMode: secret.data.authMode,
+          username: secret.data.username,
+          passwordOrToken: secret.data.passwordOrToken,
+          sshPrivateKeyFileName: secret.data.sshPrivateKeyFileName,
+          sshPrivateKeyContents: secret.data.sshPrivateKeyContents,
+        },
+      }
+    case 'webhook':
+      return {
+        ...base,
+        type: 'webhook',
+        webhook: {
+          name: secret.name,
+          webhookSecretKey: secret.data.webhookSecretKey,
+        },
+      }
+    default:
+      return base
+  }
 }

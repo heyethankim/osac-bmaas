@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ArrowRightIcon } from '@patternfly/react-icons/dist/esm/icons/arrow-right-icon'
 import { NetworkIcon } from '@patternfly/react-icons/dist/esm/icons/network-icon'
 import {
@@ -21,6 +21,14 @@ import {
   type ProviderVirtualNetwork,
 } from '../../providerAdmin/networkInventory'
 import { NETWORK_INVENTORY_CREATE_REVIEW_STEP } from '../../networking/networkInventoryCreateWizard'
+import {
+  buildSubnetEditSnapshot,
+  buildSubnetEditSnapshotFromSubnet,
+  getNetworkInventoryEditModifiedStepIds,
+  getSubnetEditChanges,
+  type NetworkInventoryEditStepId,
+} from '../../networking/networkInventoryEditDiff'
+import { NetworkInventoryEditReviewPanel } from '../../networking/NetworkInventoryEditReviewPanel'
 import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
 import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope'
 import { NetworkInventoryCreateWizardShell } from './NetworkInventoryCreateWizardShell'
@@ -118,6 +126,37 @@ export function CreateSubnetWizard({
 
   const selectedNetwork =
     virtualNetworks.find((network) => network.id === form.virtualNetworkId) ?? null
+
+  const editBaseline = useMemo(() => {
+    if (!isEditMode || !resource) {
+      return null
+    }
+
+    return buildSubnetEditSnapshotFromSubnet(resource, virtualNetworks)
+  }, [isEditMode, resource, virtualNetworks])
+
+  const currentEditSnapshot = useMemo(() => {
+    if (!isEditMode) {
+      return null
+    }
+
+    return buildSubnetEditSnapshot(form, virtualNetworks)
+  }, [form, isEditMode, virtualNetworks])
+
+  const editChanges = useMemo(() => {
+    if (!editBaseline || !currentEditSnapshot) {
+      return []
+    }
+
+    return getSubnetEditChanges(editBaseline, currentEditSnapshot)
+  }, [currentEditSnapshot, editBaseline])
+
+  const modifiedStepIds = useMemo(
+    () => getNetworkInventoryEditModifiedStepIds(editChanges),
+    [editChanges],
+  )
+
+  const canSaveEdit = !isEditMode || editChanges.length > 0
 
   const handleClose = () => {
     setForm(buildDemoForm(virtualNetworks, defaultVirtualNetworkId))
@@ -232,28 +271,34 @@ export function CreateSubnetWizard({
     }
 
     return (
-      <DescriptionList isCompact className="provider-admin-network-inventory__wizard-review">
-        <DescriptionListGroup>
-          <DescriptionListTerm>Name</DescriptionListTerm>
-          <DescriptionListDescription>{form.name.trim() || '—'}</DescriptionListDescription>
-        </DescriptionListGroup>
-        <DescriptionListGroup>
-          <DescriptionListTerm>Virtual network</DescriptionListTerm>
-          <DescriptionListDescription>
-            {selectedNetwork ? `${selectedNetwork.name} (${selectedNetwork.cidr})` : '—'}
-          </DescriptionListDescription>
-        </DescriptionListGroup>
-        <DescriptionListGroup>
-          <DescriptionListTerm>CIDR</DescriptionListTerm>
-          <DescriptionListDescription>
-            <code>{form.cidr.trim() || '—'}</code>
-          </DescriptionListDescription>
-        </DescriptionListGroup>
-        <DescriptionListGroup>
-          <DescriptionListTerm>VLAN</DescriptionListTerm>
-          <DescriptionListDescription>{form.vlan.trim() || '—'}</DescriptionListDescription>
-        </DescriptionListGroup>
-      </DescriptionList>
+      <NetworkInventoryEditReviewPanel
+        isEditMode={isEditMode}
+        editChanges={editChanges}
+        createReview={
+          <DescriptionList isCompact className="provider-admin-network-inventory__wizard-review">
+            <DescriptionListGroup>
+              <DescriptionListTerm>Name</DescriptionListTerm>
+              <DescriptionListDescription>{form.name.trim() || '—'}</DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Virtual network</DescriptionListTerm>
+              <DescriptionListDescription>
+                {selectedNetwork ? `${selectedNetwork.name} (${selectedNetwork.cidr})` : '—'}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>CIDR</DescriptionListTerm>
+              <DescriptionListDescription>
+                <code>{form.cidr.trim() || '—'}</code>
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>VLAN</DescriptionListTerm>
+              <DescriptionListDescription>{form.vlan.trim() || '—'}</DescriptionListDescription>
+            </DescriptionListGroup>
+          </DescriptionList>
+        }
+      />
     )
   }
 
@@ -272,7 +317,7 @@ export function CreateSubnetWizard({
           </span>
         ),
         onNext: handleSubmit,
-        isNextDisabled: !isDetailsStepValid,
+        isNextDisabled: !isDetailsStepValid || !canSaveEdit,
       }
     }
 
@@ -291,6 +336,11 @@ export function CreateSubnetWizard({
       getStepFooter={getStepFooter}
       onClose={handleClose}
       leaveConfirmPrimaryActionLabel={isEditMode ? 'Discard changes' : 'Leave'}
+      getStepName={(step) =>
+        isEditMode && modifiedStepIds.has(step.id as NetworkInventoryEditStepId)
+          ? `${step.label} (modified)`
+          : step.label
+      }
     />
   )
 }

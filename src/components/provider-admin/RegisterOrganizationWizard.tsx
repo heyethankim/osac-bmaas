@@ -57,6 +57,13 @@ import {
   isValidKubernetesResourceName,
 } from '../../shared/kubernetesResourceName'
 import { TenantCompanyLogoField } from './TenantCompanyLogoField'
+import { CatalogEditChangesSummary } from './CatalogEditChangesSummary'
+import {
+  buildOrganizationEditSnapshot,
+  buildOrganizationEditSnapshotFromOrganization,
+  getOrganizationEditChanges,
+  getOrganizationEditModifiedStepIds,
+} from '../../providerAdmin/organizationEditDiff'
 import {
   AdditionalEmailDomainsField,
   AdditionalEmailDomainsValue,
@@ -183,6 +190,37 @@ export function RegisterOrganizationWizard({
     !nameTaken &&
     !domainTaken &&
     !slugTaken
+
+  const editBaseline = useMemo(() => {
+    if (!isEditMode || !editingOrganization) {
+      return null
+    }
+
+    return buildOrganizationEditSnapshotFromOrganization(editingOrganization)
+  }, [editingOrganization, isEditMode])
+
+  const currentEditSnapshot = useMemo(() => {
+    if (!isEditMode) {
+      return null
+    }
+
+    return buildOrganizationEditSnapshot(form)
+  }, [form, isEditMode])
+
+  const editChanges = useMemo(() => {
+    if (!editBaseline || !currentEditSnapshot) {
+      return []
+    }
+
+    return getOrganizationEditChanges(editBaseline, currentEditSnapshot)
+  }, [currentEditSnapshot, editBaseline])
+
+  const modifiedStepIds = useMemo(
+    () => getOrganizationEditModifiedStepIds(editChanges),
+    [editChanges],
+  )
+
+  const canSaveOrganizationEdit = !isEditMode || editChanges.length > 0
 
   const handleRegister = () => {
     const maxInstances = Number.parseInt(form.maxInstances, 10)
@@ -412,6 +450,20 @@ export function RegisterOrganizationWizard({
           </div>
         )
       case 'review':
+        if (isEditMode) {
+          return (
+            <div className="provider-admin-organizations__wizard-step">
+              <Content component="p" className="provider-admin-organizations__wizard-lede">
+                Review your changes before saving.
+              </Content>
+              <CatalogEditChangesSummary
+                changes={editChanges}
+                ariaLabel="Tenant changes"
+              />
+            </div>
+          )
+        }
+
         return (
           <DescriptionList isCompact className="provider-admin-organizations__wizard-review">
             <DescriptionListGroup>
@@ -486,7 +538,7 @@ export function RegisterOrganizationWizard({
           </span>
         ),
         onNext: handleRegister,
-        isNextDisabled: !canRegister,
+        isNextDisabled: isEditMode ? !canSaveOrganizationEdit : !canRegister,
       })
     }
 
@@ -519,7 +571,11 @@ export function RegisterOrganizationWizard({
       {REGISTER_ORGANIZATION_STEPS.map((step) => (
         <WizardStep
           key={step.id}
-          name={step.label}
+          name={
+            isEditMode && modifiedStepIds.has(step.id)
+              ? `${step.label} (modified)`
+              : step.label
+          }
           id={`register-org-step-${step.id}`}
           footer={getStepFooter(step.id)}
         >

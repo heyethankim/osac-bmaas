@@ -12,6 +12,7 @@ import { EyeIcon } from '@patternfly/react-icons/dist/esm/icons/eye-icon'
 import { EyeSlashIcon } from '@patternfly/react-icons/dist/esm/icons/eye-slash-icon'
 import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
 import { EntityDetailsPageShell } from '../../shared/EntityDetailsPageShell'
+import { EntityDetailsActionsDropdown } from '../../shared/EntityDetailsActionsDropdown'
 import {
   formatSecretDetailValue,
   getTenantSecretTypeLabel,
@@ -25,6 +26,8 @@ import {
 type TenantSecretDetailsPageProps = {
   secret: TenantSecret
   onBack: () => void
+  onEdit?: () => void
+  onDelete?: () => void
 }
 
 function formatCreatedAt(iso: string): string {
@@ -228,7 +231,12 @@ function renderSecretDataDetails(secret: TenantSecret, valuesRevealed: boolean) 
   }
 }
 
-export function TenantSecretDetailsPage({ secret, onBack }: TenantSecretDetailsPageProps) {
+export function TenantSecretDetailsPage({
+  secret,
+  onBack,
+  onEdit,
+  onDelete,
+}: TenantSecretDetailsPageProps) {
   const [valuesRevealed, setValuesRevealed] = useState(false)
   const hasRevealableValues = tenantSecretHasRevealableValues(secret)
 
@@ -240,6 +248,15 @@ export function TenantSecretDetailsPage({ secret, onBack }: TenantSecretDetailsP
       title={secret.name}
       titleId="tenant-secret-details-title"
       description={secret.summary}
+      actions={
+        onEdit || onDelete ? (
+          <EntityDetailsActionsDropdown
+            onEdit={onEdit}
+            onRemove={onDelete}
+            removeLabel="Delete"
+          />
+        ) : undefined
+      }
     >
       <div className="entity-details-page__columns">
         <div className="entity-details-page__column">

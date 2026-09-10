@@ -49,6 +49,16 @@ export const TENANT_SECRETS_COPY = {
   createSecretTypeLabel: 'Create secret',
 } as const
 
+export const PROVIDER_SECRETS_COPY = {
+  title: 'Secrets',
+  lede: 'Platform credentials for provider operations. Separate from tenant-scoped secrets.',
+  emptyTitle: 'No platform secrets yet',
+  emptyBody: 'Add your first platform secret to get started.',
+  createSecretTypeLabel: 'Create secret',
+} as const
+
+export type SecretVaultScope = 'tenant' | 'provider'
+
 export type TenantSecret = {
   id: string
   name: string
@@ -78,8 +88,17 @@ export type TenantSecretTypeFilter = 'all' | TenantSecretType
 export type TenantSecretUsageFilter = 'all' | TenantSecretUsage
 
 const TENANT_SECRETS_KEY_PREFIX = 'bmaas-tenant-secrets-'
+const PROVIDER_SECRETS_STORAGE_KEY = 'bmaas-provider-secrets'
 
-function getStorageKey(tenantSlug: string): string {
+export const DEMO_PROVIDER_ARTIFACTORY_PULL_SECRET_ID = 'demo-provider-secret-artifactory-pull'
+export const DEMO_PROVIDER_VAULT_TOKEN_SECRET_ID = 'demo-provider-secret-vault-token'
+export const DEMO_PROVIDER_GITOPS_DEPLOY_KEY_SECRET_ID = 'demo-provider-secret-gitops-deploy'
+
+function getStorageKey(scope: SecretVaultScope, tenantSlug: string): string {
+  if (scope === 'provider') {
+    return PROVIDER_SECRETS_STORAGE_KEY
+  }
+
   return `${TENANT_SECRETS_KEY_PREFIX}${tenantSlug}`
 }
 
@@ -209,12 +228,71 @@ function createSampleTenantSecrets(): TenantSecret[] {
   ]
 }
 
-const SAMPLE_TENANT_SECRET_ORDER = createSampleTenantSecrets().map((secret) => secret.id)
+function createSampleProviderSecrets(): TenantSecret[] {
+  return [
+    {
+      id: DEMO_PROVIDER_ARTIFACTORY_PULL_SECRET_ID,
+      name: 'artifactory-platform-pull',
+      type: 'image-pull',
+      usage: 'general',
+      createdAt: '2026-02-01T10:00:00.000Z',
+      summary: 'Platform registry pull credentials',
+      data: {
+        kind: 'image-pull',
+        authMode: 'registry-credentials',
+        credentials: [
+          {
+            registryServer: 'registry.platform.osac.dev',
+            username: 'platform+pull',
+            password: 'demo-provider-pull-password',
+            email: 'platform@osac.dev',
+          },
+        ],
+        configurationFileName: '',
+        configurationFileContents: '',
+      },
+    },
+    {
+      id: DEMO_PROVIDER_VAULT_TOKEN_SECRET_ID,
+      name: 'platform-vault-token',
+      type: 'key-value',
+      usage: 'general',
+      createdAt: '2026-01-18T08:30:00.000Z',
+      summary: 'Vault automation token for provider services',
+      data: {
+        kind: 'key-value',
+        pairs: [{ key: 'vault-token', value: 'hvs_demo_provider_vault_token_91f2c4' }],
+      },
+    },
+    {
+      id: DEMO_PROVIDER_GITOPS_DEPLOY_KEY_SECRET_ID,
+      name: 'gitops-deploy-key',
+      type: 'source',
+      usage: 'general',
+      createdAt: '2026-01-10T15:45:00.000Z',
+      summary: 'Deploy key for platform GitOps repositories',
+      data: {
+        kind: 'source',
+        authMode: 'basic',
+        username: 'platform-gitops',
+        passwordOrToken: 'ghp_demo_provider_gitops_token',
+        sshPrivateKeyFileName: '',
+        sshPrivateKeyContents: '',
+      },
+    },
+  ]
+}
 
-function sortTenantSecrets(secrets: TenantSecret[]): TenantSecret[] {
+const SAMPLE_TENANT_SECRET_ORDER = createSampleTenantSecrets().map((secret) => secret.id)
+const SAMPLE_PROVIDER_SECRET_ORDER = createSampleProviderSecrets().map((secret) => secret.id)
+
+function sortTenantSecrets(secrets: TenantSecret[], scope: SecretVaultScope): TenantSecret[] {
+  const order =
+    scope === 'provider' ? SAMPLE_PROVIDER_SECRET_ORDER : SAMPLE_TENANT_SECRET_ORDER
+
   return [...secrets].sort((left, right) => {
-    const leftIndex = SAMPLE_TENANT_SECRET_ORDER.indexOf(left.id)
-    const rightIndex = SAMPLE_TENANT_SECRET_ORDER.indexOf(right.id)
+    const leftIndex = order.indexOf(left.id)
+    const rightIndex = order.indexOf(right.id)
 
     if (leftIndex !== -1 && rightIndex !== -1) {
       return leftIndex - rightIndex
@@ -238,17 +316,17 @@ function migrateTenantSecrets(secrets: TenantSecret[]): TenantSecret[] {
   )
 }
 
-function saveTenantSecrets(tenantSlug: string, secrets: TenantSecret[]): void {
+function saveSecrets(scope: SecretVaultScope, tenantSlug: string, secrets: TenantSecret[]): void {
   try {
-    sessionStorage.setItem(getStorageKey(tenantSlug), JSON.stringify(secrets))
+    sessionStorage.setItem(getStorageKey(scope, tenantSlug), JSON.stringify(secrets))
   } catch {
     /* demo storage unavailable */
   }
 }
 
-export function getTenantSecrets(tenantSlug: string): TenantSecret[] {
+export function getSecrets(scope: SecretVaultScope, tenantSlug: string): TenantSecret[] {
   try {
-    const raw = sessionStorage.getItem(getStorageKey(tenantSlug))
+    const raw = sessionStorage.getItem(getStorageKey(scope, tenantSlug))
     if (!raw) {
       return []
     }
@@ -264,16 +342,32 @@ export function getTenantSecrets(tenantSlug: string): TenantSecret[] {
   }
 }
 
+/** @deprecated Prefer getSecrets('tenant', tenantSlug) */
+export function getTenantSecrets(tenantSlug: string): TenantSecret[] {
+  return getSecrets('tenant', tenantSlug)
+}
+
+export function getSecretById(
+  scope: SecretVaultScope,
+  tenantSlug: string,
+  secretId: string,
+): TenantSecret | null {
+  return getSecrets(scope, tenantSlug).find((secret) => secret.id === secretId) ?? null
+}
+
 export function getTenantSecretById(
   tenantSlug: string,
   secretId: string,
 ): TenantSecret | null {
-  return getTenantSecrets(tenantSlug).find((secret) => secret.id === secretId) ?? null
+  return getSecretById('tenant', tenantSlug, secretId)
 }
 
-export function ensureTenantDemoSecrets(tenantSlug: string): TenantSecret[] {
-  const existing = migrateTenantSecrets(getTenantSecrets(tenantSlug))
-  const samples = createSampleTenantSecrets()
+function ensureDemoSecrets(
+  scope: SecretVaultScope,
+  tenantSlug: string,
+  samples: TenantSecret[],
+): TenantSecret[] {
+  const existing = migrateTenantSecrets(getSecrets(scope, tenantSlug))
   let next = [...existing]
   let changed = false
 
@@ -292,17 +386,25 @@ export function ensureTenantDemoSecrets(tenantSlug: string): TenantSecret[] {
     }
   }
 
-  next = sortTenantSecrets(next)
+  next = sortTenantSecrets(next, scope)
 
   if (
     changed ||
     next.length !== existing.length ||
     next.some((secret, index) => secret.id !== existing[index]?.id)
   ) {
-    saveTenantSecrets(tenantSlug, next)
+    saveSecrets(scope, tenantSlug, next)
   }
 
   return next
+}
+
+export function ensureTenantDemoSecrets(tenantSlug: string): TenantSecret[] {
+  return ensureDemoSecrets('tenant', tenantSlug, createSampleTenantSecrets())
+}
+
+export function ensureProviderDemoSecrets(): TenantSecret[] {
+  return ensureDemoSecrets('provider', '', createSampleProviderSecrets())
 }
 
 export function formatTenantSecretKeyNames(secret: TenantSecret): string {
@@ -340,10 +442,48 @@ export function buildTenantSecretFilterParts(searchValue: string): string[] {
   return parts
 }
 
-export function addTenantSecret(tenantSlug: string, secret: TenantSecret): TenantSecret[] {
-  const next = [...getTenantSecrets(tenantSlug), secret]
-  saveTenantSecrets(tenantSlug, next)
+export function addSecret(
+  scope: SecretVaultScope,
+  tenantSlug: string,
+  secret: TenantSecret,
+): TenantSecret[] {
+  const next = [...getSecrets(scope, tenantSlug), secret]
+  saveSecrets(scope, tenantSlug, next)
   return next
+}
+
+export function updateSecret(
+  scope: SecretVaultScope,
+  tenantSlug: string,
+  secret: TenantSecret,
+): TenantSecret[] {
+  const next = getSecrets(scope, tenantSlug).map((entry) =>
+    entry.id === secret.id ? secret : entry,
+  )
+  saveSecrets(scope, tenantSlug, next)
+  return next
+}
+
+export function deleteSecret(
+  scope: SecretVaultScope,
+  tenantSlug: string,
+  secretId: string,
+): TenantSecret[] {
+  const next = getSecrets(scope, tenantSlug).filter((secret) => secret.id !== secretId)
+  saveSecrets(scope, tenantSlug, next)
+  return next
+}
+
+export function addTenantSecret(tenantSlug: string, secret: TenantSecret): TenantSecret[] {
+  return addSecret('tenant', tenantSlug, secret)
+}
+
+export function updateTenantSecret(tenantSlug: string, secret: TenantSecret): TenantSecret[] {
+  return updateSecret('tenant', tenantSlug, secret)
+}
+
+export function deleteTenantSecret(tenantSlug: string, secretId: string): TenantSecret[] {
+  return deleteSecret('tenant', tenantSlug, secretId)
 }
 
 export const MASKED_SECRET_VALUE = '•'.repeat(24)

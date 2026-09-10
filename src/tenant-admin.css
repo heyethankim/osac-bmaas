@@ -770,27 +770,26 @@
   font-size: var(--pf-t--global--font--size--heading--md);
 }
 
-.tenant-project-details-body--sidebar .provider-admin-organizations__account-person-main {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  column-gap: var(--pf-t--global--spacer--sm);
-  align-items: start;
+.tenant-project-details-body--sidebar .provider-admin-organizations__account-person {
+  align-items: center;
 }
 
-.tenant-project-details-body--sidebar
-  .provider-admin-organizations__account-person-main
-  > .provider-admin-organizations__primary-cell,
-.tenant-project-details-body--sidebar
-  .provider-admin-organizations__account-person-main
-  > .provider-admin-organizations__secondary-cell {
-  grid-column: 1;
+.tenant-project-details-body--sidebar .provider-admin-organizations__account-person-main {
+  display: flex;
+  align-items: center;
+  column-gap: var(--pf-t--global--spacer--sm);
+  flex: 1;
+  min-width: 0;
+}
+
+.tenant-project-details-body--sidebar .provider-admin-organizations__account-person-text {
+  flex: 1;
+  min-width: 0;
 }
 
 .tenant-project-details-body--sidebar .provider-admin-organizations__account-person-role {
-  grid-column: 2;
-  grid-row: 1;
+  flex-shrink: 0;
   margin-block-start: 0;
-  justify-self: end;
 }
 
 @media (min-width: 768px) {

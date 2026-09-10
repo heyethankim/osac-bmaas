@@ -9,6 +9,11 @@ import {
   EmptyStateActions,
   EmptyStateBody,
   EmptyStateFooter,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  ModalVariant,
   SearchInput,
   Title,
 } from '@patternfly/react-core'
@@ -22,18 +27,32 @@ import { getSecretsViewMode, setSecretsViewMode, type ViewMode } from '../../cat
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
 import { CreateTenantSecretFlow } from '../../components/tenant/secrets/CreateTenantSecretFlow'
 import { TenantSecretDetailsPage } from '../../components/tenant/secrets/TenantSecretDetailsPage'
+import { TenantSecretRowActions } from '../../components/tenant/secrets/TenantSecretRowActions'
 import {
   buildTenantSecretFilterParts,
+  deleteSecret,
+  ensureProviderDemoSecrets,
   ensureTenantDemoSecrets,
   formatTenantSecretKeyNames,
-  getTenantSecretById,
+  getSecretById,
+  PROVIDER_SECRETS_COPY,
   TENANT_SECRETS_COPY,
+  type SecretVaultScope,
   type TenantSecret,
 } from '../../tenant/secrets'
 
 type TenantSecretsPageProps = {
   tenantSlug: string
+  scope?: SecretVaultScope
   readOnly?: boolean
+}
+
+function resolveSecretsCopy(scope: SecretVaultScope) {
+  return scope === 'provider' ? PROVIDER_SECRETS_COPY : TENANT_SECRETS_COPY
+}
+
+function ensureSecrets(scope: SecretVaultScope, tenantSlug: string) {
+  return scope === 'provider' ? ensureProviderDemoSecrets() : ensureTenantDemoSecrets(tenantSlug)
 }
 
 function formatSecretCreatedAt(value: string): string {
@@ -60,10 +79,14 @@ function getSecretSearchHaystack(secret: TenantSecret): string {
 
 export function TenantSecretsPage({
   tenantSlug,
+  scope = 'tenant',
   readOnly = false,
 }: TenantSecretsPageProps) {
-  const [secrets, setSecrets] = useState<TenantSecret[]>(() => ensureTenantDemoSecrets(tenantSlug))
+  const copy = resolveSecretsCopy(scope)
+  const [secrets, setSecrets] = useState<TenantSecret[]>(() => ensureSecrets(scope, tenantSlug))
   const [isCreating, setIsCreating] = useState(false)
+  const [editingSecret, setEditingSecret] = useState<TenantSecret | null>(null)
+  const [secretPendingDelete, setSecretPendingDelete] = useState<TenantSecret | null>(null)
   const [selectedSecretId, setSelectedSecretId] = useState<string | null>(null)
   const [searchValue, setSearchValue] = useState('')
   const [viewMode, setViewMode] = useState<ViewMode>(() => getSecretsViewMode())
@@ -94,38 +117,122 @@ export function TenantSecretsPage({
   }
 
   const selectedSecret = useMemo(
-    () => (selectedSecretId ? getTenantSecretById(tenantSlug, selectedSecretId) : null),
-    [selectedSecretId, secrets, tenantSlug],
+    () => (selectedSecretId ? getSecretById(scope, tenantSlug, selectedSecretId) : null),
+    [scope, selectedSecretId, secrets, tenantSlug],
   )
 
-  if (isCreating && !readOnly) {
-    return (
-      <CreateTenantSecretFlow
-        tenantSlug={tenantSlug}
-        initialType="key-value"
-        onClose={() => setIsCreating(false)}
-        onCreated={() => {
-          setSecrets(ensureTenantDemoSecrets(tenantSlug))
-          setIsCreating(false)
-        }}
+  const refreshSecrets = () => {
+    setSecrets(ensureSecrets(scope, tenantSlug))
+  }
+
+  const handleEditSecret = (secret: TenantSecret) => {
+    setSelectedSecretId(null)
+    setEditingSecret(secret)
+  }
+
+  const handleDeleteSecret = (secret: TenantSecret) => {
+    setSecretPendingDelete(secret)
+  }
+
+  const closeDeleteSecret = () => {
+    setSecretPendingDelete(null)
+  }
+
+  const handleConfirmDeleteSecret = () => {
+    if (!secretPendingDelete) {
+      return
+    }
+
+    deleteSecret(scope, tenantSlug, secretPendingDelete.id)
+    if (selectedSecretId === secretPendingDelete.id) {
+      setSelectedSecretId(null)
+    }
+    refreshSecrets()
+    closeDeleteSecret()
+  }
+
+  const deleteConfirmModal = (
+    <Modal
+      variant={ModalVariant.small}
+      isOpen={secretPendingDelete !== null}
+      onClose={closeDeleteSecret}
+      aria-labelledby="delete-secret-title"
+      aria-describedby="delete-secret-description"
+    >
+      <ModalHeader
+        title="Delete secret?"
+        titleIconVariant="warning"
+        labelId="delete-secret-title"
       />
+      <ModalBody>
+        <Content component="p" id="delete-secret-description">
+          {secretPendingDelete ? (
+            <>
+              <strong>{secretPendingDelete.name}</strong> will be permanently removed. This cannot
+              be undone.
+            </>
+          ) : (
+            'This secret will be permanently removed. This cannot be undone.'
+          )}
+        </Content>
+      </ModalBody>
+      <ModalFooter>
+        <Button variant="danger" onClick={handleConfirmDeleteSecret}>
+          Delete
+        </Button>
+        <Button variant="link" onClick={closeDeleteSecret}>
+          Cancel
+        </Button>
+      </ModalFooter>
+    </Modal>
+  )
+
+  if ((isCreating || editingSecret) && !readOnly) {
+    return (
+      <>
+        <CreateTenantSecretFlow
+          tenantSlug={tenantSlug}
+          scope={scope}
+          initialType={isCreating ? 'key-value' : undefined}
+          editingSecret={editingSecret}
+          onClose={() => {
+            setIsCreating(false)
+            setEditingSecret(null)
+          }}
+          onCreated={() => {
+            refreshSecrets()
+            setIsCreating(false)
+          }}
+          onUpdated={() => {
+            refreshSecrets()
+            setEditingSecret(null)
+          }}
+        />
+        {deleteConfirmModal}
+      </>
     )
   }
 
   if (selectedSecret) {
     return (
-      <TenantSecretDetailsPage
-        secret={selectedSecret}
-        onBack={() => setSelectedSecretId(null)}
-      />
+      <>
+        <TenantSecretDetailsPage
+          secret={selectedSecret}
+          onBack={() => setSelectedSecretId(null)}
+          onEdit={readOnly ? undefined : () => handleEditSecret(selectedSecret)}
+          onDelete={readOnly ? undefined : () => handleDeleteSecret(selectedSecret)}
+        />
+        {deleteConfirmModal}
+      </>
     )
   }
 
   return (
+    <>
     <div className="provider-admin-workspace-page tenant-secrets">
       <ProviderAdminWorkspacePageHeader
-        title={TENANT_SECRETS_COPY.title}
-        lede={TENANT_SECRETS_COPY.lede}
+        title={copy.title}
+        lede={copy.lede}
         action={
           secrets.length > 0 && !readOnly ? (
             <Button
@@ -134,7 +241,7 @@ export function TenantSecretsPage({
               className="provider-admin-workspace-page__action"
               onClick={() => setIsCreating(true)}
             >
-              {TENANT_SECRETS_COPY.createSecretTypeLabel}
+              {copy.createSecretTypeLabel}
             </Button>
           ) : undefined
         }
@@ -143,10 +250,10 @@ export function TenantSecretsPage({
       {secrets.length === 0 ? (
         <EmptyState className="catalog-filter-empty tenant-secrets__empty">
           <Title headingLevel="h2" size="lg">
-            {TENANT_SECRETS_COPY.emptyTitle}
+            {copy.emptyTitle}
           </Title>
           <EmptyStateBody className="catalog-filter-empty__body">
-            {TENANT_SECRETS_COPY.emptyBody}
+            {copy.emptyBody}
           </EmptyStateBody>
           {readOnly ? null : (
             <EmptyStateFooter>
@@ -156,7 +263,7 @@ export function TenantSecretsPage({
                   icon={<PlusIcon aria-hidden />}
                   onClick={() => setIsCreating(true)}
                 >
-                  {TENANT_SECRETS_COPY.createSecretTypeLabel}
+                  {copy.createSecretTypeLabel}
                 </Button>
               </EmptyStateActions>
             </EmptyStateFooter>
@@ -206,6 +313,14 @@ export function TenantSecretsPage({
                         <span className="tenant-secrets__card-icon" aria-hidden>
                           {renderInventoryCardIcon(SECRET_CARD_ICON)}
                         </span>
+                        {!readOnly ? (
+                          <div className="tenant-secrets__card-header-actions">
+                            <TenantSecretRowActions
+                              onEdit={() => handleEditSecret(secret)}
+                              onDelete={() => handleDeleteSecret(secret)}
+                            />
+                          </div>
+                        ) : null}
                       </div>
                       <Content component="p" className="tenant-secrets__primary-cell">
                         <Button
@@ -250,6 +365,7 @@ export function TenantSecretsPage({
                     <Th>Name</Th>
                     <Th>Keys</Th>
                     <Th>Added</Th>
+                    {!readOnly ? <Th screenReaderText="Actions" /> : null}
                   </Tr>
                 </Thead>
                 <Tbody>
@@ -269,6 +385,14 @@ export function TenantSecretsPage({
                       </Td>
                       <Td dataLabel="Keys">{formatTenantSecretKeyNames(secret)}</Td>
                       <Td dataLabel="Added">{formatSecretCreatedAt(secret.createdAt)}</Td>
+                      {!readOnly ? (
+                        <Td isActionCell>
+                          <TenantSecretRowActions
+                            onEdit={() => handleEditSecret(secret)}
+                            onDelete={() => handleDeleteSecret(secret)}
+                          />
+                        </Td>
+                      ) : null}
                     </Tr>
                   ))}
                 </Tbody>
@@ -278,5 +402,7 @@ export function TenantSecretsPage({
         </>
       )}
     </div>
+    {deleteConfirmModal}
+    </>
   )
 }

@@ -22,6 +22,14 @@ import {
 } from '../../providerAdmin/externalIpPools'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import { NETWORK_INVENTORY_CREATE_REVIEW_STEP } from '../../networking/networkInventoryCreateWizard'
+import {
+  buildExternalIpPoolEditSnapshot,
+  buildExternalIpPoolEditSnapshotFromPool,
+  getExternalIpPoolEditChanges,
+  getNetworkInventoryEditModifiedStepIds,
+  type NetworkInventoryEditStepId,
+} from '../../networking/networkInventoryEditDiff'
+import { NetworkInventoryEditReviewPanel } from '../../networking/NetworkInventoryEditReviewPanel'
 import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
 import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope'
 import { assignExternalIpPoolToRegisteredOrganization } from '../../providerSetup/storage'
@@ -125,6 +133,41 @@ export function CreateExternalIpPoolWizard({
     !isProviderCreate ||
     (assignableOrganizations.length > 0 && Boolean(form.organizationId.trim()))
   const canSubmit = isDetailsStepValid && (isEditMode || isOrganizationStepValid)
+
+  const editBaseline = useMemo(() => {
+    if (!isEditMode || !resource) {
+      return null
+    }
+
+    return buildExternalIpPoolEditSnapshotFromPool(resource)
+  }, [isEditMode, resource])
+
+  const currentEditSnapshot = useMemo(() => {
+    if (!isEditMode) {
+      return null
+    }
+
+    return buildExternalIpPoolEditSnapshot({
+      cidr: form.cidr,
+      dataCenter: form.dataCenter,
+      totalAddresses: form.totalAddresses,
+    })
+  }, [form.cidr, form.dataCenter, form.totalAddresses, isEditMode])
+
+  const editChanges = useMemo(() => {
+    if (!editBaseline || !currentEditSnapshot) {
+      return []
+    }
+
+    return getExternalIpPoolEditChanges(editBaseline, currentEditSnapshot)
+  }, [currentEditSnapshot, editBaseline])
+
+  const modifiedStepIds = useMemo(
+    () => getNetworkInventoryEditModifiedStepIds(editChanges),
+    [editChanges],
+  )
+
+  const canSaveEdit = !isEditMode || editChanges.length > 0
 
   const handleClose = () => {
     setForm(DEFAULT_CREATE_POOL_FORM)
@@ -280,36 +323,42 @@ export function CreateExternalIpPoolWizard({
     }
 
     return (
-      <DescriptionList isCompact className="provider-admin-network-inventory__wizard-review">
-        <DescriptionListGroup>
-          <DescriptionListTerm>Pool name</DescriptionListTerm>
-          <DescriptionListDescription>{form.name.trim() || '—'}</DescriptionListDescription>
-        </DescriptionListGroup>
-        <DescriptionListGroup>
-          <DescriptionListTerm>CIDR</DescriptionListTerm>
-          <DescriptionListDescription>
-            <code>{form.cidr.trim() || '—'}</code>
-          </DescriptionListDescription>
-        </DescriptionListGroup>
-        <DescriptionListGroup>
-          <DescriptionListTerm>Data center</DescriptionListTerm>
-          <DescriptionListDescription>{form.dataCenter.trim() || '—'}</DescriptionListDescription>
-        </DescriptionListGroup>
-        <DescriptionListGroup>
-          <DescriptionListTerm>Total addresses</DescriptionListTerm>
-          <DescriptionListDescription>
-            {Number.isFinite(totalAddresses) ? totalAddresses.toLocaleString() : '—'}
-          </DescriptionListDescription>
-        </DescriptionListGroup>
-        {isProviderCreate && !isEditMode ? (
-          <DescriptionListGroup>
-            <DescriptionListTerm>Tenant</DescriptionListTerm>
-            <DescriptionListDescription>
-              {selectedOrganization?.name ?? '—'}
-            </DescriptionListDescription>
-          </DescriptionListGroup>
-        ) : null}
-      </DescriptionList>
+      <NetworkInventoryEditReviewPanel
+        isEditMode={isEditMode}
+        editChanges={editChanges}
+        createReview={
+          <DescriptionList isCompact className="provider-admin-network-inventory__wizard-review">
+            <DescriptionListGroup>
+              <DescriptionListTerm>Pool name</DescriptionListTerm>
+              <DescriptionListDescription>{form.name.trim() || '—'}</DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>CIDR</DescriptionListTerm>
+              <DescriptionListDescription>
+                <code>{form.cidr.trim() || '—'}</code>
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Data center</DescriptionListTerm>
+              <DescriptionListDescription>{form.dataCenter.trim() || '—'}</DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Total addresses</DescriptionListTerm>
+              <DescriptionListDescription>
+                {Number.isFinite(totalAddresses) ? totalAddresses.toLocaleString() : '—'}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+            {isProviderCreate && !isEditMode ? (
+              <DescriptionListGroup>
+                <DescriptionListTerm>Tenant</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {selectedOrganization?.name ?? '—'}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+            ) : null}
+          </DescriptionList>
+        }
+      />
     )
   }
 
@@ -332,7 +381,7 @@ export function CreateExternalIpPoolWizard({
           </span>
         ),
         onNext: handleSubmit,
-        isNextDisabled: !canSubmit,
+        isNextDisabled: !canSubmit || !canSaveEdit,
       }
     }
 
@@ -351,6 +400,11 @@ export function CreateExternalIpPoolWizard({
       getStepFooter={getStepFooter}
       onClose={handleClose}
       leaveConfirmPrimaryActionLabel={isEditMode ? 'Discard changes' : 'Leave'}
+      getStepName={(step) =>
+        isEditMode && modifiedStepIds.has(step.id as NetworkInventoryEditStepId)
+          ? `${step.label} (modified)`
+          : step.label
+      }
     />
   )
 }

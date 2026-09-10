@@ -38,6 +38,7 @@ type NetworkInventoryCreateWizardShellProps = {
   onClose: () => void
   className?: string
   leaveConfirmPrimaryActionLabel?: string
+  getStepName?: (step: NetworkInventoryCreateStep) => string
 }
 
 export function NetworkInventoryCreateWizardShell({
@@ -54,6 +55,7 @@ export function NetworkInventoryCreateWizardShell({
   onClose,
   className,
   leaveConfirmPrimaryActionLabel,
+  getStepName,
 }: NetworkInventoryCreateWizardShellProps) {
   const leaveAfterCloseRef = useRef<(() => void) | null>(null)
   const { requestClose, leaveConfirmModal, wrapStepFooter } = useWizardLeaveConfirm({
@@ -108,7 +110,7 @@ export function NetworkInventoryCreateWizardShell({
         <WizardStep
           key={step.id}
           id={`network-create-step-${step.id}`}
-          name={step.label}
+          name={getStepName ? getStepName(step) : step.label}
           footer={wrapStepFooter(getStepFooter(step.id))}
         >
           {renderStepContent(step.id)}

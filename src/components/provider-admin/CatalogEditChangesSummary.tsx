@@ -11,11 +11,13 @@ import type { EditChangeRow } from '../../shared/editChangeRow'
 type CatalogEditChangesSummaryProps = {
   changes: EditChangeRow[]
   emptyMessage?: string
+  ariaLabel?: string
 }
 
 export function CatalogEditChangesSummary({
   changes,
   emptyMessage = 'No changes yet. Update a step to see a before-and-after summary here.',
+  ariaLabel = 'Catalog item changes',
 }: CatalogEditChangesSummaryProps) {
   if (changes.length === 0) {
     return (
@@ -34,7 +36,7 @@ export function CatalogEditChangesSummary({
         isCompact
         isHorizontal
         className="provider-setup-template__edit-changes-list"
-        aria-label="Catalog item changes"
+        aria-label={ariaLabel}
       >
         {changes.map((change) => (
           <DescriptionListGroup key={change.id}>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ArrowRightIcon } from '@patternfly/react-icons/dist/esm/icons/arrow-right-icon'
 import { NetworkIcon } from '@patternfly/react-icons/dist/esm/icons/network-icon'
 import {
@@ -17,6 +17,14 @@ import {
   type ProviderVirtualNetwork,
 } from '../../providerAdmin/networkInventory'
 import { NETWORK_INVENTORY_CREATE_REVIEW_STEP } from '../../networking/networkInventoryCreateWizard'
+import {
+  buildVirtualNetworkEditSnapshot,
+  buildVirtualNetworkEditSnapshotFromNetwork,
+  getNetworkInventoryEditModifiedStepIds,
+  getVirtualNetworkEditChanges,
+  type NetworkInventoryEditStepId,
+} from '../../networking/networkInventoryEditDiff'
+import { NetworkInventoryEditReviewPanel } from '../../networking/NetworkInventoryEditReviewPanel'
 import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
 import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope'
 import { NetworkInventoryCreateWizardShell } from './NetworkInventoryCreateWizardShell'
@@ -82,6 +90,37 @@ export function CreateVirtualNetworkWizard({
 
   const isNameValid = isValidKubernetesResourceName(form.name)
   const isDetailsStepValid = isNameValid && Boolean(form.cidr.trim())
+
+  const editBaseline = useMemo(() => {
+    if (!isEditMode || !resource) {
+      return null
+    }
+
+    return buildVirtualNetworkEditSnapshotFromNetwork(resource)
+  }, [isEditMode, resource])
+
+  const currentEditSnapshot = useMemo(() => {
+    if (!isEditMode) {
+      return null
+    }
+
+    return buildVirtualNetworkEditSnapshot(form)
+  }, [form, isEditMode])
+
+  const editChanges = useMemo(() => {
+    if (!editBaseline || !currentEditSnapshot) {
+      return []
+    }
+
+    return getVirtualNetworkEditChanges(editBaseline, currentEditSnapshot)
+  }, [currentEditSnapshot, editBaseline])
+
+  const modifiedStepIds = useMemo(
+    () => getNetworkInventoryEditModifiedStepIds(editChanges),
+    [editChanges],
+  )
+
+  const canSaveEdit = !isEditMode || editChanges.length > 0
 
   const handleClose = () => {
     setForm(DEFAULT_FORM)
@@ -171,28 +210,34 @@ export function CreateVirtualNetworkWizard({
     }
 
     return (
-      <DescriptionList isCompact className="provider-admin-network-inventory__wizard-review">
-        <DescriptionListGroup>
-          <DescriptionListTerm>Name</DescriptionListTerm>
-          <DescriptionListDescription>{form.name.trim() || '—'}</DescriptionListDescription>
-        </DescriptionListGroup>
-        <DescriptionListGroup>
-          <DescriptionListTerm>Description</DescriptionListTerm>
-          <DescriptionListDescription>{form.detail.trim() || '—'}</DescriptionListDescription>
-        </DescriptionListGroup>
-        <DescriptionListGroup>
-          <DescriptionListTerm>IPv4 CIDR</DescriptionListTerm>
-          <DescriptionListDescription>
-            <code>{form.cidr.trim() || '—'}</code>
-          </DescriptionListDescription>
-        </DescriptionListGroup>
-        <DescriptionListGroup>
-          <DescriptionListTerm>IPv6 CIDR</DescriptionListTerm>
-          <DescriptionListDescription>
-            <code>{form.ipv6Cidr.trim() || '—'}</code>
-          </DescriptionListDescription>
-        </DescriptionListGroup>
-      </DescriptionList>
+      <NetworkInventoryEditReviewPanel
+        isEditMode={isEditMode}
+        editChanges={editChanges}
+        createReview={
+          <DescriptionList isCompact className="provider-admin-network-inventory__wizard-review">
+            <DescriptionListGroup>
+              <DescriptionListTerm>Name</DescriptionListTerm>
+              <DescriptionListDescription>{form.name.trim() || '—'}</DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Description</DescriptionListTerm>
+              <DescriptionListDescription>{form.detail.trim() || '—'}</DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>IPv4 CIDR</DescriptionListTerm>
+              <DescriptionListDescription>
+                <code>{form.cidr.trim() || '—'}</code>
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>IPv6 CIDR</DescriptionListTerm>
+              <DescriptionListDescription>
+                <code>{form.ipv6Cidr.trim() || '—'}</code>
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+          </DescriptionList>
+        }
+      />
     )
   }
 
@@ -211,7 +256,7 @@ export function CreateVirtualNetworkWizard({
           </span>
         ),
         onNext: handleSubmit,
-        isNextDisabled: !isDetailsStepValid,
+        isNextDisabled: !isDetailsStepValid || !canSaveEdit,
       }
     }
 
@@ -230,6 +275,11 @@ export function CreateVirtualNetworkWizard({
       getStepFooter={getStepFooter}
       onClose={handleClose}
       leaveConfirmPrimaryActionLabel={isEditMode ? 'Discard changes' : 'Leave'}
+      getStepName={(step) =>
+        isEditMode && modifiedStepIds.has(step.id as NetworkInventoryEditStepId)
+          ? `${step.label} (modified)`
+          : step.label
+      }
     />
   )
 }
