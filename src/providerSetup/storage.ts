@@ -41,7 +41,7 @@ import {
 import type { ComputeImage } from '../providerAdmin/computeImages'
 import { DEFAULT_COMPUTE_IMAGES } from '../providerAdmin/computeImages'
 import type { ExternalIpPool } from '../providerAdmin/externalIpPools'
-import { DEFAULT_EXTERNAL_IP_POOLS, getExternalIpPoolById } from '../providerAdmin/externalIpPools'
+import { DEFAULT_EXTERNAL_IP_POOLS, DEFAULT_NORTHSUMMIT_EXTERNAL_IP_POOL_DESCRIPTION, DEFAULT_PROVIDER_EXTERNAL_IP_POOL_DESCRIPTION, getExternalIpPoolById, getExternalIpPoolDefaultDescription } from '../providerAdmin/externalIpPools'
 import type {
   ProviderSecurityGroup,
   ProviderSubnet,
@@ -172,6 +172,7 @@ export function getProviderActiveNav(): ProviderAdminNavId {
       value === 'infrastructure-data-centers' ||
       value === 'infrastructure-hardware-inventory' ||
       value === 'infrastructure-bmaas-templates' ||
+      value === 'networking' ||
       value === 'networking-virtual-networks' ||
       value === 'networking-external-ip-pools' ||
       value === 'secrets' ||
@@ -207,13 +208,10 @@ export function getProviderActiveNav(): ProviderAdminNavId {
       value === 'infrastructure-subnets' ||
       value === 'networking-subnets' ||
       value === 'infrastructure-security-groups' ||
-      value === 'networking-security-groups'
+      value === 'networking-security-groups' ||
+      value === 'infrastructure-external-ip-pools'
     ) {
-      return 'catalog'
-    }
-
-    if (value === 'infrastructure-external-ip-pools') {
-      return 'catalog'
+      return resolveProviderAdminNavId('networking-external-ip-pools')
     }
 
     if (value === 'administration-organizations-quotas') {
@@ -2076,10 +2074,23 @@ function normalizeExternalIpPool(pool: ExternalIpPool): ExternalIpPool {
       ? DEMO_NORTH_SUMMIT_BANK_ORG_ID
       : pool.assignedOrganizationId
 
+  const isHarborlinePool =
+    pool.id === 'eipool-standby-a' ||
+    pool.name === 'standby-pool-a' ||
+    pool.name === 'harborline-capital-public-edge'
+
+  let description = pool.description
+  if (!description) {
+    description = getExternalIpPoolDefaultDescription(pool)
+  } else if (isHarborlinePool && description === DEFAULT_NORTHSUMMIT_EXTERNAL_IP_POOL_DESCRIPTION) {
+    description = DEFAULT_PROVIDER_EXTERNAL_IP_POOL_DESCRIPTION
+  }
+
   return {
     ...pool,
     id: pool.id === 'eipool-northstar-edge' ? 'eipool-northsummit-edge' : pool.id,
     name: migrateDns1123ResourceName(pool.name),
+    description,
     dataCenter: migrateDns1123DataCenter(pool.dataCenter),
     assignedOrganizationId,
     assignedOrganizationName,
@@ -2115,6 +2126,7 @@ export function getProviderExternalIpPools(): ExternalIpPool[] {
       const candidate = original as ExternalIpPool
       return (
         candidate.name !== pool.name ||
+        candidate.description !== pool.description ||
         candidate.dataCenter !== pool.dataCenter ||
         candidate.assignedOrganizationName !== pool.assignedOrganizationName
       )

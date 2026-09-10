@@ -89,8 +89,8 @@ export type TenantSecretUsageFilter = 'all' | TenantSecretUsage
 
 const TENANT_SECRETS_KEY_PREFIX = 'bmaas-tenant-secrets-'
 const PROVIDER_SECRETS_STORAGE_KEY = 'bmaas-provider-secrets'
+const REMOVED_PROVIDER_DEMO_SECRET_IDS = new Set(['demo-provider-secret-artifactory-pull'])
 
-export const DEMO_PROVIDER_ARTIFACTORY_PULL_SECRET_ID = 'demo-provider-secret-artifactory-pull'
 export const DEMO_PROVIDER_VAULT_TOKEN_SECRET_ID = 'demo-provider-secret-vault-token'
 export const DEMO_PROVIDER_GITOPS_DEPLOY_KEY_SECRET_ID = 'demo-provider-secret-gitops-deploy'
 
@@ -231,28 +231,6 @@ function createSampleTenantSecrets(): TenantSecret[] {
 function createSampleProviderSecrets(): TenantSecret[] {
   return [
     {
-      id: DEMO_PROVIDER_ARTIFACTORY_PULL_SECRET_ID,
-      name: 'artifactory-platform-pull',
-      type: 'image-pull',
-      usage: 'general',
-      createdAt: '2026-02-01T10:00:00.000Z',
-      summary: 'Platform registry pull credentials',
-      data: {
-        kind: 'image-pull',
-        authMode: 'registry-credentials',
-        credentials: [
-          {
-            registryServer: 'registry.platform.osac.dev',
-            username: 'platform+pull',
-            password: 'demo-provider-pull-password',
-            email: 'platform@osac.dev',
-          },
-        ],
-        configurationFileName: '',
-        configurationFileContents: '',
-      },
-    },
-    {
       id: DEMO_PROVIDER_VAULT_TOKEN_SECRET_ID,
       name: 'platform-vault-token',
       type: 'key-value',
@@ -368,8 +346,11 @@ function ensureDemoSecrets(
   samples: TenantSecret[],
 ): TenantSecret[] {
   const existing = migrateTenantSecrets(getSecrets(scope, tenantSlug))
-  let next = [...existing]
-  let changed = false
+  let next =
+    scope === 'provider'
+      ? existing.filter((secret) => !REMOVED_PROVIDER_DEMO_SECRET_IDS.has(secret.id))
+      : [...existing]
+  let changed = scope === 'provider' && next.length !== existing.length
 
   for (const sample of samples) {
     const existingIndex = next.findIndex((secret) => secret.id === sample.id)

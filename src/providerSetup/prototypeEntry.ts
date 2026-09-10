@@ -654,6 +654,7 @@ export function isProviderAdminNavId(value: string | null): value is ProviderAdm
     value === 'infrastructure-data-centers' ||
     value === 'infrastructure-hardware-inventory' ||
     value === 'infrastructure-bmaas-templates' ||
+    value === 'networking' ||
     value === 'networking-virtual-networks' ||
     value === 'networking-subnets' ||
     value === 'networking-security-groups' ||

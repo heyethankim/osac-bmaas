@@ -419,7 +419,7 @@ export function getTenantInstanceActions(
         },
       },
       {
-        title: 'Attach public IP',
+        title: 'Attach external IP',
         isAriaDisabled: isBusy || hasPublicIp,
         onClick: () => {
           vmActions?.onAttachPublicIp?.(instance)

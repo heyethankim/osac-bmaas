@@ -1,4 +1,5 @@
-import type { ExternalIpPool } from '../providerAdmin/externalIpPools'
+import type { ExternalIpPool, ExternalIpPoolIpFamily } from '../providerAdmin/externalIpPools'
+import { getExternalIpPoolCidrs } from '../providerAdmin/externalIpPools'
 import type {
   NatGatewayProfile,
   ProviderSecurityGroup,
@@ -19,6 +20,8 @@ export type NetworkInventoryEditStepId =
   | 'subnet'
   | 'security-group'
   | 'pool'
+  | 'details'
+  | 'addressing'
   | 'nat-gateway'
   | 'identity-provider'
 
@@ -54,7 +57,18 @@ type ExternalIpPoolEditForm = {
   totalAddresses: string
 }
 
+type ProviderExternalIpPoolEditForm = {
+  description: string
+  ipFamily: ExternalIpPoolIpFamily
+  cidrs: string[]
+}
+
 type ExternalIpPoolEditSnapshot = Record<keyof ExternalIpPoolEditForm, EditSnapshotValue>
+
+type ProviderExternalIpPoolEditSnapshot = Record<
+  keyof ProviderExternalIpPoolEditForm,
+  EditSnapshotValue
+>
 
 type NatGatewayEditSnapshot = {
   profile: EditSnapshotValue
@@ -213,6 +227,42 @@ export function getExternalIpPoolEditChanges(
     { id: 'cidr', stepId: 'pool', label: 'CIDR' },
     { id: 'dataCenter', stepId: 'pool', label: 'Data center' },
     { id: 'totalAddresses', stepId: 'pool', label: 'Total addresses' },
+  ])
+}
+
+export function buildProviderExternalIpPoolEditSnapshot(
+  form: ProviderExternalIpPoolEditForm,
+): ProviderExternalIpPoolEditSnapshot {
+  const normalizedCidrs = form.cidrs.map((cidr) => cidr.trim()).filter(Boolean)
+
+  return {
+    description: editSnapshotValue(form.description, form.description.trim() || '—'),
+    ipFamily: editSnapshotValue(form.ipFamily, form.ipFamily),
+    cidrs: editSnapshotValue(
+      normalizedCidrs.join('\n'),
+      normalizedCidrs.length > 0 ? normalizedCidrs.join(', ') : '—',
+    ),
+  }
+}
+
+export function buildProviderExternalIpPoolEditSnapshotFromPool(
+  pool: ExternalIpPool,
+): ProviderExternalIpPoolEditSnapshot {
+  return buildProviderExternalIpPoolEditSnapshot({
+    description: pool.description ?? '',
+    ipFamily: pool.ipFamily ?? 'IPv4',
+    cidrs: getExternalIpPoolCidrs(pool),
+  })
+}
+
+export function getProviderExternalIpPoolEditChanges(
+  baseline: ProviderExternalIpPoolEditSnapshot,
+  current: ProviderExternalIpPoolEditSnapshot,
+) {
+  return getEditChanges(baseline, current, [
+    { id: 'description', stepId: 'addressing', label: 'Description' },
+    { id: 'ipFamily', stepId: 'addressing', label: 'IP family' },
+    { id: 'cidrs', stepId: 'addressing', label: 'CIDR' },
   ])
 }
 

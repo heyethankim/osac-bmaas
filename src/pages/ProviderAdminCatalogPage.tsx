@@ -1021,9 +1021,6 @@ export function ProviderAdminCatalogPage({
         gap={{ default: 'gapMd' }}
       >
         <FlexItem>
-          <Label color="grey" className="provider-admin-catalog-items__kicker">
-            Global marketplace
-          </Label>
           <Title headingLevel="h1" size="3xl" className="provider-admin-catalog-items__title">
             Catalog
           </Title>

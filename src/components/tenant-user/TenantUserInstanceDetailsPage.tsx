@@ -1525,7 +1525,7 @@ function VmInstancePageBody({
             aria-label="Virtual machine specifications"
           >
             <DescriptionListGroup>
-              <DescriptionListTerm>Public IP</DescriptionListTerm>
+              <DescriptionListTerm>External IP</DescriptionListTerm>
               <DescriptionListDescription>
                 {hasPublicIp ? (
                   vmConfig.publicIp
@@ -1536,7 +1536,7 @@ function VmInstancePageBody({
                     className="provider-admin-catalog-items__inline-link"
                     onClick={() => onAttachPublicIp?.(instance)}
                   >
-                    Attach public IP
+                    Attach external IP
                   </Button>
                 ) : (
                   '—'

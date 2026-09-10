@@ -312,6 +312,11 @@ export function TenantAdminProjectsTeamsPage({
   }, [projectCatalog, sidebarProject, topologyVisibleIds])
 
   const openDetails = (project: TenantProject) => {
+    if (viewMode === 'topology') {
+      setSidebarProject(project)
+      return
+    }
+
     setSelectedProject(project)
     setIsDetailsOpen(true)
   }

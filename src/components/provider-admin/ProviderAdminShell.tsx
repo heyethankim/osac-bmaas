@@ -36,8 +36,11 @@ import {
 } from '@patternfly/react-core'
 import {
   PROVIDER_ADMIN_ADMINISTRATION_NAV_ITEMS,
+  PROVIDER_ADMIN_NETWORKING_NAV_ID,
+  PROVIDER_ADMIN_NETWORKING_NAV_LABEL,
   resolveProviderAdminNavId,
   isAdministrationNavId,
+  isNetworkingNavId,
   type ProviderAdminNavId,
 } from '../../providerAdmin/constants'
 import { clearProviderOnboardingState } from '../../providerSetup/storage'
@@ -189,6 +192,14 @@ export function ProviderAdminShell({
                 </NavItem>
               ))}
             </NavExpandable>
+            <NavItem
+              itemId={PROVIDER_ADMIN_NETWORKING_NAV_ID}
+              isActive={isNetworkingNavId(activeNavId)}
+              to="#"
+              preventDefault
+            >
+              {PROVIDER_ADMIN_NETWORKING_NAV_LABEL}
+            </NavItem>
             <NavItem itemId="secrets" isActive={activeNavId === 'secrets'} to="#" preventDefault>
               Secrets
             </NavItem>

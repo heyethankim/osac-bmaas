@@ -6,6 +6,7 @@ export type ProviderAdminNavId =
   | 'services-models'
   | 'services-virtual-machines'
   | 'projects-teams'
+  | 'networking'
   | 'networking-virtual-networks'
   | 'networking-subnets'
   | 'networking-security-groups'
@@ -36,10 +37,8 @@ export const PROVIDER_ADMIN_SERVICES_NAV_ITEMS: ProviderAdminNavItem[] = [
   { id: 'services-virtual-machines', label: 'Virtual machines' },
 ]
 
-export const PROVIDER_ADMIN_NETWORKING_NAV_ITEMS: ProviderAdminNavItem[] = [
-  { id: 'networking-virtual-networks', label: 'Virtual networks' },
-  { id: 'networking-external-ip-pools', label: 'External networks' },
-]
+export const PROVIDER_ADMIN_NETWORKING_NAV_ID: ProviderAdminNavId = 'networking'
+export const PROVIDER_ADMIN_NETWORKING_NAV_LABEL = 'External IP pools'
 
 export const PROVIDER_ADMIN_INFRASTRUCTURE_NAV_ITEMS: ProviderAdminNavItem[] = [
   { id: 'infrastructure-data-centers', label: 'Data centers' },
@@ -58,7 +57,7 @@ export function isServicesNavId(navId: string): boolean {
 }
 
 export function isNetworkingNavId(navId: string): boolean {
-  return navId.startsWith('networking-')
+  return navId === PROVIDER_ADMIN_NETWORKING_NAV_ID || navId.startsWith('networking-')
 }
 
 export function isInfrastructureNavId(navId: string): boolean {
@@ -75,12 +74,12 @@ export function isOrganizationsNavId(navId: string): boolean {
 
 /** Provider admin no longer exposes tenant workspace sections in the shell. */
 export function resolveProviderAdminNavId(navId: ProviderAdminNavId): ProviderAdminNavId {
-  if (
-    isServicesNavId(navId) ||
-    isNetworkingNavId(navId) ||
-    navId === 'projects-teams'
-  ) {
+  if (isServicesNavId(navId) || navId === 'projects-teams') {
     return 'catalog'
+  }
+
+  if (isNetworkingNavId(navId)) {
+    return PROVIDER_ADMIN_NETWORKING_NAV_ID
   }
 
   return navId

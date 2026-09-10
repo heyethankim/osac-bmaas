@@ -401,7 +401,7 @@ export function VirtualNetworkDetailsPage({
                     <DescriptionListDescription>{natGateway.name}</DescriptionListDescription>
                   </DescriptionListGroup>
                   <DescriptionListGroup>
-                    <DescriptionListTerm>Public IP</DescriptionListTerm>
+                    <DescriptionListTerm>External IP</DescriptionListTerm>
                     <DescriptionListDescription>
                       <code>{natGateway.publicIp}</code>
                     </DescriptionListDescription>

@@ -22,6 +22,10 @@
   flex: 1 1 auto;
 }
 
+.tenant-shell-page__main.osac-page-main-section:has(.tenant-admin-projects-teams--topology) {
+  overflow: hidden;
+}
+
 .osac-shell-sidebar-inner {
   display: flex;
   flex-direction: column;

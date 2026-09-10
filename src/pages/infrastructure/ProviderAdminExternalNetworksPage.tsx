@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { AngleDownIcon } from '@patternfly/react-icons/dist/esm/icons/angle-down-icon'
 import { AngleRightIcon } from '@patternfly/react-icons/dist/esm/icons/angle-right-icon'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
@@ -18,11 +18,16 @@ import {
   ModalHeader,
   ModalVariant,
   SearchInput,
+  Spinner,
   Title,
 } from '@patternfly/react-core'
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
 import { CatalogFilterEmptyState } from '../../components/catalog/CatalogFilterEmptyState'
-import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
+import {
+  ExternalIpPoolHubCardCapacityFooter,
+  ExternalIpPoolHubCardSpecs,
+  formatExternalIpPoolCapacitySummary,
+} from '../../components/provider-admin/ExternalIpPoolHubCardSections'
 import {
   EXTERNAL_NETWORK_CARD_ICON,
   renderInventoryCardIcon,
@@ -33,7 +38,13 @@ import { CreateExternalIpPoolWizard } from '../../components/networking/CreateEx
 import { ExternalIpPoolDetailsPage } from '../../components/provider-admin/ExternalIpPoolDetailsPage'
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
 import { buildFilterDescription, buildInventoryFilterParts } from '../../catalog/catalogFilterSummary'
-import type { ExternalIpPool } from '../../providerAdmin/externalIpPools'
+import {
+  getExternalIpPoolCidrs,
+  getExternalIpPoolLifecycleStatus,
+  getExternalIpPoolLifecycleStatusLabelColor,
+  getExternalIpPoolTotalAddresses,
+  type ExternalIpPool,
+} from '../../providerAdmin/externalIpPools'
 import {
   getExternalIpStatusLabelColor,
   groupExternalIpsByPool,
@@ -42,11 +53,12 @@ import {
 } from '../../providerAdmin/externalIps'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import { getProviderRegisteredOrganizations } from '../../providerSetup/storage'
+import { PROVIDER_ADMIN_NETWORKING_NAV_LABEL } from '../../providerAdmin/constants'
 import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope'
 
-const EXTERNAL_NETWORK_STATUS_FILTERS = ['Assigned', 'Available', 'In use'] as const
+const EXTERNAL_NETWORK_STATUS_FILTERS = ['Ready', 'Available', 'In use'] as const
 
-type ExternalIpPoolStatus = 'Available' | 'Assigned'
+type ExternalIpPoolStatus = 'Available' | 'Ready'
 type ExternalNetworkStatusFilter = 'all' | (typeof EXTERNAL_NETWORK_STATUS_FILTERS)[number]
 type ExternalNetworkResourceFilter = 'all' | 'ip-pool' | 'ip'
 
@@ -54,12 +66,44 @@ type FilteredExternalNetworkGroup = ExternalIpPoolGroup & {
   visibleIps: ExternalIp[]
 }
 
+/** Intentional create latency before revealing the new external IP pool card or row. */
+const EXTERNAL_IP_POOL_CREATE_REVEAL_MS = 1600
+
+function sortPoolGroupsByCreatedAtDesc(groups: readonly ExternalIpPoolGroup[]): ExternalIpPoolGroup[] {
+  return [...groups].sort((left, right) =>
+    right.pool.createdAt.localeCompare(left.pool.createdAt),
+  )
+}
+
+function orderPoolGroupsForDisplay(
+  groups: readonly ExternalIpPoolGroup[],
+  displayOrderRef: { current: string[] | null },
+): ExternalIpPoolGroup[] {
+  const byId = new Map(groups.map((group) => [group.pool.id, group] as const))
+  const currentIds = new Set(byId.keys())
+
+  if (!displayOrderRef.current) {
+    displayOrderRef.current = sortPoolGroupsByCreatedAtDesc(groups).map((group) => group.pool.id)
+  } else {
+    const retained = displayOrderRef.current.filter((id) => currentIds.has(id))
+    const retainedSet = new Set(retained)
+    const added = sortPoolGroupsByCreatedAtDesc(
+      groups.filter((group) => !retainedSet.has(group.pool.id)),
+    ).map((group) => group.pool.id)
+    displayOrderRef.current = [...added, ...retained]
+  }
+
+  return displayOrderRef.current
+    .map((id) => byId.get(id))
+    .filter((group): group is ExternalIpPoolGroup => Boolean(group))
+}
+
 function getExternalIpPoolStatus(pool: ExternalIpPool): ExternalIpPoolStatus {
-  return pool.assignedOrganizationId !== null ? 'Assigned' : 'Available'
+  return getExternalIpPoolLifecycleStatus(pool)
 }
 
 function getExternalIpPoolStatusLabelColor(status: ExternalIpPoolStatus): 'blue' | 'green' {
-  return status === 'Assigned' ? 'blue' : 'green'
+  return getExternalIpPoolLifecycleStatusLabelColor(status)
 }
 
 function matchesSearch(query: string, values: Array<string | null | undefined>): boolean {
@@ -79,6 +123,9 @@ function poolMatchesSearch(pool: ExternalIpPool, query: string): boolean {
     pool.name,
     pool.id,
     pool.cidr,
+    pool.description,
+    pool.ipFamily,
+    ...getExternalIpPoolCidrs(pool),
     pool.dataCenter,
     pool.assignedOrganizationName,
     getExternalIpPoolStatus(pool),
@@ -117,7 +164,7 @@ function filterExternalNetworkGroups(
       return ipMatchesSearch(ip, query)
     })
 
-    if (selectedStatus === 'Assigned' && poolStatus !== 'Assigned') {
+    if (selectedStatus === 'Ready' && poolStatus !== 'Ready') {
       return []
     }
 
@@ -157,6 +204,14 @@ function filterExternalNetworkGroups(
   })
 }
 
+function formatSummaryAddressCount(count: number): string {
+  return `${count.toLocaleString()} ${count === 1 ? 'address' : 'addresses'}`
+}
+
+function getPoolInUseCount(ips: readonly ExternalIp[]): number {
+  return ips.filter((ip) => ip.status === 'In use').length
+}
+
 function buildExternalNetworkFilterParts(
   searchValue: string,
   selectedStatus: ExternalNetworkStatusFilter,
@@ -180,12 +235,15 @@ function buildExternalNetworkFilterParts(
 function getExternalIpPoolActions(
   pool: ExternalIpPool,
   onViewDetails: (pool: ExternalIpPool) => void,
-  onEdit: (pool: ExternalIpPool) => void,
   onDelete: (pool: ExternalIpPool) => void,
+  canManage: boolean,
 ): IAction[] {
+  if (!canManage) {
+    return [{ title: 'View details', onClick: () => onViewDetails(pool) }]
+  }
+
   return [
     { title: 'View details', onClick: () => onViewDetails(pool) },
-    { title: 'Edit', onClick: () => onEdit(pool) },
     { isSeparator: true },
     { title: 'Delete', isDanger: true, onClick: () => onDelete(pool) },
   ]
@@ -297,6 +355,22 @@ function buildExternalNetworkListRows(
   return rows
 }
 
+function renderExternalIpPoolCreatingTableRow(pool: ExternalIpPool) {
+  return (
+    <Tr
+      key={pool.id}
+      className="provider-admin-external-networks-hub__pool-row provider-admin-external-networks-hub__pool-row--creating"
+    >
+      <Td colSpan={6} dataLabel="Creating">
+        <div className="provider-admin-external-networks-hub__creating-row">
+          <Spinner size="md" aria-label={`Creating ${pool.name}`} />
+          <span>Creating external IP pool…</span>
+        </div>
+      </Td>
+    </Tr>
+  )
+}
+
 export function ProviderAdminExternalNetworksPage({
   tenantSlug,
   readOnly = false,
@@ -317,51 +391,64 @@ export function ProviderAdminExternalNetworksPage({
   const [searchValue, setSearchValue] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<ExternalNetworkStatusFilter>('all')
   const [selectedResource, setSelectedResource] = useState<ExternalNetworkResourceFilter>('all')
+  const resourceFilter: ExternalNetworkResourceFilter = isTenantScope ? selectedResource : 'all'
   const [viewMode, setViewMode] = useState<ViewMode>(() => getNetworkingViewMode())
   const [isCreateWizardOpen, setIsCreateWizardOpen] = useState(false)
   const [selectedPool, setSelectedPool] = useState<ExternalIpPool | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
-  const [editingPool, setEditingPool] = useState<ExternalIpPool | null>(null)
   const [poolPendingDelete, setPoolPendingDelete] = useState<ExternalIpPool | null>(null)
   const [expandedPoolIds, setExpandedPoolIds] = useState<Set<string>>(() => new Set())
+  const [creatingPoolId, setCreatingPoolId] = useState<string | null>(null)
+  const [creatingCardHeightPx, setCreatingCardHeightPx] = useState<number | null>(null)
+  const createRevealTimeoutRef = useRef<number | null>(null)
+  const poolCardGridRef = useRef<HTMLDivElement | null>(null)
+  const poolDisplayOrderRef = useRef<string[] | null>(null)
 
   const poolGroups = useMemo(
     () => groupExternalIpsByPool(pools, virtualNetworks),
     [pools, virtualNetworks],
   )
 
-  const filteredGroups = useMemo(
-    () =>
-      filterExternalNetworkGroups(
-        poolGroups,
-        searchValue,
-        selectedStatus,
-        selectedResource,
-      ),
-    [poolGroups, searchValue, selectedStatus, selectedResource],
-  )
-
-  const totalIpCount = useMemo(
-    () => poolGroups.reduce((count, group) => count + group.ips.length, 0),
+  const orderedPoolGroups = useMemo(
+    () => orderPoolGroupsForDisplay(poolGroups, poolDisplayOrderRef),
     [poolGroups],
   )
 
-  const filteredIpCount = useMemo(
-    () => filteredGroups.reduce((count, group) => count + group.visibleIps.length, 0),
-    [filteredGroups],
+  const filteredGroups = useMemo(
+    () =>
+      filterExternalNetworkGroups(
+        orderedPoolGroups,
+        searchValue,
+        selectedStatus,
+        resourceFilter,
+      ),
+    [orderedPoolGroups, searchValue, selectedStatus, resourceFilter],
   )
 
   const filterDescriptionParts = useMemo(
-    () => buildExternalNetworkFilterParts(searchValue, selectedStatus, selectedResource),
-    [searchValue, selectedStatus, selectedResource],
+    () => buildExternalNetworkFilterParts(searchValue, selectedStatus, resourceFilter),
+    [searchValue, selectedStatus, resourceFilter],
   )
 
   const hasActiveFilters =
-    Boolean(searchValue.trim()) || selectedStatus !== 'all' || selectedResource !== 'all'
+    Boolean(searchValue.trim()) || selectedStatus !== 'all' || resourceFilter !== 'all'
 
-  const resultCountLabel = hasActiveFilters
-    ? `${filteredGroups.length} of ${poolGroups.length} IP pools · ${filteredIpCount} of ${totalIpCount} IPs`
-    : `${poolGroups.length} IP pools · ${totalIpCount} IPs`
+  const resultCountLabel = useMemo(() => {
+    const poolLabel = hasActiveFilters
+      ? `${filteredGroups.length} of ${orderedPoolGroups.length} pools`
+      : `${orderedPoolGroups.length} pools`
+
+    if (!isTenantScope) {
+      return poolLabel
+    }
+
+    const addressCapacity = (hasActiveFilters ? filteredGroups : orderedPoolGroups).reduce(
+      (sum, { pool }) => sum + getExternalIpPoolTotalAddresses(pool),
+      0,
+    )
+
+    return `${poolLabel} · ${formatSummaryAddressCount(addressCapacity)}`
+  }, [filteredGroups, hasActiveFilters, isTenantScope, orderedPoolGroups])
 
   const filterDescription = buildFilterDescription(filterDescriptionParts)
 
@@ -372,12 +459,64 @@ export function ProviderAdminExternalNetworksPage({
   }
 
   const listRows = useMemo(
-    () => buildExternalNetworkListRows(filteredGroups, selectedResource, expandedPoolIds),
-    [expandedPoolIds, filteredGroups, selectedResource],
+    () =>
+      isTenantScope
+        ? buildExternalNetworkListRows(filteredGroups, resourceFilter, expandedPoolIds)
+        : [],
+    [expandedPoolIds, filteredGroups, isTenantScope, resourceFilter],
   )
 
   useEffect(() => {
-    const autoExpanded = getAutoExpandedPoolIds(filteredGroups, searchValue, selectedResource)
+    return () => {
+      if (createRevealTimeoutRef.current !== null) {
+        window.clearTimeout(createRevealTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const beginPoolCreateReveal = (poolId: string) => {
+    if (createRevealTimeoutRef.current !== null) {
+      window.clearTimeout(createRevealTimeoutRef.current)
+    }
+
+    setCreatingCardHeightPx(null)
+    setCreatingPoolId(poolId)
+    createRevealTimeoutRef.current = window.setTimeout(() => {
+      setCreatingPoolId((current) => (current === poolId ? null : current))
+      setCreatingCardHeightPx(null)
+      createRevealTimeoutRef.current = null
+    }, EXTERNAL_IP_POOL_CREATE_REVEAL_MS)
+  }
+
+  useLayoutEffect(() => {
+    if (!creatingPoolId || viewMode !== 'grid') {
+      setCreatingCardHeightPx(null)
+      return
+    }
+
+    const grid = poolCardGridRef.current
+    if (!grid) {
+      return
+    }
+
+    const referenceCard = Array.from(
+      grid.querySelectorAll<HTMLElement>('.provider-admin-external-networks-hub__card'),
+    ).find((card) => !card.classList.contains('provider-admin-catalog-items__card--creating'))
+
+    if (!referenceCard) {
+      setCreatingCardHeightPx(null)
+      return
+    }
+
+    setCreatingCardHeightPx(Math.round(referenceCard.getBoundingClientRect().height))
+  }, [creatingPoolId, filteredGroups, viewMode])
+
+  useEffect(() => {
+    if (!isTenantScope) {
+      return
+    }
+
+    const autoExpanded = getAutoExpandedPoolIds(filteredGroups, searchValue, resourceFilter)
     const poolsWithIps = filteredGroups
       .filter(({ ips }) => ips.length > 0)
       .map(({ pool }) => pool.id)
@@ -389,7 +528,7 @@ export function ProviderAdminExternalNetworksPage({
       }
       return next
     })
-  }, [filteredGroups, searchValue, selectedResource])
+  }, [filteredGroups, isTenantScope, searchValue, resourceFilter])
 
   const togglePoolExpanded = (poolId: string) => {
     setExpandedPoolIds((current) => {
@@ -410,12 +549,6 @@ export function ProviderAdminExternalNetworksPage({
 
   const closeWizard = () => {
     setIsCreateWizardOpen(false)
-    setEditingPool(null)
-  }
-
-  const openEdit = (pool: ExternalIpPool) => {
-    setIsDetailsOpen(false)
-    setEditingPool(pool)
   }
 
   const openDelete = (pool: ExternalIpPool) => {
@@ -469,6 +602,18 @@ export function ProviderAdminExternalNetworksPage({
     )
   }, [selectedPool, organizations])
 
+  const selectedPoolInUseCount = useMemo(() => {
+    if (!selectedPool) {
+      return 0
+    }
+
+    return (
+      poolGroups.find((group) => group.pool.id === selectedPool.id)?.ips.filter(
+        (ip) => ip.status === 'In use',
+      ).length ?? 0
+    )
+  }, [poolGroups, selectedPool])
+
   const deleteConfirmModal = (
     <Modal
       variant={ModalVariant.small}
@@ -505,18 +650,21 @@ export function ProviderAdminExternalNetworksPage({
     </Modal>
   )
 
-  if ((isCreateWizardOpen || editingPool) && canManagePools) {
+  if (isCreateWizardOpen && canManagePools) {
     return (
       <CreateExternalIpPoolWizard
         isOpen
         tenantSlug={tenantSlug}
         organizations={organizations}
-        resource={editingPool}
-        parentLabel="External networks"
+        parentLabel={isTenantScope ? 'External networks' : PROVIDER_ADMIN_NETWORKING_NAV_LABEL}
         onClose={closeWizard}
-        onCreated={() => {
-          refreshData()
+        onCreated={(pool) => {
           closeWizard()
+          refreshData()
+          setSearchValue('')
+          setSelectedStatus('all')
+          setSelectedResource('all')
+          beginPoolCreateReveal(pool.id)
         }}
       />
     )
@@ -528,10 +676,10 @@ export function ProviderAdminExternalNetworksPage({
         <ExternalIpPoolDetailsPage
           pool={selectedPool}
           organization={detailsOrganization}
+          inUseAddressCount={selectedPoolInUseCount}
           onBack={closeDetails}
           readOnly={!canManagePools}
           scopeOrganization={isTenantScope ? scopeOrganization : null}
-          onEdit={canManagePools ? () => openEdit(selectedPool) : undefined}
           onDelete={canManagePools ? () => openDelete(selectedPool) : undefined}
         />
         {deleteConfirmModal}
@@ -543,12 +691,12 @@ export function ProviderAdminExternalNetworksPage({
     <>
       <div className="provider-admin-workspace-page provider-admin-external-networks-hub">
         <ProviderAdminWorkspacePageHeader
-          kicker="Networking"
-          title="External networks"
+          kicker={isTenantScope ? 'Networking' : undefined}
+          title={isTenantScope ? 'External networks' : PROVIDER_ADMIN_NETWORKING_NAV_LABEL}
           lede={
             isTenantScope
               ? 'IP pools with nested address allocations for tenant edge exposure.'
-              : 'Manage routable address pools and review the IPs allocated from each pool.'
+              : 'Manage routable address pools and review capacity assigned to each tenant.'
           }
           action={
             canManagePools ? (
@@ -566,19 +714,21 @@ export function ProviderAdminExternalNetworksPage({
 
         <div className="catalog-view-toolbar">
           <div className="catalog-view-toolbar__start">
-            <FormSelect
-              className="catalog-status-filter"
-              id="external-networks-resource-filter"
-              value={selectedResource}
-              onChange={(_event, value) =>
-                setSelectedResource(value as ExternalNetworkResourceFilter)
-              }
-              aria-label="Filter external networks by resource type"
-            >
-              <FormSelectOption value="all" label="All resources" />
-              <FormSelectOption value="ip-pool" label="IP pools" />
-              <FormSelectOption value="ip" label="IPs" />
-            </FormSelect>
+            {isTenantScope ? (
+              <FormSelect
+                className="catalog-status-filter"
+                id="external-networks-resource-filter"
+                value={selectedResource}
+                onChange={(_event, value) =>
+                  setSelectedResource(value as ExternalNetworkResourceFilter)
+                }
+                aria-label="Filter external networks by resource type"
+              >
+                <FormSelectOption value="all" label="All resources" />
+                <FormSelectOption value="ip-pool" label="IP pools" />
+                <FormSelectOption value="ip" label="IPs" />
+              </FormSelect>
+            ) : null}
             <FormSelect
               className="catalog-status-filter"
               id="external-networks-status-filter"
@@ -611,10 +761,14 @@ export function ProviderAdminExternalNetworksPage({
           </div>
 
           {filteredGroups.length === 0 ? (
-          hasActiveFilters || poolGroups.length > 0 ? (
+          hasActiveFilters || orderedPoolGroups.length > 0 ? (
             <CatalogFilterEmptyState
               title="No external network resources match your filters"
-              description="Try a different resource type, status, or search term."
+              description={
+                isTenantScope
+                  ? 'Try a different resource type, status, or search term.'
+                  : 'Try a different status or search term.'
+              }
               onClearFilters={clearAllFilters}
             />
           ) : (
@@ -658,18 +812,43 @@ export function ProviderAdminExternalNetworksPage({
                   </>
                 ) : null}
               </Content>
-              <div className="catalog-card-grid catalog-card-grid--stable provider-admin-external-networks-hub__grid">
-                {filteredGroups.map(({ pool, ips, visibleIps }) => {
+              <div
+                ref={poolCardGridRef}
+                className="catalog-card-grid catalog-card-grid--stable provider-admin-external-networks-hub__grid"
+              >
+                {filteredGroups.map(({ pool, ips }) => {
                   const poolStatus = getExternalIpPoolStatus(pool)
-                  const showPoolHeader = selectedResource !== 'ip'
-                  const showIpSection = selectedResource !== 'ip-pool'
+                  const showPoolHeader = resourceFilter !== 'ip'
+                  const isCreating = creatingPoolId === pool.id
 
                   return (
                     <Card
                       key={pool.id}
                       isCompact={false}
-                      className="provider-admin-catalog-items__card provider-admin-external-networks-hub__card"
+                      className={[
+                        'provider-admin-catalog-items__card',
+                        'provider-admin-external-networks-hub__card',
+                        isCreating ? 'provider-admin-catalog-items__card--creating' : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      style={
+                        isCreating && creatingCardHeightPx
+                          ? { height: creatingCardHeightPx, minBlockSize: creatingCardHeightPx }
+                          : undefined
+                      }
                     >
+                      {isCreating ? (
+                        <CardBody className="provider-admin-catalog-items__card-body--creating">
+                          <Spinner size="lg" aria-label={`Creating ${pool.name}`} />
+                          <Content
+                            component="p"
+                            className="provider-admin-catalog-items__creating-kicker"
+                          >
+                            Creating external IP pool…
+                          </Content>
+                        </CardBody>
+                      ) : (
                       <CardBody>
                         <div className="provider-admin-catalog-items__card-header">
                           <span className="provider-admin-catalog-items__card-icon" aria-hidden>
@@ -685,16 +864,12 @@ export function ProviderAdminExternalNetworksPage({
                                 {poolStatus}
                               </Label>
                               <ActionsColumn
-                                items={
-                                  canManagePools
-                                    ? getExternalIpPoolActions(
-                                        pool,
-                                        openDetails,
-                                        openEdit,
-                                        openDelete,
-                                      )
-                                    : [{ title: 'View details', onClick: () => openDetails(pool) }]
-                                }
+                                items={getExternalIpPoolActions(
+                                  pool,
+                                  openDetails,
+                                  openDelete,
+                                  canManagePools,
+                                )}
                               />
                             </div>
                           ) : null}
@@ -717,67 +892,16 @@ export function ProviderAdminExternalNetworksPage({
                           )}
                         </Content>
                         {showPoolHeader ? (
-                          <Content
-                            component="p"
-                            className="provider-admin-external-networks-hub__pool-meta provider-admin-external-networks-hub__card-meta"
-                          >
-                            External IP pool · {ips.length}{' '}
-                            {ips.length === 1 ? 'address' : 'addresses'}
-                          </Content>
-                        ) : null}
-                        {showPoolHeader ? (
-                          <CatalogSpecRowsList
-                            rows={[
-                              { label: 'CIDR', value: pool.cidr },
-                              {
-                                label: 'Location',
-                                value: `${pool.dataCenter} · ${pool.totalAddresses.toLocaleString()} addresses`,
-                              },
-                            ]}
-                            className="provider-admin-catalog-items__specs-list"
-                            rowClassName="provider-admin-catalog-items__spec-row"
-                            labelClassName="provider-admin-catalog-items__spec-label"
-                            valueClassName="provider-admin-catalog-items__spec-value"
-                          />
-                        ) : null}
-                        {showIpSection && visibleIps.length > 0 ? (
-                          <div
-                            className="provider-admin-catalog-items__card-footer provider-admin-external-networks-hub__card-ips"
-                            aria-label="IP addresses"
-                          >
-                            <ul className="provider-admin-external-networks-hub__card-ip-list">
-                              {visibleIps.map((ip) => (
-                                <li
-                                  key={ip.id}
-                                  className="provider-admin-external-networks-hub__card-ip-item"
-                                >
-                                  <div className="provider-admin-external-networks-hub__card-ip-primary">
-                                    <code>{ip.address}</code>
-                                    <Label
-                                      color={getExternalIpStatusLabelColor(ip.status)}
-                                      isCompact
-                                    >
-                                      {ip.status}
-                                    </Label>
-                                  </div>
-                                  <span className="provider-admin-external-networks-hub__card-ip-meta">
-                                    {ip.attachedTo}
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        ) : showIpSection && showPoolHeader && visibleIps.length === 0 ? (
-                          <div className="provider-admin-catalog-items__card-footer">
-                            <Content
-                              component="p"
-                              className="provider-admin-external-networks-hub__ip-empty"
-                            >
-                              No IPs match the current filters in this pool.
-                            </Content>
-                          </div>
+                          <>
+                            <ExternalIpPoolHubCardSpecs pool={pool} />
+                            <ExternalIpPoolHubCardCapacityFooter
+                              pool={pool}
+                              inUseCount={getPoolInUseCount(ips)}
+                            />
+                          </>
                         ) : null}
                       </CardBody>
+                      )}
                     </Card>
                   )
                 })}
@@ -819,191 +943,242 @@ export function ProviderAdminExternalNetworksPage({
                 <Tr>
                   <Th>Name</Th>
                   <Th>Status</Th>
-                  <Th>Network</Th>
-                  <Th>Attached to</Th>
+                  <Th>CIDR</Th>
+                  <Th>Tenant</Th>
+                  <Th>Capacity</Th>
                   <Th screenReaderText="Actions" />
                 </Tr>
               </Thead>
               <Tbody>
-                {listRows.map((row) => {
-                  if (row.kind === 'pool') {
-                    const { pool, ips, hasNestedIps, isExpanded } = row
-                    const poolStatus = getExternalIpPoolStatus(pool)
+                {isTenantScope
+                  ? listRows.map((row) => {
+                      if (row.kind === 'pool') {
+                        const { pool, ips, hasNestedIps, isExpanded } = row
+                        if (creatingPoolId === pool.id) {
+                          return renderExternalIpPoolCreatingTableRow(pool)
+                        }
+                        const poolStatus = getExternalIpPoolStatus(pool)
 
-                    return (
-                      <Tr
-                        key={pool.id}
-                        className="provider-admin-external-networks-hub__pool-row"
-                      >
-                        <Td dataLabel="Name">
-                          <div
-                            className="provider-admin-external-networks-hub__tree-row"
-                            style={
-                              {
-                                '--external-network-tree-depth': 0,
-                              } as CSSProperties
-                            }
+                        return (
+                          <Tr
+                            key={pool.id}
+                            className="provider-admin-external-networks-hub__pool-row"
                           >
-                            <div className="provider-admin-external-networks-hub__name-cell">
-                              {hasNestedIps ? (
-                                <Button
-                                  variant="plain"
-                                  className="provider-admin-external-networks-hub__tree-toggle"
-                                  aria-label={
-                                    isExpanded
-                                      ? `Collapse IP addresses for ${pool.name}`
-                                      : `Expand IP addresses for ${pool.name}`
-                                  }
-                                  aria-expanded={isExpanded}
-                                  onClick={() => togglePoolExpanded(pool.id)}
-                                >
-                                  {isExpanded ? (
-                                    <AngleDownIcon aria-hidden />
+                            <Td dataLabel="Name">
+                              <div
+                                className="provider-admin-external-networks-hub__tree-row"
+                                style={
+                                  {
+                                    '--external-network-tree-depth': 0,
+                                  } as CSSProperties
+                                }
+                              >
+                                <div className="provider-admin-external-networks-hub__name-cell">
+                                  {hasNestedIps ? (
+                                    <Button
+                                      variant="plain"
+                                      className="provider-admin-external-networks-hub__tree-toggle"
+                                      aria-label={
+                                        isExpanded
+                                          ? `Collapse IP addresses for ${pool.name}`
+                                          : `Expand IP addresses for ${pool.name}`
+                                      }
+                                      aria-expanded={isExpanded}
+                                      onClick={() => togglePoolExpanded(pool.id)}
+                                    >
+                                      {isExpanded ? (
+                                        <AngleDownIcon aria-hidden />
+                                      ) : (
+                                        <AngleRightIcon aria-hidden />
+                                      )}
+                                    </Button>
                                   ) : (
-                                    <AngleRightIcon aria-hidden />
+                                    <span
+                                      className="provider-admin-external-networks-hub__tree-spacer"
+                                      aria-hidden
+                                    />
                                   )}
-                                </Button>
-                              ) : (
+                                  <div className="provider-admin-external-networks-hub__pool-name">
+                                    <Button
+                                      variant="link"
+                                      isInline
+                                      className="catalog-table-name-link"
+                                      onClick={() => openDetails(pool)}
+                                    >
+                                      {pool.name}
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            </Td>
+                            <Td dataLabel="Status">
+                              <Label
+                                color={getExternalIpPoolStatusLabelColor(poolStatus)}
+                                isCompact
+                              >
+                                {poolStatus}
+                              </Label>
+                            </Td>
+                            <Td dataLabel="CIDR">
+                              <code>{pool.cidr}</code>
+                            </Td>
+                            <Td dataLabel="Tenant">
+                              {pool.assignedOrganizationName ?? '—'}
+                            </Td>
+                            <Td dataLabel="Capacity">
+                              {formatExternalIpPoolCapacitySummary(pool, getPoolInUseCount(ips))}
+                            </Td>
+                            <Td isActionCell>
+                              <ActionsColumn
+                                items={getExternalIpPoolActions(
+                                  pool,
+                                  openDetails,
+                                  openDelete,
+                                  canManagePools,
+                                )}
+                              />
+                            </Td>
+                          </Tr>
+                        )
+                      }
+
+                      if (row.kind === 'ip-empty') {
+                        return (
+                          <Tr
+                            key={`${row.pool.id}-empty`}
+                            className="provider-admin-external-networks-hub__ip-row"
+                          >
+                            <Td colSpan={6} dataLabel="IPs">
+                              <div
+                                className="provider-admin-external-networks-hub__tree-row"
+                                style={
+                                  {
+                                    '--external-network-tree-depth': 1,
+                                  } as CSSProperties
+                                }
+                              >
+                                <div className="provider-admin-external-networks-hub__name-cell">
+                                  <span
+                                    className="provider-admin-external-networks-hub__tree-spacer"
+                                    aria-hidden
+                                  />
+                                  <span className="provider-admin-external-networks-hub__ip-empty">
+                                    No IPs match the current filters in this pool.
+                                  </span>
+                                </div>
+                              </div>
+                            </Td>
+                          </Tr>
+                        )
+                      }
+
+                      const { pool, ip, showPoolName } = row
+
+                      return (
+                        <Tr
+                          key={ip.id}
+                          className="provider-admin-external-networks-hub__ip-row"
+                        >
+                          <Td dataLabel="Name">
+                            <div
+                              className="provider-admin-external-networks-hub__tree-row"
+                              style={
+                                {
+                                  '--external-network-tree-depth': showPoolName ? 0 : 1,
+                                } as CSSProperties
+                              }
+                            >
+                              <div className="provider-admin-external-networks-hub__name-cell">
                                 <span
                                   className="provider-admin-external-networks-hub__tree-spacer"
                                   aria-hidden
                                 />
-                              )}
-                              <div className="provider-admin-external-networks-hub__pool-name">
-                                <Button
-                                  variant="link"
-                                  isInline
-                                  className="catalog-table-name-link"
-                                  onClick={() => openDetails(pool)}
-                                >
-                                  {pool.name}
-                                </Button>
-                                <span className="provider-admin-external-networks-hub__pool-meta">
-                                  External IP pool · {ips.length}{' '}
-                                  {ips.length === 1 ? 'address' : 'addresses'}
-                                </span>
+                                <div className="provider-admin-external-networks-hub__ip-summary">
+                                  <Label
+                                    color="grey"
+                                    isCompact
+                                    className="provider-admin-external-networks-hub__nested-badge"
+                                  >
+                                    IP
+                                  </Label>
+                                  {showPoolName ? (
+                                    <span className="provider-admin-external-networks-hub__ip-pool-meta">
+                                      {pool.name}
+                                    </span>
+                                  ) : null}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </Td>
-                        <Td dataLabel="Status">
-                          <Label
-                            color={getExternalIpPoolStatusLabelColor(poolStatus)}
-                            isCompact
-                          >
-                            {poolStatus}
-                          </Label>
-                        </Td>
-                        <Td dataLabel="Network">
-                          <code>{pool.cidr}</code>
-                        </Td>
-                        <Td dataLabel="Attached to">
-                          {pool.dataCenter} · {pool.totalAddresses.toLocaleString()} addresses
-                        </Td>
-                        <Td isActionCell>
-                          <ActionsColumn
-                            items={
-                              canManagePools
-                                ? getExternalIpPoolActions(
-                                    pool,
-                                    openDetails,
-                                    openEdit,
-                                    openDelete,
-                                  )
-                                : [
-                                    {
-                                      title: 'View details',
-                                      onClick: () => openDetails(pool),
-                                    },
-                                  ]
-                            }
-                          />
-                        </Td>
-                      </Tr>
-                    )
-                  }
-
-                  if (row.kind === 'ip-empty') {
-                    return (
-                      <Tr
-                        key={`${row.pool.id}-empty`}
-                        className="provider-admin-external-networks-hub__ip-row"
-                      >
-                        <Td colSpan={5} dataLabel="IPs">
-                          <div
-                            className="provider-admin-external-networks-hub__tree-row"
-                            style={
-                              {
-                                '--external-network-tree-depth': 1,
-                              } as CSSProperties
-                            }
-                          >
-                            <div className="provider-admin-external-networks-hub__name-cell">
-                              <span
-                                className="provider-admin-external-networks-hub__tree-spacer"
-                                aria-hidden
-                              />
-                              <span className="provider-admin-external-networks-hub__ip-empty">
-                                No IPs match the current filters in this pool.
+                          </Td>
+                          <Td dataLabel="Status">
+                            <Label color={getExternalIpStatusLabelColor(ip.status)} isCompact>
+                              {ip.status}
+                            </Label>
+                          </Td>
+                          <Td dataLabel="Address">
+                            <code>{ip.address}</code>
+                            {ip.attachedTo ? (
+                              <span className="provider-admin-external-networks-hub__ip-attached-meta">
+                                {ip.attachedTo}
                               </span>
-                            </div>
-                          </div>
-                        </Td>
-                      </Tr>
-                    )
-                  }
+                            ) : null}
+                          </Td>
+                          <Td dataLabel="Tenant">—</Td>
+                          <Td dataLabel="Capacity">—</Td>
+                          <Td isActionCell />
+                        </Tr>
+                      )
+                    })
+                  : filteredGroups.map(({ pool, ips }) => {
+                      if (creatingPoolId === pool.id) {
+                        return renderExternalIpPoolCreatingTableRow(pool)
+                      }
 
-                  const { pool, ip, showPoolName } = row
+                      const poolStatus = getExternalIpPoolStatus(pool)
 
-                  return (
-                    <Tr
-                      key={ip.id}
-                      className="provider-admin-external-networks-hub__ip-row"
-                    >
-                      <Td dataLabel="Name">
-                        <div
-                          className="provider-admin-external-networks-hub__tree-row"
-                          style={
-                            {
-                              '--external-network-tree-depth': showPoolName ? 0 : 1,
-                            } as CSSProperties
-                          }
+                      return (
+                        <Tr
+                          key={pool.id}
+                          className="provider-admin-external-networks-hub__pool-row"
                         >
-                          <div className="provider-admin-external-networks-hub__name-cell">
-                            <span
-                              className="provider-admin-external-networks-hub__tree-spacer"
-                              aria-hidden
+                          <Td dataLabel="Name">
+                            <Button
+                              variant="link"
+                              isInline
+                              className="catalog-table-name-link"
+                              onClick={() => openDetails(pool)}
+                            >
+                              {pool.name}
+                            </Button>
+                          </Td>
+                          <Td dataLabel="Status">
+                            <Label
+                              color={getExternalIpPoolStatusLabelColor(poolStatus)}
+                              isCompact
+                            >
+                              {poolStatus}
+                            </Label>
+                          </Td>
+                          <Td dataLabel="CIDR">
+                            <code>{pool.cidr}</code>
+                          </Td>
+                          <Td dataLabel="Tenant">{pool.assignedOrganizationName ?? '—'}</Td>
+                          <Td dataLabel="Capacity">
+                            {formatExternalIpPoolCapacitySummary(pool, getPoolInUseCount(ips))}
+                          </Td>
+                          <Td isActionCell>
+                            <ActionsColumn
+                              items={getExternalIpPoolActions(
+                                pool,
+                                openDetails,
+                                openDelete,
+                                canManagePools,
+                              )}
                             />
-                            <div className="provider-admin-external-networks-hub__ip-summary">
-                              <Label
-                                color="grey"
-                                isCompact
-                                className="provider-admin-external-networks-hub__nested-badge"
-                              >
-                                IP
-                              </Label>
-                              {showPoolName ? (
-                                <span className="provider-admin-external-networks-hub__ip-pool-meta">
-                                  {pool.name}
-                                </span>
-                              ) : null}
-                            </div>
-                          </div>
-                        </div>
-                      </Td>
-                      <Td dataLabel="Status">
-                        <Label color={getExternalIpStatusLabelColor(ip.status)} isCompact>
-                          {ip.status}
-                        </Label>
-                      </Td>
-                      <Td dataLabel="Network">
-                        <code>{ip.address}</code>
-                      </Td>
-                      <Td dataLabel="Attached to">{ip.attachedTo}</Td>
-                      <Td />
-                    </Tr>
-                  )
-                })}
+                          </Td>
+                        </Tr>
+                      )
+                    })}
               </Tbody>
                   </Table>
           </div>

@@ -4,7 +4,7 @@ import { syncWorkspaceNavParam } from '../shared/workspaceNavUrl'
 import { ProviderAdminShell } from '../components/provider-admin/ProviderAdminShell'
 import { ProviderSetupWizardPanel } from '../components/provider-setup/ProviderSetupWizardPanel'
 import type { ProviderAdminNavId } from '../providerAdmin/constants'
-import { resolveProviderAdminNavId } from '../providerAdmin/constants'
+import { isServicesNavId, resolveProviderAdminNavId } from '../providerAdmin/constants'
 import { ProviderAdminCatalogPage } from './ProviderAdminCatalogPage'
 import { ProviderAdminOverviewPage } from './ProviderAdminOverviewPage'
 import { ProviderAdminBmaasTemplatesPage } from './infrastructure/ProviderAdminBmaasTemplatesPage'
@@ -13,6 +13,7 @@ import { ProviderAdminHardwareInventoryPage } from './infrastructure/ProviderAdm
 import { ProviderAdminBillingMeteringPage } from './ProviderAdminBillingMeteringPage'
 import { ProviderAdminOrganizationsPage } from './ProviderAdminOrganizationsPage'
 import { ProviderAdminQuotasPage } from './ProviderAdminQuotasPage'
+import { ProviderAdminExternalNetworksPage } from './infrastructure/ProviderAdminExternalNetworksPage'
 import { PlaceholderProviderAdminPage } from './PlaceholderProviderAdminPage'
 import { ProviderServiceSelectionPage } from './provider-setup/ProviderServiceSelectionPage'
 import { TenantSecretsPage } from './tenant/TenantSecretsPage'
@@ -232,13 +233,18 @@ export function ProviderAdminWorkspacePage() {
   }
 
   const renderPostSetupContent = () => {
-    if (catalogItems.length === 0) {
-      return (
-        <ProviderAdminOverviewPage />
-      )
+    const resolvedActiveNavId = resolveProviderAdminNavId(activeNavId)
+
+    if (
+      catalogItems.length === 0 &&
+      (resolvedActiveNavId === 'overview' ||
+        resolvedActiveNavId === 'catalog' ||
+        isServicesNavId(activeNavId))
+    ) {
+      return <ProviderAdminOverviewPage />
     }
 
-    switch (activeNavId) {
+    switch (resolvedActiveNavId) {
       case 'catalog':
         return (
           <ProviderAdminCatalogPage
@@ -268,6 +274,8 @@ export function ProviderAdminWorkspacePage() {
             onOpenTemplateConsumed={() => setOpenTemplateLookup(null)}
           />
         )
+      case 'networking':
+        return <ProviderAdminExternalNetworksPage />
       case 'secrets':
         return <TenantSecretsPage scope="provider" tenantSlug="" />
       case 'administration-organizations':

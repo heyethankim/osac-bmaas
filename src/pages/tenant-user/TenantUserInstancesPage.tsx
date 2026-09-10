@@ -916,7 +916,7 @@ export function TenantUserInstancesPage({
           onClose={closeAttachPublicIp}
           aria-labelledby="attach-public-ip-title"
         >
-          <ModalHeader title="Attach public IP" labelId="attach-public-ip-title" />
+          <ModalHeader title="Attach external IP" labelId="attach-public-ip-title" />
           <ModalBody>
             <Form>
               <FormGroup label="IP family" fieldId="attach-public-ip-family" isRequired>
@@ -984,6 +984,11 @@ export function TenantUserInstancesPage({
           gap={{ default: 'gapMd' }}
         >
           <FlexItem>
+            {lockedServiceId ? (
+              <Label color="grey" className="tenant-admin-workspace-page__kicker">
+                Services
+              </Label>
+            ) : null}
             <Title headingLevel="h1" size="3xl" className="tenant-user-instances__title">
               {pageTitle}
             </Title>
@@ -1313,7 +1318,7 @@ export function TenantUserInstancesPage({
         onClose={closeAttachPublicIp}
         aria-labelledby="attach-public-ip-title"
       >
-        <ModalHeader title="Attach public IP" labelId="attach-public-ip-title" />
+        <ModalHeader title="Attach external IP" labelId="attach-public-ip-title" />
         <ModalBody>
           <Form>
             <FormGroup label="IP family" fieldId="attach-public-ip-family" isRequired>

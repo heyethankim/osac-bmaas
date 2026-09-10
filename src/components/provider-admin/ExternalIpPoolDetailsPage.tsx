@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import {
   DescriptionList,
   DescriptionListDescription,
@@ -5,74 +6,105 @@ import {
   DescriptionListTerm,
   Label,
   Title,
-} from "@patternfly/react-core";
-import { EntityDetailsPageShell } from "../shared/EntityDetailsPageShell";
-import { EntityDetailsActionsDropdown } from "../shared/EntityDetailsActionsDropdown";
-import type { ExternalIpPool } from "../../providerAdmin/externalIpPools";
+} from '@patternfly/react-core'
+import { EntityDetailsPageShell } from '../shared/EntityDetailsPageShell'
+import { EntityDetailsActionsDropdown } from '../shared/EntityDetailsActionsDropdown'
+import type { ExternalIpPool } from '../../providerAdmin/externalIpPools'
 import {
-  getOrganizationOsacLoginPath,
-  type RegisteredOrganization,
-} from "../../providerAdmin/organizations";
-import { resolveOrganizationExternalIpPools } from "../../tenantAdmin/projects";
+  getExternalIpPoolDefaultDescription,
+  getExternalIpPoolAvailableAddresses,
+  getExternalIpPoolIpFamilyLabel,
+  getExternalIpPoolCidrs,
+  getExternalIpPoolLifecycleStatus,
+  getExternalIpPoolLifecycleStatusLabelColor,
+  getExternalIpPoolTotalAddresses,
+} from '../../providerAdmin/externalIpPools'
+import { PROVIDER_ADMIN_NETWORKING_NAV_LABEL } from '../../providerAdmin/constants'
+import type { RegisteredOrganization } from '../../providerAdmin/organizations'
+import {
+  getOrganizationNameInitial,
+} from '../../providerAdmin/organizations'
+import { buildProviderOrganizationWorkspacePath } from '../../shared/workspaceNavUrl'
 
 type ExternalIpPoolDetailsPageProps = {
-  pool: ExternalIpPool;
-  organization: RegisteredOrganization | null;
-  onBack: () => void;
-  /** Management actions; omitted for read-only views. */
-  onEdit?: () => void;
-  onDelete?: () => void;
-  readOnly?: boolean;
+  pool: ExternalIpPool
+  organization: RegisteredOrganization | null
+  onBack: () => void
+  /** Delete action; omitted for read-only views. */
+  onDelete?: () => void
+  readOnly?: boolean
   /** Current tenant organization when viewing from tenant admin/user workspaces. */
-  scopeOrganization?: RegisteredOrganization | null;
-};
+  scopeOrganization?: RegisteredOrganization | null
+  inUseAddressCount?: number
+}
 
 function formatCreatedAt(iso: string): string {
   return new Date(iso).toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+function formatAddressCount(count: number): string {
+  return `${count.toLocaleString()} ${count === 1 ? 'address' : 'addresses'}`
+}
+
+function OrganizationTenantInlineMark({ name }: { name: string }) {
+  return (
+    <span
+      className="provider-admin-catalog-items__card-icon provider-admin-organizations__card-logo provider-admin-organizations__card-logo--initial"
+      aria-hidden
+    >
+      <span className="provider-admin-organizations__card-initial">
+        {getOrganizationNameInitial(name)}
+      </span>
+    </span>
+  )
 }
 
 export function ExternalIpPoolDetailsPage({
   pool,
   organization,
   onBack,
-  onEdit,
   onDelete,
   readOnly = false,
   scopeOrganization = null,
+  inUseAddressCount = 0,
 }: ExternalIpPoolDetailsPageProps) {
-  const isAssigned = pool.assignedOrganizationId !== null;
-  const canManage = !readOnly;
-  const canEdit = canManage && Boolean(onEdit);
-  const canDelete = canManage && Boolean(onDelete);
-  const isTenantView = Boolean(scopeOrganization);
-  const organizationPools = scopeOrganization
-    ? resolveOrganizationExternalIpPools(scopeOrganization)
-    : [];
+  const poolStatus = getExternalIpPoolLifecycleStatus(pool)
+  const canDelete = !readOnly && Boolean(onDelete)
+  const isTenantView = Boolean(scopeOrganization)
+  const totalAddresses = getExternalIpPoolTotalAddresses(pool)
+  const availableAddresses = getExternalIpPoolAvailableAddresses(pool, inUseAddressCount)
+  const inUseAddresses = Math.max(inUseAddressCount, totalAddresses - availableAddresses)
+  const tenantName = isTenantView
+    ? scopeOrganization?.name
+    : pool.assignedOrganizationName ?? organization?.name
+  const tenantDomain = isTenantView
+    ? scopeOrganization?.primaryDomain
+    : organization?.primaryDomain
+  const tenantOrganizationId = isTenantView
+    ? scopeOrganization?.id ?? null
+    : organization?.id ?? pool.assignedOrganizationId
 
   return (
     <EntityDetailsPageShell
-      parentLabel="External networks"
+      parentLabel={isTenantView ? 'External networks' : PROVIDER_ADMIN_NETWORKING_NAV_LABEL}
       onBack={onBack}
       title={pool.name}
       titleId="external-ip-pool-details-title"
       description={
-        isTenantView
-          ? "Routable addresses available for workloads in your tenant."
-          : "Routable address pool for tenant edge exposure."
+        pool.description ??
+        (isTenantView
+          ? 'Routable addresses available for workloads in your tenant.'
+          : getExternalIpPoolDefaultDescription(pool))
       }
       actions={
-        canEdit || canDelete ? (
-          <EntityDetailsActionsDropdown
-            onEdit={canEdit ? onEdit : undefined}
-            onRemove={canDelete ? onDelete : undefined}
-            removeLabel="Delete"
-          />
+        canDelete ? (
+          <EntityDetailsActionsDropdown onRemove={onDelete} removeLabel="Delete" />
         ) : undefined
       }
     >
@@ -93,14 +125,37 @@ export function ExternalIpPoolDetailsPage({
             <DescriptionListGroup>
               <DescriptionListTerm>Status</DescriptionListTerm>
               <DescriptionListDescription>
-                {isAssigned ? (
-                  <Label color="blue" isCompact>
-                    Assigned
-                  </Label>
+                <Label color={getExternalIpPoolLifecycleStatusLabelColor(poolStatus)} isCompact>
+                  {poolStatus}
+                </Label>
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Tenant</DescriptionListTerm>
+              <DescriptionListDescription>
+                {tenantName ? (
+                  <div className="provider-admin-network-inventory__tenant-ref">
+                    <OrganizationTenantInlineMark name={tenantName} />
+                    <div className="provider-admin-network-inventory__tenant-ref-copy">
+                      {!isTenantView && tenantOrganizationId ? (
+                        <Link
+                          to={buildProviderOrganizationWorkspacePath(tenantOrganizationId)}
+                          className="provider-admin-network-inventory__related-link"
+                        >
+                          {tenantName}
+                        </Link>
+                      ) : (
+                        tenantName
+                      )}
+                      {tenantDomain ? (
+                        <span className="provider-admin-network-inventory__tenant-domain">
+                          {tenantDomain}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
                 ) : (
-                  <Label color="green" isCompact>
-                    Available
-                  </Label>
+                  '—'
                 )}
               </DescriptionListDescription>
             </DescriptionListGroup>
@@ -108,6 +163,35 @@ export function ExternalIpPoolDetailsPage({
               <DescriptionListTerm>Created</DescriptionListTerm>
               <DescriptionListDescription>
                 {formatCreatedAt(pool.createdAt)}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+          </DescriptionList>
+        </div>
+
+        <div className="entity-details-page__column">
+          <Title
+            headingLevel="h2"
+            size="lg"
+            className="entity-details-page__section-title"
+          >
+            CIDR
+          </Title>
+          <DescriptionList
+            isCompact
+            className="entity-details-page__dl"
+            aria-label="External IP pool CIDR"
+          >
+            <DescriptionListGroup>
+              <DescriptionListTerm>
+                {getExternalIpPoolIpFamilyLabel(pool.ipFamily ?? 'IPv4')}
+              </DescriptionListTerm>
+              <DescriptionListDescription>
+                {getExternalIpPoolCidrs(pool).map((cidr) => (
+                  <span key={cidr}>
+                    <code>{cidr}</code>
+                    <br />
+                  </span>
+                ))}
               </DescriptionListDescription>
             </DescriptionListGroup>
           </DescriptionList>
@@ -127,128 +211,26 @@ export function ExternalIpPoolDetailsPage({
             aria-label="External IP pool capacity"
           >
             <DescriptionListGroup>
-              <DescriptionListTerm>CIDR</DescriptionListTerm>
+              <DescriptionListTerm>Available</DescriptionListTerm>
               <DescriptionListDescription>
-                <code>{pool.cidr}</code>
+                {formatAddressCount(availableAddresses)}
               </DescriptionListDescription>
             </DescriptionListGroup>
             <DescriptionListGroup>
-              <DescriptionListTerm>Data center</DescriptionListTerm>
+              <DescriptionListTerm>In use</DescriptionListTerm>
               <DescriptionListDescription>
-                {pool.dataCenter}
+                {formatAddressCount(inUseAddresses)}
               </DescriptionListDescription>
             </DescriptionListGroup>
             <DescriptionListGroup>
-              <DescriptionListTerm>Capacity</DescriptionListTerm>
+              <DescriptionListTerm>Total</DescriptionListTerm>
               <DescriptionListDescription>
-                {pool.totalAddresses.toLocaleString()} addresses
+                {formatAddressCount(totalAddresses)}
               </DescriptionListDescription>
             </DescriptionListGroup>
-          </DescriptionList>
-        </div>
-
-        <div className="entity-details-page__column">
-          <Title
-            headingLevel="h2"
-            size="lg"
-            className="entity-details-page__section-title"
-          >
-            {isTenantView ? "Tenant" : "Assignment"}
-          </Title>
-          <DescriptionList
-            isCompact
-            className="entity-details-page__dl"
-            aria-label={
-              isTenantView ? "External IP pool tenant scope" : "External IP pool assignment"
-            }
-          >
-            {isTenantView ? (
-              <>
-                <DescriptionListGroup>
-                  <DescriptionListTerm>Tenant</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    {scopeOrganization?.name ?? "—"}
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
-                <DescriptionListGroup>
-                  <DescriptionListTerm>Primary email domain</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    {scopeOrganization?.primaryDomain || "—"}
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
-                {organizationPools.length > 0 ? (
-                  <DescriptionListGroup>
-                    <DescriptionListTerm>Assigned platform pools</DescriptionListTerm>
-                    <DescriptionListDescription>
-                      <ul className="entity-details-page__pool-list">
-                        {organizationPools.map((assignedPool) => (
-                          <li key={assignedPool.id}>
-                            {assignedPool.name}
-                            {assignedPool.id === scopeOrganization?.externalIpPoolId ? (
-                              <>
-                                {" "}
-                                <Label color="blue" isCompact>
-                                  Primary
-                                </Label>
-                              </>
-                            ) : null}
-                            {" · "}
-                            <code>{assignedPool.cidr}</code>
-                          </li>
-                        ))}
-                      </ul>
-                    </DescriptionListDescription>
-                  </DescriptionListGroup>
-                ) : null}
-              </>
-            ) : (
-              <>
-                <DescriptionListGroup>
-                  <DescriptionListTerm>Tenant</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    {pool.assignedOrganizationName ?? (
-                      <Label color="green" isCompact>
-                        Available
-                      </Label>
-                    )}
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
-                {organization ? (
-                  <>
-                    <DescriptionListGroup>
-                      <DescriptionListTerm>
-                        Primary email domain
-                      </DescriptionListTerm>
-                      <DescriptionListDescription>
-                        {organization.primaryDomain || "—"}
-                      </DescriptionListDescription>
-                    </DescriptionListGroup>
-                    <DescriptionListGroup>
-                      <DescriptionListTerm>Tenant status</DescriptionListTerm>
-                      <DescriptionListDescription>
-                        <Label
-                          color={
-                            organization.status === "Active" ? "green" : "orange"
-                          }
-                          isCompact
-                        >
-                          {organization.status}
-                        </Label>
-                      </DescriptionListDescription>
-                    </DescriptionListGroup>
-                    <DescriptionListGroup>
-                      <DescriptionListTerm>OSAC URL</DescriptionListTerm>
-                      <DescriptionListDescription>
-                        <code>{getOrganizationOsacLoginPath(organization.slug)}</code>
-                      </DescriptionListDescription>
-                    </DescriptionListGroup>
-                  </>
-                ) : null}
-              </>
-            )}
           </DescriptionList>
         </div>
       </div>
     </EntityDetailsPageShell>
-  );
+  )
 }

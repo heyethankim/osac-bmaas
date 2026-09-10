@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
   Button,
@@ -9,8 +10,6 @@ import {
   EmptyStateActions,
   EmptyStateBody,
   EmptyStateFooter,
-  Flex,
-  FlexItem,
   FormSelect,
   FormSelectOption,
   Label,
@@ -30,6 +29,7 @@ import { CatalogSpecRowsList } from '../components/catalog/CatalogSpecRowsList'
 import { ViewModeToggle } from '../components/catalog/CatalogViewToggle'
 import { getAdministrationViewMode, setAdministrationViewMode, type ViewMode } from '../catalog/viewMode'
 import { OrganizationDetailsPage } from '../components/provider-admin/OrganizationDetailsPage'
+import { ProviderAdminWorkspacePageHeader } from '../components/provider-admin/ProviderAdminWorkspacePageHeader'
 import { RegisterOrganizationWizard } from '../components/provider-admin/RegisterOrganizationWizard'
 import { SetupIdentityProviderWizard } from '../components/provider-admin/SetupIdentityProviderWizard'
 import { AddTenantAdministratorWizard } from '../components/tenant-admin/AddTenantAdministratorWizard'
@@ -61,6 +61,10 @@ import {
   updateProviderRegisteredOrganization,
 } from '../providerSetup/storage'
 import type { ProviderAdminNavId } from '../providerAdmin/constants'
+import {
+  getWorkspaceOrganizationParam,
+  syncWorkspaceOrganizationParam,
+} from '../shared/workspaceNavUrl'
 
 function formatRegisteredAt(iso: string): string {
   return new Date(iso).toLocaleString([], {
@@ -111,6 +115,7 @@ export function ProviderAdminOrganizationsPage({
 }: {
   onNavigate?: (navId: ProviderAdminNavId) => void
 }) {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [organizations, setOrganizations] = useState<RegisteredOrganization[]>(() =>
     ensureProviderDemoOrganizations(),
   )
@@ -202,6 +207,21 @@ export function ProviderAdminOrganizationsPage({
     }
   }, [])
 
+  useEffect(() => {
+    const organizationId = getWorkspaceOrganizationParam(searchParams)
+    if (!organizationId) {
+      return
+    }
+
+    const organization = organizations.find((entry) => entry.id === organizationId)
+    if (!organization) {
+      return
+    }
+
+    setSelectedOrganization(organization)
+    setIsDetailsOpen(true)
+  }, [organizations, searchParams])
+
   const refreshOrganizations = (nextSelectedId?: string | null) => {
     const next = getProviderRegisteredOrganizations()
     setOrganizations(next)
@@ -290,10 +310,15 @@ export function ProviderAdminOrganizationsPage({
   const openDetails = (organization: RegisteredOrganization) => {
     setSelectedOrganization(organization)
     setIsDetailsOpen(true)
+    syncWorkspaceOrganizationParam(setSearchParams, organization.id, { replace: true })
   }
 
   const closeDetails = () => {
     setIsDetailsOpen(false)
+    setSelectedOrganization(null)
+    if (getWorkspaceOrganizationParam(searchParams)) {
+      syncWorkspaceOrganizationParam(setSearchParams, null, { replace: true })
+    }
   }
 
   const openRemove = (organization: RegisteredOrganization) => {
@@ -494,37 +519,18 @@ export function ProviderAdminOrganizationsPage({
         />
       ) : (
       <div className="provider-admin-workspace-page provider-admin-organizations">
-        {organizations.length > 0 ? (
-          <Flex
-            className="provider-admin-organizations__header"
-            alignItems={{ default: 'alignItemsFlexStart' }}
-            justifyContent={{ default: 'justifyContentSpaceBetween' }}
-            gap={{ default: 'gapMd' }}
-          >
-            <FlexItem>
-              <Title headingLevel="h1" size="3xl" className="provider-admin-organizations__title">
-                Tenants
-              </Title>
-              <Content component="p" className="provider-admin-organizations__lede">
-                {PROVIDER_ORGANIZATIONS_DEMO.lede}
-              </Content>
-            </FlexItem>
-            <FlexItem alignSelf={{ default: 'alignSelfFlexStart' }}>
+        <ProviderAdminWorkspacePageHeader
+          kicker="Administration"
+          title="Tenants"
+          lede={PROVIDER_ORGANIZATIONS_DEMO.lede}
+          action={
+            organizations.length > 0 ? (
               <Button variant="primary" icon={<PlusIcon />} onClick={openRegisterWizard}>
                 {PROVIDER_ORGANIZATIONS_DEMO.registerOrganizationLabel}
               </Button>
-            </FlexItem>
-          </Flex>
-        ) : (
-          <>
-            <Title headingLevel="h1" size="3xl" className="provider-admin-organizations__title">
-              Tenants
-            </Title>
-            <Content component="p" className="provider-admin-organizations__lede">
-              {PROVIDER_ORGANIZATIONS_DEMO.lede}
-            </Content>
-          </>
-        )}
+            ) : undefined
+          }
+        />
 
         {organizations.length > 0 ? (
           <div className="catalog-view-toolbar">
