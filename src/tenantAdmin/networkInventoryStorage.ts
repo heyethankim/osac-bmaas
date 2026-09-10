@@ -3,6 +3,10 @@ import {
   type ExternalIpPool,
 } from '../providerAdmin/externalIpPools'
 import {
+  DEFAULT_NORTHSUMMIT_EXTERNAL_IPS,
+  type ExternalIp,
+} from '../providerAdmin/externalIps'
+import {
   toExternalIpPoolCatalogOption,
   type CatalogNetworkResourceOption,
 } from '../providerAdmin/catalogNetworkPolicy'
@@ -26,6 +30,7 @@ const TENANT_VIRTUAL_NETWORKS_KEY_PREFIX = 'bmaas-tenant-virtual-networks-'
 const TENANT_SUBNETS_KEY_PREFIX = 'bmaas-tenant-subnets-'
 const TENANT_SECURITY_GROUPS_KEY_PREFIX = 'bmaas-tenant-security-groups-'
 const TENANT_EXTERNAL_IP_POOLS_KEY_PREFIX = 'bmaas-tenant-external-ip-pools-'
+const TENANT_EXTERNAL_IPS_KEY_PREFIX = 'bmaas-tenant-external-ips-'
 
 function tenantKey(prefix: string, slug: string): string {
   return `${prefix}${slug}`
@@ -299,4 +304,67 @@ export function getTenantExternalIpPoolOptions(
   slug: string,
 ): CatalogNetworkResourceOption[] {
   return getTenantExternalIpPools(slug).map(toExternalIpPoolCatalogOption)
+}
+
+function isExternalIp(value: unknown): value is ExternalIp {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+
+  const record = value as Partial<ExternalIp>
+  return (
+    typeof record.id === 'string' &&
+    typeof record.address === 'string' &&
+    (record.family === 'IPv4' || record.family === 'IPv6') &&
+    (record.status === 'In use' || record.status === 'Available') &&
+    (record.poolId === null || typeof record.poolId === 'string') &&
+    (record.poolName === null || typeof record.poolName === 'string') &&
+    typeof record.attachedTo === 'string'
+  )
+}
+
+function getDefaultTenantExternalIps(slug: string): ExternalIp[] {
+  return slug === 'northsummit' || slug === 'northstar'
+    ? cloneDefaults(DEFAULT_NORTHSUMMIT_EXTERNAL_IPS)
+    : []
+}
+
+function mergeMissingDefaultTenantExternalIps(slug: string, items: ExternalIp[]): ExternalIp[] {
+  const defaults = getDefaultTenantExternalIps(slug)
+  if (defaults.length === 0) {
+    return items
+  }
+
+  const existingIds = new Set(items.map((item) => item.id))
+  const existingAddresses = new Set(items.map((item) => item.address))
+  const missing = defaults.filter(
+    (item) => !existingIds.has(item.id) && !existingAddresses.has(item.address),
+  )
+
+  if (missing.length === 0) {
+    return items
+  }
+
+  const merged = [...items, ...missing]
+  writeJsonArray(tenantKey(TENANT_EXTERNAL_IPS_KEY_PREFIX, slug), merged)
+  return merged
+}
+
+export function getTenantExternalIps(slug: string): ExternalIp[] {
+  const fallback = getDefaultTenantExternalIps(slug)
+  const items = readJsonArray(
+    tenantKey(TENANT_EXTERNAL_IPS_KEY_PREFIX, slug),
+    fallback,
+    isExternalIp,
+  )
+
+  return mergeMissingDefaultTenantExternalIps(slug, items)
+}
+
+export function setTenantExternalIps(slug: string, ips: ExternalIp[]): void {
+  writeJsonArray(tenantKey(TENANT_EXTERNAL_IPS_KEY_PREFIX, slug), ips)
+}
+
+export function addTenantExternalIp(slug: string, ip: ExternalIp): void {
+  setTenantExternalIps(slug, [...getTenantExternalIps(slug), ip])
 }

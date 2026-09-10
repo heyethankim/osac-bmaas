@@ -2556,6 +2556,35 @@
   border-block-end: none;
 }
 
+.provider-admin-external-networks-hub__card-specs .provider-admin-catalog-items__spec-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--pf-t--global--spacer--md);
+}
+
+.provider-admin-external-networks-hub__card-specs .provider-admin-catalog-items__spec-label {
+  flex: 0 0 auto;
+}
+
+.provider-admin-external-networks-hub__card-specs .provider-admin-catalog-items__spec-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: end;
+}
+
+.provider-admin-external-networks-hub__card-specs
+  .provider-admin-network-inventory__tenant-ref {
+  justify-content: flex-end;
+  margin-inline-start: auto;
+}
+
+.provider-admin-external-networks-hub__details-specs.provider-admin-catalog-items__specs-list {
+  margin: 0;
+  padding-block-end: 0;
+  border-block-end: none;
+}
+
 .provider-admin-external-networks-hub__card-specs .provider-admin-catalog-items__spec-value code {
   color: var(--pf-t--global--text--color--regular);
   font-family: var(--pf-t--global--font--family--monospace);
@@ -2576,6 +2605,18 @@
   gap: var(--pf-t--global--spacer--sm);
   margin-block-start: auto;
   padding-block-start: var(--pf-t--global--spacer--md);
+}
+
+.provider-admin-external-networks-hub__details-capacity {
+  margin-block-start: var(--pf-t--global--spacer--lg);
+  padding-block-start: var(--pf-t--global--spacer--md);
+  border-block-start: var(--pf-t--global--border--width--divider--default) solid
+    var(--pf-t--global--border--color--default);
+}
+
+.provider-admin-external-networks-hub__card-capacity
+  + .provider-admin-external-networks-hub__card-ips.provider-admin-catalog-items__card-footer {
+  margin-block-start: 0;
 }
 
 .provider-admin-external-networks-hub__card-capacity-heading {
@@ -2656,7 +2697,7 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--pf-t--global--spacer--sm);
+  gap: var(--pf-t--global--spacer--xs);
 }
 
 .provider-admin-external-networks-hub__card-ip-primary code {
@@ -2674,41 +2715,115 @@
   padding-inline-start: 0;
 }
 
+.provider-admin-external-networks-hub__details-ip-list {
+  margin-block-start: 0;
+}
+
+.provider-admin-external-networks-hub__nested-ips-cell {
+  --pf-v6-c-table--cell--PaddingBlock: 0;
+  padding-block-end: var(--pf-t--global--spacer--sm);
+}
+
+.provider-admin-external-networks-hub__ip-group-row .pf-v6-c-table__td {
+  border-block-start: none;
+}
+
+.provider-admin-external-networks-hub__nested-ips {
+  margin-inline-start: calc(1.75rem + var(--pf-t--global--spacer--xs));
+  padding-inline-start: 1.25rem;
+  border-inline-start: var(--pf-t--global--border--width--regular--default) solid
+    var(--pf-t--global--border--color--default);
+}
+
+.provider-admin-external-networks-hub__nested-ips--empty {
+  padding-block: var(--pf-t--global--spacer--sm);
+}
+
+.provider-admin-external-networks-hub__nested-ip-meta {
+  margin-block-start: var(--pf-t--global--spacer--xs);
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.provider-admin-external-networks-hub__nested-ips-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.provider-admin-external-networks-hub__nested-ip-item {
+  padding-block: var(--pf-t--global--spacer--sm);
+}
+
+.provider-admin-external-networks-hub__nested-ip-item:not(:last-child) {
+  border-block-end: var(--pf-t--global--border--width--divider--default) solid
+    var(--pf-t--global--border--color--default);
+}
+
 .provider-admin-external-networks-hub__pool-row .pf-v6-c-table__td {
   vertical-align: middle;
 }
 
 .provider-admin-external-networks-hub__tree-row {
   --external-network-tree-indent: 1.5rem;
-  padding-inline-start: calc(
-    var(--external-network-tree-depth, 0) * var(--external-network-tree-indent)
-  );
+  min-width: 0;
 }
 
 .provider-admin-external-networks-hub__name-cell {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--pf-t--global--spacer--xs);
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--pf-t--global--spacer--xs);
   min-width: 0;
-  flex: 1 1 auto;
+}
+
+.provider-admin-external-networks-hub__name-cell--nested
+  .provider-admin-external-networks-hub__name-cell-content {
+  padding-inline-start: 1.25rem;
+}
+
+.provider-admin-external-networks-hub__tree-toggle-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  flex-shrink: 0;
+}
+
+.provider-admin-external-networks-hub__name-cell-content {
+  min-width: 0;
 }
 
 .provider-admin-external-networks-hub__tree-toggle.pf-v6-c-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: 0 0 auto;
-  margin-block-start: 0.125rem;
+  min-inline-size: 1.75rem;
+  min-block-size: 1.75rem;
   padding-inline: 0.25rem;
 }
 
 .provider-admin-external-networks-hub__tree-spacer {
-  display: inline-block;
-  flex: 0 0 1.75rem;
+  display: block;
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  flex-shrink: 0;
 }
 
 .provider-admin-external-networks-hub__pool-name {
   display: flex;
-  flex-direction: column;
-  gap: var(--pf-t--global--spacer--xs);
+  align-items: center;
   min-width: 0;
+}
+
+.provider-admin-external-networks-hub__pool-name .catalog-table-name-link.pf-v6-c-button {
+  display: inline-flex;
+  align-items: center;
 }
 
 .provider-admin-external-networks-hub__pool-meta {
@@ -2726,9 +2841,15 @@
 
 .provider-admin-external-networks-hub__ip-summary {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  flex-wrap: wrap;
   gap: var(--pf-t--global--spacer--xs);
   min-width: 0;
+}
+
+.provider-admin-external-networks-hub__ip-summary code {
+  font-family: var(--pf-t--global--font--family--monospace);
+  word-break: break-all;
 }
 
 .provider-admin-external-networks-hub__ip-name code,
@@ -2762,6 +2883,54 @@
 
 .provider-admin-external-ip-pools__table {
   --pf-v6-c-table--cell--PaddingBlock: var(--pf-t--global--spacer--md);
+}
+
+.provider-admin-external-networks-hub__table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.provider-admin-external-networks-hub__table .pf-v6-c-table__thead .pf-v6-c-table__th:last-child,
+.provider-admin-external-networks-hub__table .pf-v6-c-table__tbody .pf-v6-c-table__td:last-child {
+  --pf-v6-c-table--cell--Width: 3.5rem;
+  --pf-v6-c-table--cell--MinWidth: 3.5rem;
+  --pf-v6-c-table--cell--MaxWidth: 3.5rem;
+  --pf-v6-c-table--cell--PaddingInlineEnd: var(--pf-t--global--spacer--sm);
+  text-align: end;
+}
+
+.provider-admin-external-networks-hub__table--tenant
+  .pf-v6-c-table__thead
+  .pf-v6-c-table__th:nth-child(-n + 4),
+.provider-admin-external-networks-hub__table--tenant
+  .pf-v6-c-table__tbody
+  .pf-v6-c-table__td:nth-child(-n + 4) {
+  --pf-v6-c-table--cell--Width: calc((100% - 3.5rem) / 4);
+  --pf-v6-c-table--cell--MinWidth: 0;
+  --pf-v6-c-table--cell--MaxWidth: none;
+}
+
+.provider-admin-external-networks-hub__table--provider
+  .pf-v6-c-table__thead
+  .pf-v6-c-table__th:nth-child(-n + 5),
+.provider-admin-external-networks-hub__table--provider
+  .pf-v6-c-table__tbody
+  .pf-v6-c-table__td:nth-child(-n + 5) {
+  --pf-v6-c-table--cell--Width: calc((100% - 3.5rem) / 5);
+  --pf-v6-c-table--cell--MinWidth: 0;
+  --pf-v6-c-table--cell--MaxWidth: none;
+}
+
+.provider-admin-external-networks-hub__table .provider-admin-external-networks-hub__pool-name,
+.provider-admin-external-networks-hub__table .catalog-table-name-link.pf-v6-c-button {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.provider-admin-external-networks-hub__table code {
+  word-break: break-all;
 }
 
 /* Parent workspace gap already spaces sections; avoid stacking toolbar/panel margins. */

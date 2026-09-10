@@ -35,12 +35,17 @@ export const TENANT_ADMIN_SERVICES_NAV_ITEMS: ReadonlyArray<{
   { id: 'services-virtual-machines', label: 'Virtual machines' },
 ]
 
+export const TENANT_EXTERNAL_IPS_PAGE_LABEL = 'External IPs'
+
+/** Shown on tenant external IP pool surfaces — pools are provisioned by the provider, not tenants. */
+export const TENANT_EXTERNAL_IP_POOL_MANAGED_BY_LABEL = 'Provider administrator'
+
 export const TENANT_ADMIN_NETWORKING_NAV_ITEMS: ReadonlyArray<{
   id: TenantAdminNavId
   label: string
 }> = [
   { id: 'networking-virtual-networks', label: 'Virtual networks' },
-  { id: 'networking-external-ip-pools', label: 'External networks' },
+  { id: 'networking-external-ip-pools', label: TENANT_EXTERNAL_IPS_PAGE_LABEL },
 ]
 
 export const TENANT_ADMIN_NAV_ITEMS: TenantAdminNavItem[] = [

@@ -21,10 +21,19 @@ export const DEFAULT_PROVIDER_EXTERNAL_IP_POOL_DESCRIPTION =
   'Routable address pool for Harborline Capital tenant edge exposure.'
 export const DEFAULT_NORTHSUMMIT_EXTERNAL_IP_POOL_DESCRIPTION =
   'Routable address pool for North Summit Bank tenant edge exposure.'
+export const DEFAULT_NORTHSUMMIT_RESERVED_EXTERNAL_IP_POOL_DESCRIPTION =
+  'Secondary routable address pool for North Summit Bank reserved and failover allocations.'
 
 export function getExternalIpPoolDefaultDescription(pool: ExternalIpPool): string {
   if (pool.id === 'eipool-northsummit-edge' || pool.name === 'northsummit-public-edge') {
     return DEFAULT_NORTHSUMMIT_EXTERNAL_IP_POOL_DESCRIPTION
+  }
+
+  if (
+    pool.id === 'eipool-northsummit-reserved' ||
+    pool.name === 'northsummit-reserved-edge'
+  ) {
+    return DEFAULT_NORTHSUMMIT_RESERVED_EXTERNAL_IP_POOL_DESCRIPTION
   }
 
   if (
@@ -183,6 +192,11 @@ export function usesProviderExternalIpPoolModel(pool: ExternalIpPool): boolean {
 
 export const EXTERNAL_IP_POOL_DATA_CENTERS = ['eu-west-1-dc-a', 'us-east-1-dc-b'] as const
 
+export const DEMO_NORTH_SUMMIT_EXTERNAL_IP_POOL_ASSIGNMENT = {
+  assignedOrganizationId: 'org-northsummit-bank',
+  assignedOrganizationName: 'North Summit Bank',
+} as const
+
 export const DEFAULT_EXTERNAL_IP_POOLS: ExternalIpPool[] = [
   {
     id: 'eipool-northsummit-edge',
@@ -191,9 +205,18 @@ export const DEFAULT_EXTERNAL_IP_POOLS: ExternalIpPool[] = [
     cidr: '203.0.113.0/24',
     dataCenter: 'eu-west-1-dc-a',
     totalAddresses: 254,
-    assignedOrganizationId: null,
-    assignedOrganizationName: null,
+    ...DEMO_NORTH_SUMMIT_EXTERNAL_IP_POOL_ASSIGNMENT,
     createdAt: '2026-07-01T09:00:00.000Z',
+  },
+  {
+    id: 'eipool-northsummit-reserved',
+    name: 'northsummit-reserved-edge',
+    description: DEFAULT_NORTHSUMMIT_RESERVED_EXTERNAL_IP_POOL_DESCRIPTION,
+    cidr: '198.51.100.64/26',
+    dataCenter: 'us-east-1-dc-b',
+    totalAddresses: 62,
+    ...DEMO_NORTH_SUMMIT_EXTERNAL_IP_POOL_ASSIGNMENT,
+    createdAt: '2026-08-15T10:00:00.000Z',
   },
   {
     id: 'eipool-standby-a',

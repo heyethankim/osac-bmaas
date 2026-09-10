@@ -21,6 +21,7 @@ import {
   Title,
 } from '@patternfly/react-core'
 import { KubernetesResourceNameField } from '../shared/KubernetesResourceNameHelper'
+import { TENANT_EXTERNAL_IPS_PAGE_LABEL } from '../../tenantAdmin/constants'
 import {
   EXTERNAL_IP_POOL_DATA_CENTERS,
   generateExternalIpPoolId,
@@ -159,7 +160,7 @@ function normalizeProviderCidrs(cidrs: readonly string[]): string[] {
 export function CreateExternalIpPoolWizard({
   isOpen,
   presentation = 'page',
-  parentLabel = 'External networks',
+  parentLabel = TENANT_EXTERNAL_IPS_PAGE_LABEL,
   tenantSlug,
   organizations = [],
   resource = null,

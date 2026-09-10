@@ -681,6 +681,32 @@
   fill: var(--pf-t--global--background--color--control--default);
 }
 
+.tenant-project-topology-panel
+  .pf-topology__node.pf-m-selected
+  .tenant-project-topology-node__label
+  .pf-topology__node__action-icon:hover
+  .pf-topology__node__action-icon__background,
+.tenant-project-topology-panel
+  .pf-topology__node.pf-m-selected
+  .tenant-project-topology-node__label
+  .pf-topology__node__action-icon:focus-within
+  .pf-topology__node__action-icon__background {
+  fill: color-mix(in srgb, var(--pf-t--global--background--color--primary--default) 20%, transparent);
+}
+
+.tenant-project-topology-panel
+  .pf-topology__node.pf-m-selected
+  .tenant-project-topology-node__label
+  .pf-topology__node__action-icon:hover
+  .pf-topology__node__action-icon__icon,
+.tenant-project-topology-panel
+  .pf-topology__node.pf-m-selected
+  .tenant-project-topology-node__label
+  .pf-topology__node__action-icon:focus-within
+  .pf-topology__node__action-icon__icon {
+  color: var(--pf-t--global--icon--color--on-brand--default);
+}
+
 .tenant-project-topology-panel .tenant-project-topology-node__label .pf-topology__node__action-icon__icon svg {
   width: 1em;
   height: 1em;

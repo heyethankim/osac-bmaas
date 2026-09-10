@@ -16,6 +16,7 @@ import {
   DEMO_NORTH_SUMMIT_BANK_ORG_ID,
   DEMO_NORTH_SUMMIT_BANK_ORG_NAME,
   DEMO_NORTH_SUMMIT_BANK_PRIMARY_DOMAIN,
+  DEMO_NORTH_SUMMIT_BANK_SLUG,
   DEMO_BLUESOLACE_ADDITIONAL_DOMAIN,
   DEMO_BLUESOLACE_BILLING_ACCOUNT_NAME,
   DEMO_BLUESOLACE_IDP_CLIENT_ID,
@@ -1828,6 +1829,10 @@ export function ensureProviderDemoOrganizations(): RegisteredOrganization[] {
     if (northSummitPool) {
       assignExternalIpPoolToRegisteredOrganization(northSummitPool.id, northSummit.id)
     }
+    const northSummitReservedPool = getExternalIpPoolById(pools, 'eipool-northsummit-reserved')
+    if (northSummitReservedPool) {
+      assignExternalIpPoolToRegisteredOrganization(northSummitReservedPool.id, northSummit.id)
+    }
     if (harborlinePool) {
       assignExternalIpPoolToRegisteredOrganization(harborlinePool.id, harborlineBase.id)
     }
@@ -2054,6 +2059,15 @@ function isExternalIpPool(value: unknown): value is ExternalIpPool {
   )
 }
 
+function isNorthSummitDemoExternalIpPool(pool: ExternalIpPool): boolean {
+  return (
+    pool.id === 'eipool-northsummit-edge' ||
+    pool.id === 'eipool-northsummit-reserved' ||
+    pool.name === 'northsummit-public-edge' ||
+    pool.name === 'northsummit-reserved-edge'
+  )
+}
+
 function normalizeExternalIpPool(pool: ExternalIpPool): ExternalIpPool {
   const assignedOrganizationName =
     pool.assignedOrganizationId === DEMO_NORTH_SUMMIT_BANK_ORG_ID ||
@@ -2061,7 +2075,8 @@ function normalizeExternalIpPool(pool: ExternalIpPool): ExternalIpPool {
     pool.assignedOrganizationId === 'org_northstar_bank' ||
     pool.assignedOrganizationName === 'North Summit Bank' ||
     pool.assignedOrganizationName === 'Northstar Bank' ||
-    pool.assignedOrganizationName === 'Northsummit Bank'
+    pool.assignedOrganizationName === 'Northsummit Bank' ||
+    (isNorthSummitDemoExternalIpPool(pool) && !pool.assignedOrganizationId)
       ? DEMO_NORTH_SUMMIT_BANK_ORG_NAME
       : pool.assignedOrganizationName === 'BlueSolace Financial Group' ||
           pool.assignedOrganizationName === 'Bluestone Financial Group'
@@ -2072,7 +2087,9 @@ function normalizeExternalIpPool(pool: ExternalIpPool): ExternalIpPool {
     pool.assignedOrganizationId === 'org-northstar-bank' ||
     pool.assignedOrganizationId === 'org_northstar_bank'
       ? DEMO_NORTH_SUMMIT_BANK_ORG_ID
-      : pool.assignedOrganizationId
+      : isNorthSummitDemoExternalIpPool(pool) && !pool.assignedOrganizationId
+        ? DEMO_NORTH_SUMMIT_BANK_ORG_ID
+        : pool.assignedOrganizationId
 
   const isHarborlinePool =
     pool.id === 'eipool-standby-a' ||
@@ -2097,6 +2114,63 @@ function normalizeExternalIpPool(pool: ExternalIpPool): ExternalIpPool {
   }
 }
 
+function mergeMissingDefaultExternalIpPools(pools: ExternalIpPool[]): ExternalIpPool[] {
+  const existingIds = new Set(pools.map((pool) => pool.id))
+  const missing = DEFAULT_EXTERNAL_IP_POOLS.filter((pool) => !existingIds.has(pool.id))
+  const normalized = pools.map(normalizeExternalIpPool)
+  const assignmentChanged = normalized.some(
+    (pool, index) =>
+      pool.assignedOrganizationId !== pools[index]?.assignedOrganizationId ||
+      pool.assignedOrganizationName !== pools[index]?.assignedOrganizationName,
+  )
+
+  if (missing.length === 0) {
+    if (assignmentChanged) {
+      setProviderExternalIpPools(normalized)
+      ensureNorthSummitDemoPoolAssignments()
+      return normalized
+    }
+
+    return normalized
+  }
+
+  const merged = [...normalized, ...missing.map(normalizeExternalIpPool)]
+  setProviderExternalIpPools(merged)
+  ensureNorthSummitDemoPoolAssignments()
+
+  try {
+    const raw = sessionStorage.getItem(PROVIDER_EXTERNAL_IP_POOLS_KEY)
+    if (!raw) {
+      return merged
+    }
+
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) {
+      return merged
+    }
+
+    return parsed.filter(isExternalIpPool).map(normalizeExternalIpPool)
+  } catch {
+    return merged
+  }
+}
+
+function ensureNorthSummitDemoPoolAssignments(): void {
+  const northSummit = getProviderRegisteredOrganizations().find(
+    (organization) =>
+      organization.id === DEMO_NORTH_SUMMIT_BANK_ORG_ID ||
+      organization.slug === DEMO_NORTH_SUMMIT_BANK_SLUG,
+  )
+
+  if (!northSummit) {
+    return
+  }
+
+  for (const poolId of ['eipool-northsummit-edge', 'eipool-northsummit-reserved'] as const) {
+    assignExternalIpPoolToRegisteredOrganization(poolId, northSummit.id)
+  }
+}
+
 export function getProviderExternalIpPools(): ExternalIpPool[] {
   try {
     const raw = sessionStorage.getItem(PROVIDER_EXTERNAL_IP_POOLS_KEY)
@@ -2105,7 +2179,9 @@ export function getProviderExternalIpPools(): ExternalIpPool[] {
         PROVIDER_EXTERNAL_IP_POOLS_KEY,
         JSON.stringify(DEFAULT_EXTERNAL_IP_POOLS),
       )
-      return [...DEFAULT_EXTERNAL_IP_POOLS]
+      return mergeMissingDefaultExternalIpPools(
+        DEFAULT_EXTERNAL_IP_POOLS.map(normalizeExternalIpPool),
+      )
     }
 
     const parsed: unknown = JSON.parse(raw)
@@ -2128,6 +2204,7 @@ export function getProviderExternalIpPools(): ExternalIpPool[] {
         candidate.name !== pool.name ||
         candidate.description !== pool.description ||
         candidate.dataCenter !== pool.dataCenter ||
+        candidate.assignedOrganizationId !== pool.assignedOrganizationId ||
         candidate.assignedOrganizationName !== pool.assignedOrganizationName
       )
     })
@@ -2135,7 +2212,7 @@ export function getProviderExternalIpPools(): ExternalIpPool[] {
       sessionStorage.setItem(PROVIDER_EXTERNAL_IP_POOLS_KEY, JSON.stringify(pools))
     }
 
-    return pools
+    return mergeMissingDefaultExternalIpPools(pools)
   } catch {
     return [...DEFAULT_EXTERNAL_IP_POOLS]
   }
