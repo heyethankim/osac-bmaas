@@ -147,16 +147,15 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   hardwareProfile: 'Dell PowerEdge R750',
   osImage: 'RHEL 9.4',
   networkingTitle: 'Networking',
-  networkingLede:
-    'Choose the virtual network, subnet, security group, and external IP pool for this instance.',
-  networkingAdminLede:
-    'Choose network objects for this instance. Use Create in each list to add one without leaving launch.',
+  networkingLede: 'Choose tenant network objects—Create to add inline.',
+  networkingAdminLede: 'Choose tenant network objects—Create to add inline.',
   createVirtualNetworkLabel: 'Create virtual network',
   createSubnetLabel: 'Create subnet',
   createSecurityGroupLabel: 'Create security group',
   createExternalIpPoolLabel: 'Create external IP pool',
   createSubnetRequiresVirtualNetworkHelper:
     'Create a virtual network first, then add a subnet.',
+  externalIpPoolTenantHelper: 'Pools are assigned by your provider.',
   networkingAssignedHelper: 'Set by your tenant',
   reviewTitle: 'Review',
   reviewHardware: 'Dell PowerEdge R750',
@@ -206,10 +205,8 @@ export const CLUSTER_LAUNCH_INSTANCE_DEMO = {
   defaultHostType: 'standard-host',
   defaultNodeCount: 1,
   infrastructureNetworkingTitle: 'Infrastructure networking',
-  infrastructureNetworkingLede:
-    'Attach this cluster to your tenant network objects.',
-  infrastructureNetworkingAdminLede:
-    'Attach this cluster to tenant network objects. Use Create in each list to add objects during launch.',
+  infrastructureNetworkingLede: 'Choose tenant network objects—Create to add inline.',
+  infrastructureNetworkingAdminLede: 'Choose tenant network objects—Create to add inline.',
   clusterNetworkTitle: 'Cluster network',
   clusterNetworkLede: 'Address ranges used inside the cluster for pods and services.',
   podCidr: '10.128.0.0/24',

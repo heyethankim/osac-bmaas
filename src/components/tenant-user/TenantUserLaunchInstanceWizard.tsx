@@ -113,7 +113,6 @@ import { ProjectTreeDropdownItems } from '../shared/ProjectTreeDropdownItems'
 import { TenantSecretSelect } from '../tenant/secrets/TenantSecretSelect'
 import { getTenantSecretById } from '../../tenant/secrets'
 import { CatalogWizardPageShell } from '../catalog/CatalogWizardPageShell'
-import { CreateExternalIpPoolWizard } from '../networking/CreateExternalIpPoolWizard'
 import { CreateSecurityGroupWizard } from '../networking/CreateSecurityGroupWizard'
 import { CreateSubnetWizard } from '../networking/CreateSubnetWizard'
 import { CreateVirtualNetworkWizard } from '../networking/CreateVirtualNetworkWizard'
@@ -145,8 +144,8 @@ type TenantUserLaunchInstanceWizardProps = {
   onDismissDuringProvisioning: (instanceId: string, serviceId: CatalogServiceId) => void
   onWizardFinished: (instanceId: string, serviceId: CatalogServiceId) => void
   /**
-   * Provider / tenant admin launch: networking lede can point to Networking
-   * to add objects. Tenant users keep the original choose-only copy.
+   * When true, networking pickers use menu dropdowns with inline Create modals
+   * and inventory refresh on focus. Enabled for tenant admin and tenant user launch.
    */
   canManageNetworkObjects?: boolean
 }
@@ -208,6 +207,31 @@ export function TenantUserLaunchInstanceWizard({
   const [networkCreateKind, setNetworkCreateKind] = useState<LaunchNetworkFieldKind | null>(
     null,
   )
+
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+
+    const refreshNetworkInventory = () => {
+      setNetworkInventoryRevision((revision) => revision + 1)
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshNetworkInventory()
+      }
+    }
+
+    window.addEventListener('focus', refreshNetworkInventory)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener('focus', refreshNetworkInventory)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [isOpen])
+
   const networkContext = useMemo(
     () =>
       resolveLaunchNetworkContext(
@@ -460,6 +484,12 @@ export function TenantUserLaunchInstanceWizard({
 
   const activeStepDescription =
     wizardSteps.find((step) => step.id === activeStepId)?.description ?? ''
+
+  useEffect(() => {
+    if (isOpen && activeStepId === 'networking') {
+      setNetworkInventoryRevision((revision) => revision + 1)
+    }
+  }, [isOpen, activeStepId])
 
   const networkSelections = {
     virtualNetworkId: form.virtualNetworkId || networkContext.policy.virtualNetwork.id,
@@ -841,6 +871,9 @@ export function TenantUserLaunchInstanceWizard({
     return networkInventory.getExternalIpPoolOptions()
   }
 
+  const canCreateNetworkObjectInLaunch = (kind: LaunchNetworkFieldKind): boolean =>
+    kind !== 'external-ip-pool'
+
   const getNetworkCreateLabel = (kind: LaunchNetworkFieldKind): string => {
     switch (kind) {
       case 'virtual-network':
@@ -877,6 +910,9 @@ export function TenantUserLaunchInstanceWizard({
   }
 
   const openNetworkCreate = (kind: LaunchNetworkFieldKind) => {
+    if (!canCreateNetworkObjectInLaunch(kind)) {
+      return
+    }
     setOpenNetworkMenuKind(null)
     if (
       (kind === 'subnet' || kind === 'security-group') &&
@@ -900,6 +936,7 @@ export function TenantUserLaunchInstanceWizard({
       ? getCatalogOptionLabel(selectedOption.name, selectedOption.detail)
       : `Select ${label.toLowerCase()}`
     const createLabel = getNetworkCreateLabel(kind)
+    const showNetworkCreateAction = canCreateNetworkObjectInLaunch(kind)
     const createRequiresVirtualNetwork =
       (kind === 'subnet' || kind === 'security-group') &&
       networkInventory.getVirtualNetworks().length === 0
@@ -921,6 +958,13 @@ export function TenantUserLaunchInstanceWizard({
               />
             ))}
           </FormSelect>
+          {kind === 'external-ip-pool' ? (
+            <FormHelperText>
+              <HelperText>
+                <HelperTextItem>{LAUNCH_INSTANCE_WIZARD_DEMO.externalIpPoolTenantHelper}</HelperTextItem>
+              </HelperText>
+            </FormHelperText>
+          ) : null}
         </FormGroup>
       )
     }
@@ -959,14 +1003,18 @@ export function TenantUserLaunchInstanceWizard({
                   {getCatalogOptionLabel(option.name, option.detail)}
                 </DropdownItem>
               ))}
-              <Divider component="li" />
-              <DropdownItem
-                icon={<PlusIcon />}
-                isDisabled={createRequiresVirtualNetwork}
-                onClick={() => openNetworkCreate(kind)}
-              >
-                {createLabel}
-              </DropdownItem>
+              {showNetworkCreateAction ? (
+                <>
+                  <Divider component="li" />
+                  <DropdownItem
+                    icon={<PlusIcon />}
+                    isDisabled={createRequiresVirtualNetwork}
+                    onClick={() => openNetworkCreate(kind)}
+                  >
+                    {createLabel}
+                  </DropdownItem>
+                </>
+              ) : null}
             </DropdownList>
           </Dropdown>
         </div>
@@ -976,6 +1024,13 @@ export function TenantUserLaunchInstanceWizard({
               <HelperTextItem>
                 {LAUNCH_INSTANCE_WIZARD_DEMO.createSubnetRequiresVirtualNetworkHelper}
               </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        ) : null}
+        {kind === 'external-ip-pool' ? (
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem>{LAUNCH_INSTANCE_WIZARD_DEMO.externalIpPoolTenantHelper}</HelperTextItem>
             </HelperText>
           </FormHelperText>
         ) : null}
@@ -1036,13 +1091,6 @@ export function TenantUserLaunchInstanceWizard({
           tenantSlug={networkInventoryTenantSlug}
           onClose={() => setNetworkCreateKind(null)}
           onCreated={(group) => handleNetworkObjectCreated('security-group', group.id)}
-        />
-        <CreateExternalIpPoolWizard
-          isOpen={networkCreateKind === 'external-ip-pool'}
-          presentation="modal"
-          tenantSlug={networkInventoryTenantSlug}
-          onClose={() => setNetworkCreateKind(null)}
-          onCreated={(pool) => handleNetworkObjectCreated('external-ip-pool', pool.id)}
         />
       </>
     )

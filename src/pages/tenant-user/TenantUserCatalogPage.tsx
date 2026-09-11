@@ -339,6 +339,7 @@ export function TenantUserCatalogPage({
           tenantSlug={tenantSlug}
           projects={projects}
           allProjects={allProjects}
+          canManageNetworkObjects
           initialProjectId={initialProjectId}
           onProjectScopeChange={onProjectScopeChange}
           existingInstanceNames={existingInstanceNames}

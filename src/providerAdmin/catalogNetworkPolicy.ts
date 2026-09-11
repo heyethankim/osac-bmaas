@@ -8,6 +8,7 @@ import {
 } from './networkInventory'
 import {
   DEFAULT_EXTERNAL_IP_POOLS,
+  getExternalIpPoolCidrs,
   type ExternalIpPool,
 } from './externalIpPools'
 
@@ -43,7 +44,7 @@ export function toExternalIpPoolCatalogOption(pool: ExternalIpPool): CatalogNetw
   return {
     id: pool.id,
     name: pool.name,
-    detail: `${pool.cidr} · ${pool.dataCenter}`,
+    detail: getExternalIpPoolCidrs(pool).join(', '),
   }
 }
 
