@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { ArrowRightIcon } from '@patternfly/react-icons/dist/esm/icons/arrow-right-icon'
+import { RhUiConnectedIcon } from '@patternfly/react-icons/dist/esm/icons/rh-ui-connected-icon'
 import {
   Content,
   DescriptionList,
@@ -204,7 +206,13 @@ export function CreateExternalIpWizard({
 
         if (stepId === 'review') {
           return {
-            nextButtonText: 'Create external IP',
+            nextButtonText: (
+              <span className="provider-admin-network-inventory__wizard-footer-label">
+                <RhUiConnectedIcon aria-hidden />
+                <span>Create external IP</span>
+                <ArrowRightIcon aria-hidden />
+              </span>
+            ),
             onNext: handleCreate,
             isNextDisabled: !previewIp,
           }

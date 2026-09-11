@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowRightIcon } from '@patternfly/react-icons/dist/esm/icons/arrow-right-icon'
-import { NetworkIcon } from '@patternfly/react-icons/dist/esm/icons/network-icon'
+import { RhUiZoneIcon } from '@patternfly/react-icons/dist/esm/icons/rh-ui-zone-icon'
 import {
   Content,
   DescriptionList,
@@ -250,7 +250,7 @@ export function CreateVirtualNetworkWizard({
       return {
         nextButtonText: (
           <span className="provider-admin-network-inventory__wizard-footer-label">
-            <NetworkIcon aria-hidden />
+            <RhUiZoneIcon aria-hidden />
             <span>{isEditMode ? 'Save changes' : 'Create virtual network'}</span>
             <ArrowRightIcon aria-hidden />
           </span>
