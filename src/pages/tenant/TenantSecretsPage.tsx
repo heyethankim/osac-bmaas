@@ -409,7 +409,13 @@ export function TenantSecretsPage({
               />
               <Table
                 aria-label="Secrets"
-                className="catalog-data-table provider-admin-network-inventory__table"
+                className={[
+                  'catalog-data-table',
+                  'tenant-secrets__table',
+                  readOnly
+                    ? 'tenant-secrets__table--readonly'
+                    : 'tenant-secrets__table--with-actions',
+                ].join(' ')}
               >
                 <Thead>
                   <Tr>

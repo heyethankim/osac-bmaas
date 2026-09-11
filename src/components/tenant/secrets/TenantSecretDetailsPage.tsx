@@ -5,7 +5,6 @@ import {
   DescriptionListDescription,
   DescriptionListGroup,
   DescriptionListTerm,
-  Label,
   Title,
 } from '@patternfly/react-core'
 import { EyeIcon } from '@patternfly/react-icons/dist/esm/icons/eye-icon'
@@ -15,7 +14,6 @@ import { EntityDetailsPageShell } from '../../shared/EntityDetailsPageShell'
 import { EntityDetailsActionsDropdown } from '../../shared/EntityDetailsActionsDropdown'
 import {
   formatSecretDetailValue,
-  getTenantSecretTypeLabel,
   getTenantSecretUsageLabel,
   isMaskedSecretField,
   MASKED_SECRET_VALUE,
@@ -271,12 +269,6 @@ export function TenantSecretDetailsPage({
             <DescriptionListGroup>
               <DescriptionListTerm>Name</DescriptionListTerm>
               <DescriptionListDescription>{secret.name}</DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Type</DescriptionListTerm>
-              <DescriptionListDescription>
-                <Label color="blue">{getTenantSecretTypeLabel(secret.type)}</Label>
-              </DescriptionListDescription>
             </DescriptionListGroup>
             <DescriptionListGroup>
               <DescriptionListTerm>Use</DescriptionListTerm>

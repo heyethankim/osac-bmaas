@@ -2132,6 +2132,34 @@
   margin-block-start: 0;
 }
 
+.tenant-secrets__table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.tenant-secrets__table--readonly .pf-v6-c-table__thead .pf-v6-c-table__th,
+.tenant-secrets__table--readonly .pf-v6-c-table__tbody .pf-v6-c-table__td {
+  --pf-v6-c-table--cell--Width: calc(100% / 3);
+  --pf-v6-c-table--cell--MinWidth: 0;
+  --pf-v6-c-table--cell--MaxWidth: none;
+}
+
+.tenant-secrets__table--with-actions .pf-v6-c-table__thead .pf-v6-c-table__th:nth-child(-n + 3),
+.tenant-secrets__table--with-actions .pf-v6-c-table__tbody .pf-v6-c-table__td:nth-child(-n + 3) {
+  --pf-v6-c-table--cell--Width: calc((100% - 3.5rem) / 3);
+  --pf-v6-c-table--cell--MinWidth: 0;
+  --pf-v6-c-table--cell--MaxWidth: none;
+}
+
+.tenant-secrets__table--with-actions .pf-v6-c-table__thead .pf-v6-c-table__th:last-child,
+.tenant-secrets__table--with-actions .pf-v6-c-table__tbody .pf-v6-c-table__td:last-child {
+  --pf-v6-c-table--cell--Width: 3.5rem;
+  --pf-v6-c-table--cell--MinWidth: 3.5rem;
+  --pf-v6-c-table--cell--MaxWidth: 3.5rem;
+  --pf-v6-c-table--cell--PaddingInlineEnd: var(--pf-t--global--spacer--sm);
+  text-align: end;
+}
+
 .tenant-secrets__card .pf-v6-c-card__body {
   display: flex;
   flex-direction: column;
