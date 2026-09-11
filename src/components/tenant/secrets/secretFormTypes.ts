@@ -55,6 +55,7 @@ export type WebhookSecretForm = {
 }
 
 export type TenantSecretFormState = {
+  description: string
   type: TenantSecretType
   keyValue: KeyValueSecretForm
   imagePull: ImagePullSecretForm
@@ -119,6 +120,7 @@ export const DEFAULT_WEBHOOK_SECRET_FORM: WebhookSecretForm = {
 
 export function createDefaultSecretFormState(type: TenantSecretType): TenantSecretFormState {
   return {
+    description: '',
     type,
     keyValue: { ...DEFAULT_KEY_VALUE_SECRET_FORM, pairs: [createKeyValuePair()] },
     imagePull: {
@@ -145,6 +147,7 @@ export function createDemoSecretFormState(type: TenantSecretType): TenantSecretF
     case 'key-value':
       return {
         ...base,
+        description: 'SSH public key for cluster nodes',
         keyValue: {
           name: 'cluster-admin-ssh',
           pairs: [
@@ -161,6 +164,7 @@ export function createDemoSecretFormState(type: TenantSecretType): TenantSecretF
     case 'image-pull':
       return {
         ...base,
+        description: 'OpenShift pull secret',
         imagePull: {
           name: 'ocp-pull-secret',
           authMode: 'registry-credentials',
@@ -172,6 +176,7 @@ export function createDemoSecretFormState(type: TenantSecretType): TenantSecretF
     case 'source':
       return {
         ...base,
+        description: 'Git credentials for platform repositories',
         source: {
           name: 'github-source',
           authMode: 'basic',
@@ -184,6 +189,7 @@ export function createDemoSecretFormState(type: TenantSecretType): TenantSecretF
     case 'webhook':
       return {
         ...base,
+        description: 'Signing key for inbound CI webhooks',
         webhook: {
           name: 'ci-webhook',
           webhookSecretKey: DEMO_WEBHOOK_SECRET_KEY,
@@ -222,6 +228,7 @@ export function secretFormStateFromTenantSecret(secret: TenantSecret): TenantSec
     case 'key-value':
       return {
         ...base,
+        description: secret.summary,
         type: 'key-value',
         keyValue: {
           name: secret.name,
@@ -240,6 +247,7 @@ export function secretFormStateFromTenantSecret(secret: TenantSecret): TenantSec
     case 'image-pull':
       return {
         ...base,
+        description: secret.summary,
         type: 'image-pull',
         imagePull: {
           name: secret.name,
@@ -261,6 +269,7 @@ export function secretFormStateFromTenantSecret(secret: TenantSecret): TenantSec
     case 'source':
       return {
         ...base,
+        description: secret.summary,
         type: 'source',
         source: {
           name: secret.name,
@@ -274,6 +283,7 @@ export function secretFormStateFromTenantSecret(secret: TenantSecret): TenantSec
     case 'webhook':
       return {
         ...base,
+        description: secret.summary,
         type: 'webhook',
         webhook: {
           name: secret.name,

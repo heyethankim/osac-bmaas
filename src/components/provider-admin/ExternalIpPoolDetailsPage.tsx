@@ -331,32 +331,20 @@ export function ExternalIpPoolDetailsPage({
         ) : undefined
       }
     >
-      <div
-        className={[
-          'entity-details-page__columns',
-          isTenantView ? 'entity-details-page__columns--with-rail' : '',
-        ].join(' ')}
-      >
-        {isTenantView ? (
-          <div className="entity-details-page__main-stack">
-            <div className="entity-details-page__columns entity-details-page__columns--2">
-              {overviewColumn}
-              <div className="entity-details-page__column">
-                {cidrSection}
-                {capacitySection}
-              </div>
+      <div className="entity-details-page__columns entity-details-page__columns--with-rail">
+        <div className="entity-details-page__main-stack">
+          <div className="entity-details-page__columns entity-details-page__columns--2">
+            {overviewColumn}
+            <div className="entity-details-page__column">
+              {cidrSection}
+              {capacitySection}
             </div>
           </div>
-        ) : (
-          <>
-            {overviewColumn}
-            <div className="entity-details-page__column">{cidrSection}</div>
-            <div className="entity-details-page__column">{capacitySection}</div>
-          </>
-        )}
-        {isTenantView ? (
-          <ExternalIpPoolExternalIpsRail ips={ips} onCreateExternalIp={onCreateExternalIp} />
-        ) : null}
+        </div>
+        <ExternalIpPoolExternalIpsRail
+          ips={ips}
+          onCreateExternalIp={isTenantView ? onCreateExternalIp : undefined}
+        />
       </div>
     </EntityDetailsPageShell>
   )

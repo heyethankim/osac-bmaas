@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { ArrowRightIcon } from '@patternfly/react-icons/dist/esm/icons/arrow-right-icon'
 import { KeyIcon } from '@patternfly/react-icons/dist/esm/icons/key-icon'
 import { MinusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/minus-circle-icon'
@@ -35,7 +35,6 @@ import { isValidKubernetesResourceName } from '../../../shared/kubernetesResourc
 import {
   addSecret,
   generateTenantSecretId,
-  getTenantSecretTypeLabel,
   TENANT_SECRET_TYPE_OPTIONS,
   updateSecret,
   type SecretVaultScope,
@@ -84,7 +83,7 @@ function getSecretWizardSteps(options: {
 
   steps.push({
     id: SECRET_DETAILS_STEP_ID,
-    label: options.type ? getTenantSecretTypeLabel(options.type) : 'Configuration',
+    label: 'General',
   })
   steps.push(NETWORK_INVENTORY_CREATE_REVIEW_STEP)
 
@@ -94,15 +93,15 @@ function getSecretWizardSteps(options: {
 function getSecretWizardLede(type: TenantSecretType): string {
   switch (type) {
     case 'key-value':
-      return 'Add key/value pairs. Paste a value or upload a file.'
+      return 'Name this secret, add an optional description, then add key/value pairs.'
     case 'image-pull':
-      return 'Add registry credentials or upload a pull secret.'
+      return 'Name this secret, add an optional description, then add registry credentials or upload a pull secret.'
     case 'source':
-      return 'Add Git credentials or an SSH private key.'
+      return 'Name this secret, add an optional description, then add Git credentials or an SSH private key.'
     case 'webhook':
-      return 'Add a signing key for webhooks.'
+      return 'Name this secret, add an optional description, then add a signing key for webhooks.'
     default:
-      return 'Configure this secret.'
+      return 'Name this secret and add an optional description.'
   }
 }
 
@@ -394,12 +393,43 @@ function ImagePullCredentialsField({
   )
 }
 
-function KeyValueSecretForm({
-  form,
+function buildSecretSummaryForSave(type: TenantSecretType, form: TenantSecretFormState): string {
+  const description = form.description.trim()
+  return description || buildSecretSummary(type, form)
+}
+
+function SecretDescriptionField({
+  description,
+  fieldId,
   onChange,
 }: {
+  description: string
+  fieldId: string
+  onChange: (description: string) => void
+}) {
+  return (
+    <FormGroup label="Description" fieldId={fieldId}>
+      <TextArea
+        id={fieldId}
+        value={description}
+        onChange={(_event, value) => onChange(value)}
+        placeholder="Describe how this secret will be used"
+        resizeOrientation="vertical"
+      />
+    </FormGroup>
+  )
+}
+
+function KeyValueSecretForm({
+  form,
+  description,
+  onChange,
+  onDescriptionChange,
+}: {
   form: TenantSecretFormState['keyValue']
+  description: string
   onChange: (form: TenantSecretFormState['keyValue']) => void
+  onDescriptionChange: (description: string) => void
 }) {
   return (
     <Form autoComplete="off" className="provider-admin-network-inventory__form">
@@ -410,6 +440,11 @@ function KeyValueSecretForm({
           onChange={(value) => onChange({ ...form, name: value })}
         />
       </FormGroup>
+      <SecretDescriptionField
+        description={description}
+        fieldId="key-value-secret-description"
+        onChange={onDescriptionChange}
+      />
       <KeyValuePairsField
         pairs={form.pairs}
         onChange={(pairs) => onChange({ ...form, pairs })}
@@ -420,10 +455,14 @@ function KeyValueSecretForm({
 
 function ImagePullSecretForm({
   form,
+  description,
   onChange,
+  onDescriptionChange,
 }: {
   form: TenantSecretFormState['imagePull']
+  description: string
   onChange: (form: TenantSecretFormState['imagePull']) => void
+  onDescriptionChange: (description: string) => void
 }) {
   return (
     <Form autoComplete="off" className="provider-admin-network-inventory__form">
@@ -434,6 +473,11 @@ function ImagePullSecretForm({
           onChange={(value) => onChange({ ...form, name: value })}
         />
       </FormGroup>
+      <SecretDescriptionField
+        description={description}
+        fieldId="image-pull-secret-description"
+        onChange={onDescriptionChange}
+      />
       <FormGroup label="Authentication type" fieldId="image-pull-auth-type" isRequired>
         <div className="tenant-secrets__radio-group">
           <Radio
@@ -492,10 +536,14 @@ function ImagePullSecretForm({
 
 function SourceSecretForm({
   form,
+  description,
   onChange,
+  onDescriptionChange,
 }: {
   form: TenantSecretFormState['source']
+  description: string
   onChange: (form: TenantSecretFormState['source']) => void
+  onDescriptionChange: (description: string) => void
 }) {
   return (
     <Form autoComplete="off" className="provider-admin-network-inventory__form">
@@ -506,6 +554,11 @@ function SourceSecretForm({
           onChange={(value) => onChange({ ...form, name: value })}
         />
       </FormGroup>
+      <SecretDescriptionField
+        description={description}
+        fieldId="source-secret-description"
+        onChange={onDescriptionChange}
+      />
       <FormGroup label="Authentication type" fieldId="source-auth-type" isRequired>
         <div className="tenant-secrets__radio-group">
           <Radio
@@ -577,10 +630,14 @@ function SourceSecretForm({
 
 function WebhookSecretForm({
   form,
+  description,
   onChange,
+  onDescriptionChange,
 }: {
   form: TenantSecretFormState['webhook']
+  description: string
   onChange: (form: TenantSecretFormState['webhook']) => void
+  onDescriptionChange: (description: string) => void
 }) {
   return (
     <Form autoComplete="off" className="provider-admin-network-inventory__form">
@@ -591,6 +648,11 @@ function WebhookSecretForm({
           onChange={(value) => onChange({ ...form, name: value })}
         />
       </FormGroup>
+      <SecretDescriptionField
+        description={description}
+        fieldId="webhook-secret-description"
+        onChange={onDescriptionChange}
+      />
       <FormGroup label="Webhook secret key" fieldId="webhook-secret-key" isRequired>
         <div className="tenant-secrets__webhook-key-row">
           <TextArea
@@ -613,6 +675,25 @@ function WebhookSecretForm({
   )
 }
 
+const HIDDEN_SECRET_VALUE_REVIEW_LABEL = 'Value provided (hidden for security)'
+
+function formatKeyValuePairReviewValue(pair: KeyValuePair): string {
+  if (pair.valueMode === 'upload-file' && pair.valueFileName.trim()) {
+    return `File: ${pair.valueFileName.trim()}`
+  }
+
+  return HIDDEN_SECRET_VALUE_REVIEW_LABEL
+}
+
+function renderSecretReviewDescription(description: string) {
+  return (
+    <DescriptionListGroup>
+      <DescriptionListTerm>Description</DescriptionListTerm>
+      <DescriptionListDescription>{description.trim() || '—'}</DescriptionListDescription>
+    </DescriptionListGroup>
+  )
+}
+
 function renderSecretReview(type: TenantSecretType, form: TenantSecretFormState) {
   const secretName = getSecretName(type, form)
 
@@ -625,27 +706,20 @@ function renderSecretReview(type: TenantSecretType, form: TenantSecretFormState)
             <DescriptionListTerm>Secret name</DescriptionListTerm>
             <DescriptionListDescription>{secretName || '—'}</DescriptionListDescription>
           </DescriptionListGroup>
+          {renderSecretReviewDescription(form.description)}
           <DescriptionListGroup>
-            <DescriptionListTerm>Keys</DescriptionListTerm>
+            <DescriptionListTerm>Key / value pairs</DescriptionListTerm>
             <DescriptionListDescription>
               {pairs.length > 0
-                ? pairs.map((pair) => pair.key.trim()).join(', ')
+                ? pairs.map((pair, index) => (
+                    <Fragment key={pair.key.trim() || index}>
+                      {index > 0 ? <br /> : null}
+                      <code>{pair.key.trim()}</code>
+                      {' — '}
+                      {formatKeyValuePairReviewValue(pair)}
+                    </Fragment>
+                  ))
                 : '—'}
-            </DescriptionListDescription>
-          </DescriptionListGroup>
-          <DescriptionListGroup>
-            <DescriptionListTerm>Values</DescriptionListTerm>
-            <DescriptionListDescription>
-              {pairs.length > 0
-                ? pairs
-                    .map((pair) =>
-                      pair.valueMode === 'upload-file' && pair.valueFileName.trim()
-                        ? `${pair.key.trim()}: ${pair.valueFileName.trim()}`
-                        : pair.key.trim(),
-                    )
-                    .join(', ')
-                : '—'}
-              {pairs.some((pair) => pair.value.trim()) ? ' · Set (hidden)' : ''}
             </DescriptionListDescription>
           </DescriptionListGroup>
         </DescriptionList>
@@ -659,6 +733,7 @@ function renderSecretReview(type: TenantSecretType, form: TenantSecretFormState)
             <DescriptionListTerm>Secret name</DescriptionListTerm>
             <DescriptionListDescription>{secretName || '—'}</DescriptionListDescription>
           </DescriptionListGroup>
+          {renderSecretReviewDescription(form.description)}
           <DescriptionListGroup>
             <DescriptionListTerm>Authentication type</DescriptionListTerm>
             <DescriptionListDescription>
@@ -696,6 +771,7 @@ function renderSecretReview(type: TenantSecretType, form: TenantSecretFormState)
             <DescriptionListTerm>Secret name</DescriptionListTerm>
             <DescriptionListDescription>{secretName || '—'}</DescriptionListDescription>
           </DescriptionListGroup>
+          {renderSecretReviewDescription(form.description)}
           <DescriptionListGroup>
             <DescriptionListTerm>Authentication type</DescriptionListTerm>
             <DescriptionListDescription>
@@ -710,7 +786,9 @@ function renderSecretReview(type: TenantSecretType, form: TenantSecretFormState)
               </DescriptionListGroup>
               <DescriptionListGroup>
                 <DescriptionListTerm>Password or token</DescriptionListTerm>
-                <DescriptionListDescription>Set (hidden)</DescriptionListDescription>
+                <DescriptionListDescription>
+                  {HIDDEN_SECRET_VALUE_REVIEW_LABEL}
+                </DescriptionListDescription>
               </DescriptionListGroup>
             </>
           ) : (
@@ -731,9 +809,10 @@ function renderSecretReview(type: TenantSecretType, form: TenantSecretFormState)
             <DescriptionListTerm>Secret name</DescriptionListTerm>
             <DescriptionListDescription>{secretName || '—'}</DescriptionListDescription>
           </DescriptionListGroup>
+          {renderSecretReviewDescription(form.description)}
           <DescriptionListGroup>
             <DescriptionListTerm>Webhook secret key</DescriptionListTerm>
-            <DescriptionListDescription>Set (hidden)</DescriptionListDescription>
+            <DescriptionListDescription>{HIDDEN_SECRET_VALUE_REVIEW_LABEL}</DescriptionListDescription>
           </DescriptionListGroup>
         </DescriptionList>
       )
@@ -752,28 +831,36 @@ function renderSecretDetailsForm(
       return (
         <KeyValueSecretForm
           form={formState.keyValue}
+          description={formState.description}
           onChange={(keyValue) => onChange({ ...formState, keyValue })}
+          onDescriptionChange={(description) => onChange({ ...formState, description })}
         />
       )
     case 'image-pull':
       return (
         <ImagePullSecretForm
           form={formState.imagePull}
+          description={formState.description}
           onChange={(imagePull) => onChange({ ...formState, imagePull })}
+          onDescriptionChange={(description) => onChange({ ...formState, description })}
         />
       )
     case 'source':
       return (
         <SourceSecretForm
           form={formState.source}
+          description={formState.description}
           onChange={(source) => onChange({ ...formState, source })}
+          onDescriptionChange={(description) => onChange({ ...formState, description })}
         />
       )
     case 'webhook':
       return (
         <WebhookSecretForm
           form={formState.webhook}
+          description={formState.description}
           onChange={(webhook) => onChange({ ...formState, webhook })}
+          onDescriptionChange={(description) => onChange({ ...formState, description })}
         />
       )
     default:
@@ -876,11 +963,7 @@ export function CreateTenantSecretFlow({
       : buildInitialSecretFormState(defaultType ?? 'key-value'),
   )
 
-  const wizardTitle = isEditMode
-    ? `Edit ${editingSecret.name}`
-    : activeType
-      ? `Create ${getTenantSecretTypeLabel(activeType).toLowerCase()}`
-      : 'Create secret'
+  const wizardTitle = isEditMode ? `Edit ${editingSecret.name}` : 'Create secret'
   const wizardSteps = useMemo(
     () => getSecretWizardSteps({ includeTypeStep, type: activeType }),
     [activeType, includeTypeStep],
@@ -942,7 +1025,7 @@ export function CreateTenantSecretFlow({
           ...editingSecret,
           name: getSecretName(activeType, formState),
           type: activeType,
-          summary: buildSecretSummary(activeType, formState),
+          summary: buildSecretSummaryForSave(activeType, formState),
           data: buildTenantSecretData(activeType, formState),
         }
       : {
@@ -951,7 +1034,7 @@ export function CreateTenantSecretFlow({
           type: activeType,
           usage,
           createdAt: new Date().toISOString(),
-          summary: buildSecretSummary(activeType, formState),
+          summary: buildSecretSummaryForSave(activeType, formState),
           data: buildTenantSecretData(activeType, formState),
         }
 

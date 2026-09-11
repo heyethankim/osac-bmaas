@@ -9,6 +9,7 @@ import {
   DescriptionListTerm,
   Form,
   FormGroup,
+  TextArea,
   TextInput,
 } from '@patternfly/react-core'
 import { KubernetesResourceNameField } from '../shared/KubernetesResourceNameHelper'
@@ -182,10 +183,12 @@ export function CreateVirtualNetworkWizard({
               />
             </FormGroup>
             <FormGroup label="Description" fieldId="create-vnet-detail">
-              <TextInput
+              <TextArea
                 id="create-vnet-detail"
                 value={form.detail}
                 onChange={(_event, value) => setForm((current) => ({ ...current, detail: value }))}
+                placeholder="Describe how this virtual network will be used"
+                resizeOrientation="vertical"
               />
             </FormGroup>
             <FormGroup label="IPv4 CIDR" fieldId="create-vnet-ipv4-cidr" isRequired>
