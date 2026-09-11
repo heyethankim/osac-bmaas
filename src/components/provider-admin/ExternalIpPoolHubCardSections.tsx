@@ -1,4 +1,4 @@
-import { Progress, ProgressMeasureLocation } from '@patternfly/react-core'
+import { Progress, ProgressMeasureLocation, Button, Content } from '@patternfly/react-core'
 import { TENANT_EXTERNAL_IP_POOL_MANAGED_BY_LABEL } from '../../tenantAdmin/constants'
 import {
   getExternalIpPoolAvailableAddresses,
@@ -7,7 +7,12 @@ import {
   type ExternalIpPool,
 } from '../../providerAdmin/externalIpPools'
 import { ExternalIpInventoryList } from './ExternalIpInventoryList'
-import type { ExternalIp } from '../../providerAdmin/externalIps'
+import {
+  EXTERNAL_IP_POOL_CARD_PREVIEW_LIMIT,
+  formatExternalIpPoolStatusSubtext,
+  getExternalIpPoolPreviewIps,
+  type ExternalIp,
+} from '../../providerAdmin/externalIps'
 import type { TenantInstance } from '../../tenantUser/instances'
 
 type ExternalIpPoolHubCardSectionsProps = {
@@ -191,20 +196,55 @@ export function formatExternalIpPoolCapacitySummary(
   return `${available.toLocaleString()} of ${total.toLocaleString()} available`
 }
 
+export function ExternalIpPoolGridCardTitle({
+  pool,
+  ips,
+  onOpenDetails,
+}: {
+  pool: ExternalIpPool
+  ips: readonly ExternalIp[]
+  onOpenDetails: () => void
+}) {
+  return (
+    <div className="provider-admin-external-networks-hub__grid-pool-title">
+      <Content component="p" className="provider-admin-catalog-items__primary-cell">
+        <Button
+          variant="link"
+          isInline
+          className="provider-admin-catalog-items__name-link catalog-item-name-link"
+          onClick={onOpenDetails}
+        >
+          {pool.name}
+        </Button>
+      </Content>
+      <span className="provider-admin-external-networks-hub__pool-meta">
+        {formatExternalIpPoolStatusSubtext(ips)}
+      </span>
+    </div>
+  )
+}
+
 export function ExternalIpPoolHubCardIps({
   ips,
   creatingIpId = null,
+  maxPreview = EXTERNAL_IP_POOL_CARD_PREVIEW_LIMIT,
+  onViewAll,
   serviceInstances,
   onNavigateToServiceInstance,
 }: {
   ips: readonly ExternalIp[]
   creatingIpId?: string | null
+  maxPreview?: number
+  onViewAll?: () => void
   serviceInstances?: readonly TenantInstance[]
   onNavigateToServiceInstance?: (instance: TenantInstance) => void
 }) {
   if (ips.length === 0 && creatingIpId === null) {
     return null
   }
+
+  const previewIps = getExternalIpPoolPreviewIps(ips, maxPreview, creatingIpId)
+  const hiddenCount = Math.max(ips.length - previewIps.length, 0)
 
   return (
     <div
@@ -213,12 +253,22 @@ export function ExternalIpPoolHubCardIps({
     >
       <span className="provider-admin-external-networks-hub__card-capacity-heading">IPs</span>
       <ExternalIpInventoryList
-        ips={ips}
+        ips={previewIps}
         variant="card"
         creatingIpId={creatingIpId}
         serviceInstances={serviceInstances}
         onNavigateToServiceInstance={onNavigateToServiceInstance}
       />
+      {hiddenCount > 0 && onViewAll ? (
+        <Button
+          variant="link"
+          isInline
+          className="provider-admin-external-networks-hub__card-ips-view-all"
+          onClick={onViewAll}
+        >
+          View all {ips.length.toLocaleString()} IPs
+        </Button>
+      ) : null}
     </div>
   )
 }

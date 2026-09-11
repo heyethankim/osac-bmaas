@@ -220,6 +220,34 @@ export function groupExternalIpsByStatus(ips: readonly ExternalIp[]): {
   return { inUse, available }
 }
 
+export const EXTERNAL_IP_POOL_CARD_PREVIEW_LIMIT = 3
+
+export function formatExternalIpPoolStatusSubtext(ips: readonly ExternalIp[]): string {
+  const { inUse, available } = groupExternalIpsByStatus(ips)
+
+  return `${inUse.length.toLocaleString()} in use · ${available.length.toLocaleString()} available`
+}
+
+/** In-use rows first, then available, capped for hub card previews. */
+export function getExternalIpPoolPreviewIps(
+  ips: readonly ExternalIp[],
+  maxPreview = EXTERNAL_IP_POOL_CARD_PREVIEW_LIMIT,
+  prioritizeIpId: string | null = null,
+): ExternalIp[] {
+  const { inUse, available } = groupExternalIpsByStatus(ips)
+  const ordered = [...inUse, ...available]
+
+  if (prioritizeIpId) {
+    const prioritizedIndex = ordered.findIndex((ip) => ip.id === prioritizeIpId)
+    if (prioritizedIndex > 0) {
+      const [prioritized] = ordered.splice(prioritizedIndex, 1)
+      ordered.unshift(prioritized)
+    }
+  }
+
+  return ordered.slice(0, maxPreview)
+}
+
 /** Tenant-managed addresses may be released when not attached to a workload. */
 export function canReleaseTenantExternalIp(ip: ExternalIp): boolean {
   return ip.status === 'Available'

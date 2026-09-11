@@ -24,6 +24,7 @@ import {
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
 import { CatalogFilterEmptyState } from '../../components/catalog/CatalogFilterEmptyState'
 import {
+  ExternalIpPoolGridCardTitle,
   ExternalIpPoolHubCardCapacityFooter,
   ExternalIpPoolHubCardIps,
   ExternalIpPoolHubCardSpecs,
@@ -51,7 +52,7 @@ import { ExternalIpInventoryList } from '../../components/provider-admin/Externa
 import {
   getUsedExternalIpAddresses,
   groupExternalIpsByPool,
-  groupExternalIpsByStatus,
+  formatExternalIpPoolStatusSubtext,
   groupTenantExternalIpsByPool,
   type ExternalIp,
   type ExternalIpPoolGroup,
@@ -217,12 +218,6 @@ function getPoolInUseCount(ips: readonly ExternalIp[]): number {
   return ips.filter((ip) => ip.status === 'In use').length
 }
 
-function formatPoolIpStatusSubtext(ips: readonly ExternalIp[]): string {
-  const { inUse, available } = groupExternalIpsByStatus(ips)
-
-  return `${inUse.length.toLocaleString()} in use · ${available.length.toLocaleString()} available`
-}
-
 function ExternalIpPoolListName({
   pool,
   ips,
@@ -243,7 +238,7 @@ function ExternalIpPoolListName({
         {pool.name}
       </Button>
       <span className="provider-admin-external-networks-hub__pool-meta">
-        {formatPoolIpStatusSubtext(ips)}
+        {formatExternalIpPoolStatusSubtext(ips)}
       </span>
     </div>
   )
@@ -1064,19 +1059,11 @@ export function ProviderAdminExternalNetworksPage({
                               />
                             </div>
                         </div>
-                        <Content
-                          component="p"
-                          className="provider-admin-catalog-items__primary-cell"
-                        >
-                          <Button
-                            variant="link"
-                            isInline
-                            className="provider-admin-catalog-items__name-link catalog-item-name-link"
-                            onClick={() => openDetails(pool)}
-                          >
-                            {pool.name}
-                          </Button>
-                        </Content>
+                        <ExternalIpPoolGridCardTitle
+                          pool={pool}
+                          ips={ips}
+                          onOpenDetails={() => openDetails(pool)}
+                        />
                         <ExternalIpPoolHubCardSpecs
                           pool={pool}
                           hideTenant={isTenantScope}
@@ -1091,6 +1078,7 @@ export function ProviderAdminExternalNetworksPage({
                           <ExternalIpPoolHubCardIps
                             ips={cardIps}
                             creatingIpId={creatingIpId}
+                            onViewAll={() => openDetails(pool)}
                             serviceInstances={serviceInstances}
                             onNavigateToServiceInstance={onNavigateToServiceInstance}
                           />
