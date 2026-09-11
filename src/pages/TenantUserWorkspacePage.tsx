@@ -444,7 +444,6 @@ export function TenantUserWorkspacePage() {
         return (
           <ProviderAdminVirtualNetworksPage
             tenantSlug={tenantSlug}
-            readOnly
             openVirtualNetworkId={openVirtualNetworkId}
             openSubnetId={openSubnetId}
             openSecurityGroupId={openSecurityGroupId}
