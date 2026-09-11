@@ -27,6 +27,11 @@ import redHatHatLogoUrl from '../assets/Logo-RedHat-Hat-Color-RGB.svg?url'
 type PrototypeLink = {
   label: string
   to: string
+  companionSeparator?: string
+  companionLink?: {
+    label: string
+    to: string
+  }
 }
 
 type RoleBlockProps = {
@@ -72,9 +77,23 @@ function RoleBlock({ id, title, description, icon, actions, prototypeLinks = [] 
                   justifyContent={{ default: 'justifyContentCenter' }}
                   flexWrap={{ default: 'wrap' }}
                 >
-                  <RouterButton variant="link" isInline to={link.to}>
-                    {link.label}
-                  </RouterButton>
+                  {link.companionLink ? (
+                    <>
+                      <span className="bmaas-role-landing__prototype-link-prefix">
+                        <RouterButton variant="link" isInline to={link.to}>
+                          {link.label}
+                        </RouterButton>
+                        {link.companionSeparator?.includes(',') ? ',' : link.companionSeparator}
+                      </span>
+                      <RouterButton variant="link" isInline to={link.companionLink.to}>
+                        {link.companionLink.label}
+                      </RouterButton>
+                    </>
+                  ) : (
+                    <RouterButton variant="link" isInline to={link.to}>
+                      {link.label}
+                    </RouterButton>
+                  )}
                 </Flex>
               </StackItem>
             ))}
@@ -120,10 +139,15 @@ export function BmaasLandingPage() {
     {
       label: 'Tenants',
       to: '/provider/workspace?nav=administration-organizations',
+      companionSeparator: ', ',
+      companionLink: {
+        label: 'IdP Manager',
+        to: '/idp-manager/bluesolace',
+      },
     },
     {
-      label: 'Tenant onboarding (IdP Manager)',
-      to: '/idp-manager/bluesolace',
+      label: 'External IP Pools',
+      to: '/provider/workspace?nav=networking',
     },
   ]
 
@@ -162,6 +186,15 @@ export function BmaasLandingPage() {
           label: 'Projects',
           to: '/tenant-admin/northsummit/workspace?nav=projects-teams',
         },
+        {
+          label: 'Virtual networks',
+          to: '/tenant-admin/northsummit/workspace?nav=networking-virtual-networks',
+          companionSeparator: ', ',
+          companionLink: {
+            label: 'External IPs',
+            to: '/tenant-admin/northsummit/workspace?nav=networking-external-ip-pools',
+          },
+        },
       ],
     },
     {
@@ -180,6 +213,15 @@ export function BmaasLandingPage() {
         {
           label: 'Projects',
           to: '/tenant-user/northsummit/workspace?nav=projects-teams',
+        },
+        {
+          label: 'Virtual networks',
+          to: '/tenant-user/northsummit/workspace?nav=networking-virtual-networks',
+          companionSeparator: ', ',
+          companionLink: {
+            label: 'External IPs',
+            to: '/tenant-user/northsummit/workspace?nav=networking-external-ip-pools',
+          },
         },
       ],
     },

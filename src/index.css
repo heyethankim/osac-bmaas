@@ -76,6 +76,15 @@ select.pf-v6-c-form-control {
   margin: 0;
 }
 
+.bmaas-role-landing__prototype-link-prefix {
+  display: inline;
+  white-space: nowrap;
+}
+
+.bmaas-role-landing__prototype-link-prefix .pf-v6-c-button.pf-m-link {
+  margin-inline-end: 0;
+}
+
 .bmaas-role-landing__credits {
   display: flex;
   flex-direction: column;
