@@ -350,7 +350,9 @@ export function TenantAdminProjectsTeamsPage({
     setNestedCreateParent(parent ?? rootProject)
     if (fromDetails && parent) {
       setReturnToProjectAfterWizard(parent)
-      setIsDetailsOpen(false)
+      if (viewMode !== 'topology') {
+        setIsDetailsOpen(false)
+      }
     } else {
       setReturnToProjectAfterWizard(null)
     }
@@ -362,7 +364,9 @@ export function TenantAdminProjectsTeamsPage({
     setNestedCreateParent(null)
     if (fromDetails) {
       setReturnToProjectAfterWizard(project)
-      setIsDetailsOpen(false)
+      if (viewMode !== 'topology') {
+        setIsDetailsOpen(false)
+      }
     } else {
       setReturnToProjectAfterWizard(null)
     }
@@ -521,40 +525,44 @@ export function TenantAdminProjectsTeamsPage({
     onProjectsChange(removeTenantProjectMember(tenantSlug, projectId, memberId))
   }
 
-  if (isCreateModalOpen) {
-    const editBreadcrumbAncestors = editingProject
-      ? getTenantProjectAncestors(projects, editingProject.id).map((ancestor) => ({
-          label: ancestor.name,
-          onClick: () => {
-            setIsCreateModalOpen(false)
-            setEditingProject(null)
-            setReturnToProjectAfterWizard(null)
-            openDetails(ancestor)
-          },
-        }))
-      : undefined
+  const editBreadcrumbAncestors = editingProject
+    ? getTenantProjectAncestors(projects, editingProject.id).map((ancestor) => ({
+        label: ancestor.name,
+        onClick: () => {
+          setIsCreateModalOpen(false)
+          setEditingProject(null)
+          setReturnToProjectAfterWizard(null)
+          openDetails(ancestor)
+        },
+      }))
+    : undefined
 
+  const projectWizard = (
+    <CreateTenantProjectWizard
+      presentation={viewMode === 'topology' ? 'modal' : 'page'}
+      isOpen={isCreateModalOpen}
+      organization={organization}
+      projects={projects}
+      parentProject={nestedCreateParent}
+      breadcrumbAncestors={editBreadcrumbAncestors}
+      editingProject={editingProject}
+      onOpenParentProject={(project) => {
+        setIsCreateModalOpen(false)
+        setEditingProject(null)
+        setNestedCreateParent(null)
+        setReturnToProjectAfterWizard(null)
+        openDetails(project)
+      }}
+      onClose={closeCreateWizard}
+      onCreate={handleCreateProject}
+      onUpdate={handleUpdateProject}
+    />
+  )
+
+  if (isCreateModalOpen && viewMode !== 'topology') {
     return (
       <>
-        <CreateTenantProjectWizard
-          presentation="page"
-          isOpen={isCreateModalOpen}
-          organization={organization}
-          projects={projects}
-          parentProject={nestedCreateParent}
-          breadcrumbAncestors={editBreadcrumbAncestors}
-          editingProject={editingProject}
-          onOpenParentProject={(project) => {
-            setIsCreateModalOpen(false)
-            setEditingProject(null)
-            setNestedCreateParent(null)
-            setReturnToProjectAfterWizard(null)
-            openDetails(project)
-          }}
-          onClose={closeCreateWizard}
-          onCreate={handleCreateProject}
-          onUpdate={handleUpdateProject}
-        />
+        {projectWizard}
         {deleteConfirmModal}
       </>
     )
@@ -853,6 +861,7 @@ export function TenantAdminProjectsTeamsPage({
       )}
 
       {deleteConfirmModal}
+      {isCreateModalOpen && viewMode === 'topology' ? projectWizard : null}
     </div>
   )
 }

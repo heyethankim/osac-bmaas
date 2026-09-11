@@ -789,6 +789,15 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+.tenant-project-details-body--sidebar .entity-details-page__main-stack {
+  gap: var(--pf-t--global--spacer--md);
+}
+
+.tenant-project-details-body--sidebar .entity-details-page__conditions-band {
+  margin-block-start: 0;
+  padding-block-start: var(--pf-t--global--spacer--lg);
+}
+
 .tenant-project-details-body--sidebar .entity-details-page__column,
 .tenant-project-details-body--sidebar .entity-details-page__column--config,
 .tenant-project-details-body--sidebar .entity-details-page__main-stack,

@@ -329,23 +329,33 @@ function getDefaultTenantExternalIps(slug: string): ExternalIp[] {
     : []
 }
 
-function mergeMissingDefaultTenantExternalIps(slug: string, items: ExternalIp[]): ExternalIp[] {
+function isNorthsummitDemoExternalIp(item: ExternalIp): boolean {
+  return item.id.startsWith('eip-northsummit-')
+}
+
+function syncDefaultTenantExternalIps(slug: string, items: ExternalIp[]): ExternalIp[] {
   const defaults = getDefaultTenantExternalIps(slug)
   if (defaults.length === 0) {
     return items
   }
 
-  const existingIds = new Set(items.map((item) => item.id))
-  const existingAddresses = new Set(items.map((item) => item.address))
-  const missing = defaults.filter(
-    (item) => !existingIds.has(item.id) && !existingAddresses.has(item.address),
-  )
+  const userCreated = items.filter((item) => !isNorthsummitDemoExternalIp(item))
+  const merged = [...defaults, ...userCreated]
 
-  if (missing.length === 0) {
+  const unchanged =
+    merged.length === items.length &&
+    merged.every(
+      (item, index) =>
+        item.id === items[index]?.id &&
+        item.address === items[index]?.address &&
+        item.status === items[index]?.status &&
+        item.attachedTo === items[index]?.attachedTo,
+    )
+
+  if (unchanged) {
     return items
   }
 
-  const merged = [...items, ...missing]
   writeJsonArray(tenantKey(TENANT_EXTERNAL_IPS_KEY_PREFIX, slug), merged)
   return merged
 }
@@ -358,7 +368,7 @@ export function getTenantExternalIps(slug: string): ExternalIp[] {
     isExternalIp,
   )
 
-  return mergeMissingDefaultTenantExternalIps(slug, items)
+  return syncDefaultTenantExternalIps(slug, items)
 }
 
 export function setTenantExternalIps(slug: string, ips: ExternalIp[]): void {
