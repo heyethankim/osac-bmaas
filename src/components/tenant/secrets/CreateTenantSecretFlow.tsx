@@ -225,7 +225,7 @@ function KeyValuePairsField({
   }
 
   return (
-    <>
+    <div className="tenant-secrets__pair-list">
       {pairs.map((pair, index) => (
         <div key={pair.id} className="tenant-secrets__pair-row">
           <FormGroup label="Key" fieldId={`secret-key-${pair.id}`} isRequired={index === 0}>
@@ -252,49 +252,53 @@ function KeyValuePairsField({
                 onChange={() => updatePair(pair.id, { valueMode: 'upload-file' })}
               />
             </div>
-            {pair.valueMode === 'paste' ? (
-              <SecretFieldInput
-                id={`secret-value-${pair.id}`}
-                value={pair.value}
-                onChange={(_event, value) => updatePair(pair.id, { value })}
-                aria-label={`Secret value ${index + 1}`}
-              />
-            ) : (
-              <FileUpload
-                id={`secret-value-file-${pair.id}`}
-                type="text"
-                value={pair.value}
-                filename={pair.valueFileName}
-                filenamePlaceholder="Drag and drop a file or upload one"
-                browseButtonText="Upload"
-                clearButtonText="Remove"
-                onFileInputChange={(_event, file) =>
-                  updatePair(pair.id, { valueFileName: file.name })
-                }
-                onReadStarted={() => undefined}
-                onReadFinished={(_event, file) => {
-                  file.text().then((text) => {
-                    updatePair(pair.id, { value: text })
-                  })
-                }}
-                onClearClick={() =>
-                  updatePair(pair.id, {
-                    value: '',
-                    valueFileName: '',
-                  })
-                }
-              />
-            )}
+            <div className="tenant-secrets__pair-value-row">
+              <div className="tenant-secrets__pair-value-control">
+                {pair.valueMode === 'paste' ? (
+                  <SecretFieldInput
+                    id={`secret-value-${pair.id}`}
+                    value={pair.value}
+                    onChange={(_event, value) => updatePair(pair.id, { value })}
+                    aria-label={`Secret value ${index + 1}`}
+                  />
+                ) : (
+                  <FileUpload
+                    id={`secret-value-file-${pair.id}`}
+                    type="text"
+                    value={pair.value}
+                    filename={pair.valueFileName}
+                    filenamePlaceholder="Drag and drop a file or upload one"
+                    browseButtonText="Upload"
+                    clearButtonText="Remove"
+                    onFileInputChange={(_event, file) =>
+                      updatePair(pair.id, { valueFileName: file.name })
+                    }
+                    onReadStarted={() => undefined}
+                    onReadFinished={(_event, file) => {
+                      file.text().then((text) => {
+                        updatePair(pair.id, { value: text })
+                      })
+                    }}
+                    onClearClick={() =>
+                      updatePair(pair.id, {
+                        value: '',
+                        valueFileName: '',
+                      })
+                    }
+                  />
+                )}
+              </div>
+              {pairs.length > 1 ? (
+                <Button
+                  variant="plain"
+                  className="tenant-secrets__pair-remove"
+                  icon={<MinusCircleIcon />}
+                  aria-label={`Remove key/value pair ${index + 1}`}
+                  onClick={() => removePair(pair.id)}
+                />
+              ) : null}
+            </div>
           </FormGroup>
-          {pairs.length > 1 ? (
-            <Button
-              variant="plain"
-              className="tenant-secrets__pair-remove"
-              icon={<MinusCircleIcon />}
-              aria-label={`Remove key/value pair ${index + 1}`}
-              onClick={() => removePair(pair.id)}
-            />
-          ) : null}
         </div>
       ))}
       <Button
@@ -303,9 +307,9 @@ function KeyValuePairsField({
         className="tenant-secrets__add-row"
         onClick={() => onChange([...pairs, createKeyValuePair()])}
       >
-        Add key/value
+        Add more
       </Button>
-    </>
+    </div>
   )
 }
 
