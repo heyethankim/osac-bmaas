@@ -105,7 +105,7 @@ const PROVIDER_IP_FAMILY_OPTIONS: {
 ]
 
 const PROVIDER_CREATE_EXTERNAL_IP_POOL_STEPS = [
-  { id: 'details', label: 'Details' },
+  { id: 'details', label: 'General' },
   { id: 'addressing', label: 'Addressing' },
   NETWORK_INVENTORY_CREATE_REVIEW_STEP,
 ] as const

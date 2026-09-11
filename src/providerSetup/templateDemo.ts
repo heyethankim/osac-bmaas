@@ -347,7 +347,7 @@ export function getCatalogServiceOffering(serviceId: CatalogServiceId): CatalogS
 export const PUBLISH_CATALOG_STEPS = [
   { id: 'service', label: 'Service' },
   { id: 'template', label: 'Template' },
-  { id: 'display-name', label: 'Name' },
+  { id: 'display-name', label: 'General' },
   { id: 'hardware-os', label: 'Hardware & OS' },
   { id: 'node-topology', label: 'Node topology' },
   { id: 'field-policies', label: 'Lock fields' },

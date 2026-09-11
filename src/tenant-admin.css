@@ -189,8 +189,11 @@
   line-height: 1.35;
 }
 
-.tenant-admin-administration__card-email.pf-v6-c-content--p {
-  margin-block-start: calc(-1 * var(--pf-t--global--spacer--sm));
+.tenant-admin-administration__card
+  .tenant-admin-administration__card-email.tenant-admin-administration__meta-cell.pf-v6-c-content--p {
+  margin-block-start: calc(
+    var(--pf-t--global--spacer--xs) - var(--pf-t--global--spacer--md)
+  );
 }
 
 .tenant-admin-administration__specs-list {
