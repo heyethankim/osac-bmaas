@@ -28,6 +28,7 @@ import {
   getCatalogNetworkOptionLabel,
   type CatalogNetworkPolicy,
 } from '../../providerAdmin/catalogNetworkPolicy'
+import { CATALOG_SERVICE_FILTER_LABELS } from '../../providerSetup/templateDemo'
 import { getProviderCatalogItems } from '../../providerSetup/storage'
 import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope'
 import { getWorkspaceOrganization } from '../../tenantAdmin/organizations'
@@ -1939,7 +1940,7 @@ export function TenantUserInstanceDetailsPage({
 
   return (
     <EntityDetailsPageShell
-      parentLabel="Services"
+      parentLabel={CATALOG_SERVICE_FILTER_LABELS[serviceId]}
       onBack={onBack}
       title={formatTenantInstanceName(instance.name)}
       titleId="tenant-user-instance-details-title"

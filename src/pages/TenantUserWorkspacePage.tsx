@@ -406,7 +406,6 @@ export function TenantUserWorkspacePage() {
             onProjectScopeChange={handleProjectScopeChange}
             organization={organization}
             lockedServiceId={lockedServiceId ?? 'baremetal'}
-            activeNavId={activeNavId}
             onNavigateToCatalogItem={handleNavigateToCatalogItem}
             openInstanceId={openInstanceId}
             onOpenInstanceConsumed={() => setOpenInstanceId(null)}

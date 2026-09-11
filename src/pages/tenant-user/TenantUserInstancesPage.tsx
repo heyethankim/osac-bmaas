@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Alert,
   AlertActionCloseButton,
@@ -98,6 +99,11 @@ import {
 } from '../../tenantUser/projectScope'
 import { ProjectScopeSwitcher } from '../../components/shared/ProjectScopeSwitcher'
 import { PillFilterSelect } from '../../components/shared/PillFilterSelect'
+import {
+  findInstanceByWorkspaceParam,
+  getWorkspaceInstanceParam,
+  syncWorkspaceInstanceParam,
+} from '../../shared/workspaceNavUrl'
 
 type TenantUserInstancesPageProps = {
   tenantSlug: string
@@ -110,8 +116,6 @@ type TenantUserInstancesPageProps = {
   organization: RegisteredOrganization | null
   /** When set, page is scoped to one service (nav-driven) and hides service filters. */
   lockedServiceId?: CatalogServiceId
-  /** Closes the instance detail drawer when left-nav selection changes. */
-  activeNavId?: string
   /** Opens the matching catalog item detail page in Catalog. */
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
   /** Opens the matching project detail page in Projects. */
@@ -196,7 +200,6 @@ export function TenantUserInstancesPage({
   onProjectScopeChange,
   organization,
   lockedServiceId,
-  activeNavId,
   onNavigateToCatalogItem,
   onNavigateToProject,
   onNavigateToCreateProject,
@@ -206,6 +209,9 @@ export function TenantUserInstancesPage({
   showTenantFilter = false,
   organizations = [],
 }: TenantUserInstancesPageProps) {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const instanceParam = getWorkspaceInstanceParam(searchParams)
+
   useEffect(() => {
     if (showTenantFilter) {
       return
@@ -360,11 +366,6 @@ export function TenantUserInstancesPage({
   }, [lockedServiceId])
 
   useEffect(() => {
-    setIsDetailsDrawerOpen(false)
-    setSelectedInstanceId(null)
-  }, [activeNavId, lockedServiceId])
-
-  useEffect(() => {
     if (!openInstanceId) {
       return
     }
@@ -373,9 +374,28 @@ export function TenantUserInstancesPage({
     if (match) {
       setSelectedInstanceId(match.id)
       setIsDetailsDrawerOpen(true)
+      syncWorkspaceInstanceParam(setSearchParams, match.name, { replace: true })
     }
     onOpenInstanceConsumed?.()
-  }, [openInstanceId, instances, onOpenInstanceConsumed])
+  }, [openInstanceId, instances, onOpenInstanceConsumed, setSearchParams])
+
+  useEffect(() => {
+    const match = findInstanceByWorkspaceParam(instances, instanceParam)
+    if (match) {
+      if (lockedServiceId && getTenantInstanceServiceId(match) !== lockedServiceId) {
+        return
+      }
+
+      setSelectedInstanceId(match.id)
+      setIsDetailsDrawerOpen(true)
+      return
+    }
+
+    if (!instanceParam) {
+      setIsDetailsDrawerOpen(false)
+      setSelectedInstanceId(null)
+    }
+  }, [instanceParam, instances, lockedServiceId])
 
   useEffect(() => {
     setPowerStateFilter('all')
@@ -644,6 +664,7 @@ export function TenantUserInstancesPage({
 
   const closeDetails = () => {
     setIsDetailsDrawerOpen(false)
+    syncWorkspaceInstanceParam(setSearchParams, null)
   }
 
   const handleTerminateInstance = (instanceId: string) => {
@@ -656,6 +677,7 @@ export function TenantUserInstancesPage({
     if (selectedInstanceId === instanceId) {
       setSelectedInstanceId(null)
       setIsDetailsDrawerOpen(false)
+      syncWorkspaceInstanceParam(setSearchParams, null, { replace: true })
     }
   }
 
@@ -728,6 +750,7 @@ export function TenantUserInstancesPage({
   const handleViewDetails = (instance: TenantInstance) => {
     setSelectedInstanceId(instance.id)
     setIsDetailsDrawerOpen(true)
+    syncWorkspaceInstanceParam(setSearchParams, instance.name)
   }
 
   const clusterKebabActions = {

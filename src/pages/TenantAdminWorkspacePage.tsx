@@ -286,7 +286,6 @@ export function TenantAdminWorkspacePage() {
             onProjectScopeChange={handleProjectScopeChange}
             organization={organization}
             lockedServiceId={lockedServiceId ?? 'baremetal'}
-            activeNavId={activeNavId}
             onNavigateToCatalogItem={(catalogItemDisplayName) => {
               handleNavChange('catalog')
               syncWorkspaceCatalogItemParam(setSearchParams, catalogItemDisplayName)
