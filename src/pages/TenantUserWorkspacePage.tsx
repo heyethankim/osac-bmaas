@@ -458,6 +458,15 @@ export function TenantUserWorkspacePage() {
           <ProviderAdminExternalNetworksPage
             tenantSlug={tenantSlug}
             scopeOrganization={organization}
+            serviceInstances={instances}
+            onNavigateToServiceInstance={(instance) => {
+              const project = accessibleProjects.find((entry) => entry.name === instance.projectName)
+              if (project) {
+                handleProjectScopeChange(project.id)
+              }
+              setOpenInstanceId(instance.id)
+              handleNavChange(getServicesNavId(getTenantInstanceServiceId(instance)))
+            }}
           />
         )
       case 'secrets':

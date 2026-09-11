@@ -15,18 +15,15 @@ import { EntityDetailsActionsDropdown } from '../shared/EntityDetailsActionsDrop
 import type { ExternalIpPool } from '../../providerAdmin/externalIpPools'
 import {
   getExternalIpPoolDefaultDescription,
-  getExternalIpPoolAvailableAddresses,
   getExternalIpPoolIpFamilyLabel,
   getExternalIpPoolCidrs,
   getExternalIpPoolLifecycleStatus,
   getExternalIpPoolLifecycleStatusLabelColor,
-  getExternalIpPoolTotalAddresses,
 } from '../../providerAdmin/externalIpPools'
-import {
-  getExternalIpAttachmentLabel,
-  getExternalIpStatusLabelColor,
-  type ExternalIp,
-} from '../../providerAdmin/externalIps'
+import { ExternalIpInventoryList } from './ExternalIpInventoryList'
+import { ExternalIpPoolIpsRailCapacityStrip } from './ExternalIpPoolHubCardSections'
+import type { ExternalIp } from '../../providerAdmin/externalIps'
+import type { TenantInstance } from '../../tenantUser/instances'
 import { PROVIDER_ADMIN_NETWORKING_NAV_LABEL } from '../../providerAdmin/constants'
 import { TENANT_EXTERNAL_IPS_PAGE_LABEL, TENANT_EXTERNAL_IP_POOL_MANAGED_BY_LABEL } from '../../tenantAdmin/constants'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
@@ -46,6 +43,9 @@ type ExternalIpPoolDetailsPageProps = {
   allocatedAddressCount?: number
   ips?: readonly ExternalIp[]
   onCreateExternalIp?: () => void
+  onReleaseExternalIp?: (ip: ExternalIp) => void
+  serviceInstances?: readonly TenantInstance[]
+  onNavigateToServiceInstance?: (instance: TenantInstance) => void
 }
 
 function formatCreatedAt(iso: string): string {
@@ -56,10 +56,6 @@ function formatCreatedAt(iso: string): string {
     hour: 'numeric',
     minute: '2-digit',
   })
-}
-
-function formatAddressCount(count: number): string {
-  return `${count.toLocaleString()} ${count === 1 ? 'address' : 'addresses'}`
 }
 
 function OrganizationTenantInlineMark({ name }: { name: string }) {
@@ -75,54 +71,24 @@ function OrganizationTenantInlineMark({ name }: { name: string }) {
   )
 }
 
-function ExternalIpPoolCapacitySection({
-  availableAddresses,
-  inUseAddresses,
-  totalAddresses,
-}: {
-  availableAddresses: number
-  inUseAddresses: number
-  totalAddresses: number
-}) {
-  return (
-    <>
-      <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
-        Capacity
-      </Title>
-      <DescriptionList
-        isCompact
-        className="entity-details-page__dl"
-        aria-label="External IP pool capacity"
-      >
-        <DescriptionListGroup>
-          <DescriptionListTerm>Available</DescriptionListTerm>
-          <DescriptionListDescription>
-            {formatAddressCount(availableAddresses)}
-          </DescriptionListDescription>
-        </DescriptionListGroup>
-        <DescriptionListGroup>
-          <DescriptionListTerm>In use</DescriptionListTerm>
-          <DescriptionListDescription>
-            {formatAddressCount(inUseAddresses)}
-          </DescriptionListDescription>
-        </DescriptionListGroup>
-        <DescriptionListGroup>
-          <DescriptionListTerm>Total</DescriptionListTerm>
-          <DescriptionListDescription>
-            {formatAddressCount(totalAddresses)}
-          </DescriptionListDescription>
-        </DescriptionListGroup>
-      </DescriptionList>
-    </>
-  )
-}
-
 function ExternalIpPoolExternalIpsRail({
+  pool,
+  inUseAddressCount,
+  allocatedAddressCount,
   ips,
   onCreateExternalIp,
+  onReleaseExternalIp,
+  serviceInstances,
+  onNavigateToServiceInstance,
 }: {
+  pool: ExternalIpPool
+  inUseAddressCount: number
+  allocatedAddressCount?: number
   ips: readonly ExternalIp[]
   onCreateExternalIp?: () => void
+  onReleaseExternalIp?: (ip: ExternalIp) => void
+  serviceInstances?: readonly TenantInstance[]
+  onNavigateToServiceInstance?: (instance: TenantInstance) => void
 }) {
   return (
     <div className="entity-details-page__rail-stack">
@@ -149,6 +115,11 @@ function ExternalIpPoolExternalIpsRail({
               </Button>
             ) : null}
           </div>
+          <ExternalIpPoolIpsRailCapacityStrip
+            pool={pool}
+            inUseCount={inUseAddressCount}
+            allocatedCount={allocatedAddressCount}
+          />
           {ips.length === 0 ? (
             <Content
               component="p"
@@ -157,30 +128,13 @@ function ExternalIpPoolExternalIpsRail({
               No IPs have been allocated from this pool yet.
             </Content>
           ) : (
-            <ul className="provider-admin-external-networks-hub__card-ip-list provider-admin-external-networks-hub__details-ip-list">
-              {ips.map((ip) => {
-                const attachmentLabel = getExternalIpAttachmentLabel(ip)
-
-                return (
-                  <li key={ip.id} className="provider-admin-external-networks-hub__card-ip-item">
-                    <div className="provider-admin-external-networks-hub__card-ip-primary">
-                      <code>{ip.address}</code>
-                      <Label color={getExternalIpStatusLabelColor(ip.status)} isCompact>
-                        {ip.status}
-                      </Label>
-                    </div>
-                    {attachmentLabel ? (
-                      <Content
-                        component="p"
-                        className="provider-admin-external-networks-hub__card-ip-meta"
-                      >
-                        {attachmentLabel}
-                      </Content>
-                    ) : null}
-                  </li>
-                )
-              })}
-            </ul>
+            <ExternalIpInventoryList
+              ips={ips}
+              variant="details"
+              serviceInstances={serviceInstances}
+              onNavigateToServiceInstance={onNavigateToServiceInstance}
+              onReleaseExternalIp={onReleaseExternalIp}
+            />
           )}
         </div>
       </div>
@@ -199,17 +153,13 @@ export function ExternalIpPoolDetailsPage({
   allocatedAddressCount,
   ips = [],
   onCreateExternalIp,
+  onReleaseExternalIp,
+  serviceInstances,
+  onNavigateToServiceInstance,
 }: ExternalIpPoolDetailsPageProps) {
   const poolStatus = getExternalIpPoolLifecycleStatus(pool)
   const canDelete = !readOnly && Boolean(onDelete)
   const isTenantView = Boolean(scopeOrganization)
-  const totalAddresses = getExternalIpPoolTotalAddresses(pool)
-  const consumedAddresses = allocatedAddressCount ?? inUseAddressCount
-  const availableAddresses = getExternalIpPoolAvailableAddresses(pool, consumedAddresses)
-  const inUseAddresses =
-    allocatedAddressCount !== undefined
-      ? inUseAddressCount
-      : Math.max(inUseAddressCount, totalAddresses - availableAddresses)
   const tenantName = pool.assignedOrganizationName ?? organization?.name
   const tenantOrganizationId = organization?.id ?? pool.assignedOrganizationId
   const tenantDomain = organization?.primaryDomain
@@ -306,14 +256,6 @@ export function ExternalIpPoolDetailsPage({
     </>
   )
 
-  const capacitySection = (
-    <ExternalIpPoolCapacitySection
-      availableAddresses={availableAddresses}
-      inUseAddresses={inUseAddresses}
-      totalAddresses={totalAddresses}
-    />
-  )
-
   return (
     <EntityDetailsPageShell
       parentLabel={isTenantView ? TENANT_EXTERNAL_IPS_PAGE_LABEL : PROVIDER_ADMIN_NETWORKING_NAV_LABEL}
@@ -335,15 +277,18 @@ export function ExternalIpPoolDetailsPage({
         <div className="entity-details-page__main-stack">
           <div className="entity-details-page__columns entity-details-page__columns--2">
             {overviewColumn}
-            <div className="entity-details-page__column">
-              {cidrSection}
-              {capacitySection}
-            </div>
+            <div className="entity-details-page__column">{cidrSection}</div>
           </div>
         </div>
         <ExternalIpPoolExternalIpsRail
+          pool={pool}
+          inUseAddressCount={inUseAddressCount}
+          allocatedAddressCount={allocatedAddressCount}
           ips={ips}
           onCreateExternalIp={isTenantView ? onCreateExternalIp : undefined}
+          onReleaseExternalIp={isTenantView ? onReleaseExternalIp : undefined}
+          serviceInstances={serviceInstances}
+          onNavigateToServiceInstance={onNavigateToServiceInstance}
         />
       </div>
     </EntityDetailsPageShell>

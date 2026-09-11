@@ -27,6 +27,11 @@
   padding-block-end: var(--pf-t--global--spacer--lg);
 }
 
+.tenant-shell-page__main.osac-page-main-section:has(.provider-admin-network-inventory) {
+  overflow-x: clip;
+  min-width: 0;
+}
+
 .osac-shell-sidebar-inner {
   display: flex;
   flex-direction: column;

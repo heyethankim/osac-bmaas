@@ -1,4 +1,4 @@
-import { Content, Label, Spinner } from '@patternfly/react-core'
+import { Progress, ProgressMeasureLocation } from '@patternfly/react-core'
 import { TENANT_EXTERNAL_IP_POOL_MANAGED_BY_LABEL } from '../../tenantAdmin/constants'
 import {
   getExternalIpPoolAvailableAddresses,
@@ -6,11 +6,9 @@ import {
   getExternalIpPoolTotalAddresses,
   type ExternalIpPool,
 } from '../../providerAdmin/externalIpPools'
-import {
-  getExternalIpAttachmentLabel,
-  getExternalIpStatusLabelColor,
-  type ExternalIp,
-} from '../../providerAdmin/externalIps'
+import { ExternalIpInventoryList } from './ExternalIpInventoryList'
+import type { ExternalIp } from '../../providerAdmin/externalIps'
+import type { TenantInstance } from '../../tenantUser/instances'
 
 type ExternalIpPoolHubCardSectionsProps = {
   pool: ExternalIpPool
@@ -68,11 +66,11 @@ export function ExternalIpPoolHubCardCapacityFooter({
   allocatedCount?: number
   variant?: 'card' | 'section'
 }) {
-  const total = getExternalIpPoolTotalAddresses(pool)
-  const consumed = allocatedCount ?? inUseCount
-  const available = getExternalIpPoolAvailableAddresses(pool, consumed)
-  const inUse =
-    allocatedCount !== undefined ? inUseCount : Math.max(total - available, 0)
+  const { total, available, inUse } = getExternalIpPoolCapacityCounts(
+    pool,
+    inUseCount,
+    allocatedCount,
+  )
 
   return (
     <div
@@ -111,6 +109,77 @@ export function ExternalIpPoolHubCardCapacityFooter({
   )
 }
 
+function getExternalIpPoolCapacityCounts(
+  pool: ExternalIpPool,
+  inUseCount: number,
+  allocatedCount?: number,
+) {
+  const total = getExternalIpPoolTotalAddresses(pool)
+  const consumed = allocatedCount ?? inUseCount
+  const available = getExternalIpPoolAvailableAddresses(pool, consumed)
+  const inUse =
+    allocatedCount !== undefined ? inUseCount : Math.max(total - available, 0)
+
+  return { total, available, inUse, consumed }
+}
+
+export function ExternalIpPoolIpsRailCapacityStrip({
+  pool,
+  inUseCount,
+  allocatedCount,
+}: ExternalIpPoolHubCardSectionsProps & {
+  allocatedCount?: number
+}) {
+  const { total, available, inUse, consumed } = getExternalIpPoolCapacityCounts(
+    pool,
+    inUseCount,
+    allocatedCount,
+  )
+  const allocatedPercent =
+    total > 0 ? Math.min(100, Math.round((consumed / total) * 100)) : 0
+
+  return (
+    <div
+      className="provider-admin-external-networks-hub__rail-capacity"
+      aria-label="External IP pool capacity"
+    >
+      <Progress
+        value={allocatedPercent}
+        title={`${consumed.toLocaleString()} of ${total.toLocaleString()} addresses allocated`}
+        measureLocation={ProgressMeasureLocation.top}
+        size="sm"
+        aria-label={`${consumed.toLocaleString()} of ${total.toLocaleString()} addresses allocated`}
+      />
+      <dl className="provider-admin-external-networks-hub__rail-capacity-stats">
+        <div className="provider-admin-external-networks-hub__rail-capacity-stat">
+          <dt className="provider-admin-external-networks-hub__rail-capacity-stat-label">
+            Available
+          </dt>
+          <dd className="provider-admin-external-networks-hub__rail-capacity-stat-value">
+            {available.toLocaleString()}
+          </dd>
+        </div>
+        <div className="provider-admin-external-networks-hub__rail-capacity-stat">
+          <dt className="provider-admin-external-networks-hub__rail-capacity-stat-label">
+            In use
+          </dt>
+          <dd className="provider-admin-external-networks-hub__rail-capacity-stat-value">
+            {inUse.toLocaleString()}
+          </dd>
+        </div>
+        <div className="provider-admin-external-networks-hub__rail-capacity-stat">
+          <dt className="provider-admin-external-networks-hub__rail-capacity-stat-label">
+            Total
+          </dt>
+          <dd className="provider-admin-external-networks-hub__rail-capacity-stat-value">
+            {total.toLocaleString()}
+          </dd>
+        </div>
+      </dl>
+    </div>
+  )
+}
+
 export function formatExternalIpPoolCapacitySummary(
   pool: ExternalIpPool,
   inUseCount: number,
@@ -125,9 +194,13 @@ export function formatExternalIpPoolCapacitySummary(
 export function ExternalIpPoolHubCardIps({
   ips,
   creatingIpId = null,
+  serviceInstances,
+  onNavigateToServiceInstance,
 }: {
   ips: readonly ExternalIp[]
   creatingIpId?: string | null
+  serviceInstances?: readonly TenantInstance[]
+  onNavigateToServiceInstance?: (instance: TenantInstance) => void
 }) {
   if (ips.length === 0 && creatingIpId === null) {
     return null
@@ -139,39 +212,13 @@ export function ExternalIpPoolHubCardIps({
       aria-label="IPs"
     >
       <span className="provider-admin-external-networks-hub__card-capacity-heading">IPs</span>
-      <ul className="provider-admin-external-networks-hub__card-ip-list">
-        {ips.map((ip) => {
-          const attachmentLabel = getExternalIpAttachmentLabel(ip)
-
-          return (
-          <li key={ip.id} className="provider-admin-external-networks-hub__card-ip-item">
-            {creatingIpId === ip.id ? (
-              <div className="provider-admin-external-networks-hub__creating-row">
-                <Spinner size="md" aria-label={`Creating ${ip.address}`} />
-                <span>Creating external IP…</span>
-              </div>
-            ) : (
-              <>
-                <div className="provider-admin-external-networks-hub__card-ip-primary">
-                  <code>{ip.address}</code>
-                  <Label color={getExternalIpStatusLabelColor(ip.status)} isCompact>
-                    {ip.status}
-                  </Label>
-                </div>
-                {attachmentLabel ? (
-                  <Content
-                    component="p"
-                    className="provider-admin-external-networks-hub__card-ip-meta"
-                  >
-                    {attachmentLabel}
-                  </Content>
-                ) : null}
-              </>
-            )}
-          </li>
-          )
-        })}
-      </ul>
+      <ExternalIpInventoryList
+        ips={ips}
+        variant="card"
+        creatingIpId={creatingIpId}
+        serviceInstances={serviceInstances}
+        onNavigateToServiceInstance={onNavigateToServiceInstance}
+      />
     </div>
   )
 }

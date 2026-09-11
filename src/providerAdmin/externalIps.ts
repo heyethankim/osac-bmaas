@@ -1,6 +1,9 @@
 import type { ExternalIpPool } from './externalIpPools'
 import type { ProviderVirtualNetwork } from './networkInventory'
 import { hasVirtualNetworkNatGateway } from './networkInventory'
+import type { CatalogServiceId } from '../providerSetup/templateDemo'
+import type { TenantInstance } from '../tenantUser/instances'
+import { getTenantInstanceServiceId } from '../tenantUser/instances'
 
 export type ExternalIpStatus = 'In use' | 'Available'
 
@@ -31,13 +34,22 @@ export const DEFAULT_NORTHSUMMIT_EXTERNAL_IPS: ExternalIp[] = [
     attachedTo: 'Bare metal · bm-server-01',
   },
   {
-    id: 'eip-northsummit-vm-01',
+    id: 'eip-northsummit-cluster-01',
     address: '203.0.113.31',
     family: 'IPv4',
     status: 'In use',
     poolId: 'eipool-northsummit-edge',
     poolName: 'northsummit-public-edge',
-    attachedTo: 'Virtual machine · vm-instance-01',
+    attachedTo: 'Cluster · ocp-cluster-01',
+  },
+  {
+    id: 'eip-northsummit-bm-04',
+    address: '203.0.113.32',
+    family: 'IPv4',
+    status: 'In use',
+    poolId: 'eipool-northsummit-edge',
+    poolName: 'northsummit-public-edge',
+    attachedTo: 'Bare metal · bm-server-04',
   },
 ]
 
@@ -190,16 +202,121 @@ export function getExternalIpStatusLabelColor(status: ExternalIpStatus): 'blue' 
   return status === 'In use' ? 'blue' : 'purple'
 }
 
-/** Returns workload attachment text only when the IP is actively in use. */
-export function getExternalIpAttachmentLabel(ip: ExternalIp): string | null {
+export function groupExternalIpsByStatus(ips: readonly ExternalIp[]): {
+  inUse: ExternalIp[]
+  available: ExternalIp[]
+} {
+  const inUse: ExternalIp[] = []
+  const available: ExternalIp[] = []
+
+  for (const ip of ips) {
+    if (ip.status === 'In use') {
+      inUse.push(ip)
+    } else {
+      available.push(ip)
+    }
+  }
+
+  return { inUse, available }
+}
+
+/** Tenant-managed addresses may be released when not attached to a workload. */
+export function canReleaseTenantExternalIp(ip: ExternalIp): boolean {
+  return ip.status === 'Available'
+}
+
+export type ExternalIpAttachmentKind =
+  | 'baremetal'
+  | 'virtual-machine'
+  | 'cluster'
+  | 'models'
+  | 'nat-gateway'
+
+export type ExternalIpAttachmentMeta = {
+  kind: ExternalIpAttachmentKind
+  kindLabel: string
+  name: string
+}
+
+const EXTERNAL_IP_ATTACHMENT_PREFIXES: Record<
+  string,
+  Pick<ExternalIpAttachmentMeta, 'kind' | 'kindLabel'>
+> = {
+  'Bare metal': { kind: 'baremetal', kindLabel: 'Bare metal' },
+  'Virtual machine': { kind: 'virtual-machine', kindLabel: 'Virtual machine' },
+  Cluster: { kind: 'cluster', kindLabel: 'Cluster' },
+  Models: { kind: 'models', kindLabel: 'Models' },
+  'NAT gateway': { kind: 'nat-gateway', kindLabel: 'NAT gateway' },
+}
+
+const EXTERNAL_IP_ATTACHMENT_SEPARATOR = ' · '
+
+export const EXTERNAL_IP_ATTACHMENT_SERVICE_IDS: Partial<
+  Record<ExternalIpAttachmentKind, CatalogServiceId>
+> = {
+  baremetal: 'baremetal',
+  'virtual-machine': 'virtual-machine',
+  cluster: 'cluster',
+  models: 'models',
+}
+
+export function findTenantInstanceForExternalIpAttachment(
+  instances: readonly TenantInstance[],
+  meta: ExternalIpAttachmentMeta,
+): TenantInstance | null {
+  const serviceId = EXTERNAL_IP_ATTACHMENT_SERVICE_IDS[meta.kind]
+  if (!serviceId) {
+    return null
+  }
+
+  return (
+    instances.find(
+      (instance) =>
+        instance.name === meta.name && getTenantInstanceServiceId(instance) === serviceId,
+    ) ?? null
+  )
+}
+
+export function parseExternalIpAttachment(attachment: string): ExternalIpAttachmentMeta | null {
+  const trimmed = attachment.trim()
+  if (!trimmed || trimmed === 'Unassigned') {
+    return null
+  }
+
+  const separatorIndex = trimmed.indexOf(EXTERNAL_IP_ATTACHMENT_SEPARATOR)
+  if (separatorIndex === -1) {
+    return null
+  }
+
+  const prefix = trimmed.slice(0, separatorIndex)
+  const name = trimmed.slice(separatorIndex + EXTERNAL_IP_ATTACHMENT_SEPARATOR.length).trim()
+  const mapping = EXTERNAL_IP_ATTACHMENT_PREFIXES[prefix]
+
+  if (!mapping || !name) {
+    return null
+  }
+
+  return {
+    ...mapping,
+    name,
+  }
+}
+
+/** Parsed attachment metadata only when the IP is actively in use. */
+export function getExternalIpAttachmentMeta(ip: ExternalIp): ExternalIpAttachmentMeta | null {
   if (ip.status !== 'In use') {
     return null
   }
 
-  const attachment = ip.attachedTo.trim()
-  if (!attachment || attachment === 'Unassigned') {
+  return parseExternalIpAttachment(ip.attachedTo)
+}
+
+/** Returns workload attachment text only when the IP is actively in use. */
+export function getExternalIpAttachmentLabel(ip: ExternalIp): string | null {
+  const meta = getExternalIpAttachmentMeta(ip)
+  if (!meta) {
     return null
   }
 
-  return attachment
+  return `${meta.kindLabel}${EXTERNAL_IP_ATTACHMENT_SEPARATOR}${meta.name}`
 }

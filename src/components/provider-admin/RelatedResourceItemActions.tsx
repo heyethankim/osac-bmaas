@@ -12,6 +12,7 @@ type RelatedResourceItemActionsProps = {
   resourceName: string
   onEdit?: () => void
   onDelete?: () => void
+  deleteLabel?: string
   deleteDisabled?: boolean
   deleteDisabledReason?: string
 }
@@ -20,6 +21,7 @@ export function RelatedResourceItemActions({
   resourceName,
   onEdit,
   onDelete,
+  deleteLabel = 'Delete',
   deleteDisabled = false,
   deleteDisabledReason,
 }: RelatedResourceItemActionsProps) {
@@ -67,7 +69,7 @@ export function RelatedResourceItemActions({
             }
             onClick={onDelete}
           >
-            Delete
+            {deleteLabel}
           </DropdownItem>
         ) : null}
       </DropdownList>

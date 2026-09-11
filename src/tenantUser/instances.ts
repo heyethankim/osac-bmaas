@@ -992,6 +992,7 @@ export function withInstanceProjectIds(
 export const DEMO_TENANT_BARE_METAL_INSTANCE_ID = 'instance-demo-bm-01'
 export const DEMO_TENANT_BARE_METAL_INSTANCE_ID_02 = 'instance-demo-bm-02'
 export const DEMO_TENANT_BARE_METAL_INSTANCE_ID_03 = 'instance-demo-bm-03'
+export const DEMO_TENANT_BARE_METAL_INSTANCE_ID_04 = 'instance-demo-bm-04'
 
 /** Services detail demo: dense GPU host used in walkthroughs. */
 export const DEMO_MULTI_PROJECT_SHOWCASE_INSTANCE_NAME = 'bm-server-06'
@@ -1034,6 +1035,7 @@ export const DEMO_TENANT_CLUSTER_STATES: ReadonlyArray<{
 export const DEMO_TENANT_PROJECT_INSTANCE_IDS = [
   DEMO_TENANT_BARE_METAL_INSTANCE_ID,
   DEMO_TENANT_BARE_METAL_INSTANCE_ID_02,
+  DEMO_TENANT_BARE_METAL_INSTANCE_ID_04,
   DEMO_TENANT_CLUSTER_INSTANCE_ID,
   DEMO_TENANT_CLUSTER_INSTANCE_ID_02,
   DEMO_TENANT_CLUSTER_INSTANCE_ID_03,
@@ -1562,6 +1564,20 @@ export function createDemoTenantBareMetalInstance03(organizationName: string): T
     ram: '2 TB DDR5',
     hoursAgo: 12,
     catalogItemDisplayName: 'bare-metal-dense-gpu-node',
+  })
+}
+
+export function createDemoTenantBareMetalInstance04(organizationName: string): TenantInstance {
+  return createDemoTenantBareMetalInstanceVariant(organizationName, {
+    id: DEMO_TENANT_BARE_METAL_INSTANCE_ID_04,
+    name: 'bm-server-04',
+    status: 'running',
+    osImage: 'RHEL 9.4',
+    gpuLabel: 'CPU-only',
+    hardwareProfile: 'Dell PowerEdge R760',
+    cpu: 'Intel Xeon Silver 4416+ × 2',
+    ram: '256 GB DDR5',
+    hoursAgo: 8,
   })
 }
 

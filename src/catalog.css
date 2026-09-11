@@ -346,6 +346,25 @@
   text-decoration: none;
 }
 
+.catalog-data-table .catalog-table-name-link.pf-v6-c-button {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catalog-data-table .catalog-table-name-link.pf-v6-c-button > * {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .catalog-service-filter {
   flex-wrap: wrap;
 }

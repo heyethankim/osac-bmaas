@@ -47,18 +47,19 @@ import {
   getExternalIpPoolsAssignedToOrganization,
   type ExternalIpPool,
 } from '../../providerAdmin/externalIpPools'
+import { ExternalIpInventoryList } from '../../components/provider-admin/ExternalIpInventoryList'
 import {
-  getExternalIpAttachmentLabel,
-  getExternalIpStatusLabelColor,
   getUsedExternalIpAddresses,
   groupExternalIpsByPool,
+  groupExternalIpsByStatus,
   groupTenantExternalIpsByPool,
   type ExternalIp,
   type ExternalIpPoolGroup,
 } from '../../providerAdmin/externalIps'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import { getProviderRegisteredOrganizations, getProviderExternalIpPools } from '../../providerSetup/storage'
-import { getTenantExternalIps } from '../../tenantAdmin/networkInventoryStorage'
+import type { TenantInstance } from '../../tenantUser/instances'
+import { getTenantExternalIps, removeTenantExternalIp } from '../../tenantAdmin/networkInventoryStorage'
 import { TENANT_EXTERNAL_IPS_PAGE_LABEL } from '../../tenantAdmin/constants'
 import { PROVIDER_ADMIN_NETWORKING_NAV_LABEL } from '../../providerAdmin/constants'
 import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope'
@@ -216,6 +217,38 @@ function getPoolInUseCount(ips: readonly ExternalIp[]): number {
   return ips.filter((ip) => ip.status === 'In use').length
 }
 
+function formatPoolIpStatusSubtext(ips: readonly ExternalIp[]): string {
+  const { inUse, available } = groupExternalIpsByStatus(ips)
+
+  return `${inUse.length.toLocaleString()} in use · ${available.length.toLocaleString()} available`
+}
+
+function ExternalIpPoolListName({
+  pool,
+  ips,
+  onOpenDetails,
+}: {
+  pool: ExternalIpPool
+  ips: readonly ExternalIp[]
+  onOpenDetails: () => void
+}) {
+  return (
+    <div className="provider-admin-external-networks-hub__pool-name">
+      <Button
+        variant="link"
+        isInline
+        className="catalog-table-name-link"
+        onClick={onOpenDetails}
+      >
+        {pool.name}
+      </Button>
+      <span className="provider-admin-external-networks-hub__pool-meta">
+        {formatPoolIpStatusSubtext(ips)}
+      </span>
+    </div>
+  )
+}
+
 function getPoolCapacitySummary(
   pool: ExternalIpPool,
   ips: readonly ExternalIp[],
@@ -292,16 +325,14 @@ function getAutoExpandedPoolIds(
   searchValue: string,
 ): Set<string> {
   const expanded = new Set<string>()
-
   const query = searchValue.trim().toLowerCase()
 
-  for (const { pool, ips, visibleIps } of filteredGroups) {
-    if (visibleIps.length > 0) {
-      expanded.add(pool.id)
-    }
+  if (!query) {
+    return expanded
+  }
 
+  for (const { pool, ips } of filteredGroups) {
     if (
-      query &&
       ips.some(
         (ip) =>
           ip.address.toLowerCase().includes(query) ||
@@ -370,6 +401,8 @@ function renderTenantNestedIpGroupRow(
   pool: ExternalIpPool,
   visibleIps: readonly ExternalIp[],
   creatingIpId: string | null,
+  serviceInstances?: readonly TenantInstance[],
+  onNavigateToServiceInstance?: (instance: TenantInstance) => void,
 ) {
   return (
     <Tr
@@ -382,39 +415,13 @@ function renderTenantNestedIpGroupRow(
         className="provider-admin-external-networks-hub__nested-ips-cell"
       >
         <div className="provider-admin-external-networks-hub__nested-ips">
-          <ul className="provider-admin-external-networks-hub__nested-ips-list">
-            {visibleIps.map((ip) => {
-              const attachmentLabel = getExternalIpAttachmentLabel(ip)
-
-              return (
-              <li key={ip.id} className="provider-admin-external-networks-hub__nested-ip-item">
-                {creatingIpId === ip.id ? (
-                  <div className="provider-admin-external-networks-hub__creating-row">
-                    <Spinner size="md" aria-label={`Creating ${ip.address}`} />
-                    <span>Creating external IP…</span>
-                  </div>
-                ) : (
-                  <>
-                    <div className="provider-admin-external-networks-hub__ip-summary">
-                      <code>{ip.address}</code>
-                      <Label color={getExternalIpStatusLabelColor(ip.status)} isCompact>
-                        {ip.status}
-                      </Label>
-                    </div>
-                    {attachmentLabel ? (
-                      <Content
-                        component="p"
-                        className="provider-admin-external-networks-hub__nested-ip-meta"
-                      >
-                        {attachmentLabel}
-                      </Content>
-                    ) : null}
-                  </>
-                )}
-              </li>
-              )
-            })}
-          </ul>
+          <ExternalIpInventoryList
+            ips={visibleIps}
+            variant="nested-aligned"
+            creatingIpId={creatingIpId}
+            serviceInstances={serviceInstances}
+            onNavigateToServiceInstance={onNavigateToServiceInstance}
+          />
         </div>
       </Td>
       <Td isActionCell />
@@ -426,10 +433,14 @@ export function ProviderAdminExternalNetworksPage({
   tenantSlug,
   readOnly = false,
   scopeOrganization = null,
+  serviceInstances,
+  onNavigateToServiceInstance,
 }: {
   tenantSlug?: string
   readOnly?: boolean
   scopeOrganization?: RegisteredOrganization | null
+  serviceInstances?: readonly TenantInstance[]
+  onNavigateToServiceInstance?: (instance: TenantInstance) => void
 } = {}) {
   const inventory = useMemo(() => resolveNetworkInventoryScope(tenantSlug), [tenantSlug])
   const isTenantScope = inventory.mode === 'tenant'
@@ -447,13 +458,14 @@ export function ProviderAdminExternalNetworksPage({
   )
   const [searchValue, setSearchValue] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<ExternalNetworkStatusFilter>('all')
-  const [viewMode, setViewMode] = useState<ViewMode>(() => getNetworkingViewMode())
+  const [viewMode, setViewMode] = useState<ViewMode>(() => getNetworkingViewMode('list'))
   const [isCreateWizardOpen, setIsCreateWizardOpen] = useState(false)
   const [isCreateIpWizardOpen, setIsCreateIpWizardOpen] = useState(false)
   const [createIpWizardPoolId, setCreateIpWizardPoolId] = useState<string | null>(null)
   const [selectedPool, setSelectedPool] = useState<ExternalIpPool | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [poolPendingDelete, setPoolPendingDelete] = useState<ExternalIpPool | null>(null)
+  const [ipPendingRelease, setIpPendingRelease] = useState<ExternalIp | null>(null)
   const [expandedPoolIds, setExpandedPoolIds] = useState<Set<string>>(() => new Set())
   const [creatingPoolId, setCreatingPoolId] = useState<string | null>(null)
   const [creatingIpId, setCreatingIpId] = useState<string | null>(null)
@@ -585,17 +597,14 @@ export function ProviderAdminExternalNetworksPage({
   }, [creatingPoolId, filteredGroups, viewMode])
 
   useEffect(() => {
-    if (!isTenantScope) {
+    if (!isTenantScope || !searchValue.trim()) {
       return
     }
 
     const autoExpanded = getAutoExpandedPoolIds(filteredGroups, searchValue)
-    const poolsWithIps = filteredGroups
-      .filter(({ ips }) => ips.length > 0)
-      .map(({ pool }) => pool.id)
 
     setExpandedPoolIds((current) => {
-      const next = new Set([...current, ...autoExpanded, ...poolsWithIps])
+      const next = new Set([...current, ...autoExpanded])
       if (next.size === current.size && [...next].every((id) => current.has(id))) {
         return current
       }
@@ -647,6 +656,20 @@ export function ProviderAdminExternalNetworksPage({
 
   const closeDelete = () => {
     setPoolPendingDelete(null)
+  }
+
+  const closeRelease = () => {
+    setIpPendingRelease(null)
+  }
+
+  const handleConfirmRelease = () => {
+    if (!ipPendingRelease || !tenantSlug) {
+      return
+    }
+
+    removeTenantExternalIp(tenantSlug, ipPendingRelease.id)
+    refreshData()
+    closeRelease()
   }
 
   const handleConfirmDelete = () => {
@@ -753,6 +776,43 @@ export function ProviderAdminExternalNetworksPage({
     </Modal>
   )
 
+  const releaseConfirmModal = (
+    <Modal
+      variant={ModalVariant.small}
+      isOpen={ipPendingRelease !== null}
+      onClose={closeRelease}
+      aria-labelledby="release-external-ip-title"
+      aria-describedby="release-external-ip-description"
+    >
+      <ModalHeader
+        title="Release external IP?"
+        titleIconVariant="warning"
+        labelId="release-external-ip-title"
+      />
+      <ModalBody>
+        <Content component="p" id="release-external-ip-description">
+          {ipPendingRelease ? (
+            <>
+              <code>{ipPendingRelease.address}</code> will be returned to{' '}
+              <strong>{ipPendingRelease.poolName ?? selectedPool?.name ?? 'this pool'}</strong>. This
+              cannot be undone.
+            </>
+          ) : (
+            'This external IP will be returned to the pool. This cannot be undone.'
+          )}
+        </Content>
+      </ModalBody>
+      <ModalFooter>
+        <Button variant="danger" onClick={handleConfirmRelease}>
+          Release
+        </Button>
+        <Button variant="link" onClick={closeRelease}>
+          Cancel
+        </Button>
+      </ModalFooter>
+    </Modal>
+  )
+
   if (isCreateIpWizardOpen && canManageIps && tenantSlug) {
     return (
       <CreateExternalIpWizard
@@ -807,12 +867,18 @@ export function ProviderAdminExternalNetworksPage({
           onCreateExternalIp={
             canManageIps ? () => openCreateIpWizard(selectedPool.id) : undefined
           }
+          onReleaseExternalIp={
+            canManageIps ? (ip) => setIpPendingRelease(ip) : undefined
+          }
+          serviceInstances={serviceInstances}
+          onNavigateToServiceInstance={onNavigateToServiceInstance}
           onBack={closeDetails}
           readOnly={!canManagePools}
           scopeOrganization={isTenantScope ? scopeOrganization : null}
           onDelete={canManagePools ? () => openDelete(selectedPool) : undefined}
         />
         {deleteConfirmModal}
+        {releaseConfirmModal}
       </>
     )
   }
@@ -1025,6 +1091,8 @@ export function ProviderAdminExternalNetworksPage({
                           <ExternalIpPoolHubCardIps
                             ips={cardIps}
                             creatingIpId={creatingIpId}
+                            serviceInstances={serviceInstances}
+                            onNavigateToServiceInstance={onNavigateToServiceInstance}
                           />
                         ) : null}
                       </CardBody>
@@ -1131,15 +1199,12 @@ export function ProviderAdminExternalNetworksPage({
                                       </Button>
                                     ) : null}
                                   </div>
-                                  <div className="provider-admin-external-networks-hub__name-cell-content provider-admin-external-networks-hub__pool-name">
-                                    <Button
-                                      variant="link"
-                                      isInline
-                                      className="catalog-table-name-link"
-                                      onClick={() => openDetails(pool)}
-                                    >
-                                      {pool.name}
-                                    </Button>
+                                  <div className="provider-admin-external-networks-hub__name-cell-content">
+                                    <ExternalIpPoolListName
+                                      pool={pool}
+                                      ips={ips}
+                                      onOpenDetails={() => openDetails(pool)}
+                                    />
                                   </div>
                                 </div>
                               </div>
@@ -1198,6 +1263,8 @@ export function ProviderAdminExternalNetworksPage({
                           row.pool,
                           row.visibleIps,
                           creatingIpId,
+                          serviceInstances,
+                          onNavigateToServiceInstance,
                         )
                       }
 
@@ -1216,14 +1283,11 @@ export function ProviderAdminExternalNetworksPage({
                           className="provider-admin-external-networks-hub__pool-row"
                         >
                           <Td dataLabel="Name">
-                            <Button
-                              variant="link"
-                              isInline
-                              className="catalog-table-name-link"
-                              onClick={() => openDetails(pool)}
-                            >
-                              {pool.name}
-                            </Button>
+                            <ExternalIpPoolListName
+                              pool={pool}
+                              ips={ips}
+                              onOpenDetails={() => openDetails(pool)}
+                            />
                           </Td>
                           <Td dataLabel="Status">
                             <Label

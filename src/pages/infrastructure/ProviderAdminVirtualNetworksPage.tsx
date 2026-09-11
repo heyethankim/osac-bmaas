@@ -937,7 +937,7 @@ export function ProviderAdminVirtualNetworksPage({
           />
           <Table
             aria-label="Virtual networks"
-            className="catalog-data-table provider-admin-network-inventory__table"
+            className="catalog-data-table provider-admin-network-inventory__table provider-admin-network-inventory__table--virtual-networks"
           >
             <Thead>
               <Tr>
