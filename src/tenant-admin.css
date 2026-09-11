@@ -555,8 +555,11 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding-block-end: var(--pf-t--global--spacer--lg);
   box-sizing: border-box;
+}
+
+.tenant-admin-projects-teams--topology > .catalog-table-panel > .catalog-filter-results.pf-v6-c-content--p {
+  flex-shrink: 0;
 }
 
 .tenant-admin-projects-teams--topology .tenant-project-topology-panel {

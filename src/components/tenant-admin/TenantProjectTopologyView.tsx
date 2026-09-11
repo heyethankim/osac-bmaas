@@ -188,25 +188,25 @@ const ProjectNodeWithContextMenu = withContextMenu((element: Node) => {
 
 const TOPOLOGY_FIT_PADDING = 40
 const TOPOLOGY_MIN_HEIGHT = 360
-const TOPOLOGY_VIEWPORT_BOTTOM_GAP = 24
+const TOPOLOGY_VIEWPORT_BOTTOM_GAP = 16
+
+function getTopologyBottomGap(panel: HTMLDivElement): number {
+  let gap = TOPOLOGY_VIEWPORT_BOTTOM_GAP
+  const mainSection = panel.closest('.tenant-shell-page__main')
+
+  if (mainSection) {
+    gap += Number.parseFloat(getComputedStyle(mainSection).paddingBottom) || 0
+  }
+
+  return gap
+}
 
 function syncTopologyPanelHeight(panel: HTMLDivElement, controller: Visualization): void {
   const { top } = panel.getBoundingClientRect()
   const viewportHeight = window.visualViewport?.height ?? window.innerHeight
-  const container = panel.closest('.catalog-table-panel')
-  let bottomLimit = viewportHeight - TOPOLOGY_VIEWPORT_BOTTOM_GAP
-
-  if (container) {
-    const containerRect = container.getBoundingClientRect()
-    const paddingBottom = Number.parseFloat(getComputedStyle(container).paddingBottom) || 0
-    bottomLimit = Math.min(bottomLimit, containerRect.bottom - paddingBottom)
-  }
-
-  const available = bottomLimit - top
-  const height = Math.max(
-    Math.min(available, viewportHeight - TOPOLOGY_VIEWPORT_BOTTOM_GAP),
-    TOPOLOGY_MIN_HEIGHT,
-  )
+  const bottomGap = getTopologyBottomGap(panel)
+  const available = viewportHeight - top - bottomGap
+  const height = Math.max(Math.min(available, viewportHeight - bottomGap), TOPOLOGY_MIN_HEIGHT)
   panel.style.height = `${height}px`
   panel.style.minHeight = `${height}px`
   requestAnimationFrame(() => {
