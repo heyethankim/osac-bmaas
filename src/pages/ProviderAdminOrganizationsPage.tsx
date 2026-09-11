@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
@@ -25,6 +25,13 @@ import {
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
 import { CatalogFilterEmptyState } from '../components/catalog/CatalogFilterEmptyState'
 import { CatalogFilterResultsSummary } from '../components/catalog/CatalogFilterResultsSummary'
+import { ResourceCreatingGridCardBody } from '../components/catalog/ResourceCreatingGridCardBody'
+import { ResourceCreatingTableRow } from '../components/catalog/ResourceCreatingTableRow'
+import {
+  orderItemsForDisplay,
+  sortItemsByCreatedAtDesc,
+  useResourceCreateReveal,
+} from '../catalog/resourceCreateReveal'
 import { CatalogSpecRowsList } from '../components/catalog/CatalogSpecRowsList'
 import { ViewModeToggle } from '../components/catalog/CatalogViewToggle'
 import { getAdministrationViewMode, setAdministrationViewMode, type ViewMode } from '../catalog/viewMode'
@@ -141,15 +148,27 @@ export function ProviderAdminOrganizationsPage({
   )
   const [selectedSetup, setSelectedSetup] = useState<OrganizationSetupFilter>('all')
   const [viewMode, setViewMode] = useState<ViewMode>(() => getAdministrationViewMode())
-  const [registeringOrganizationId, setRegisteringOrganizationId] = useState<string | null>(null)
-  const registeringTimerRef = useRef<number | null>(null)
+  const organizationDisplayOrderRef = useRef<string[] | null>(null)
+  const {
+    creatingItemId: registeringOrganizationId,
+    creatingCardHeightPx,
+    cardGridRef,
+    beginCreateReveal: beginOrganizationCreateReveal,
+    measureCreatingCardHeight,
+  } = useResourceCreateReveal()
   const [activatingOrganizationId, setActivatingOrganizationId] = useState<string | null>(null)
   const activatingTimerRef = useRef<number | null>(null)
   const pendingActivationAfterIdpCloseRef = useRef<string | null>(null)
   const catalogDraft = getProviderCatalogDraft()
 
+  const orderedOrganizations = useMemo(
+    () =>
+      orderItemsForDisplay(organizations, organizationDisplayOrderRef, sortItemsByCreatedAtDesc),
+    [organizations],
+  )
+
   const filteredOrganizations = useMemo(() => {
-    return organizations.filter((organization) => {
+    return orderedOrganizations.filter((organization) => {
       if (selectedStatus !== 'all' && organization.status !== selectedStatus) {
         return false
       }
@@ -160,7 +179,11 @@ export function ProviderAdminOrganizationsPage({
 
       return organizationMatchesSearch(organization, searchValue)
     })
-  }, [organizations, searchValue, selectedSetup, selectedStatus])
+  }, [orderedOrganizations, searchValue, selectedSetup, selectedStatus])
+
+  useLayoutEffect(() => {
+    measureCreatingCardHeight(viewMode === 'grid', 'provider-admin-catalog-items__card--creating')
+  }, [filteredOrganizations, measureCreatingCardHeight, registeringOrganizationId, viewMode])
 
   const filterDescriptionParts = useMemo(
     () => buildOrganizationFilterParts(searchValue, selectedStatus, selectedSetup),
@@ -176,13 +199,6 @@ export function ProviderAdminOrganizationsPage({
   const handleViewModeChange = (mode: ViewMode) => {
     setViewMode(mode)
     setAdministrationViewMode(mode)
-  }
-
-  const clearRegisteringTimer = () => {
-    if (registeringTimerRef.current !== null) {
-      window.clearTimeout(registeringTimerRef.current)
-      registeringTimerRef.current = null
-    }
   }
 
   const clearActivatingTimer = () => {
@@ -202,7 +218,6 @@ export function ProviderAdminOrganizationsPage({
 
   useEffect(() => {
     return () => {
-      clearRegisteringTimer()
       clearActivatingTimer()
     }
   }, [])
@@ -361,18 +376,16 @@ export function ProviderAdminOrganizationsPage({
     }
     setOrganizations(getProviderRegisteredOrganizations())
     closeWizard()
+    setSearchValue('')
+    setSelectedStatus('all')
+    setSelectedSetup('all')
 
     if (peekProviderVipCatalogResumeIntent()) {
       onNavigate?.('catalog')
       return
     }
 
-    clearRegisteringTimer()
-    setRegisteringOrganizationId(organization.id)
-    registeringTimerRef.current = window.setTimeout(() => {
-      setRegisteringOrganizationId(null)
-      registeringTimerRef.current = null
-    }, 1500)
+    beginOrganizationCreateReveal(organization.id)
   }
 
   const handleSave = (organization: RegisteredOrganization) => {
@@ -610,7 +623,10 @@ export function ProviderAdminOrganizationsPage({
               filterParts={filterDescriptionParts}
               onClearFilters={clearAllFilters}
             />
-            <div className="catalog-card-grid catalog-card-grid--stable provider-admin-organizations__grid">
+            <div
+              ref={cardGridRef}
+              className="catalog-card-grid catalog-card-grid--stable provider-admin-organizations__grid"
+            >
               {filteredOrganizations.map((org) => {
                 const isRegistering = registeringOrganizationId === org.id
                 const isActivating = activatingOrganizationId === org.id
@@ -622,8 +638,22 @@ export function ProviderAdminOrganizationsPage({
                   <Card
                     key={org.id}
                     isCompact={false}
-                    className="provider-admin-catalog-items__card provider-admin-organizations__card"
+                    className={[
+                      'provider-admin-catalog-items__card',
+                      'provider-admin-organizations__card',
+                      isRegistering ? 'provider-admin-catalog-items__card--creating' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    style={
+                      isRegistering && creatingCardHeightPx
+                        ? { height: creatingCardHeightPx, minBlockSize: creatingCardHeightPx }
+                        : undefined
+                    }
                   >
+                    {isRegistering ? (
+                      <ResourceCreatingGridCardBody label="Registering tenant…" />
+                    ) : (
                     <CardBody>
                       <div className="provider-admin-organizations__card-main">
                       <div className="provider-admin-catalog-items__card-header">
@@ -716,6 +746,7 @@ export function ProviderAdminOrganizationsPage({
                         </div>
                       ) : null}
                     </CardBody>
+                    )}
                   </Card>
                 )
               })}
@@ -750,6 +781,19 @@ export function ProviderAdminOrganizationsPage({
                 const isRegistering = registeringOrganizationId === org.id
                 const isActivating = activatingOrganizationId === org.id
                 const isStatusPending = isRegistering || isActivating
+
+                if (isRegistering) {
+                  return (
+                    <ResourceCreatingTableRow
+                      key={org.id}
+                      itemId={org.id}
+                      label="Registering tenant…"
+                      colSpan={6}
+                      className="provider-admin-organizations__row--registering catalog-resource-creating-row"
+                    />
+                  )
+                }
+
                 const setupSignal = isStatusPending ? null : getOrganizationSetupSignal(org)
                 const nextAction = isStatusPending ? null : getOrganizationSetupNextAction(org)
 
@@ -757,9 +801,7 @@ export function ProviderAdminOrganizationsPage({
                   <Tr
                     key={org.id}
                     className={
-                      isStatusPending
-                        ? 'provider-admin-organizations__row--registering'
-                        : undefined
+                      isActivating ? 'provider-admin-organizations__row--registering' : undefined
                     }
                   >
                     <Td modifier="wrap" dataLabel="Tenant">
@@ -790,15 +832,6 @@ export function ProviderAdminOrganizationsPage({
                             {org.status}
                           </Label>
                         )}
-                        {isRegistering ? (
-                          <span className="provider-admin-organizations__registering-status">
-                            <Spinner
-                              size="sm"
-                              aria-label={`Registering ${org.name}`}
-                            />
-                            <span className="pf-v6-screen-reader">Registering tenant</span>
-                          </span>
-                        ) : null}
                         {setupSignal && nextAction ? (
                           <Button
                             variant="link"

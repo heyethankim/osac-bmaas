@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowRightIcon } from '@patternfly/react-icons/dist/esm/icons/arrow-right-icon'
 import { GlobeIcon } from '@patternfly/react-icons/dist/esm/icons/globe-icon'
+import { RhUiConnectedIcon } from '@patternfly/react-icons/dist/esm/icons/rh-ui-connected-icon'
 import { MinusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/minus-circle-icon'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
@@ -780,7 +781,7 @@ export function CreateExternalIpPoolWizard({
       return {
         nextButtonText: (
           <span className="provider-admin-network-inventory__wizard-footer-label">
-            <GlobeIcon aria-hidden />
+            {isProviderFlow ? <RhUiConnectedIcon aria-hidden /> : <GlobeIcon aria-hidden />}
             <span>{isEditMode ? 'Save changes' : 'Create external IP pool'}</span>
             <ArrowRightIcon aria-hidden />
           </span>
