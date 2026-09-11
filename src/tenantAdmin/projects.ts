@@ -761,8 +761,34 @@ export function buildTenantProjectTreeRows(
   selectedFilter: ProjectListFilter,
   instances: readonly TenantInstance[],
   expandedProjectIds: ReadonlySet<string>,
+  displayOrder: readonly string[] | null = null,
 ): TenantProjectTreeRow[] {
   const rows: TenantProjectTreeRow[] = []
+
+  const compareSiblingProjects = (left: TenantProject, right: TenantProject) => {
+    if (isTenantRootProject(left)) {
+      return -1
+    }
+    if (isTenantRootProject(right)) {
+      return 1
+    }
+
+    if (displayOrder?.length) {
+      const leftIndex = displayOrder.indexOf(left.id)
+      const rightIndex = displayOrder.indexOf(right.id)
+      if (leftIndex !== -1 && rightIndex !== -1 && leftIndex !== rightIndex) {
+        return leftIndex - rightIndex
+      }
+      if (leftIndex !== -1) {
+        return -1
+      }
+      if (rightIndex !== -1) {
+        return 1
+      }
+    }
+
+    return left.name.localeCompare(right.name)
+  }
 
   const appendRows = (parentId: string | null, depth: number) => {
     const siblings = projects
@@ -776,15 +802,7 @@ export function buildTenantProjectTreeRows(
           instances,
         ),
       )
-      .sort((left, right) => {
-        if (isTenantRootProject(left)) {
-          return -1
-        }
-        if (isTenantRootProject(right)) {
-          return 1
-        }
-        return left.name.localeCompare(right.name)
-      })
+      .sort(compareSiblingProjects)
 
     for (const project of siblings) {
       const children = getChildTenantProjects(projects, project.id)
@@ -1056,19 +1074,20 @@ export const TENANT_PROJECTS_TEAMS_DEMO = {
   nestedProjectsTitle: 'Nested projects',
   nestedProjectsEmpty: 'No nested projects yet.',
   nestedBadgeLabel: 'Nested',
-  rootBadgeLabel: 'Root',
+  rootMetaLabel: 'Organization root',
   rootProjectDeleteDeniedTooltip: 'The Root project cannot be deleted.',
   rootProjectEditDeniedTooltip: 'Root project settings are managed by the platform.',
   inheritedMembersHelp:
-    'Members inherited from parent projects keep access here. Add project-specific managers or viewers below.',
+    'Members inherited from the parent project keep access. Add project-specific members on the details page after creation.',
   detailsFallbackDescription: 'Project workspace for scoped catalog access and team collaboration.',
   detailsLede: 'Project details for quota, services, members, and nested workspaces.',
-  servicesEmpty:
-    'No services in this project yet. Instances are assigned to a project when launched from the catalog.',
+  servicesEmpty: 'No services yet. Launch from the catalog to assign instances here.',
   membersEmpty: 'No project members yet. Add someone to grant project access.',
   addMemberLabel: 'Add',
   removeMemberLabel: 'Remove',
   postCreateMembersPromptTitle: 'Project created',
+  postCreateInheritedMembersPromptBody:
+    'Members inherited from the parent project keep access. Add project-specific members on the details page after creation.',
   postCreateMembersPromptBody:
     'Invite team members to grant scoped access to this project.',
   postCreateMembersPromptAction: 'Add member',

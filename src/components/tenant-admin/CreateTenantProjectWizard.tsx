@@ -665,7 +665,7 @@ export function CreateTenantProjectWizard({
     <Wizard
       key={editingProject?.id ?? 'create-tenant-project-wizard'}
       className="tenant-admin-projects-teams__wizard"
-      height={isPage ? '100%' : '40rem'}
+      height={isPage ? '100%' : '43rem'}
       isPlain={isPage}
       onClose={isPage ? undefined : requestClose}
       header={

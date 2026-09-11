@@ -24,6 +24,7 @@
 
 .tenant-shell-page__main.osac-page-main-section:has(.tenant-admin-projects-teams--topology) {
   overflow: hidden;
+  padding-block-end: var(--pf-t--global--spacer--lg);
 }
 
 .osac-shell-sidebar-inner {

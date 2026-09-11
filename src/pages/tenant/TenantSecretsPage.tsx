@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
   Button,
@@ -20,6 +20,13 @@ import {
 import { Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table'
 import { CatalogFilterEmptyState } from '../../components/catalog/CatalogFilterEmptyState'
 import { CatalogFilterResultsSummary } from '../../components/catalog/CatalogFilterResultsSummary'
+import { ResourceCreatingGridCardBody } from '../../components/catalog/ResourceCreatingGridCardBody'
+import { ResourceCreatingTableRow } from '../../components/catalog/ResourceCreatingTableRow'
+import {
+  orderItemsForDisplay,
+  sortItemsByCreatedAtDesc,
+  useResourceCreateReveal,
+} from '../../catalog/resourceCreateReveal'
 import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
 import { renderInventoryCardIcon, SECRET_CARD_ICON } from '../../components/catalog/inventoryCardIcons'
 import { ViewModeToggle } from '../../components/catalog/CatalogViewToggle'
@@ -90,15 +97,32 @@ export function TenantSecretsPage({
   const [selectedSecretId, setSelectedSecretId] = useState<string | null>(null)
   const [searchValue, setSearchValue] = useState('')
   const [viewMode, setViewMode] = useState<ViewMode>(() => getSecretsViewMode())
+  const secretDisplayOrderRef = useRef<string[] | null>(null)
+  const {
+    creatingItemId: creatingSecretId,
+    creatingCardHeightPx,
+    cardGridRef,
+    beginCreateReveal: beginSecretCreateReveal,
+    measureCreatingCardHeight,
+  } = useResourceCreateReveal()
+
+  const orderedSecrets = useMemo(
+    () => orderItemsForDisplay(secrets, secretDisplayOrderRef, sortItemsByCreatedAtDesc),
+    [secrets],
+  )
 
   const filteredSecrets = useMemo(() => {
     const query = searchValue.trim().toLowerCase()
     if (!query) {
-      return secrets
+      return orderedSecrets
     }
 
-    return secrets.filter((secret) => getSecretSearchHaystack(secret).includes(query))
-  }, [searchValue, secrets])
+    return orderedSecrets.filter((secret) => getSecretSearchHaystack(secret).includes(query))
+  }, [orderedSecrets, searchValue])
+
+  useLayoutEffect(() => {
+    measureCreatingCardHeight(viewMode === 'grid', 'tenant-secrets__card--creating')
+  }, [filteredSecrets, measureCreatingCardHeight, viewMode])
 
   const filterDescriptionParts = useMemo(
     () => buildTenantSecretFilterParts(searchValue),
@@ -199,9 +223,11 @@ export function TenantSecretsPage({
             setIsCreating(false)
             setEditingSecret(null)
           }}
-          onCreated={() => {
+          onCreated={(secret) => {
             refreshSecrets()
             setIsCreating(false)
+            setSearchValue('')
+            beginSecretCreateReveal(secret.id)
           }}
           onUpdated={() => {
             refreshSecrets()
@@ -305,9 +331,32 @@ export function TenantSecretsPage({
                 filterParts={filterDescriptionParts}
                 onClearFilters={hasActiveFilters ? clearAllFilters : undefined}
               />
-              <div className="catalog-card-grid catalog-card-grid--stable tenant-secrets__grid">
-                {filteredSecrets.map((secret) => (
-                  <Card key={secret.id} isCompact={false} className="tenant-secrets__card">
+              <div
+                ref={cardGridRef}
+                className="catalog-card-grid catalog-card-grid--stable tenant-secrets__grid"
+              >
+                {filteredSecrets.map((secret) => {
+                  const isCreating = creatingSecretId === secret.id
+
+                  return (
+                  <Card
+                    key={secret.id}
+                    isCompact={false}
+                    className={[
+                      'tenant-secrets__card',
+                      isCreating ? 'tenant-secrets__card--creating provider-admin-catalog-items__card--creating' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    style={
+                      isCreating && creatingCardHeightPx
+                        ? { height: creatingCardHeightPx, minBlockSize: creatingCardHeightPx }
+                        : undefined
+                    }
+                  >
+                    {isCreating ? (
+                      <ResourceCreatingGridCardBody label="Creating secret…" />
+                    ) : (
                     <CardBody>
                       <div className="tenant-secrets__card-header">
                         <span className="tenant-secrets__card-icon" aria-hidden>
@@ -343,8 +392,10 @@ export function TenantSecretsPage({
                         valueClassName="tenant-secrets__spec-value"
                       />
                     </CardBody>
+                    )}
                   </Card>
-                ))}
+                  )
+                })}
               </div>
             </>
           ) : (
@@ -369,7 +420,19 @@ export function TenantSecretsPage({
                   </Tr>
                 </Thead>
                 <Tbody>
-                  {filteredSecrets.map((secret) => (
+                  {filteredSecrets.map((secret) => {
+                    if (creatingSecretId === secret.id) {
+                      return (
+                        <ResourceCreatingTableRow
+                          key={secret.id}
+                          itemId={secret.id}
+                          label="Creating secret…"
+                          colSpan={readOnly ? 3 : 4}
+                        />
+                      )
+                    }
+
+                    return (
                     <Tr key={secret.id}>
                       <Td dataLabel="Name">
                         <Content component="p" className="tenant-secrets__primary-cell">
@@ -394,7 +457,8 @@ export function TenantSecretsPage({
                         </Td>
                       ) : null}
                     </Tr>
-                  ))}
+                    )
+                  })}
                 </Tbody>
               </Table>
             </div>

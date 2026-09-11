@@ -37,6 +37,7 @@ import type {
   WithDragNodeProps,
   WithSelectionProps,
 } from '@patternfly/react-topology'
+import { Spinner } from '@patternfly/react-core'
 import { FolderOpenIcon } from '@patternfly/react-icons/dist/esm/icons/folder-open-icon'
 import { OutlinedFolderIcon } from '@patternfly/react-icons/dist/esm/icons/outlined-folder-icon'
 import type { TenantInstance } from '../../tenantUser/instances'
@@ -56,6 +57,7 @@ type TenantProjectTopologyViewProps = {
   getProjectActions: (project: TenantProject) => TenantProjectActionItem[]
   showActions?: boolean
   selectedProjectId?: string | null
+  creatingProjectId?: string | null
   onSelectProject?: (project: TenantProject | null) => void
   sideBar?: ReactElement | null
 }
@@ -63,6 +65,7 @@ type TenantProjectTopologyViewProps = {
 type ProjectNodeData = {
   projectId: string
   isRoot?: boolean
+  isCreating?: boolean
   isHighlighted: boolean
   secondaryLabel: string
   showActionsMenu: boolean
@@ -116,7 +119,14 @@ const ProjectTopologyNode = observer(
   }: ProjectTopologyNodeProps) => {
     const data = element.getData() as ProjectNodeData | undefined
     const showActionsMenu = data?.showActionsMenu === true
+    const isCreating = data?.isCreating === true
     const NodeIcon = data?.isRoot ? FolderOpenIcon : OutlinedFolderIcon
+    const nodeClassName = [
+      data?.isHighlighted === false ? 'tenant-project-topology-node--dimmed' : null,
+      isCreating ? 'tenant-project-topology-node--creating' : null,
+    ]
+      .filter(Boolean)
+      .join(' ')
 
     return (
       <DefaultNode
@@ -131,16 +141,29 @@ const ProjectTopologyNode = observer(
         secondaryLabel={showActionsMenu ? undefined : data?.secondaryLabel}
         truncateLength={showActionsMenu ? 22 : undefined}
         labelClassName="tenant-project-topology-node__label"
-        className={data?.isHighlighted === false ? 'tenant-project-topology-node--dimmed' : undefined}
+        className={nodeClassName || undefined}
       >
-        <g transform={`translate(${TOPOLOGY_NODE_ICON_OFFSET}, ${TOPOLOGY_NODE_ICON_OFFSET})`}>
-          <NodeIcon
-            aria-hidden
-            style={{ color: TOPOLOGY_NODE_ICON_COLOR }}
+        {isCreating ? (
+          <foreignObject
+            x={TOPOLOGY_NODE_ICON_OFFSET}
+            y={TOPOLOGY_NODE_ICON_OFFSET}
             width={TOPOLOGY_NODE_ICON_SIZE}
             height={TOPOLOGY_NODE_ICON_SIZE}
-          />
-        </g>
+          >
+            <div className="tenant-project-topology-node__creating-spinner">
+              <Spinner size="md" aria-label="Creating project" />
+            </div>
+          </foreignObject>
+        ) : (
+          <g transform={`translate(${TOPOLOGY_NODE_ICON_OFFSET}, ${TOPOLOGY_NODE_ICON_OFFSET})`}>
+            <NodeIcon
+              aria-hidden
+              style={{ color: TOPOLOGY_NODE_ICON_COLOR }}
+              width={TOPOLOGY_NODE_ICON_SIZE}
+              height={TOPOLOGY_NODE_ICON_SIZE}
+            />
+          </g>
+        )}
       </DefaultNode>
     )
   },
@@ -165,13 +188,25 @@ const ProjectNodeWithContextMenu = withContextMenu((element: Node) => {
 
 const TOPOLOGY_FIT_PADDING = 40
 const TOPOLOGY_MIN_HEIGHT = 360
-const TOPOLOGY_VIEWPORT_BOTTOM_GAP = 16
+const TOPOLOGY_VIEWPORT_BOTTOM_GAP = 24
 
 function syncTopologyPanelHeight(panel: HTMLDivElement, controller: Visualization): void {
   const { top } = panel.getBoundingClientRect()
   const viewportHeight = window.visualViewport?.height ?? window.innerHeight
-  const available = viewportHeight - top - TOPOLOGY_VIEWPORT_BOTTOM_GAP
-  const height = Math.max(Math.min(available, viewportHeight - TOPOLOGY_VIEWPORT_BOTTOM_GAP), TOPOLOGY_MIN_HEIGHT)
+  const container = panel.closest('.catalog-table-panel')
+  let bottomLimit = viewportHeight - TOPOLOGY_VIEWPORT_BOTTOM_GAP
+
+  if (container) {
+    const containerRect = container.getBoundingClientRect()
+    const paddingBottom = Number.parseFloat(getComputedStyle(container).paddingBottom) || 0
+    bottomLimit = Math.min(bottomLimit, containerRect.bottom - paddingBottom)
+  }
+
+  const available = bottomLimit - top
+  const height = Math.max(
+    Math.min(available, viewportHeight - TOPOLOGY_VIEWPORT_BOTTOM_GAP),
+    TOPOLOGY_MIN_HEIGHT,
+  )
   panel.style.height = `${height}px`
   panel.style.minHeight = `${height}px`
   requestAnimationFrame(() => {
@@ -240,6 +275,7 @@ export function TenantProjectTopologyView({
   getProjectActions,
   showActions = false,
   selectedProjectId = null,
+  creatingProjectId = null,
   onSelectProject,
   sideBar = null,
 }: TenantProjectTopologyViewProps) {
@@ -265,8 +301,9 @@ export function TenantProjectTopologyView({
         highlightedProjectIds,
         instances,
         showActions,
+        creatingProjectId,
       ),
-    [projectCatalog, visibleProjectIds, highlightedProjectIds, instances, showActions],
+    [projectCatalog, visibleProjectIds, highlightedProjectIds, instances, showActions, creatingProjectId],
   )
 
   const controller = useMemo(() => {
@@ -322,6 +359,21 @@ export function TenantProjectTopologyView({
       state.selectedIds = nextIds
     })()
   }, [controller, selectedProjectId])
+
+  useEffect(() => {
+    if (!creatingProjectId || !model.nodes?.length) {
+      return
+    }
+
+    const fitSelectedNode = action(() => {
+      controller.getGraph()?.fit(TOPOLOGY_FIT_PADDING)
+    })
+
+    const timer = window.setTimeout(fitSelectedNode, 120)
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [controller, creatingProjectId, model])
 
   const isSideBarOpen = Boolean(sideBar && selectedProjectId)
 

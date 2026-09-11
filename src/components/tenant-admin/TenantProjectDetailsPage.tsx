@@ -53,7 +53,7 @@ import {
   type TenantProject,
   type TenantProjectMember,
 } from '../../tenantAdmin/projects'
-import { normalizeMemberEmail } from '../../tenantUser/projects'
+import { normalizeMemberEmail, resolveTenantUserDisplayName } from '../../tenantUser/projects'
 import {
   formatTenantInstanceCreatedAt,
   getTenantInstanceServiceId,
@@ -147,12 +147,14 @@ function ProjectMemberRowActions({
 function ProjectMemberPersonRow({
   member,
   parentProject,
+  projects,
   onRequestRemove,
   currentUserEmail,
   readOnly = false,
 }: {
   member: EffectiveTenantProjectMember
   parentProject: TenantProject | null
+  projects: readonly TenantProject[]
   onRequestRemove: (member: TenantProjectMember) => void
   currentUserEmail?: string
   readOnly?: boolean
@@ -160,6 +162,10 @@ function ProjectMemberPersonRow({
   const isCurrentUser =
     currentUserEmail !== undefined &&
     normalizeMemberEmail(member.email) === normalizeMemberEmail(currentUserEmail)
+  const displayName =
+    normalizeMemberEmail(member.name) !== normalizeMemberEmail(member.email)
+      ? member.name
+      : resolveTenantUserDisplayName(projects, member.email)
 
   return (
     <li
@@ -170,7 +176,7 @@ function ProjectMemberPersonRow({
       <div className="provider-admin-organizations__account-person-main">
         <div className="provider-admin-organizations__account-person-text">
           <Content component="p" className="provider-admin-organizations__primary-cell">
-            {member.name}
+            {displayName}
           </Content>
           <Content component="p" className="provider-admin-organizations__secondary-cell">
             {member.email}
@@ -380,7 +386,11 @@ export function TenantProjectDetailsPage({
               ) : undefined
             }
           >
-            {TENANT_PROJECTS_TEAMS_DEMO.postCreateMembersPromptBody}{' '}
+            {(
+              effectiveMembers.some((member) => member.inherited)
+                ? TENANT_PROJECTS_TEAMS_DEMO.postCreateInheritedMembersPromptBody
+                : TENANT_PROJECTS_TEAMS_DEMO.postCreateMembersPromptBody
+            )}{' '}
             <AlertActionLink
               component="button"
               onClick={() => {
@@ -621,6 +631,7 @@ export function TenantProjectDetailsPage({
                         key={member.id}
                         member={member}
                         parentProject={parentProject}
+                        projects={projects}
                         onRequestRemove={setMemberPendingRemove}
                         currentUserEmail={currentUserEmail}
                         readOnly={readOnly}

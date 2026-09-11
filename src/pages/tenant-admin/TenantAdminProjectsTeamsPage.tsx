@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import {
   Button,
   Content,
@@ -27,6 +27,8 @@ import { CreateTenantProjectWizard } from '../../components/tenant-admin/CreateT
 import { TenantProjectDetailsPage } from '../../components/tenant-admin/TenantProjectDetailsPage'
 import { CatalogFilterEmptyState } from '../../components/catalog/CatalogFilterEmptyState'
 import { CatalogFilterResultsSummary } from '../../components/catalog/CatalogFilterResultsSummary'
+import { ResourceCreatingTableRow } from '../../components/catalog/ResourceCreatingTableRow'
+import { orderItemsForDisplay, useResourceCreateReveal } from '../../catalog/resourceCreateReveal'
 import { ProjectsViewToggle } from '../../components/tenant-admin/ProjectsViewToggle'
 import { TenantProjectTopologyView } from '../../components/tenant-admin/TenantProjectTopologyView'
 import { DEFAULT_PROJECTS_VIEW_MODE, type ProjectsViewMode } from '../../catalog/viewMode'
@@ -65,7 +67,7 @@ import {
   updateTenantProject,
 } from '../../tenantAdmin/storage'
 import type { TenantInstance } from '../../tenantUser/instances'
-import { buildTenantUserProjectTreeRows, getProjectMembershipForEmail, isTenantUserProjectManager, normalizeMemberEmail } from '../../tenantUser/projects'
+import { buildTenantUserProjectTreeRows, getProjectMembershipForEmail, isTenantUserProjectManager, normalizeMemberEmail, resolveTenantUserDisplayName } from '../../tenantUser/projects'
 import { getProjectTopologyVisibleIds } from '../../tenantAdmin/projectTopology'
 
 type TenantAdminProjectsTeamsPageProps = {
@@ -113,13 +115,21 @@ export function TenantAdminProjectsTeamsPage({
   const [expandedProjectIds, setExpandedProjectIds] = useState<Set<string>>(() => new Set())
   const [viewMode, setViewMode] = useState<ProjectsViewMode>(DEFAULT_PROJECTS_VIEW_MODE)
   const [sidebarProject, setSidebarProject] = useState<TenantProject | null>(null)
+  const projectDisplayOrderRef = useRef<string[] | null>(null)
+  const { creatingItemId: creatingProjectId, beginCreateReveal: beginProjectCreateReveal } =
+    useResourceCreateReveal()
 
   const projectCatalog = allProjects ?? projects
 
-  const sortedProjects = useMemo(
-    () => [...projects].sort((left, right) => left.name.localeCompare(right.name)),
+  const orderedProjects = useMemo(
+    () =>
+      orderItemsForDisplay(projects, projectDisplayOrderRef, (added) =>
+        [...added].sort((left, right) => left.name.localeCompare(right.name)),
+      ),
     [projects],
   )
+
+  const sortedProjects = orderedProjects
 
   const filteredProjects = useMemo(
     () =>
@@ -141,6 +151,7 @@ export function TenantAdminProjectsTeamsPage({
         selectedProjectFilter,
         instances,
         expandedProjectIds,
+        projectDisplayOrderRef.current,
       )
     }
 
@@ -398,7 +409,7 @@ export function TenantAdminProjectsTeamsPage({
             ...project.members,
             {
               id: generateProjectWizardMemberId(),
-              name: inheritedMembership?.name ?? currentUserEmail,
+              name: inheritedMembership?.name ?? resolveTenantUserDisplayName(projectCatalog, currentUserEmail),
               email: currentUserEmail,
               role: 'manager',
             },
@@ -413,14 +424,28 @@ export function TenantAdminProjectsTeamsPage({
     setEditingProject(null)
     setNestedCreateParent(null)
     setReturnToProjectAfterWizard(null)
-    setSelectedProject(nextProject)
+    setSearchValue('')
+    setSelectedProjectFilter('all')
+    setSelectedProject(null)
+    setIsDetailsOpen(false)
     if (viewMode === 'topology') {
       setSidebarProject(nextProject)
-      setIsDetailsOpen(false)
     } else {
-      setIsDetailsOpen(true)
+      setSidebarProject(null)
     }
     setPromptAddMembersProjectId(nextProject.id)
+    setExpandedProjectIds((current) => {
+      const next = new Set(current)
+      const root = getTenantRootProject(projectCatalog)
+      if (root) {
+        next.add(root.id)
+      }
+      if (nextProject.parentProjectId) {
+        next.add(nextProject.parentProjectId)
+      }
+      return next
+    })
+    beginProjectCreateReveal(nextProject.id)
   }
 
   const handleUpdateProject = (project: TenantProject) => {
@@ -714,6 +739,7 @@ export function TenantAdminProjectsTeamsPage({
                 getProjectActions={getProjectRowActions}
                 showActions={showActionsColumn}
                 selectedProjectId={sidebarProject?.id ?? null}
+                creatingProjectId={creatingProjectId}
                 onSelectProject={setSidebarProject}
                 sideBar={
                   sidebarProject ? (
@@ -756,6 +782,18 @@ export function TenantAdminProjectsTeamsPage({
             <Tbody>
               {treeRows.map(({ project, depth, hasChildren, isExpanded }) => {
                 const isRootProject = isTenantRootProject(project)
+
+                if (creatingProjectId === project.id) {
+                  return (
+                    <ResourceCreatingTableRow
+                      key={project.id}
+                      itemId={project.id}
+                      label="Creating project…"
+                      colSpan={showActionsColumn ? 6 : 5}
+                      className="tenant-admin-projects-teams__row--creating catalog-resource-creating-row"
+                    />
+                  )
+                }
 
                 return (
                   <Tr key={project.id}>
@@ -808,15 +846,7 @@ export function TenantAdminProjectsTeamsPage({
                               >
                                 {project.name}
                               </Button>
-                              {isRootProject ? (
-                                <Label
-                                  color="blue"
-                                  isCompact
-                                  className="tenant-admin-projects-teams__root-badge"
-                                >
-                                  {TENANT_PROJECTS_TEAMS_DEMO.rootBadgeLabel}
-                                </Label>
-                              ) : isNestedTenantProject(projectCatalog, project) ? (
+                              {isRootProject ? null : isNestedTenantProject(projectCatalog, project) ? (
                                 <Label
                                   color="grey"
                                   isCompact
@@ -830,7 +860,9 @@ export function TenantAdminProjectsTeamsPage({
                               component="p"
                               className="tenant-admin-projects-teams__meta-cell"
                             >
-                              {project.id}
+                              {isRootProject
+                                ? TENANT_PROJECTS_TEAMS_DEMO.rootMetaLabel
+                                : project.id}
                             </Content>
                           </div>
                         </div>

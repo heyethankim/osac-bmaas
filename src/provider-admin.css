@@ -3409,8 +3409,8 @@ a.provider-admin-network-inventory__related-link:hover {
 
 .provider-admin-network-inventory__tenant-cards.provider-setup-template__card-group {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 19rem);
-  gap: var(--pf-t--global--spacer--sm);
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  gap: var(--pf-t--global--spacer--md);
   align-items: stretch;
   margin-block-start: var(--pf-t--global--spacer--sm);
 }
@@ -3418,20 +3418,32 @@ a.provider-admin-network-inventory__related-link:hover {
 .provider-admin-network-inventory__tenant-card.provider-setup-template__select-card {
   width: 100%;
   height: 100%;
-  min-height: 4.75rem;
+  min-height: 6.5rem;
+  padding: var(--pf-t--global--spacer--lg);
+}
+
+.provider-admin-network-inventory__tenant-card
+  .provider-setup-template__select-card-selected-badge.pf-v6-c-label {
+  top: var(--pf-t--global--spacer--md);
+  right: var(--pf-t--global--spacer--md);
 }
 
 .provider-admin-network-inventory__tenant-card
   .provider-setup-template__select-card-title.pf-v6-c-title {
-  margin-block-end: var(--pf-t--global--spacer--xs);
-  padding-inline-end: 4.5rem;
+  margin-block-end: var(--pf-t--global--spacer--sm);
+  padding-inline-end: 4.75rem;
   white-space: nowrap;
 }
 
 .provider-admin-network-inventory__tenant-card
   .provider-setup-template__select-card-meta.pf-v6-c-content--p {
-  margin-block-end: 0;
+  margin-block-end: var(--pf-t--global--spacer--xs);
   white-space: nowrap;
+}
+
+.provider-admin-network-inventory__tenant-card
+  .provider-setup-template__select-card-detail.pf-v6-c-content--p {
+  margin-block-start: var(--pf-t--global--spacer--xs);
 }
 
 .provider-admin-network-inventory__wizard-footer-label {
@@ -4646,6 +4658,19 @@ a.provider-admin-network-inventory__related-link:hover {
   display: flex;
   flex-direction: column;
   padding-block-end: 0;
+}
+
+.catalog-resource-creating-row .pf-v6-c-table__td {
+  padding-block: var(--pf-t--global--spacer--xl);
+}
+
+.catalog-resource-creating-row__content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pf-t--global--spacer--md);
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
 }
 
 .provider-admin-catalog-items__card--creating {

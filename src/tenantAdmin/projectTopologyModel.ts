@@ -55,6 +55,7 @@ export function buildProjectTopologyModel(
   highlightedIds: ReadonlySet<string>,
   instances: readonly TenantInstance[],
   showActionsMenu = false,
+  creatingProjectId: string | null = null,
 ): Model {
   const nodes: NodeModel[] = []
   const edges: EdgeModel[] = []
@@ -66,6 +67,7 @@ export function buildProjectTopologyModel(
     }
 
     const isRoot = isTenantRootProject(project)
+    const isCreating = creatingProjectId === project.id
     nodes.push({
       id: project.id,
       type: 'node',
@@ -77,9 +79,12 @@ export function buildProjectTopologyModel(
       data: {
         projectId: project.id,
         isRoot,
+        isCreating,
         isHighlighted: highlightedIds.has(project.id),
-        secondaryLabel: `${getServicesSummary(instances, project)} · ${getTenantProjectMemberCountLabel(projectCatalog, project)}`,
-        showActionsMenu,
+        secondaryLabel: isCreating
+          ? 'Creating project…'
+          : `${getServicesSummary(instances, project)} · ${getTenantProjectMemberCountLabel(projectCatalog, project)}`,
+        showActionsMenu: showActionsMenu && !isCreating,
       },
     })
 

@@ -376,5 +376,5 @@ export function setTenantExternalIps(slug: string, ips: ExternalIp[]): void {
 }
 
 export function addTenantExternalIp(slug: string, ip: ExternalIp): void {
-  setTenantExternalIps(slug, [...getTenantExternalIps(slug), ip])
+  setTenantExternalIps(slug, [ip, ...getTenantExternalIps(slug)])
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
   Button,
@@ -26,6 +26,13 @@ import { VirtualNetworkDetailsPage } from '../../components/provider-admin/Virtu
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
 import { CatalogFilterEmptyState } from '../../components/catalog/CatalogFilterEmptyState'
 import { CatalogFilterResultsSummary } from '../../components/catalog/CatalogFilterResultsSummary'
+import { ResourceCreatingGridCardBody } from '../../components/catalog/ResourceCreatingGridCardBody'
+import { ResourceCreatingTableRow } from '../../components/catalog/ResourceCreatingTableRow'
+import {
+  orderItemsForDisplay,
+  sortItemsByCreatedAtDesc,
+  useResourceCreateReveal,
+} from '../../catalog/resourceCreateReveal'
 import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
 import { renderInventoryCardIcon, VIRTUAL_NETWORK_CARD_ICON } from '../../components/catalog/inventoryCardIcons'
 import { ViewModeToggle } from '../../components/catalog/CatalogViewToggle'
@@ -151,6 +158,14 @@ export function ProviderAdminVirtualNetworksPage({
   const [subnetPendingDelete, setSubnetPendingDelete] = useState<ProviderSubnet | null>(null)
   const [securityGroupPendingDelete, setSecurityGroupPendingDelete] =
     useState<ProviderSecurityGroup | null>(null)
+  const networkDisplayOrderRef = useRef<string[] | null>(null)
+  const {
+    creatingItemId: creatingNetworkId,
+    creatingCardHeightPx,
+    cardGridRef,
+    beginCreateReveal: beginNetworkCreateReveal,
+    measureCreatingCardHeight,
+  } = useResourceCreateReveal()
 
   const refreshInventory = () => {
     const nextNetworks = inventory.getVirtualNetworks()
@@ -374,10 +389,15 @@ export function ProviderAdminVirtualNetworksPage({
     </>
   )
 
+  const orderedNetworks = useMemo(
+    () => orderItemsForDisplay(networks, networkDisplayOrderRef, sortItemsByCreatedAtDesc),
+    [networks],
+  )
+
   const filteredNetworks = useMemo(() => {
     const query = searchValue.trim().toLowerCase()
 
-    return networks.filter((network) => {
+    return orderedNetworks.filter((network) => {
       const status = getNetworkInventoryStatus(network)
       if (selectedStatus !== 'all' && status !== selectedStatus) {
         return false
@@ -398,7 +418,11 @@ export function ProviderAdminVirtualNetworksPage({
         status.toLowerCase().includes(query)
       )
     })
-  }, [networks, searchValue, selectedStatus])
+  }, [orderedNetworks, searchValue, selectedStatus])
+
+  useLayoutEffect(() => {
+    measureCreatingCardHeight(viewMode === 'grid', 'provider-admin-catalog-items__card--creating')
+  }, [filteredNetworks, measureCreatingCardHeight, viewMode])
 
   const hasActiveFilters = Boolean(searchValue.trim()) || selectedStatus !== 'all'
 
@@ -527,9 +551,14 @@ export function ProviderAdminVirtualNetworksPage({
         tenantSlug={tenantSlug}
         resource={editingNetwork}
         onClose={closeWizard}
-        onCreated={() => {
+        onCreated={(network) => {
           refreshInventory()
           closeWizard()
+          if (!editingNetwork) {
+            setSearchValue('')
+            setSelectedStatus('all')
+            beginNetworkCreateReveal(network.id)
+          }
         }}
       />
     )
@@ -764,8 +793,12 @@ export function ProviderAdminVirtualNetworksPage({
             filterParts={filterDescriptionParts}
             onClearFilters={clearAllFilters}
           />
-          <div className="catalog-card-grid catalog-card-grid--stable provider-admin-network-inventory__grid">
+          <div
+            ref={cardGridRef}
+            className="catalog-card-grid catalog-card-grid--stable provider-admin-network-inventory__grid"
+          >
             {filteredNetworks.map((network) => {
+              const isCreating = creatingNetworkId === network.id
               const status = getNetworkInventoryStatus(network)
               const natGateway = hasVirtualNetworkNatGateway(network) ? network.natGateway : null
               const subnetCount = getSubnetsForVirtualNetwork(
@@ -781,8 +814,22 @@ export function ProviderAdminVirtualNetworksPage({
                 <Card
                   key={network.id}
                   isCompact={false}
-                  className="provider-admin-catalog-items__card provider-admin-network-inventory__card"
+                  className={[
+                    'provider-admin-catalog-items__card',
+                    'provider-admin-network-inventory__card',
+                    isCreating ? 'provider-admin-catalog-items__card--creating' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  style={
+                    isCreating && creatingCardHeightPx
+                      ? { height: creatingCardHeightPx, minBlockSize: creatingCardHeightPx }
+                      : undefined
+                  }
                 >
+                  {isCreating ? (
+                    <ResourceCreatingGridCardBody label="Creating virtual network…" />
+                  ) : (
                   <CardBody>
                     <div className="provider-admin-catalog-items__card-header">
                       <span className="provider-admin-catalog-items__card-icon" aria-hidden>
@@ -873,6 +920,7 @@ export function ProviderAdminVirtualNetworksPage({
                       />
                     </div>
                   </CardBody>
+                  )}
                 </Card>
               )
             })}
@@ -905,6 +953,17 @@ export function ProviderAdminVirtualNetworksPage({
             </Thead>
             <Tbody>
               {filteredNetworks.map((network) => {
+                if (creatingNetworkId === network.id) {
+                  return (
+                    <ResourceCreatingTableRow
+                      key={network.id}
+                      itemId={network.id}
+                      colSpan={8}
+                      label="Creating virtual network…"
+                    />
+                  )
+                }
+
                 const status = getNetworkInventoryStatus(network)
                 const natGateway = hasVirtualNetworkNatGateway(network) ? network.natGateway : null
                 const subnetCount = getSubnetsForVirtualNetwork(

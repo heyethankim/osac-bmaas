@@ -147,9 +147,9 @@ export function createDemoSecretFormState(type: TenantSecretType): TenantSecretF
     case 'key-value':
       return {
         ...base,
-        description: 'SSH public key for cluster nodes',
+        description: 'SSH public key for bastion host access',
         keyValue: {
-          name: 'cluster-admin-ssh',
+          name: 'bastion-access-ssh',
           pairs: [
             {
               id: createRowId('kv'),

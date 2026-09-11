@@ -555,6 +555,8 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  padding-block-end: var(--pf-t--global--spacer--lg);
+  box-sizing: border-box;
 }
 
 .tenant-admin-projects-teams--topology .tenant-project-topology-panel {
@@ -614,8 +616,28 @@
   height: 100%;
 }
 
+.tenant-project-topology-panel .pf-topology-control-bar {
+  bottom: var(--pf-t--global--spacer--lg);
+}
+
 .tenant-project-topology-node--dimmed {
   opacity: 0.45;
+}
+
+.tenant-project-topology-node--creating .pf-topology__node__background {
+  --pf-topology__node__background--Stroke: var(--pf-t--global--border--color--brand--default);
+}
+
+.tenant-project-topology-node__creating-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.tenant-project-topology-node__creating-spinner .pf-v6-c-spinner {
+  --pf-v6-c-spinner--diameter: 1.25rem;
 }
 
 /* PatternFly topology: white nodes by default; selected uses brand blue. */
@@ -846,6 +868,21 @@
 
 .tenant-project-details-body--sidebar .provider-admin-organizations__account-person {
   align-items: center;
+  padding-block: var(--pf-t--global--spacer--md);
+}
+
+.tenant-project-details-body--sidebar .provider-admin-organizations__account-person:first-child {
+  padding-block-start: var(--pf-t--global--spacer--md);
+}
+
+.tenant-project-details-body--sidebar .provider-admin-organizations__account-person:last-child {
+  padding-block-end: var(--pf-t--global--spacer--md);
+}
+
+.tenant-project-details-body--sidebar .provider-admin-organizations__account-person--current-user {
+  margin-inline: 0;
+  padding-inline: var(--pf-t--global--spacer--md);
+  padding-block: var(--pf-t--global--spacer--md);
 }
 
 .tenant-project-details-body--sidebar .provider-admin-organizations__account-person-main {
@@ -918,10 +955,6 @@
 
 .tenant-admin-projects-teams__tree-row--root {
   padding-inline-start: 0;
-}
-
-.tenant-admin-projects-teams__root-badge.pf-v6-c-label {
-  margin-inline-start: 0;
 }
 
 .tenant-admin-projects-teams__name-cell {
@@ -1111,11 +1144,11 @@
 }
 
 .tenant-admin-projects-teams__wizard-modal {
-  --pf-v6-c-modal-box--c-wizard--Height--base: 40rem;
+  --pf-v6-c-modal-box--c-wizard--Height--base: 43rem;
 }
 
 .tenant-admin-projects-teams__wizard.pf-v6-c-wizard {
-  --pf-v6-c-wizard--Height: 40rem;
+  --pf-v6-c-wizard--Height: 43rem;
 }
 
 .tenant-admin-projects-teams__wizard.pf-v6-c-wizard .pf-v6-c-wizard__description {
@@ -1536,6 +1569,14 @@
 
 .tenant-admin-catalog-manager__card--unpublished.pf-v6-c-card {
   --pf-v6-c-card--BackgroundColor: var(--pf-t--global--background--color--secondary--default);
+}
+
+.tenant-secrets__card--creating {
+  box-sizing: border-box;
+}
+
+.tenant-admin-projects-teams__row--creating .pf-v6-c-table__td {
+  padding-block: var(--pf-t--global--spacer--xl);
 }
 
 .tenant-admin-catalog-manager__card--creating {
