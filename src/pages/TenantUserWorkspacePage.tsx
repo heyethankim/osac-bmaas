@@ -12,10 +12,17 @@ import {
   getDemoTenantUserOrganization,
   getProviderViewingAsTenantUser,
 } from '../providerAdmin/openAsTenantUser'
-import { getProviderRegisteredOrganizations, activateProviderRegisteredOrganizationBySlug } from '../providerSetup/storage'
+import {
+  getProviderRegisteredOrganizations,
+  activateProviderRegisteredOrganizationBySlug,
+  ensureProviderDemoOrganizations,
+} from '../providerSetup/storage'
 import { getProviderCatalogDraft, getProviderCatalogItems } from '../providerSetup/storage'
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
-import { getRegisteredOrganizationBySlug } from '../tenantAdmin/organizations'
+import {
+  getRegisteredOrganizationBySlug,
+  getWorkspaceOrganization,
+} from '../tenantAdmin/organizations'
 import { resolveOrganizationCompanyLogo } from '../providerAdmin/organizations'
 import {
   getTenantInstanceServiceId,
@@ -107,6 +114,7 @@ function getLockedServiceIdFromNav(navId: TenantUserNavId): CatalogServiceId | n
 function ensureTenantUserPostOnboardingPrototype(tenantSlug: string, navId: TenantUserNavId) {
   setTenantUserOnboardingComplete(tenantSlug)
   setTenantUserActiveNav(tenantSlug, navId)
+  ensureProviderDemoOrganizations()
   activateProviderRegisteredOrganizationBySlug(tenantSlug)
 }
 
@@ -239,6 +247,7 @@ export function TenantUserWorkspacePage() {
     }
 
     setTenantUserOnboardingComplete(tenantSlug)
+    ensureProviderDemoOrganizations()
     activateProviderRegisteredOrganizationBySlug(tenantSlug)
     setInstances(ensureTenantDemoInstances(tenantSlug))
     setProjects(ensureTenantDemoProjects(tenantSlug))
@@ -368,7 +377,7 @@ export function TenantUserWorkspacePage() {
         (item) => item.id === previewSession.organizationId,
       )) ||
     organizationFromSlug ||
-    (isPreviewSession ? getDemoTenantUserOrganization() : null)
+    (isPreviewSession ? getDemoTenantUserOrganization() : getWorkspaceOrganization(tenantSlug))
   const defaultCatalogDraft = getProviderCatalogDraft()
   const focusedCatalogDraft =
     isPreviewSession && previewSession?.catalogItemId

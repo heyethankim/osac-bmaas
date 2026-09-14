@@ -34,7 +34,11 @@ import {
   type ProjectScopeId,
 } from '../tenantUser/projectScope'
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
-import { activateProviderRegisteredOrganizationBySlug, getProviderCatalogDraft } from '../providerSetup/storage'
+import {
+  activateProviderRegisteredOrganizationBySlug,
+  ensureProviderDemoOrganizations,
+  getProviderCatalogDraft,
+} from '../providerSetup/storage'
 import {
   addTenantUserInstance,
   ensureTenantDemoInstances,
@@ -113,6 +117,7 @@ function getServicesNavId(serviceId: CatalogServiceId): TenantAdminNavId {
 function ensureTenantAdminPostOnboardingPrototype(tenant: string, navId: TenantAdminNavId) {
   setTenantOnboardingComplete(tenant)
   setTenantActiveNav(tenant, navId)
+  ensureProviderDemoOrganizations()
   activateProviderRegisteredOrganizationBySlug(tenant)
 }
 
@@ -166,6 +171,7 @@ export function TenantAdminWorkspacePage() {
 
     // Login and prototype shortcuts both land here with onboarding already complete.
     setTenantOnboardingComplete(tenant)
+    ensureProviderDemoOrganizations()
     activateProviderRegisteredOrganizationBySlug(tenant)
     const workspaceOrganization = getWorkspaceOrganization(tenant)
     setOrganization(workspaceOrganization)

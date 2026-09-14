@@ -197,6 +197,28 @@ export const DEMO_NORTH_SUMMIT_EXTERNAL_IP_POOL_ASSIGNMENT = {
   assignedOrganizationName: 'North Summit Bank',
 } as const
 
+export const NORTHSUMMIT_LEGACY_ORGANIZATION_IDS = [
+  DEMO_NORTH_SUMMIT_EXTERNAL_IP_POOL_ASSIGNMENT.assignedOrganizationId,
+  'org-northstar-bank',
+  'org_northstar_bank',
+  'org_northsummit_bank',
+] as const
+
+export function isNorthsummitDemoExternalIpPool(pool: ExternalIpPool): boolean {
+  return (
+    pool.id === 'eipool-northsummit-edge' ||
+    pool.id === 'eipool-northsummit-reserved' ||
+    pool.name === 'northsummit-public-edge' ||
+    pool.name === 'northsummit-reserved-edge'
+  )
+}
+
+export function getNorthsummitDemoExternalIpPools(
+  pools: readonly ExternalIpPool[],
+): ExternalIpPool[] {
+  return pools.filter(isNorthsummitDemoExternalIpPool)
+}
+
 export const DEFAULT_EXTERNAL_IP_POOLS: ExternalIpPool[] = [
   {
     id: 'eipool-northsummit-edge',

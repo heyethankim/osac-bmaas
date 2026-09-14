@@ -45,7 +45,6 @@ import {
   getExternalIpPoolCidrs,
   getExternalIpPoolLifecycleStatus,
   getExternalIpPoolLifecycleStatusLabelColor,
-  getExternalIpPoolsAssignedToOrganization,
   type ExternalIpPool,
 } from '../../providerAdmin/externalIpPools'
 import { ExternalIpInventoryList } from '../../components/provider-admin/ExternalIpInventoryList'
@@ -58,9 +57,13 @@ import {
   type ExternalIpPoolGroup,
 } from '../../providerAdmin/externalIps'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
-import { getProviderRegisteredOrganizations, getProviderExternalIpPools } from '../../providerSetup/storage'
+import { getProviderRegisteredOrganizations } from '../../providerSetup/storage'
 import type { TenantInstance } from '../../tenantUser/instances'
-import { getTenantExternalIps, removeTenantExternalIp } from '../../tenantAdmin/networkInventoryStorage'
+import {
+  getTenantExternalIps,
+  removeTenantExternalIp,
+  resolveTenantAssignedExternalIpPools,
+} from '../../tenantAdmin/networkInventoryStorage'
 import { TENANT_EXTERNAL_IPS_PAGE_LABEL } from '../../tenantAdmin/constants'
 import { PROVIDER_ADMIN_NETWORKING_NAV_LABEL } from '../../providerAdmin/constants'
 import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope'
@@ -86,10 +89,10 @@ function loadScopedExternalIpPools(
   inventory: ReturnType<typeof resolveNetworkInventoryScope>,
   scopeOrganization: RegisteredOrganization | null,
 ): ExternalIpPool[] {
-  if (inventory.mode === 'tenant' && scopeOrganization) {
-    return getExternalIpPoolsAssignedToOrganization(
-      getProviderExternalIpPools(),
-      scopeOrganization.id,
+  if (inventory.mode === 'tenant' && inventory.tenantSlug) {
+    return resolveTenantAssignedExternalIpPools(
+      inventory.tenantSlug,
+      scopeOrganization?.id,
     )
   }
 

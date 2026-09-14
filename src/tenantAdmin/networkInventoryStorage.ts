@@ -1,7 +1,11 @@
 import {
   DEFAULT_EXTERNAL_IP_POOLS,
+  getNorthsummitDemoExternalIpPools,
+  NORTHSUMMIT_LEGACY_ORGANIZATION_IDS,
   type ExternalIpPool,
 } from '../providerAdmin/externalIpPools'
+import { getProviderExternalIpPools } from '../providerSetup/storage'
+import { getRegisteredOrganizationBySlug } from './organizations'
 import {
   DEFAULT_NORTHSUMMIT_EXTERNAL_IPS,
   type ExternalIp,
@@ -124,22 +128,6 @@ function isProviderSecurityGroup(value: unknown): value is ProviderSecurityGroup
   )
 }
 
-function isExternalIpPool(value: unknown): value is ExternalIpPool {
-  if (typeof value !== 'object' || value === null) {
-    return false
-  }
-
-  const pool = value as ExternalIpPool
-  return (
-    typeof pool.id === 'string' &&
-    typeof pool.name === 'string' &&
-    typeof pool.cidr === 'string' &&
-    typeof pool.dataCenter === 'string' &&
-    typeof pool.totalAddresses === 'number' &&
-    typeof pool.createdAt === 'string'
-  )
-}
-
 /** Tenant-owned network inventory seeded independently from provider defaults. */
 export function getTenantVirtualNetworks(slug: string): ProviderVirtualNetwork[] {
   return ensureDemoNatGatewayOnTenantWorkload(
@@ -247,12 +235,59 @@ export function deleteTenantSecurityGroup(slug: string, groupId: string): void {
   )
 }
 
-export function getTenantExternalIpPools(slug: string): ExternalIpPool[] {
-  return readJsonArray(
-    tenantKey(TENANT_EXTERNAL_IP_POOLS_KEY_PREFIX, slug),
-    DEFAULT_EXTERNAL_IP_POOLS,
-    isExternalIpPool,
+function collectTenantOrganizationIds(
+  slug: string,
+  organizationId?: string | null,
+): Set<string> {
+  const orgIds = new Set<string>()
+
+  if (organizationId) {
+    orgIds.add(organizationId)
+  }
+
+  const registered = getRegisteredOrganizationBySlug(slug)
+  if (registered?.id) {
+    orgIds.add(registered.id)
+  }
+
+  if (slug === 'northsummit' || slug === 'northstar') {
+    for (const legacyOrgId of NORTHSUMMIT_LEGACY_ORGANIZATION_IDS) {
+      orgIds.add(legacyOrgId)
+    }
+  }
+
+  return orgIds
+}
+
+/** Provider-assigned pools visible to a tenant workspace (never unassigned standby pools). */
+export function resolveTenantAssignedExternalIpPools(
+  slug: string,
+  organizationId?: string | null,
+): ExternalIpPool[] {
+  const pools = getProviderExternalIpPools()
+  const orgIds = collectTenantOrganizationIds(slug, organizationId)
+
+  const assigned = pools.filter(
+    (pool) => pool.assignedOrganizationId !== null && orgIds.has(pool.assignedOrganizationId),
   )
+  if (assigned.length > 0) {
+    return assigned
+  }
+
+  if (slug === 'northsummit' || slug === 'northstar') {
+    const demoPools = getNorthsummitDemoExternalIpPools(pools)
+    if (demoPools.length > 0) {
+      return demoPools
+    }
+
+    return getNorthsummitDemoExternalIpPools(DEFAULT_EXTERNAL_IP_POOLS)
+  }
+
+  return []
+}
+
+export function getTenantExternalIpPools(slug: string): ExternalIpPool[] {
+  return resolveTenantAssignedExternalIpPools(slug)
 }
 
 export function setTenantExternalIpPools(slug: string, pools: ExternalIpPool[]): void {
