@@ -562,9 +562,22 @@ export function TenantAdminProjectsTeamsPage({
       }))
     : undefined
 
+  const isRootLevelProjectWizard =
+    !nestedCreateParent || isTenantRootProject(nestedCreateParent)
+
+  const projectWizardPresentation: 'modal' | 'page' = editingProject
+    ? viewMode === 'topology'
+      ? 'modal'
+      : 'page'
+    : isRootLevelProjectWizard
+      ? 'page'
+      : viewMode === 'topology'
+        ? 'modal'
+        : 'page'
+
   const projectWizard = (
     <CreateTenantProjectWizard
-      presentation={viewMode === 'topology' ? 'modal' : 'page'}
+      presentation={projectWizardPresentation}
       isOpen={isCreateModalOpen}
       organization={organization}
       projects={projects}
@@ -584,7 +597,7 @@ export function TenantAdminProjectsTeamsPage({
     />
   )
 
-  if (isCreateModalOpen && viewMode !== 'topology') {
+  if (isCreateModalOpen && projectWizardPresentation === 'page') {
     return (
       <>
         {projectWizard}
@@ -893,7 +906,7 @@ export function TenantAdminProjectsTeamsPage({
       )}
 
       {deleteConfirmModal}
-      {isCreateModalOpen && viewMode === 'topology' ? projectWizard : null}
+      {isCreateModalOpen && projectWizardPresentation === 'modal' ? projectWizard : null}
     </div>
   )
 }
