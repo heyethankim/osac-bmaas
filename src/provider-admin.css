@@ -3639,6 +3639,10 @@ a.provider-admin-network-inventory__related-link:hover {
   padding: var(--pf-t--global--spacer--lg);
 }
 
+.provider-admin-network-inventory__tenant-card .provider-admin-network-inventory__tenant-ref {
+  align-items: center;
+}
+
 .provider-admin-network-inventory__tenant-card
   .provider-setup-template__select-card-selected-badge.pf-v6-c-label {
   top: var(--pf-t--global--spacer--md);

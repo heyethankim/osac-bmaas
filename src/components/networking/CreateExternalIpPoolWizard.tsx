@@ -35,7 +35,10 @@ import {
   type ExternalIpPool,
   type ExternalIpPoolIpFamily,
 } from '../../providerAdmin/externalIpPools'
-import type { RegisteredOrganization } from '../../providerAdmin/organizations'
+import {
+  getOrganizationNameInitial,
+  type RegisteredOrganization,
+} from '../../providerAdmin/organizations'
 import { NETWORK_INVENTORY_CREATE_REVIEW_STEP } from '../../networking/networkInventoryCreateWizard'
 import {
   buildExternalIpPoolEditSnapshot,
@@ -473,20 +476,32 @@ export function CreateExternalIpPoolWizard({
                           Selected
                         </Label>
                       ) : null}
-                      <Title
-                        id={titleId}
-                        headingLevel="h3"
-                        size="md"
-                        className="provider-setup-template__select-card-title"
-                      >
-                        {organization.name}
-                      </Title>
-                      <Content
-                        component="p"
-                        className="provider-setup-template__select-card-meta"
-                      >
-                        {organization.primaryDomain || '—'}
-                      </Content>
+                      <div className="provider-admin-network-inventory__tenant-ref">
+                        <span
+                          className="provider-admin-catalog-items__card-icon provider-admin-organizations__card-logo provider-admin-organizations__card-logo--initial"
+                          aria-hidden
+                        >
+                          <span className="provider-admin-organizations__card-initial">
+                            {getOrganizationNameInitial(organization.name)}
+                          </span>
+                        </span>
+                        <div className="provider-admin-network-inventory__tenant-ref-copy">
+                          <Title
+                            id={titleId}
+                            headingLevel="h3"
+                            size="md"
+                            className="provider-setup-template__select-card-title"
+                          >
+                            {organization.name}
+                          </Title>
+                          <Content
+                            component="p"
+                            className="provider-setup-template__select-card-meta"
+                          >
+                            {organization.primaryDomain || '—'}
+                          </Content>
+                        </div>
+                      </div>
                     </button>
                   )
                 })}
