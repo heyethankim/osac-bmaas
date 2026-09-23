@@ -11,6 +11,7 @@ import './provider-admin.css'
 import './tenant-shell.css'
 import './tenant-admin.css'
 import './catalog.css'
+import './m360.css'
 import App from './App.tsx'
 import { ThemePreferencesProvider } from './theme/themePreferences'
 

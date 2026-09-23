@@ -9,12 +9,28 @@ export const WORKSPACE_INSTANCE_PARAM = 'instance'
 /** Query key for an open tenant detail page on Administration → Tenants. */
 export const WORKSPACE_ORGANIZATION_PARAM = 'tenant'
 
+/** Query key for a workspace create/register wizard flow. */
+export const WORKSPACE_ACTION_PARAM = 'action'
+
+export const WORKSPACE_ACTION_CREATE_CATALOG_ITEM = 'create-catalog-item'
+export const WORKSPACE_ACTION_REGISTER_TENANT = 'register-tenant'
+
+export type WorkspaceAction =
+  | typeof WORKSPACE_ACTION_CREATE_CATALOG_ITEM
+  | typeof WORKSPACE_ACTION_REGISTER_TENANT
+
 export type SyncWorkspaceNavOptions = NavigateOptions & {
   /**
    * Left-nav landing navigation: always clear `?item=` so re-selecting Catalog
    * (or any section) returns to the list view instead of keeping a detail open.
    */
   showLanding?: boolean
+}
+
+function isWorkspaceAction(value: string | null | undefined): value is WorkspaceAction {
+  return (
+    value === WORKSPACE_ACTION_CREATE_CATALOG_ITEM || value === WORKSPACE_ACTION_REGISTER_TENANT
+  )
 }
 
 export function getWorkspaceCatalogItemParam(searchParams: URLSearchParams): string | null {
@@ -32,6 +48,11 @@ export function getWorkspaceInstanceParam(searchParams: URLSearchParams): string
   return value || null
 }
 
+export function getWorkspaceActionParam(searchParams: URLSearchParams): WorkspaceAction | null {
+  const value = searchParams.get(WORKSPACE_ACTION_PARAM)?.trim()
+  return isWorkspaceAction(value) ? value : null
+}
+
 export function isServicesWorkspaceNav(navId: string): boolean {
   return navId.startsWith('services-')
 }
@@ -40,6 +61,33 @@ export function buildProviderOrganizationWorkspacePath(organizationId: string): 
   const params = new URLSearchParams({
     nav: 'administration-organizations',
     [WORKSPACE_ORGANIZATION_PARAM]: organizationId,
+  })
+
+  return `/provider/workspace?${params.toString()}`
+}
+
+export function buildProviderCatalogItemWorkspacePath(itemKey: string): string {
+  const params = new URLSearchParams({
+    nav: 'catalog',
+    [WORKSPACE_CATALOG_ITEM_PARAM]: itemKey.trim(),
+  })
+
+  return `/provider/workspace?${params.toString()}`
+}
+
+export function buildProviderCreateCatalogItemPath(): string {
+  const params = new URLSearchParams({
+    nav: 'catalog',
+    [WORKSPACE_ACTION_PARAM]: WORKSPACE_ACTION_CREATE_CATALOG_ITEM,
+  })
+
+  return `/provider/workspace?${params.toString()}`
+}
+
+export function buildProviderRegisterTenantPath(): string {
+  const params = new URLSearchParams({
+    nav: 'administration-organizations',
+    [WORKSPACE_ACTION_PARAM]: WORKSPACE_ACTION_REGISTER_TENANT,
   })
 
   return `/provider/workspace?${params.toString()}`
@@ -63,15 +111,22 @@ export function syncWorkspaceNavParam(
     const hasItem = current.has(WORKSPACE_CATALOG_ITEM_PARAM)
     const hasInstance = current.has(WORKSPACE_INSTANCE_PARAM)
     const hasTenant = current.has(WORKSPACE_ORGANIZATION_PARAM)
+    const action = getWorkspaceActionParam(current)
     const shouldClearItem = showLanding || navId !== 'catalog'
     const shouldClearInstance = showLanding || !isServicesWorkspaceNav(navId)
     const shouldClearTenant = showLanding || navId !== 'administration-organizations'
+    const shouldClearAction =
+      showLanding ||
+      (action === WORKSPACE_ACTION_CREATE_CATALOG_ITEM && navId !== 'catalog') ||
+      (action === WORKSPACE_ACTION_REGISTER_TENANT && navId !== 'administration-organizations')
+    const hasAction = Boolean(action)
 
     if (
       navMatches &&
       !(shouldClearItem && hasItem) &&
       !(shouldClearInstance && hasInstance) &&
-      !(shouldClearTenant && hasTenant)
+      !(shouldClearTenant && hasTenant) &&
+      !(shouldClearAction && hasAction)
     ) {
       return current
     }
@@ -86,6 +141,9 @@ export function syncWorkspaceNavParam(
     }
     if (shouldClearTenant) {
       next.delete(WORKSPACE_ORGANIZATION_PARAM)
+    }
+    if (shouldClearAction) {
+      next.delete(WORKSPACE_ACTION_PARAM)
     }
     return next
   }, navigateOptions)
@@ -115,6 +173,47 @@ export function syncWorkspaceCatalogItemParam(
     const next = new URLSearchParams(current)
     next.set('nav', 'catalog')
     next.set(WORKSPACE_CATALOG_ITEM_PARAM, item)
+    next.delete(WORKSPACE_ACTION_PARAM)
+    return next
+  }, options)
+}
+
+/** Open or close a create/register wizard via `?action=`. */
+export function syncWorkspaceActionParam(
+  setSearchParams: SetURLSearchParams,
+  action: WorkspaceAction | null,
+  options?: NavigateOptions,
+): void {
+  setSearchParams((current) => {
+    const currentAction = getWorkspaceActionParam(current)
+    if (!action) {
+      if (!currentAction) {
+        return current
+      }
+      const next = new URLSearchParams(current)
+      next.delete(WORKSPACE_ACTION_PARAM)
+      return next
+    }
+
+    if (currentAction === action) {
+      const expectedNav =
+        action === WORKSPACE_ACTION_CREATE_CATALOG_ITEM
+          ? 'catalog'
+          : 'administration-organizations'
+      if (current.get('nav') === expectedNav) {
+        return current
+      }
+    }
+
+    const next = new URLSearchParams(current)
+    if (action === WORKSPACE_ACTION_CREATE_CATALOG_ITEM) {
+      next.set('nav', 'catalog')
+      next.delete(WORKSPACE_CATALOG_ITEM_PARAM)
+    } else {
+      next.set('nav', 'administration-organizations')
+      next.delete(WORKSPACE_ORGANIZATION_PARAM)
+    }
+    next.set(WORKSPACE_ACTION_PARAM, action)
     return next
   }, options)
 }
@@ -164,13 +263,17 @@ export function syncWorkspaceOrganizationParam(
       return next
     }
 
-    if (current.get('nav') === 'administration-organizations' && currentOrganizationId === organizationId) {
+    if (
+      current.get('nav') === 'administration-organizations' &&
+      currentOrganizationId === organizationId
+    ) {
       return current
     }
 
     const next = new URLSearchParams(current)
     next.set('nav', 'administration-organizations')
     next.set(WORKSPACE_ORGANIZATION_PARAM, organizationId)
+    next.delete(WORKSPACE_ACTION_PARAM)
     return next
   }, options)
 }

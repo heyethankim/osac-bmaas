@@ -3,6 +3,8 @@ import { ConceptualDesignSticker } from './components/ConceptualDesignSticker'
 import { BmaasLandingPage } from './pages/BmaasLandingPage'
 import { IdpManagerSetupPage } from './pages/IdpManagerSetupPage'
 import { IdpManagerWorkspacePage } from './pages/IdpManagerWorkspacePage'
+import { M360AccountDetailsPage } from './pages/m360/M360AccountDetailsPage'
+import { M360AccountsPage } from './pages/m360/M360AccountsPage'
 import { ProviderAdminWorkspacePage } from './pages/ProviderAdminWorkspacePage'
 import { ProviderLoginPage } from './pages/ProviderLoginPage'
 import { TenantAdminSampleCatalogPage } from './pages/TenantAdminSampleCatalogPage'
@@ -50,6 +52,8 @@ export default function App() {
         <Route path="/provider" element={<ProviderLoginPage />} />
         <Route path="/provider/setup" element={<Navigate to="/provider/workspace" replace />} />
         <Route path="/provider/workspace" element={<ProviderAdminWorkspacePage />} />
+        <Route path="/m360/accounts" element={<M360AccountsPage />} />
+        <Route path="/m360/accounts/:accountName" element={<M360AccountDetailsPage />} />
         <Route path="/tenant-admin/catalog-sample" element={<TenantAdminSampleCatalogPage />} />
         <Route path="/tenant-admin/northstar/workspace" element={<RedirectNorthstarTenant />} />
         <Route path="/tenant-admin/northstar" element={<RedirectNorthstarTenant />} />

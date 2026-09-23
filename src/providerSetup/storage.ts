@@ -178,8 +178,8 @@ export function getProviderActiveNav(): ProviderAdminNavId {
       value === 'networking-external-ip-pools' ||
       value === 'secrets' ||
       value === 'administration-organizations' ||
-      value === 'administration-quotas' ||
-      value === 'billing-metering' ||
+      value === 'administration-billing' ||
+      value === 'administration-rate-cards' ||
       value === 'system'
     ) {
       return resolveProviderAdminNavId(value)
@@ -215,8 +215,12 @@ export function getProviderActiveNav(): ProviderAdminNavId {
       return resolveProviderAdminNavId('networking-external-ip-pools')
     }
 
-    if (value === 'administration-organizations-quotas') {
-      return 'administration-quotas'
+    if (value === 'administration-quotas' || value === 'administration-organizations-quotas') {
+      return 'administration-billing'
+    }
+
+    if (value === 'billing-metering') {
+      return 'administration-rate-cards'
     }
 
     if (value === 'administration' || value === 'access-security') {
@@ -271,10 +275,15 @@ export type ProviderCatalogDraft = {
    */
   clusterVersionMode?: CatalogClusterVersionMode
   /**
-   * Bare metal only. When `editable`, tenants may change instance type and disk
-   * image at launch. Defaults to locked when omitted.
+   * Bare metal only. When `editable`, tenants may change instance type at launch.
+   * Defaults to locked when omitted.
    */
   hardwareOsMode?: CatalogHardwareOsMode
+  /**
+   * Bare metal only. When `editable`, tenants may change disk image at launch.
+   * Defaults to `hardwareOsMode` when omitted (legacy catalog items).
+   */
+  osImageMode?: CatalogHardwareOsMode
   /** Cluster default worker node set. */
   nodeSetId?: string
   nodeSetLabel?: string
@@ -662,6 +671,7 @@ export function duplicateProviderCatalogItem(catalogItemId: string): ProviderCat
     ...(source.diskImageLabel ? { diskImageLabel: source.diskImageLabel } : {}),
     ...(source.clusterVersionMode ? { clusterVersionMode: source.clusterVersionMode } : {}),
     ...(source.hardwareOsMode ? { hardwareOsMode: source.hardwareOsMode } : {}),
+    ...(source.osImageMode ? { osImageMode: source.osImageMode } : {}),
     ...(source.nodeSetId ? { nodeSetId: source.nodeSetId } : {}),
     ...(source.nodeSetLabel ? { nodeSetLabel: source.nodeSetLabel } : {}),
     ...(source.hostTypeId ? { hostTypeId: source.hostTypeId } : {}),
@@ -817,6 +827,7 @@ export function updateProviderCatalogItemFromPayload(
       ? { clusterVersionMode: payload.clusterVersionMode }
       : {}),
     ...(payload.hardwareOsMode ? { hardwareOsMode: payload.hardwareOsMode } : {}),
+    ...(payload.osImageMode ? { osImageMode: payload.osImageMode } : {}),
     ...(payload.nodeSetId ? { nodeSetId: payload.nodeSetId } : {}),
     ...(payload.nodeSetLabel ? { nodeSetLabel: payload.nodeSetLabel } : {}),
     ...(payload.hostTypeId ? { hostTypeId: payload.hostTypeId } : {}),
@@ -925,6 +936,7 @@ export function patchProviderCatalogItem(
       | 'hostTypeId'
       | 'hostTypeLabel'
       | 'clusterNodeTopologyMode'
+      | 'rateCard'
     >
   >,
 ): ProviderCatalogDraft | null {
@@ -1386,7 +1398,9 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
                 ? 'silverpine-trust'
                 : org.name === 'Redwood Mutual'
                   ? 'redwood-mutual'
-                  : org.name,
+                  : org.name === 'Cedar Ridge Credit'
+                    ? 'cedar-ridge-credit'
+                    : org.name,
     primaryDomain,
     additionalDomains,
     catalogItemId:
@@ -1538,7 +1552,95 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
     normalized.idpInviteStatus = 'expired'
   }
 
+  const tenantName = normalized.name.trim()
+  if (tenantName) {
+    normalized.tenantId = tenantName
+  }
+
   return normalized
+}
+
+const CANONICAL_DEMO_ORG_IDS = new Set([
+  DEMO_NORTH_SUMMIT_BANK_ORG_ID,
+  DEMO_HARBORLINE_CAPITAL_ORG_ID,
+  DEMO_BLUESOLACE_ORG_ID,
+])
+
+function organizationCompletenessScore(org: RegisteredOrganization): number {
+  let score = 0
+  if (CANONICAL_DEMO_ORG_IDS.has(org.id)) {
+    score += 1000
+  }
+  if (org.billingAccountLinked) {
+    score += 100
+  }
+  if (org.tenantSetupStatus === 'ready') {
+    score += 80
+  }
+  if (org.tenantSetupStatus === 'billing_configured') {
+    score += 60
+  }
+  if (org.identityProviderConnected) {
+    score += 40
+  }
+  if (org.status === 'Active') {
+    score += 20
+  }
+  return score
+}
+
+function pickPreferredRegisteredOrganization(
+  current: RegisteredOrganization,
+  candidate: RegisteredOrganization,
+): RegisteredOrganization {
+  const currentScore = organizationCompletenessScore(current)
+  const candidateScore = organizationCompletenessScore(candidate)
+  if (candidateScore !== currentScore) {
+    return candidateScore > currentScore ? candidate : current
+  }
+
+  return candidate.createdAt >= current.createdAt ? candidate : current
+}
+
+function dedupeRegisteredOrganizationsBySlug(
+  organizations: readonly RegisteredOrganization[],
+): RegisteredOrganization[] {
+  const bySlug = new Map<string, RegisteredOrganization>()
+
+  for (const organization of organizations) {
+    const slug = organization.slug.trim().toLowerCase()
+    if (!slug) {
+      continue
+    }
+
+    const existing = bySlug.get(slug)
+    bySlug.set(
+      slug,
+      existing ? pickPreferredRegisteredOrganization(existing, organization) : organization,
+    )
+  }
+
+  return Array.from(bySlug.values())
+}
+
+function pruneIncompleteOnboardingOrphans(
+  organizations: readonly RegisteredOrganization[],
+): RegisteredOrganization[] {
+  return organizations.filter((organization) => {
+    if (CANONICAL_DEMO_ORG_IDS.has(organization.id)) {
+      return true
+    }
+    if (organization.billingAccountLinked || organization.tenantSetupStatus === 'ready') {
+      return true
+    }
+    if (organization.tenantSetupStatus === 'billing_configured') {
+      return true
+    }
+    if (organization.identityProviderConnected || organization.status === 'Active') {
+      return true
+    }
+    return false
+  })
 }
 
 function isRegisteredOrganization(value: unknown): value is RegisteredOrganization {
@@ -1577,32 +1679,41 @@ export function getProviderRegisteredOrganizations(): RegisteredOrganization[] {
 
     const tenants = parsed.filter(isRegisteredOrganization)
     const normalized = tenants.map(normalizeRegisteredOrganization)
-    const needsPersist = normalized.some((tenant, index) => {
-      const original = tenants[index]!
-      return (
-        original.id !== tenant.id ||
-        original.name !== tenant.name ||
-        original.catalogItemId !== tenant.catalogItemId ||
-        original.catalogDisplayName !== tenant.catalogDisplayName ||
-        original.externalIpPoolName !== tenant.externalIpPoolName ||
-        original.billingAccountName !== tenant.billingAccountName ||
-        original.primaryDomain !== tenant.primaryDomain ||
-        original.identityProviderDisplayName !== tenant.identityProviderDisplayName ||
-        original.identityProviderIssuerUrl !== tenant.identityProviderIssuerUrl ||
-        original.identityProviderClientId !== tenant.identityProviderClientId ||
-        original.identityProviderConnectedBy !== tenant.identityProviderConnectedBy ||
-        original.tenantAdminName !== tenant.tenantAdminName ||
-        original.tenantAdminEmail !== tenant.tenantAdminEmail ||
-        original.breakGlassUsername !== tenant.breakGlassUsername ||
-        original.breakGlassPassword !== tenant.breakGlassPassword ||
-        JSON.stringify(original.additionalDomains ?? []) !==
-          JSON.stringify(tenant.additionalDomains)
-      )
-    })
+    const deduped = dedupeRegisteredOrganizationsBySlug(
+      pruneIncompleteOnboardingOrphans(normalized),
+    )
+    const needsPersist =
+      deduped.length !== tenants.length ||
+      deduped.some((tenant, index) => {
+        const original = tenants[index]
+        if (!original) {
+          return true
+        }
+        return (
+          original.id !== tenant.id ||
+          original.name !== tenant.name ||
+          original.tenantId !== tenant.tenantId ||
+          original.catalogItemId !== tenant.catalogItemId ||
+          original.catalogDisplayName !== tenant.catalogDisplayName ||
+          original.externalIpPoolName !== tenant.externalIpPoolName ||
+          original.billingAccountName !== tenant.billingAccountName ||
+          original.primaryDomain !== tenant.primaryDomain ||
+          original.identityProviderDisplayName !== tenant.identityProviderDisplayName ||
+          original.identityProviderIssuerUrl !== tenant.identityProviderIssuerUrl ||
+          original.identityProviderClientId !== tenant.identityProviderClientId ||
+          original.identityProviderConnectedBy !== tenant.identityProviderConnectedBy ||
+          original.tenantAdminName !== tenant.tenantAdminName ||
+          original.tenantAdminEmail !== tenant.tenantAdminEmail ||
+          original.breakGlassUsername !== tenant.breakGlassUsername ||
+          original.breakGlassPassword !== tenant.breakGlassPassword ||
+          JSON.stringify(original.additionalDomains ?? []) !==
+            JSON.stringify(tenant.additionalDomains)
+        )
+      })
     if (needsPersist) {
-      setProviderRegisteredOrganizations(normalized)
+      setProviderRegisteredOrganizations(deduped)
     }
-    return normalized
+    return deduped
   } catch {
     return []
   }
@@ -1728,20 +1839,11 @@ function removeRegisteredOrganizationsRaw(): void {
 }
 
 /**
- * Seeds North Summit Bank + Harborline Capital as Tenants page baselines:
- * Active, IdP connected, roles defined — two enterprises for VIP multi-select demos.
+ * Seeds North Summit Bank and Harborline Capital as Tenants page baselines.
  */
 export function ensureProviderDemoOrganizations(): RegisteredOrganization[] {
   try {
     const current = getProviderRegisteredOrganizations()
-    const catalogItems = getProviderCatalogItems()
-    const denseGpu =
-      catalogItems.find((item) => item.catalogItemId === 'cat-bm-dense-gpu') ??
-      catalogItems.find((item) => item.catalogItemId === 'cat_BM_AI_INFERENCE') ??
-      catalogItems.find((item) => item.displayName === 'bare-metal-dense-gpu-node') ??
-      catalogItems.find((item) => item.displayName === 'Bare Metal - Dense GPU Node') ??
-      null
-    const catalogDraft = denseGpu ?? getProviderCatalogDraft()
     const pools = getProviderExternalIpPools()
     const northSummitPool =
       getExternalIpPoolById(pools, DEFAULT_REGISTER_ORGANIZATION_FORM.externalIpPoolId) ??
@@ -1754,8 +1856,8 @@ export function ensureProviderDemoOrganizations(): RegisteredOrganization[] {
       null
 
     const northSummitBase = createDemoNorthSummitBankOrganization({
-      catalogItemId: catalogDraft?.catalogItemId ?? null,
-      catalogDisplayName: catalogDraft?.displayName ?? null,
+      catalogItemId: null,
+      catalogDisplayName: null,
       externalIpPoolId:
         northSummitPool?.id ?? DEFAULT_REGISTER_ORGANIZATION_FORM.externalIpPoolId,
       externalIpPoolName: northSummitPool?.name ?? null,
@@ -1779,7 +1881,12 @@ export function ensureProviderDemoOrganizations(): RegisteredOrganization[] {
     )
     const replacedIds = new Set(replacedTenants.map((tenant) => tenant.id))
     const remainingTenants = current.filter(
-      (tenant) => !replacedIds.has(tenant.id),
+      (tenant) =>
+        !replacedIds.has(tenant.id) &&
+        tenant.id !== 'org-cedar-ridge-credit' &&
+        tenant.slug !== 'cedar-ridge-credit' &&
+        tenant.name !== 'cedar-ridge-credit' &&
+        tenant.name !== 'Cedar Ridge Credit',
     )
 
     const pendingInviteSource = replacedTenants.find(
@@ -1896,7 +2003,26 @@ export function ensureBlueSolaceOnboardingOrganization(): RegisteredOrganization
 export function addProviderRegisteredOrganization(org: RegisteredOrganization): void {
   try {
     const current = getProviderRegisteredOrganizations()
-    writeRegisteredOrganizationsRaw(JSON.stringify([...current, org]))
+    const slug = org.slug.trim().toLowerCase()
+    const existingIndex = current.findIndex(
+      (tenant) => tenant.slug.trim().toLowerCase() === slug,
+    )
+    if (existingIndex >= 0) {
+      const existing = current[existingIndex]!
+      const updated = normalizeRegisteredOrganization({
+        ...existing,
+        ...org,
+        id: existing.id,
+      })
+      setProviderRegisteredOrganizations(
+        current.map((tenant, index) => (index === existingIndex ? updated : tenant)),
+      )
+      return
+    }
+
+    writeRegisteredOrganizationsRaw(
+      JSON.stringify([...current, normalizeRegisteredOrganization(org)]),
+    )
   } catch {
     /* demo storage unavailable */
   }

@@ -191,3 +191,73 @@ select.pf-v6-c-form-control {
 .k8s-resource-name__rule--unmet .k8s-resource-name__rule-icon {
   color: var(--pf-t--global--icon--color--status--danger--default);
 }
+
+.tenant-onboarding__step {
+  max-width: none;
+  width: 100%;
+}
+
+.tenant-onboarding__alert {
+  margin-block-end: var(--pf-t--global--spacer--md);
+}
+
+.tenant-onboarding__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--md);
+  padding-block: var(--pf-t--global--spacer--xl);
+}
+
+.tenant-onboarding__account-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
+  margin-block-start: var(--pf-t--global--spacer--md);
+  padding: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
+  border: var(--pf-t--global--border--width--regular) solid
+    var(--pf-t--global--border--color--default);
+  border-radius: var(--pf-t--global--border--radius--medium);
+  background: var(--pf-t--global--background--color--secondary--default);
+}
+
+.tenant-onboarding__account-hint-copy {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm);
+  min-width: 0;
+}
+
+.tenant-onboarding__account-hint-icon {
+  flex-shrink: 0;
+  color: var(--pf-t--global--icon--color--status--info--default);
+}
+
+.tenant-onboarding__account-hint-text.pf-v6-c-content--p {
+  margin: 0;
+  color: var(--pf-t--global--text--color--regular);
+  font-weight: var(--pf-t--global--font--weight--body--default);
+}
+
+.tenant-onboarding__account-hint-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--md);
+}
+
+.tenant-onboarding__account-cards {
+  margin-block-start: var(--pf-t--global--spacer--sm);
+}
+
+.tenant-onboarding__account-select-card--linked {
+  cursor: not-allowed;
+  opacity: 0.82;
+}
+
+.tenant-onboarding__account-select-card--linked:hover {
+  border-color: var(--pf-t--global--border--color--default);
+}
+

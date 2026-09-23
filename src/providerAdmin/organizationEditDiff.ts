@@ -14,10 +14,11 @@ import {
 
 type OrganizationEditSnapshot = {
   organizationName: EditSnapshotValue
+  displayName: EditSnapshotValue
   primaryDomain: EditSnapshotValue
   additionalDomains: EditSnapshotValue
   logo: EditSnapshotValue
-  billingAccountName: EditSnapshotValue
+  m360AccountId: EditSnapshotValue
 }
 
 function formatAdditionalDomains(domains: string[], primaryDomain: string): string {
@@ -39,6 +40,7 @@ export function buildOrganizationEditSnapshot(form: RegisterOrganizationForm): O
 
   return {
     organizationName: editSnapshotValue(form.organizationName, form.organizationName.trim() || '—'),
+    displayName: editSnapshotValue(form.displayName, form.displayName.trim() || '—'),
     primaryDomain: editSnapshotValue(form.primaryDomain, primaryDomain || '—'),
     additionalDomains: editSnapshotValue(
       JSON.stringify(additionalDomains),
@@ -48,9 +50,9 @@ export function buildOrganizationEditSnapshot(form: RegisterOrganizationForm): O
       form.logoSrc.trim(),
       formatLogo(form.logoSrc, form.logoFileName),
     ),
-    billingAccountName: editSnapshotValue(
-      form.billingAccountName,
-      form.billingAccountName.trim() || '—',
+    m360AccountId: editSnapshotValue(
+      form.m360AccountId,
+      form.m360AccountId.trim() || '—',
     ),
   }
 }
@@ -60,9 +62,11 @@ export function buildOrganizationEditSnapshotFromOrganization(
 ): OrganizationEditSnapshot {
   return buildOrganizationEditSnapshot({
     organizationName: organization.name,
+    displayName: organization.displayName?.trim() || organization.name,
     primaryDomain: organization.primaryDomain,
     additionalDomains:
       organization.additionalDomains.length > 0 ? [...organization.additionalDomains] : [],
+    m360AccountId: organization.m360AccountId?.trim() || organization.billingAccountId.trim(),
     billingAccountId: organization.billingAccountId,
     billingAccountName: organization.billingAccountName,
     externalIpPoolId: organization.externalIpPoolId ?? '',
@@ -80,10 +84,11 @@ export function getOrganizationEditChanges(
 ) {
   return getEditChanges(baseline, current, [
     { id: 'organizationName', stepId: 'organization', label: 'Tenant name' },
+    { id: 'displayName', stepId: 'organization', label: 'Display name' },
     { id: 'primaryDomain', stepId: 'organization', label: 'Primary email domain' },
     { id: 'additionalDomains', stepId: 'organization', label: 'Additional email domains' },
     { id: 'logo', stepId: 'organization', label: 'Company logo' },
-    { id: 'billingAccountName', stepId: 'organization', label: 'Billing account name' },
+    { id: 'm360AccountId', stepId: 'organization', label: 'M360 tenant name' },
   ])
 }
 

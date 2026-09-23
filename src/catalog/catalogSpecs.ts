@@ -10,10 +10,12 @@ import {
   normalizeCatalogDiskImageDisplayLabel,
   formatCatalogDiskImageLabel,
   getCatalogHardwareOsModeLabel,
+  getCatalogOsImageModeLabel,
   resolveBaremetalInstanceTypeHardware,
   resolveCatalogClusterNodeTopologyMode,
   resolveCatalogClusterVersionMode,
   resolveCatalogHardwareOsMode,
+  resolveCatalogOsImageMode,
   type CatalogClusterNodeTopologyMode,
   type CatalogClusterVersionMode,
   type CatalogHardwareOsMode,
@@ -51,8 +53,9 @@ export const CLUSTER_NODE_SETS_TEMPLATE_DESCRIPTION =
   'Provisions OpenShift clusters using the Assisted Installer / Hive path, including control-plane bootstrap and worker join.'
 
 export const CLUSTER_NODE_SETS_RATE_CARD = {
-  hourlyRate: 22,
-  monthlyRate: 14800,
+  // Composed: control plane $6.75 + 3 × bare-metal small $3.20
+  hourlyRate: 16.35,
+  monthlyRate: 10986,
   currency: 'USD',
   billingUnit: 'per-instance' as const,
 }
@@ -232,6 +235,17 @@ function getHardwareOsModeBadge(
   }
 }
 
+function getOsImageModeBadge(
+  mode: CatalogHardwareOsMode | undefined | null,
+  hardwareFallback?: CatalogHardwareOsMode | undefined | null,
+): CatalogSpecRow['badge'] {
+  const resolved = resolveCatalogOsImageMode(mode, hardwareFallback)
+  return {
+    text: getCatalogOsImageModeLabel(resolved),
+    color: resolved === 'editable' ? 'purple' : 'grey',
+  }
+}
+
 function resolveClusterNodeSetDisplayLabel(
   item: Pick<ProviderCatalogDraft, 'nodeSetLabel' | 'nodeSetId'>,
 ): string {
@@ -329,6 +343,7 @@ function buildBaremetalCatalogSpecRows(
     | 'diskImageId'
     | 'diskImageLabel'
     | 'hardwareOsMode'
+    | 'osImageMode'
   >,
 ): CatalogSpecRow[] {
   const hardware = resolveHardwareSpecsForCatalogItem(item)
@@ -338,6 +353,7 @@ function buildBaremetalCatalogSpecRows(
     item.instanceTypeLabel,
   )
   const hardwareOsBadge = getHardwareOsModeBadge(item.hardwareOsMode)
+  const osImageBadge = getOsImageModeBadge(item.osImageMode, item.hardwareOsMode)
 
   if (typeHardware) {
     return [
@@ -345,7 +361,7 @@ function buildBaremetalCatalogSpecRows(
       { label: 'CPU', value: typeHardware.cpu },
       { label: 'RAM', value: typeHardware.ram },
       { label: 'GPU', value: typeHardware.gpu },
-      { label: 'Disk image', value: diskImage, badge: hardwareOsBadge },
+      { label: 'Disk image', value: diskImage, badge: osImageBadge },
     ]
   }
 
@@ -360,7 +376,7 @@ function buildBaremetalCatalogSpecRows(
     { label: 'CPU', value: hardware.cpu },
     { label: 'RAM', value: hardware.ram },
     { label: 'GPU', value: hardware.gpu },
-    { label: 'Disk image', value: diskImage, badge: hardwareOsBadge },
+    { label: 'Disk image', value: diskImage, badge: osImageBadge },
   )
 
   return rows
@@ -399,6 +415,7 @@ export function resolveCatalogSpecRows(
     | 'hostTypeLabel'
     | 'clusterNodeTopologyMode'
     | 'hardwareOsMode'
+    | 'osImageMode'
   >,
   options?: { includeDetails?: boolean },
 ): CatalogSpecRow[] {
@@ -473,6 +490,7 @@ export function formatCatalogConfigurationSummary(
     | 'hostTypeLabel'
     | 'clusterNodeTopologyMode'
     | 'hardwareOsMode'
+    | 'osImageMode'
   >,
 ): string {
   return resolveCatalogCardSpecRows(item)

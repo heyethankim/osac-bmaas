@@ -1,0 +1,220 @@
+.m360-portal {
+  --m360-portal-sidebar-width: 15.5rem;
+  min-height: 100vh;
+}
+
+.m360-portal .pf-v6-c-page {
+  min-height: 100vh;
+}
+
+.m360-portal__masthead.pf-v6-c-masthead {
+  background-color: transparent;
+  border-block-end: 0;
+  box-shadow: none;
+}
+
+.m360-portal__masthead-logo.pf-v6-c-masthead__logo {
+  display: flex;
+  align-items: center;
+}
+
+.m360-portal__masthead-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  line-height: 1;
+}
+
+.m360-portal__masthead-brand-logo {
+  display: block;
+  width: 1.75rem;
+  height: auto;
+}
+
+.m360-portal__masthead-brand-wordmark {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--pf-t--global--text--color--regular);
+  white-space: nowrap;
+}
+
+.m360-portal__masthead-content.pf-v6-c-masthead__content {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-inline-start: 0;
+}
+
+.m360-portal__masthead-content__spacer {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.m360-portal__masthead-utilities.pf-v6-c-toolbar {
+  flex-shrink: 0;
+  width: max-content;
+  max-width: 100%;
+  margin-inline-start: auto;
+}
+
+.m360-portal__masthead-account-toggle {
+  max-width: min(22rem, 100%);
+}
+
+.m360-portal__masthead-account {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: var(--pf-t--global--spacer--xs);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.m360-portal__masthead-account__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.m360-portal__masthead-account__role {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.m360-portal__main {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.m360-portal__brand-wrap {
+  padding: 1rem 1rem 0.75rem;
+}
+
+.m360-portal__sidebar-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.m360-portal__sidebar-nav.pf-v6-c-page-sidebar__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.m360-portal .pf-v6-c-page-sidebar {
+  display: flex;
+  flex-direction: column;
+}
+
+.m360-portal .pf-v6-c-page-sidebar__main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.m360-portal .pf-v6-c-page-sidebar__panel {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.m360-portal__content {
+  padding: 1.5rem 2rem 2rem;
+}
+
+.m360-portal__title {
+  margin: 0 0 1rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.m360-portal__table-toolbar {
+  padding: 0;
+  margin: 0 0 1rem;
+  background: transparent;
+  width: 100%;
+}
+
+.m360-portal__table-toolbar .pf-v6-c-toolbar__content {
+  width: 100%;
+}
+
+.m360-portal__accounts-table .pf-v6-c-table__th,
+.m360-portal__accounts-table .pf-v6-c-table__td {
+  vertical-align: middle;
+}
+
+.m360-portal__row-actions {
+  text-align: right;
+  vertical-align: middle;
+}
+
+.m360-portal__row-actions .pf-v6-c-menu-toggle {
+  margin-inline-start: auto;
+}
+
+.m360-portal__accounts-table .m360-portal__table-cell-text {
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--pf-t--global--text--color--regular);
+}
+
+.m360-portal__account-name-link.pf-v6-c-button {
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.5;
+  padding: 0;
+  text-align: start;
+}
+
+.m360-portal__account-details {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  max-width: 28rem;
+}
+
+.m360-portal__account-details > div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.m360-portal__account-details dt {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.m360-portal__account-details dd {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.m360-portal__empty {
+  margin-top: 1rem;
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.m360-portal .pf-v6-c-nav__link {
+  font-size: 0.875rem;
+  --pf-v6-c-nav__link--PaddingInlineStart: 1rem;
+  --pf-v6-c-nav__link--PaddingInlineEnd: 1rem;
+}
+
+.m360-portal .pf-v6-c-nav__link a {
+  color: inherit;
+  text-decoration: none;
+}

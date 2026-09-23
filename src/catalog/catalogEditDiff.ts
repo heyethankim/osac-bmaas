@@ -13,6 +13,7 @@ import {
   getCatalogClusterNodeTopologyModeLabel,
   getProvisioningTemplatePresentation,
   getCatalogHardwareOsModeLabel,
+  getCatalogOsImageModeLabel,
   type CatalogClusterNodeTopologyMode,
   type CatalogClusterVersionMode,
   type CatalogFieldPolicy,
@@ -46,6 +47,7 @@ export type CatalogEditSnapshot = {
   diskImage: SnapshotValue
   clusterVersionMode: SnapshotValue
   hardwareOsMode: SnapshotValue
+  osImageMode: SnapshotValue
   nodeSet: SnapshotValue
   hostType: SnapshotValue
   clusterNodeTopologyMode: SnapshotValue
@@ -263,6 +265,7 @@ export function buildCatalogEditSnapshotFromCatalog(
   const clusterVersionMode = catalog.clusterVersionMode ?? 'locked'
   const clusterNodeTopologyMode = catalog.clusterNodeTopologyMode ?? 'locked'
   const hardwareOsMode = catalog.hardwareOsMode ?? 'locked'
+  const osImageMode = catalog.osImageMode ?? hardwareOsMode
 
   return {
     isClusterService,
@@ -294,6 +297,10 @@ export function buildCatalogEditSnapshotFromCatalog(
     hardwareOsMode: snapshotValue(
       hardwareOsMode,
       isBaremetalService ? getCatalogHardwareOsModeLabel(hardwareOsMode) : '—',
+    ),
+    osImageMode: snapshotValue(
+      osImageMode,
+      isBaremetalService ? getCatalogOsImageModeLabel(osImageMode) : '—',
     ),
     nodeSet: snapshotValue(
       nodeSetId,
@@ -331,6 +338,7 @@ export type CatalogEditWizardState = {
   diskImageLabel: string
   clusterVersionMode: CatalogClusterVersionMode
   hardwareOsMode: CatalogHardwareOsMode
+  osImageMode: CatalogHardwareOsMode
   nodeSetId: string
   hostTypeId: string
   clusterNodeTopologyMode: CatalogClusterNodeTopologyMode
@@ -377,6 +385,10 @@ export function buildCatalogEditSnapshotFromWizardState(
       state.hardwareOsMode,
       isBaremetalService ? getCatalogHardwareOsModeLabel(state.hardwareOsMode) : '—',
     ),
+    osImageMode: snapshotValue(
+      state.osImageMode,
+      isBaremetalService ? getCatalogOsImageModeLabel(state.osImageMode) : '—',
+    ),
     nodeSet: snapshotValue(
       state.nodeSetId,
       isClusterService ? formatClusterNodeSetLabel(state.nodeSetId) : '—',
@@ -414,21 +426,31 @@ const CHANGE_FIELD_CONFIG: ReadonlyArray<{
   { id: 'description', stepId: 'display-name', label: 'Description' },
   {
     id: 'instanceType',
-    stepId: 'hardware-os',
+    stepId: 'hardware',
     label: 'Instance type',
     isApplicable: (snapshot) => !snapshot.isClusterService,
   },
-  { id: 'diskImage', stepId: 'hardware-os', label: 'Disk image / cluster version' },
+  {
+    id: 'diskImage',
+    stepId: 'os',
+    label: 'Disk image / cluster version',
+  },
   {
     id: 'clusterVersionMode',
-    stepId: 'hardware-os',
+    stepId: 'os',
     label: 'Cluster version access',
     isApplicable: (snapshot) => snapshot.isClusterService,
   },
   {
     id: 'hardwareOsMode',
-    stepId: 'hardware-os',
-    label: 'Hardware & OS access',
+    stepId: 'hardware',
+    label: 'Hardware access',
+    isApplicable: (snapshot) => snapshot.isBaremetalService,
+  },
+  {
+    id: 'osImageMode',
+    stepId: 'os',
+    label: 'OS access',
     isApplicable: (snapshot) => snapshot.isBaremetalService,
   },
   {
@@ -530,6 +552,7 @@ export function getEmptyCatalogEditSnapshot(): CatalogEditSnapshot {
     diskImage: EMPTY_SNAPSHOT_VALUE,
     clusterVersionMode: EMPTY_SNAPSHOT_VALUE,
     hardwareOsMode: EMPTY_SNAPSHOT_VALUE,
+    osImageMode: EMPTY_SNAPSHOT_VALUE,
     nodeSet: EMPTY_SNAPSHOT_VALUE,
     hostType: EMPTY_SNAPSHOT_VALUE,
     clusterNodeTopologyMode: EMPTY_SNAPSHOT_VALUE,

@@ -165,10 +165,16 @@ export function resolveCatalogClusterVersionMode(
 }
 
 /**
- * Bare metal Hardware & OS: whether tenants can change instance type and disk
- * image at launch. Defaults to locked when omitted (legacy catalog items).
+ * Bare metal Hardware: whether tenants can change instance type at launch.
+ * Defaults to locked when omitted (legacy catalog items).
  */
 export type CatalogHardwareOsMode = 'locked' | 'editable'
+
+/**
+ * Bare metal OS: whether tenants can change disk image at launch.
+ * Defaults to locked when omitted (legacy catalog items fall back to hardwareOsMode).
+ */
+export type CatalogOsImageMode = CatalogHardwareOsMode
 
 export function getCatalogHardwareOsModeLabel(mode: CatalogHardwareOsMode): string {
   return mode === 'editable' ? 'Editable' : 'Locked'
@@ -178,6 +184,20 @@ export function resolveCatalogHardwareOsMode(
   mode: CatalogHardwareOsMode | undefined | null,
 ): CatalogHardwareOsMode {
   return mode === 'editable' ? 'editable' : 'locked'
+}
+
+export function getCatalogOsImageModeLabel(mode: CatalogOsImageMode): string {
+  return getCatalogHardwareOsModeLabel(mode)
+}
+
+export function resolveCatalogOsImageMode(
+  mode: CatalogOsImageMode | undefined | null,
+  hardwareFallback?: CatalogHardwareOsMode | undefined | null,
+): CatalogOsImageMode {
+  if (mode === 'editable' || mode === 'locked') {
+    return mode
+  }
+  return resolveCatalogHardwareOsMode(hardwareFallback)
 }
 
 /**
@@ -203,6 +223,8 @@ export type CatalogClusterNodeSetOption = {
   id: string
   label: string
   detail: string
+  /** Default worker count used for estimated catalog pricing. */
+  defaultWorkerCount: number
 }
 
 /** Host type options for the default node set. */
@@ -216,17 +238,20 @@ export const CATALOG_CLUSTER_NODE_SET_OPTIONS: ReadonlyArray<CatalogClusterNodeS
   {
     id: 'fc430-worker',
     label: 'Worker pool',
-    detail: 'General-purpose workers · size 1–4',
+    detail: '3 workers · size 1–4',
+    defaultWorkerCount: 3,
   },
   {
     id: 'fc430-infra',
     label: 'Infra pool',
-    detail: 'Infrastructure workloads · routers, registry, monitoring',
+    detail: '2 workers · routers & monitoring',
+    defaultWorkerCount: 2,
   },
   {
     id: 'fc430-gpu',
     label: 'GPU pool',
-    detail: 'GPU workers · AI training and inference',
+    detail: '2 workers · AI workloads',
+    defaultWorkerCount: 2,
   },
 ]
 
@@ -234,17 +259,17 @@ export const CATALOG_CLUSTER_HOST_TYPE_OPTIONS: ReadonlyArray<CatalogClusterHost
   {
     id: 'standard-host',
     label: 'standard-host',
-    detail: 'CPU-balanced bare metal for general cluster nodes',
+    detail: 'CPU-balanced',
   },
   {
     id: 'gpu-host',
     label: 'gpu-host',
-    detail: 'GPU-capable hosts for accelerated workloads',
+    detail: 'GPU-capable',
   },
   {
     id: 'storage-host',
     label: 'storage-host',
-    detail: 'High-capacity storage hosts for data-intensive nodes',
+    detail: 'High-capacity storage',
   },
 ]
 

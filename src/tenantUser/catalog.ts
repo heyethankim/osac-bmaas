@@ -50,6 +50,7 @@ export type TenantUserCatalogCard = {
   diskImageLabel?: string
   clusterVersionMode?: 'locked' | 'editable'
   hardwareOsMode?: 'locked' | 'editable'
+  osImageMode?: 'locked' | 'editable'
   nodeSetId?: string
   nodeSetLabel?: string
   hostTypeId?: string
@@ -203,6 +204,7 @@ export function getTenantUserCatalogCardFromDraft(
     diskImageLabel: catalog.diskImageLabel,
     clusterVersionMode: catalog.clusterVersionMode,
     hardwareOsMode: catalog.hardwareOsMode,
+    osImageMode: catalog.osImageMode,
     nodeSetId: catalog.nodeSetId,
     nodeSetLabel: catalog.nodeSetLabel,
     hostTypeId: catalog.hostTypeId,

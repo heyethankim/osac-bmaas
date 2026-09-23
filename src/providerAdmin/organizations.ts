@@ -1,3 +1,9 @@
+import type { M360ConnectionStatus } from '../billing/m360'
+import {
+  findM360AccountByReference,
+  findM360AccountByTenantName,
+  listM360PortalAccounts,
+} from '../billing/m360Accounts'
 import {
   DEMO_TENANT_DISPLAY_ADMIN,
   DEMO_TENANT_LOGIN_EMAIL_ADMIN,
@@ -47,6 +53,9 @@ export type IdpInviteStatus = 'none' | 'pending' | 'accepted' | 'expired'
 
 export type IdentityProviderConnectedBy = 'provider-admin' | 'idp-manager'
 
+/** Tenant billing onboarding progress — distinct from IdP configuration. */
+export type TenantSetupStatus = 'incomplete' | 'billing_configured' | 'ready'
+
 export type RegisteredOrganization = {
   id: string
   name: string
@@ -56,6 +65,21 @@ export type RegisteredOrganization = {
   primaryDomain: string
   /** Extra email domains covered by the same IdP. Set when connecting identity. */
   additionalDomains: string[]
+  /** Human-readable tenant name shown in workspace branding. */
+  displayName?: string
+  /** Mapped M360 tenant / billing account identifier. */
+  m360AccountId?: string
+  m360ConnectionStatus?: M360ConnectionStatus
+  /**
+   * Shared M360 rate card applied to this tenant (flat rate for all tenants in MVP).
+   * Not selected or created in OSAC.
+   */
+  m360RateCardId?: string
+  m360RateCardName?: string
+  /** True after the Provider admin confirms the OSAC ↔ M360 link. */
+  billingAccountLinked?: boolean
+  /** Billing onboarding state — separate from IdP setup. */
+  tenantSetupStatus?: TenantSetupStatus
   billingAccountId: string
   billingAccountName: string
   /** Tenant company mark (data URL or public path). Shown on tenant login and workspace. */
@@ -132,7 +156,103 @@ export function identityProviderConnectedByLabel(
 
 export const IDP_INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
-export type OrganizationSetupNextAction = 'idp' | 'rbac'
+export type OrganizationSetupNextAction = 'billing' | 'idp' | 'rbac'
+
+export const TENANT_ONBOARDING_STEPS = [
+  { id: 'general', label: 'General' },
+  { id: 'billing_account', label: 'Billing' },
+  { id: 'review', label: 'Review' },
+] as const
+
+export type TenantOnboardingStepId = (typeof TENANT_ONBOARDING_STEPS)[number]['id']
+
+export function resolveTenantSetupStatus(
+  organization: RegisteredOrganization,
+): TenantSetupStatus {
+  if (organization.tenantSetupStatus) {
+    return organization.tenantSetupStatus
+  }
+
+  const m360AccountId =
+    organization.m360AccountId?.trim() || organization.billingAccountId.trim()
+  const isLinked =
+    organization.billingAccountLinked === true ||
+    organization.m360ConnectionStatus === 'connected'
+
+  if (isLinked && m360AccountId) {
+    return 'ready'
+  }
+
+  if (m360AccountId) {
+    return 'billing_configured'
+  }
+
+  return 'incomplete'
+}
+
+export function getTenantSetupStatusLabel(status: TenantSetupStatus): string {
+  switch (status) {
+    case 'incomplete':
+      return 'Incomplete'
+    case 'billing_configured':
+      return 'Billing configured'
+    case 'ready':
+      return 'Ready for provisioning'
+  }
+}
+
+export function getTenantSetupStatusColor(
+  status: TenantSetupStatus,
+): 'orange' | 'blue' | 'green' {
+  switch (status) {
+    case 'incomplete':
+      return 'orange'
+    case 'billing_configured':
+      return 'blue'
+    case 'ready':
+      return 'green'
+  }
+}
+
+export function isTenantReadyForProvisioning(organization: RegisteredOrganization): boolean {
+  return resolveTenantSetupStatus(organization) === 'ready'
+}
+
+export function isTenantBillingConfigured(organization: RegisteredOrganization): boolean {
+  const status = resolveTenantSetupStatus(organization)
+  return status === 'billing_configured' || status === 'ready'
+}
+
+export function isOrganizationBillingPending(organization: RegisteredOrganization): boolean {
+  return !isTenantBillingConfigured(organization)
+}
+
+export function getOrganizationBillingPendingTooltip(
+  organization: RegisteredOrganization,
+): string {
+  const accounts = listM360PortalAccounts()
+  const account =
+    findM360AccountByTenantName(organization.name, accounts) ??
+    findM360AccountByReference(organization.m360AccountId ?? '', accounts) ??
+    findM360AccountByTenantName(organization.tenantId, accounts)
+
+  if (account?.accountStatus === 'Inactive') {
+    return 'Billing not linked. M360 account is inactive.'
+  }
+
+  return 'Finish tenant billing setup to publish.'
+}
+
+export function getOrganizationBillingAccountDisplay(
+  organization: RegisteredOrganization,
+): string {
+  const reference =
+    organization.m360AccountId?.trim() ||
+    organization.billingAccountId.trim() ||
+    organization.billingAccountName.trim()
+
+  return reference || '—'
+}
 
 export function generateIdpInviteToken(): string {
   return `idpinv-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`
@@ -558,7 +678,7 @@ export const DEMO_IDP_MANAGER_URL_SLUG = 'bluesolace'
 /** Stored organization slug that backs the BlueSolace IdP manager demo. */
 export const DEMO_IDP_MANAGER_ORG_SLUG = 'evergreen'
 export const DEMO_BLUESOLACE_ORG_ID = 'org-bluesolace-financial-group'
-export const DEMO_BLUESOLACE_TENANT_ID = 'tenant-evergreen'
+export const DEMO_BLUESOLACE_TENANT_ID = DEMO_TENANT_LABEL.evergreen
 
 export function getIdpManagerUrlSlug(slug = DEMO_IDP_MANAGER_URL_SLUG): string {
   const normalized = slug.trim().toLowerCase()
@@ -650,6 +770,14 @@ export function resolveIdpManagerPrototypeOrganization(
 
 /** Under-Status line: next incomplete step while setup is incomplete. */
 export function getOrganizationSetupSignal(organization: RegisteredOrganization): string | null {
+  const setupStatus = resolveTenantSetupStatus(organization)
+  if (setupStatus === 'incomplete') {
+    return 'Billing pending'
+  }
+  if (setupStatus === 'billing_configured') {
+    return 'Billing account not linked'
+  }
+
   if (!organization.identityProviderConnected) {
     if (hasPendingIdpInvite(organization)) {
       return 'Waiting on IdP Manager'
@@ -709,6 +837,11 @@ export function getOrganizationOsacLoginPath(slug: string): string {
 export function getOrganizationSetupNextAction(
   organization: RegisteredOrganization,
 ): OrganizationSetupNextAction | null {
+  const setupStatus = resolveTenantSetupStatus(organization)
+  if (setupStatus !== 'ready') {
+    return 'billing'
+  }
+
   if (!organization.identityProviderConnected) {
     return 'idp'
   }
@@ -721,46 +854,156 @@ export function getOrganizationSetupNextAction(
 }
 
 export const ORGANIZATION_SETUP_NEXT_ACTION_LABEL: Record<OrganizationSetupNextAction, string> = {
+  billing: 'Complete billing setup',
   idp: 'Set up identity provider',
   rbac: 'Assign roles',
 }
 
-export type OrganizationActivationStepId = 'registered' | 'idp' | 'rbac'
+export type OrganizationActivationStepId =
+  | 'tenant_created'
+  | 'billing_account'
+  | 'idp'
+
+export type OrganizationActivationStepStatus =
+  | 'complete'
+  | 'current'
+  | 'pending'
+  | 'problematic'
 
 export type OrganizationActivationStep = {
   id: OrganizationActivationStepId
   label: string
   complete: boolean
+  status: OrganizationActivationStepStatus
+  description: string | null
 }
 
-/** Compact activation progress for the organization details drawer. */
+function resolveOrganizationSetupM360Account(
+  organization: RegisteredOrganization,
+) {
+  const accounts = listM360PortalAccounts()
+  const linkedReference =
+    organization.m360AccountId?.trim() || organization.billingAccountId.trim() || ''
+
+  return (
+    (linkedReference ? findM360AccountByReference(linkedReference, accounts) : null) ??
+    findM360AccountByTenantName(organization.name, accounts) ??
+    findM360AccountByTenantName(organization.tenantId, accounts)
+  )
+}
+
+function isOrganizationSetupM360AccountInactive(
+  organization: RegisteredOrganization,
+): boolean {
+  return resolveOrganizationSetupM360Account(organization)?.accountStatus === 'Inactive'
+}
+
+function formatOrganizationSetupTimestamp(iso: string): string {
+  return new Date(iso).toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+}
+
+function getOrganizationBillingAccountStepDescription(
+  organization: RegisteredOrganization,
+): string {
+  const accountId =
+    organization.m360AccountId?.trim() || organization.billingAccountId.trim()
+  if (!accountId) {
+    return 'Not configured'
+  }
+
+  const accountLabel =
+    organization.billingAccountName?.trim() ||
+    resolveOrganizationSetupM360Account(organization)?.accountName?.trim() ||
+    accountId
+
+  if (isOrganizationSetupM360AccountInactive(organization)) {
+    return `${accountLabel} · Billing account inactive`
+  }
+
+  return accountLabel
+}
+
+function getOrganizationIdentityProviderStepDescription(
+  organization: RegisteredOrganization,
+): string | null {
+  if (!organization.identityProviderConnected) {
+    if (hasPendingIdpInvite(organization)) {
+      return organization.idpManagerEmail
+        ? `Invite sent to ${organization.idpManagerEmail}`
+        : 'Waiting on IdP manager'
+    }
+
+    return 'Not configured'
+  }
+
+  const parts = [
+    organization.identityProviderProtocol,
+    organization.identityProviderDisplayName || organization.identityProviderName,
+  ].filter(Boolean)
+
+  return parts.length > 0 ? parts.join(' · ') : organization.identityProviderName
+}
+
+/** Vertical tenant setup timeline for the organization details page. */
 export function getOrganizationActivationSteps(
   organization: RegisteredOrganization,
 ): OrganizationActivationStep[] {
+  const m360AccountId =
+    organization.m360AccountId?.trim() || organization.billingAccountId.trim()
+  const billingAccountInactive = isOrganizationSetupM360AccountInactive(organization)
+  const billingAccountComplete = Boolean(m360AccountId) && !billingAccountInactive
+  const billingAccountProblematic = Boolean(m360AccountId) && billingAccountInactive
   const idpComplete = organization.identityProviderConnected
-  const rbacComplete = organization.rbacConfigured
 
-  return [
+  const steps: Array<
+    Omit<OrganizationActivationStep, 'status'> & { problematic?: boolean }
+  > = [
     {
-      id: 'registered',
-      label: 'Tenant registered',
+      id: 'tenant_created',
+      label: 'Tenant created',
       complete: true,
+      description: formatOrganizationSetupTimestamp(organization.createdAt),
+    },
+    {
+      id: 'billing_account',
+      label: 'M360 billing account',
+      complete: billingAccountComplete,
+      problematic: billingAccountProblematic,
+      description: getOrganizationBillingAccountStepDescription(organization),
     },
     {
       id: 'idp',
-      label: idpComplete
-        ? 'Identity provider connected'
-        : hasPendingIdpInvite(organization)
-          ? 'Waiting on IdP Manager'
-          : 'Set up identity provider',
+      label: 'Identity provider',
       complete: idpComplete,
-    },
-    {
-      id: 'rbac',
-      label: rbacComplete ? 'Roles defined' : 'Assign roles (optional)',
-      complete: rbacComplete,
+      description: getOrganizationIdentityProviderStepDescription(organization),
     },
   ]
+
+  const firstIncompleteIndex = steps.findIndex(
+    (step) => !step.complete && !step.problematic,
+  )
+
+  return steps.map((step, index) => ({
+    id: step.id,
+    label: step.label,
+    complete: step.complete,
+    description: step.description,
+    status:
+      step.complete
+        ? 'complete'
+        : step.problematic
+          ? 'problematic'
+          : index === firstIncompleteIndex
+            ? 'current'
+            : 'pending',
+  }))
 }
 
 export function buildDemoIdentityProviderName(
@@ -773,9 +1016,9 @@ export function buildDemoIdentityProviderName(
 
 /** Stable id for the Organizations page baseline row. */
 export const DEMO_NORTH_SUMMIT_BANK_ORG_ID = 'org-northsummit-bank'
-export const DEMO_NORTH_SUMMIT_BANK_TENANT_ID = 'tenant-northsummit'
-export const DEMO_NORTH_SUMMIT_BANK_SLUG = 'northsummit'
 export const DEMO_NORTH_SUMMIT_BANK_ORG_NAME = DEMO_TENANT_LABEL.northsummit
+export const DEMO_NORTH_SUMMIT_BANK_TENANT_ID = DEMO_NORTH_SUMMIT_BANK_ORG_NAME
+export const DEMO_NORTH_SUMMIT_BANK_SLUG = 'northsummit'
 export const DEMO_NORTH_SUMMIT_BANK_PRIMARY_DOMAIN = 'northsummitbank.com'
 export const DEMO_NORTH_SUMMIT_BANK_ADDITIONAL_DOMAIN = 'northsummitbank.net'
 export const DEMO_NORTH_SUMMIT_BANK_IDP_DISPLAY_NAME = `${DEMO_NORTH_SUMMIT_BANK_ORG_NAME}-idp`
@@ -785,9 +1028,9 @@ export const DEMO_NORTH_SUMMIT_BANK_BILLING_ACCOUNT_NAME =
 
 /** Second demo enterprise for VIP visibility multi-select (not BlueSolace). */
 export const DEMO_HARBORLINE_CAPITAL_ORG_ID = 'org-harborline-capital'
-export const DEMO_HARBORLINE_CAPITAL_TENANT_ID = 'tenant-harborline'
-export const DEMO_HARBORLINE_CAPITAL_SLUG = 'harborline'
 export const DEMO_HARBORLINE_CAPITAL_NAME = 'harborline-capital'
+export const DEMO_HARBORLINE_CAPITAL_TENANT_ID = DEMO_HARBORLINE_CAPITAL_NAME
+export const DEMO_HARBORLINE_CAPITAL_SLUG = 'harborline'
 export const DEMO_HARBORLINE_CAPITAL_DOMAIN = 'harborlinecapital.com'
 
 export const REGISTER_ORGANIZATION_STEPS = [
@@ -799,8 +1042,10 @@ export type RegisterOrganizationStepId = (typeof REGISTER_ORGANIZATION_STEPS)[nu
 
 export type RegisterOrganizationForm = {
   organizationName: string
+  displayName: string
   primaryDomain: string
   additionalDomains: string[]
+  m360AccountId: string
   billingAccountId: string
   billingAccountName: string
   externalIpPoolId: string
@@ -834,9 +1079,11 @@ function registerFormBreakGlassFields(
 
 export const DEFAULT_REGISTER_ORGANIZATION_FORM: RegisterOrganizationForm = {
   organizationName: DEMO_BLUESOLACE_ORG_NAME,
+  displayName: DEMO_BLUESOLACE_ORG_NAME,
   primaryDomain: DEMO_BLUESOLACE_PRIMARY_DOMAIN,
   additionalDomains: [buildDemoSubsidiaryDomain('silverpinetrust.com')],
-  billingAccountId: '',
+  m360AccountId: 'bluesolace-financial-group',
+  billingAccountId: 'bluesolace-financial-group',
   billingAccountName: DEMO_BLUESOLACE_BILLING_ACCOUNT_NAME,
   externalIpPoolId: 'eipool-northsummit-edge',
   maxInstances: '20',
@@ -856,8 +1103,15 @@ export function createDemoBlueSolaceOnboardingOrganization(): RegisteredOrganiza
     slug: DEMO_IDP_MANAGER_ORG_SLUG,
     primaryDomain,
     additionalDomains: [DEMO_BLUESOLACE_ADDITIONAL_DOMAIN],
-    billingAccountId: 'ACCT-BSFG-2026',
+    displayName: DEMO_BLUESOLACE_ORG_NAME,
+    m360AccountId: 'bluesolace-financial-group',
+    m360ConnectionStatus: 'pending',
+    m360RateCardId: 'rate-enterprise-us',
+    m360RateCardName: 'Enterprise — US',
+    billingAccountId: 'bluesolace-financial-group',
     billingAccountName: DEMO_BLUESOLACE_BILLING_ACCOUNT_NAME,
+    tenantSetupStatus: 'billing_configured',
+    billingAccountLinked: false,
     logoSrc: getDemoBluesolaceCompanyLogoSrc(),
     logoFileName: DEMO_BLUESOLACE_COMPANY_LOGO_FILE_NAME,
     catalogItemId: null,
@@ -913,7 +1167,14 @@ export function createDemoNorthSummitBankOrganization(
     slug: DEMO_NORTH_SUMMIT_BANK_SLUG,
     primaryDomain,
     additionalDomains: [DEMO_NORTH_SUMMIT_BANK_ADDITIONAL_DOMAIN],
-    billingAccountId: 'ACCT-NSB-2048',
+    displayName: DEMO_NORTH_SUMMIT_BANK_ORG_NAME,
+    m360AccountId: 'north-summit-bank',
+    m360ConnectionStatus: 'connected',
+    m360RateCardId: 'rate-enterprise-us',
+    m360RateCardName: 'Enterprise — US',
+    billingAccountLinked: true,
+    tenantSetupStatus: 'ready',
+    billingAccountId: 'north-summit-bank',
     billingAccountName: DEMO_NORTH_SUMMIT_BANK_BILLING_ACCOUNT_NAME,
     logoSrc: getDemoNorthSummitBankCompanyLogoSrc(),
     logoFileName: DEMO_NORTH_SUMMIT_BANK_COMPANY_LOGO_FILE_NAME,
@@ -992,7 +1253,14 @@ export function createDemoHarborlineCapitalOrganization(
     slug: DEMO_HARBORLINE_CAPITAL_SLUG,
     primaryDomain,
     additionalDomains: ['harborline.com'],
-    billingAccountId: 'ACCT-HLC-3910',
+    displayName: DEMO_HARBORLINE_CAPITAL_NAME,
+    m360AccountId: 'harborline-capital',
+    m360ConnectionStatus: 'connected',
+    m360RateCardId: 'rate-enterprise-us',
+    m360RateCardName: 'Enterprise — US',
+    billingAccountLinked: true,
+    tenantSetupStatus: 'ready',
+    billingAccountId: 'harborline-capital',
     billingAccountName: 'harborline-capital-enterprise-billing',
     logoSrc: getDemoHarborlineCapitalCompanyLogoSrc(),
     logoFileName: DEMO_HARBORLINE_CAPITAL_COMPANY_LOGO_FILE_NAME,
@@ -1098,6 +1366,13 @@ export const DEFAULT_REGISTER_ORGANIZATION_TENANT_ADMIN = {
 export function generateOrganizationId(): string {
   const suffix = Math.random().toString(36).slice(2, 8)
   return `org-${suffix}`
+}
+
+/** Tenant name is the OSAC tenant identifier (same value stored in `name` and `tenantId`). */
+export function resolveOrganizationTenantName(
+  organization: Pick<RegisteredOrganization, 'name'>,
+): string {
+  return organization.name.trim()
 }
 
 export function generateTenantId(): string {
@@ -1343,12 +1618,17 @@ export function isOrganizationSlugTaken(
 export function formFromRegisteredOrganization(
   organization: RegisteredOrganization,
 ): RegisterOrganizationForm {
+  const m360AccountId =
+    organization.m360AccountId?.trim() || organization.billingAccountId.trim()
+
   return {
     organizationName: organization.name,
+    displayName: organization.displayName?.trim() || organization.name,
     primaryDomain: organization.primaryDomain,
     additionalDomains:
       organization.additionalDomains.length > 0 ? [...organization.additionalDomains] : [],
-    billingAccountId: organization.billingAccountId,
+    m360AccountId,
+    billingAccountId: m360AccountId,
     billingAccountName: organization.billingAccountName,
     externalIpPoolId: organization.externalIpPoolId ?? '',
     maxInstances: String(organization.maxInstances),
@@ -1392,12 +1672,16 @@ export function buildNextRegisterOrganizationForm(
       continue
     }
 
+    const m360AccountId = generateBillingAccountId()
+
     return {
       ...DEFAULT_REGISTER_ORGANIZATION_FORM,
       organizationName: preset.organizationName,
+      displayName: preset.organizationName,
       primaryDomain: preset.primaryDomain,
+      m360AccountId,
       billingAccountName: preset.billingAccountName,
-      billingAccountId: generateBillingAccountId(),
+      billingAccountId: m360AccountId,
       ...registerFormLogoFields(preset.organizationName),
       ...registerFormBreakGlassFields(preset.organizationName, preset.primaryDomain),
     }
@@ -1413,12 +1697,16 @@ export function buildNextRegisterOrganizationForm(
       !taken.domains.has(primaryDomain) &&
       !taken.slugs.has(slug)
     ) {
+      const m360AccountId = generateBillingAccountId()
+
       return {
         ...DEFAULT_REGISTER_ORGANIZATION_FORM,
         organizationName,
+        displayName: organizationName,
         primaryDomain,
+        m360AccountId,
         billingAccountName: `${organizationName}-enterprise-billing`,
-        billingAccountId: generateBillingAccountId(),
+        billingAccountId: m360AccountId,
         ...registerFormLogoFields(organizationName),
         ...registerFormBreakGlassFields(organizationName, primaryDomain),
       }
@@ -1443,6 +1731,7 @@ export function buildNextRegisterOrganizationForm(
 export type OrganizationSetupFilter =
   | 'all'
   | 'ready'
+  | 'needs-billing'
   | 'needs-idp'
   | 'waiting-idp'
   | 'expired-idp'
@@ -1453,7 +1742,8 @@ export const ORGANIZATION_SETUP_FILTER_OPTIONS: ReadonlyArray<{
   label: string
 }> = [
   { value: 'all', label: 'All setup states' },
-  { value: 'ready', label: 'Ready' },
+  { value: 'ready', label: 'Ready for provisioning' },
+  { value: 'needs-billing', label: 'Needs billing setup' },
   { value: 'needs-idp', label: 'Needs identity provider' },
   { value: 'waiting-idp', label: 'Waiting on IdP Manager' },
   { value: 'expired-idp', label: 'IdP manager link expired' },
@@ -1463,6 +1753,11 @@ export const ORGANIZATION_SETUP_FILTER_OPTIONS: ReadonlyArray<{
 export function getOrganizationSetupFilterKey(
   organization: RegisteredOrganization,
 ): Exclude<OrganizationSetupFilter, 'all'> {
+  const setupStatus = resolveTenantSetupStatus(organization)
+  if (setupStatus !== 'ready') {
+    return 'needs-billing'
+  }
+
   const signal = getOrganizationSetupSignal(organization)
   if (signal === null) {
     return 'ready'

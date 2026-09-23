@@ -1,6 +1,10 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { syncWorkspaceNavParam } from '../shared/workspaceNavUrl'
+import {
+  syncWorkspaceActionParam,
+  syncWorkspaceNavParam,
+  WORKSPACE_ACTION_REGISTER_TENANT,
+} from '../shared/workspaceNavUrl'
 import { ProviderAdminShell } from '../components/provider-admin/ProviderAdminShell'
 import { ProviderSetupWizardPanel } from '../components/provider-setup/ProviderSetupWizardPanel'
 import type { ProviderAdminNavId } from '../providerAdmin/constants'
@@ -10,9 +14,9 @@ import { ProviderAdminOverviewPage } from './ProviderAdminOverviewPage'
 import { ProviderAdminBmaasTemplatesPage } from './infrastructure/ProviderAdminBmaasTemplatesPage'
 import { ProviderAdminDataCentersPage } from './infrastructure/ProviderAdminDataCentersPage'
 import { ProviderAdminHardwareInventoryPage } from './infrastructure/ProviderAdminHardwareInventoryPage'
-import { ProviderAdminBillingMeteringPage } from './ProviderAdminBillingMeteringPage'
+import { ProviderAdminBillingPage } from './ProviderAdminBillingPage'
 import { ProviderAdminOrganizationsPage } from './ProviderAdminOrganizationsPage'
-import { ProviderAdminQuotasPage } from './ProviderAdminQuotasPage'
+import { ProviderAdminRateCardsPage } from './ProviderAdminRateCardsPage'
 import { ProviderAdminExternalNetworksPage } from './infrastructure/ProviderAdminExternalNetworksPage'
 import { PlaceholderProviderAdminPage } from './PlaceholderProviderAdminPage'
 import { ProviderServiceSelectionPage } from './provider-setup/ProviderServiceSelectionPage'
@@ -34,7 +38,6 @@ import {
   addProviderCatalogItem,
   assignCatalogToRegisteredOrganization,
   setProviderActiveNav,
-  setProviderOpenRegisterOrgWizard,
   setProviderSelectedServices,
   setProviderSetupComplete,
 } from '../providerSetup/storage'
@@ -153,6 +156,7 @@ export function ProviderAdminWorkspacePage() {
         ? { clusterVersionMode: payload.clusterVersionMode }
         : {}),
       ...(payload.hardwareOsMode ? { hardwareOsMode: payload.hardwareOsMode } : {}),
+      ...(payload.osImageMode ? { osImageMode: payload.osImageMode } : {}),
       ...(payload.nodeSetId ? { nodeSetId: payload.nodeSetId } : {}),
       ...(payload.nodeSetLabel ? { nodeSetLabel: payload.nodeSetLabel } : {}),
       ...(payload.hostTypeId ? { hostTypeId: payload.hostTypeId } : {}),
@@ -209,8 +213,19 @@ export function ProviderAdminWorkspacePage() {
   }
 
   const handleRegisterOrganization = () => {
-    setProviderOpenRegisterOrgWizard()
-    handleNavChange('administration-organizations')
+    const openRegister = () => {
+      setActiveNavId('administration-organizations')
+      setProviderActiveNav('administration-organizations')
+      setNavContentKey((current) => current + 1)
+      syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_REGISTER_TENANT)
+    }
+
+    if (catalogEditLeaveAttemptRef.current) {
+      catalogEditLeaveAttemptRef.current(openRegister)
+      return
+    }
+
+    openRegister()
   }
 
   const performNavChange = (navId: ProviderAdminNavId) => {
@@ -280,10 +295,10 @@ export function ProviderAdminWorkspacePage() {
         return <TenantSecretsPage scope="provider" tenantSlug="" />
       case 'administration-organizations':
         return <ProviderAdminOrganizationsPage onNavigate={handleNavChange} />
-      case 'administration-quotas':
-        return <ProviderAdminQuotasPage />
-      case 'billing-metering':
-        return <ProviderAdminBillingMeteringPage />
+      case 'administration-billing':
+        return <ProviderAdminBillingPage />
+      case 'administration-rate-cards':
+        return <ProviderAdminRateCardsPage />
       case 'system':
         return (
           <PlaceholderProviderAdminPage

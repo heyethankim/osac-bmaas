@@ -36,7 +36,6 @@ import {
   buildRegisterBreakGlassFields,
   formFromRegisteredOrganization,
   generateOrganizationId,
-  generateTenantId,
   generateBillingAccountId,
   getTakenEmailDomains,
   isOrganizationDomainTaken,
@@ -56,6 +55,8 @@ import {
   getKubernetesResourceNameValidation,
   isValidKubernetesResourceName,
 } from '../../shared/kubernetesResourceName'
+import { resolveM360ConnectionStatus } from '../../billing/m360'
+import { M360ConnectionStatusField } from '../billing/M360ConnectionStatusField'
 import { TenantCompanyLogoField } from './TenantCompanyLogoField'
 import { CatalogEditChangesSummary } from './CatalogEditChangesSummary'
 import {
@@ -182,9 +183,12 @@ export function RegisterOrganizationWizard({
     form.primaryDomain,
     takenEmailDomains,
   )
+  const m360ConnectionStatus = resolveM360ConnectionStatus(form.m360AccountId)
   const isOrganizationStepValid =
     isValidKubernetesResourceName(form.organizationName) &&
-    isValidKubernetesResourceName(form.billingAccountName) &&
+    form.displayName.trim().length > 0 &&
+    form.m360AccountId.trim().length > 0 &&
+    m360ConnectionStatus !== 'not_found' &&
     isValidPrimaryDomain(form.primaryDomain) &&
     additionalDomainsValid &&
     !nameTaken &&
@@ -260,13 +264,18 @@ export function RegisterOrganizationWizard({
     )
 
     if (editingOrganization) {
+      const m360AccountId = form.m360AccountId.trim()
       const updated: RegisteredOrganization = {
         ...editingOrganization,
         name: form.organizationName.trim(),
+        displayName: form.displayName.trim(),
         slug: slugifyOrganizationName(form.organizationName),
         primaryDomain,
         additionalDomains: normalizedAdditionalDomains,
-        billingAccountName: form.billingAccountName.trim(),
+        m360AccountId,
+        m360ConnectionStatus: resolveM360ConnectionStatus(m360AccountId),
+        billingAccountId: m360AccountId,
+        billingAccountName: `${slugifyOrganizationName(form.organizationName)}-enterprise-billing`,
         logoSrc,
         logoFileName,
       }
@@ -275,15 +284,19 @@ export function RegisterOrganizationWizard({
       return
     }
 
+    const m360AccountId = form.m360AccountId.trim() || generateBillingAccountId()
     const organization: RegisteredOrganization = {
       id: generateOrganizationId(),
       name: form.organizationName.trim(),
-      tenantId: generateTenantId(),
+      displayName: form.displayName.trim(),
+      tenantId: form.organizationName.trim(),
       slug: slugifyOrganizationName(form.organizationName),
       primaryDomain,
       additionalDomains: normalizedAdditionalDomains,
-      billingAccountId: form.billingAccountId.trim() || generateBillingAccountId(),
-      billingAccountName: form.billingAccountName.trim(),
+      m360AccountId,
+      m360ConnectionStatus: resolveM360ConnectionStatus(m360AccountId),
+      billingAccountId: m360AccountId,
+      billingAccountName: `${slugifyOrganizationName(form.organizationName)}-enterprise-billing`,
       logoSrc,
       logoFileName,
       catalogItemId: catalogDraft?.catalogItemId ?? null,
@@ -331,8 +344,8 @@ export function RegisterOrganizationWizard({
           <div className="provider-admin-organizations__wizard-step">
             <Content component="p" className="provider-admin-organizations__wizard-lede">
               {isEditMode
-                ? 'Update the tenant and billing account.'
-                : 'Create the tenant and map its billing account.'}
+                ? 'Update the tenant and its M360 account mapping.'
+                : 'Create the tenant in OSAC and map it to an existing M360 account. Invoicing, payment methods, and rate cards stay in M360.'}
             </Content>
             <Form autoComplete="off" className="provider-admin-organizations__wizard-form">
               <FormGroup label="Tenant name" fieldId="register-org-name" isRequired>
@@ -341,16 +354,8 @@ export function RegisterOrganizationWizard({
                   value={form.organizationName}
                   onChange={(value) =>
                     setForm((current) => {
-                      const billingAccountName =
-                        isEditMode || !value.trim()
-                          ? current.billingAccountName
-                          : `${value
-                              .trim()
-                              .toLowerCase()
-                              .replace(/[^a-z0-9]+/g, '-')
-                              .replace(/^-+|-+$/g, '')}-enterprise-billing`
                       if (isEditMode) {
-                        return { ...current, organizationName: value, billingAccountName }
+                        return { ...current, organizationName: value }
                       }
                       const previousSlug = slugifyOrganizationName(current.organizationName)
                       const nextSlug = slugifyOrganizationName(value)
@@ -360,10 +365,13 @@ export function RegisterOrganizationWizard({
                         breakGlassPassword:
                           previousSlug === nextSlug ? current.breakGlassPassword : null,
                       })
+                      const shouldRefreshDisplayName =
+                        !current.displayName.trim() ||
+                        current.displayName.trim() === current.organizationName.trim()
                       return {
                         ...current,
                         organizationName: value,
-                        billingAccountName,
+                        displayName: shouldRefreshDisplayName ? value : current.displayName,
                         breakGlassUsername: issued.breakGlassUsername,
                         breakGlassPassword: issued.breakGlassPassword,
                       }
@@ -385,6 +393,23 @@ export function RegisterOrganizationWizard({
                     </HelperText>
                   </FormHelperText>
                 ) : null}
+              </FormGroup>
+              <FormGroup label="Display name" fieldId="register-display-name" isRequired>
+                <TextInput
+                  id="register-display-name"
+                  value={form.displayName}
+                  onChange={(_event, value) =>
+                    setForm((current) => ({ ...current, displayName: value }))
+                  }
+                  placeholder="e.g. North Summit Bank"
+                />
+                <FormHelperText>
+                  <HelperText>
+                    <HelperTextItem>
+                      Human-readable tenant name shown in workspace branding.
+                    </HelperTextItem>
+                  </HelperText>
+                </FormHelperText>
               </FormGroup>
               <FormGroup label="Primary email domain" fieldId="register-primary-domain" isRequired>
                 <TextInput
@@ -427,23 +452,23 @@ export function RegisterOrganizationWizard({
                   }))
                 }
               />
-              <FormGroup label="Billing account ID" fieldId="register-billing-id">
+              <FormGroup label="M360 tenant / account ID" fieldId="register-m360-account" isRequired>
                 <TextInput
-                  id="register-billing-id"
-                  value={form.billingAccountId}
-                  readOnlyVariant="default"
-                  aria-readonly="true"
-                />
-              </FormGroup>
-              <FormGroup label="Billing account name" fieldId="register-billing-name" isRequired>
-                <KubernetesResourceNameField
-                  id="register-billing-name"
-                  value={form.billingAccountName}
-                  onChange={(value) =>
-                    setForm((current) => ({ ...current, billingAccountName: value }))
+                  id="register-m360-account"
+                  value={form.m360AccountId}
+                  validated={m360ConnectionStatus === 'not_found' ? 'error' : 'default'}
+                  onChange={(_event, value) =>
+                    setForm((current) => ({
+                      ...current,
+                      m360AccountId: value,
+                      billingAccountId: value,
+                    }))
                   }
-                  placeholder="e.g. north-summit-bank-enterprise-billing"
-                  isRequired
+                  placeholder="e.g. ACCT-NSB-2048"
+                />
+                <M360ConnectionStatusField
+                  accountId={form.m360AccountId}
+                  status={m360ConnectionStatus}
                 />
               </FormGroup>
             </Form>
@@ -470,6 +495,12 @@ export function RegisterOrganizationWizard({
               <DescriptionListTerm>Tenant</DescriptionListTerm>
               <DescriptionListDescription>
                 {form.organizationName.trim() || '—'}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Display name</DescriptionListTerm>
+              <DescriptionListDescription>
+                {form.displayName.trim() || '—'}
               </DescriptionListDescription>
             </DescriptionListGroup>
             <DescriptionListGroup>
@@ -502,12 +533,17 @@ export function RegisterOrganizationWizard({
               </DescriptionListDescription>
             </DescriptionListGroup>
             <DescriptionListGroup>
-              <DescriptionListTerm>Billing account</DescriptionListTerm>
+              <DescriptionListTerm>M360 account</DescriptionListTerm>
               <DescriptionListDescription>
-                {form.billingAccountName.trim() || '—'}{' '}
-                {form.billingAccountId.trim() ? (
-                  <code>{form.billingAccountId.trim()}</code>
-                ) : null}
+                {form.m360AccountId.trim() ? (
+                  <code>{form.m360AccountId.trim()}</code>
+                ) : (
+                  '—'
+                )}
+                <M360ConnectionStatusField
+                  accountId={form.m360AccountId}
+                  status={m360ConnectionStatus}
+                />
               </DescriptionListDescription>
             </DescriptionListGroup>
           </DescriptionList>

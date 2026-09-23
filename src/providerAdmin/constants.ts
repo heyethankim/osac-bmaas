@@ -16,8 +16,8 @@ export type ProviderAdminNavId =
   | 'infrastructure-hardware-inventory'
   | 'infrastructure-bmaas-templates'
   | 'administration-organizations'
-  | 'administration-quotas'
-  | 'billing-metering'
+  | 'administration-billing'
+  | 'administration-rate-cards'
   | 'system'
 
 export type ProviderAdminNavItem = {
@@ -48,8 +48,8 @@ export const PROVIDER_ADMIN_INFRASTRUCTURE_NAV_ITEMS: ProviderAdminNavItem[] = [
 
 export const PROVIDER_ADMIN_ADMINISTRATION_NAV_ITEMS: ProviderAdminNavItem[] = [
   { id: 'administration-organizations', label: 'Tenants' },
-  { id: 'administration-quotas', label: 'Quotas' },
-  { id: 'billing-metering', label: 'Billing & metering' },
+  { id: 'administration-billing', label: 'Billing' },
+  { id: 'administration-rate-cards', label: 'Rates' },
 ]
 
 export function isServicesNavId(navId: string): boolean {
@@ -65,7 +65,7 @@ export function isInfrastructureNavId(navId: string): boolean {
 }
 
 export function isAdministrationNavId(navId: string): boolean {
-  return navId.startsWith('administration-') || navId === 'billing-metering'
+  return navId.startsWith('administration-')
 }
 
 export function isOrganizationsNavId(navId: string): boolean {

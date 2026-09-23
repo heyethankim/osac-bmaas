@@ -32,21 +32,26 @@ import {
   sortItemsByCreatedAtDesc,
   useResourceCreateReveal,
 } from '../catalog/resourceCreateReveal'
-import { CatalogSpecRowsList } from '../components/catalog/CatalogSpecRowsList'
 import { ViewModeToggle } from '../components/catalog/CatalogViewToggle'
 import { getAdministrationViewMode, setAdministrationViewMode, type ViewMode } from '../catalog/viewMode'
 import { OrganizationDetailsPage } from '../components/provider-admin/OrganizationDetailsPage'
 import { ProviderAdminWorkspacePageHeader } from '../components/provider-admin/ProviderAdminWorkspacePageHeader'
 import { RegisterOrganizationWizard } from '../components/provider-admin/RegisterOrganizationWizard'
+import { TenantOnboardingWizard } from '../components/provider-admin/TenantOnboardingWizard'
 import { SetupIdentityProviderWizard } from '../components/provider-admin/SetupIdentityProviderWizard'
 import { AddTenantAdministratorWizard } from '../components/tenant-admin/AddTenantAdministratorWizard'
 import { IdpManagerIdentityProviderPage } from './idp-manager/IdpManagerIdentityProviderPage'
 import { IDP_MANAGER_ROLES_COPY } from '../idpManager/constants'
+import { BillingPendingLabel } from '../components/billing/BillingPendingLabel'
+import { isOrganizationM360AccountInactive } from '../billing/m360'
 import {
+  getOrganizationBillingAccountDisplay,
+  getOrganizationBillingPendingTooltip,
   getOrganizationSetupNextAction,
   getOrganizationSetupSignal,
   buildOrganizationFilterParts,
   getOrganizationNameInitial,
+  isOrganizationBillingPending,
   matchesOrganizationSetupFilter,
   ORGANIZATION_SETUP_FILTER_OPTIONS,
   organizationMatchesSearch,
@@ -69,8 +74,11 @@ import {
 } from '../providerSetup/storage'
 import type { ProviderAdminNavId } from '../providerAdmin/constants'
 import {
+  getWorkspaceActionParam,
   getWorkspaceOrganizationParam,
+  syncWorkspaceActionParam,
   syncWorkspaceOrganizationParam,
+  WORKSPACE_ACTION_REGISTER_TENANT,
 } from '../shared/workspaceNavUrl'
 
 function formatRegisteredAt(iso: string): string {
@@ -117,6 +125,17 @@ function getOrganizationActions(
   ]
 }
 
+function renderOrganizationBillingPendingLabel(organization: RegisteredOrganization) {
+  const inactive = isOrganizationM360AccountInactive(organization)
+
+  return (
+    <BillingPendingLabel
+      label={inactive ? 'Billing account inactive' : 'Billing pending'}
+      tooltip={getOrganizationBillingPendingTooltip(organization)}
+    />
+  )
+}
+
 export function ProviderAdminOrganizationsPage({
   onNavigate,
 }: {
@@ -127,6 +146,9 @@ export function ProviderAdminOrganizationsPage({
     ensureProviderDemoOrganizations(),
   )
   const [isWizardOpen, setIsWizardOpen] = useState(false)
+  const [isOnboardingWizardOpen, setIsOnboardingWizardOpen] = useState(false)
+  const [onboardingResumeOrganization, setOnboardingResumeOrganization] =
+    useState<RegisteredOrganization | null>(null)
   const [editingOrganization, setEditingOrganization] = useState<RegisteredOrganization | null>(
     null,
   )
@@ -212,9 +234,25 @@ export function ProviderAdminOrganizationsPage({
     if (consumeProviderOpenRegisterOrgWizard()) {
       setEditingOrganization(null)
       setEditReturnToDetails(false)
-      setIsWizardOpen(true)
+      setOnboardingResumeOrganization(null)
+      setIsOnboardingWizardOpen(true)
+      syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_REGISTER_TENANT, {
+        replace: true,
+      })
     }
-  }, [])
+  }, [setSearchParams])
+
+  useEffect(() => {
+    if (getWorkspaceActionParam(searchParams) !== WORKSPACE_ACTION_REGISTER_TENANT) {
+      return
+    }
+
+    setEditingOrganization(null)
+    setEditReturnToDetails(false)
+    setOnboardingResumeOrganization(null)
+    setIsDetailsOpen(false)
+    setIsOnboardingWizardOpen(true)
+  }, [searchParams])
 
   useEffect(() => {
     return () => {
@@ -238,7 +276,7 @@ export function ProviderAdminOrganizationsPage({
   }, [organizations, searchParams])
 
   const refreshOrganizations = (nextSelectedId?: string | null) => {
-    const next = getProviderRegisteredOrganizations()
+    const next = ensureProviderDemoOrganizations()
     setOrganizations(next)
 
     setIdpDirectoryOrganization((current) => {
@@ -302,7 +340,30 @@ export function ProviderAdminOrganizationsPage({
   const openRegisterWizard = () => {
     setEditingOrganization(null)
     setEditReturnToDetails(false)
-    setIsWizardOpen(true)
+    setOnboardingResumeOrganization(null)
+    setIsOnboardingWizardOpen(true)
+    syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_REGISTER_TENANT, {
+      replace: true,
+    })
+  }
+
+  const openBillingSetup = (organization: RegisteredOrganization) => {
+    setEditingOrganization(null)
+    setEditReturnToDetails(false)
+    setOnboardingResumeOrganization(organization)
+    setIsOnboardingWizardOpen(true)
+    setIsDetailsOpen(false)
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_REGISTER_TENANT) {
+      syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    }
+  }
+
+  const closeOnboardingWizard = () => {
+    setIsOnboardingWizardOpen(false)
+    setOnboardingResumeOrganization(null)
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_REGISTER_TENANT) {
+      syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    }
   }
 
   const openEdit = (organization: RegisteredOrganization, returnToDetails = false) => {
@@ -366,6 +427,52 @@ export function ProviderAdminOrganizationsPage({
     setOrganizationPendingRemove(null)
   }
 
+  const handleOnboardingPersist = (organization: RegisteredOrganization) => {
+    const existing = getProviderRegisteredOrganizations().find(
+      (item) => item.id === organization.id,
+    )
+    if (existing) {
+      updateProviderRegisteredOrganization(organization.id, {
+        name: organization.name,
+        tenantId: organization.tenantId,
+        displayName: organization.displayName,
+        m360AccountId: organization.m360AccountId,
+        m360ConnectionStatus: organization.m360ConnectionStatus,
+        m360RateCardId: organization.m360RateCardId,
+        m360RateCardName: organization.m360RateCardName,
+        billingAccountId: organization.billingAccountId,
+        billingAccountName: organization.billingAccountName,
+        billingAccountLinked: organization.billingAccountLinked,
+        tenantSetupStatus: organization.tenantSetupStatus,
+      })
+    } else {
+      addProviderRegisteredOrganization(organization)
+      if (organization.externalIpPoolId) {
+        assignExternalIpPoolToRegisteredOrganization(
+          organization.externalIpPoolId,
+          organization.id,
+        )
+      }
+      if (organization.catalogItemId && catalogDraft) {
+        assignCatalogToRegisteredOrganization(organization.id, catalogDraft)
+      }
+    }
+    refreshOrganizations(organization.id)
+  }
+
+  const handleOnboardingComplete = (organization: RegisteredOrganization) => {
+    setSearchValue('')
+    setSelectedStatus('all')
+    setSelectedSetup('all')
+
+    if (peekProviderVipCatalogResumeIntent()) {
+      onNavigate?.('catalog')
+      return
+    }
+
+    beginOrganizationCreateReveal(organization.id)
+  }
+
   const handleRegister = (organization: RegisteredOrganization) => {
     addProviderRegisteredOrganization(organization)
     if (organization.externalIpPoolId) {
@@ -406,6 +513,11 @@ export function ProviderAdminOrganizationsPage({
     organization: RegisteredOrganization,
     action: OrganizationSetupNextAction,
   ) => {
+    if (action === 'billing') {
+      openBillingSetup(organization)
+      return
+    }
+
     if (action === 'idp') {
       if (organization.identityProviderConnected) {
         openIdpDirectory(organization)
@@ -480,6 +592,15 @@ export function ProviderAdminOrganizationsPage({
             setRolesOrganization(null)
           }}
         />
+      ) : isOnboardingWizardOpen ? (
+        <TenantOnboardingWizard
+          isOpen={isOnboardingWizardOpen}
+          catalogDraft={catalogDraft}
+          resumeOrganization={onboardingResumeOrganization}
+          onClose={closeOnboardingWizard}
+          onPersistOrganization={handleOnboardingPersist}
+          onComplete={handleOnboardingComplete}
+        />
       ) : isWizardOpen ? (
         <RegisterOrganizationWizard
           key={editingOrganization?.id ?? 'register-tenant'}
@@ -520,6 +641,7 @@ export function ProviderAdminOrganizationsPage({
           onBack={closeDetails}
           onEdit={() => openEdit(selectedOrganization, true)}
           onRemove={() => openRemove(selectedOrganization)}
+          onReviewBilling={(organization) => openBillingSetup(organization)}
           onReviewIdentityProvider={(organization) => {
             if (organization.identityProviderConnected) {
               openIdpDirectory(organization)
@@ -706,20 +828,32 @@ export function ProviderAdminOrganizationsPage({
                           {org.name}
                         </Button>
                       </Content>
-                      <CatalogSpecRowsList
-                        rows={[
-                          { label: 'Domain', value: org.primaryDomain || '—' },
-                          {
-                            label: 'Billing',
-                            value: org.billingAccountId,
-                          },
-                          { label: 'Registered', value: formatRegisteredAt(org.createdAt) },
-                        ]}
+                      <dl
                         className="provider-admin-catalog-items__specs-list provider-admin-organizations__card-specs"
-                        rowClassName="provider-admin-catalog-items__spec-row"
-                        labelClassName="provider-admin-catalog-items__spec-label"
-                        valueClassName="provider-admin-catalog-items__spec-value"
-                      />
+                      >
+                        <div className="provider-admin-catalog-items__spec-row">
+                          <dt className="provider-admin-catalog-items__spec-label">Domain</dt>
+                          <dd className="provider-admin-catalog-items__spec-value">
+                            {org.primaryDomain || '—'}
+                          </dd>
+                        </div>
+                        <div className="provider-admin-catalog-items__spec-row">
+                          <dt className="provider-admin-catalog-items__spec-label">Billing</dt>
+                          <dd className="provider-admin-catalog-items__spec-value">
+                            {isOrganizationBillingPending(org) ? (
+                              renderOrganizationBillingPendingLabel(org)
+                            ) : (
+                              getOrganizationBillingAccountDisplay(org)
+                            )}
+                          </dd>
+                        </div>
+                        <div className="provider-admin-catalog-items__spec-row">
+                          <dt className="provider-admin-catalog-items__spec-label">Registered</dt>
+                          <dd className="provider-admin-catalog-items__spec-value">
+                            {formatRegisteredAt(org.createdAt)}
+                          </dd>
+                        </div>
+                      </dl>
                       </div>
                       {setupSignal ? (
                         <div
@@ -858,12 +992,18 @@ export function ProviderAdminOrganizationsPage({
                       </Content>
                     </Td>
                     <Td modifier="wrap" dataLabel="Billing account">
-                      <Content component="p" className="provider-admin-organizations__primary-cell">
-                        {org.billingAccountName}
-                      </Content>
-                      <Content component="p" className="provider-admin-organizations__secondary-cell">
-                        <code>{org.billingAccountId}</code>
-                      </Content>
+                      {isOrganizationBillingPending(org) ? (
+                        renderOrganizationBillingPendingLabel(org)
+                      ) : (
+                        <>
+                          <Content component="p" className="provider-admin-organizations__primary-cell">
+                            {org.billingAccountName}
+                          </Content>
+                          <Content component="p" className="provider-admin-organizations__secondary-cell">
+                            <code>{getOrganizationBillingAccountDisplay(org)}</code>
+                          </Content>
+                        </>
+                      )}
                     </Td>
                     <Td modifier="wrap" dataLabel="Registered">
                       {formatRegisteredAt(org.createdAt)}
