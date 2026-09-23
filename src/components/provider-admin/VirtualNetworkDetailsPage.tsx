@@ -185,6 +185,7 @@ export function VirtualNetworkDetailsPage({
 }: VirtualNetworkDetailsPageProps) {
   const inventory = resolveNetworkInventoryScope(tenantSlug);
   const status = getNetworkInventoryStatus(network);
+  const canDelete = isNetworkInventoryResourceDeletable(network);
   const natGateway = hasVirtualNetworkNatGateway(network) ? network.natGateway : null;
   const relatedSubnets = toSubnetItems(
     getSubnetsForVirtualNetwork(inventory.getSubnets(), network.id),
@@ -209,6 +210,8 @@ export function VirtualNetworkDetailsPage({
             onEdit={onEdit}
             onRemove={onDelete}
             removeLabel="Delete"
+            removeDisabled={Boolean(onDelete) && !canDelete}
+            removeDisabledReason={NETWORK_INVENTORY_PROVISIONING_DELETE_TOOLTIP}
           />
         ) : undefined
       }

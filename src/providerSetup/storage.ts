@@ -2486,6 +2486,16 @@ export function updateProviderVirtualNetwork(network: ProviderVirtualNetwork): v
   setProviderVirtualNetworks(replaceInventoryItemById(getProviderVirtualNetworks(), network))
 }
 
+export function deleteProviderVirtualNetwork(networkId: string): void {
+  setProviderVirtualNetworks(removeInventoryItemById(getProviderVirtualNetworks(), networkId))
+  setProviderSubnets(
+    getProviderSubnets().filter((subnet) => subnet.virtualNetworkId !== networkId),
+  )
+  setProviderSecurityGroups(
+    getProviderSecurityGroups().filter((group) => group.virtualNetworkId !== networkId),
+  )
+}
+
 export function getProviderSubnets(): ProviderSubnet[] {
   try {
     const raw = sessionStorage.getItem(PROVIDER_SUBNETS_KEY)

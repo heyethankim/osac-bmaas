@@ -166,6 +166,21 @@ export function updateTenantVirtualNetwork(
   )
 }
 
+export function deleteTenantVirtualNetwork(slug: string, networkId: string): void {
+  setTenantVirtualNetworks(
+    slug,
+    removeInventoryItemById(getTenantVirtualNetworks(slug), networkId),
+  )
+  setTenantSubnets(
+    slug,
+    getTenantSubnets(slug).filter((subnet) => subnet.virtualNetworkId !== networkId),
+  )
+  setTenantSecurityGroups(
+    slug,
+    getTenantSecurityGroups(slug).filter((group) => group.virtualNetworkId !== networkId),
+  )
+}
+
 export function getTenantSubnets(slug: string): ProviderSubnet[] {
   return readJsonArray(
     tenantKey(TENANT_SUBNETS_KEY_PREFIX, slug),

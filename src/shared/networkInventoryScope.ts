@@ -13,6 +13,7 @@ import {
   deleteProviderExternalIpPool,
   deleteProviderSecurityGroup,
   deleteProviderSubnet,
+  deleteProviderVirtualNetwork,
   getCatalogExternalIpPoolOptions,
   getCatalogSecurityGroupOptions,
   getCatalogSubnetOptions,
@@ -34,6 +35,7 @@ import {
   deleteTenantExternalIpPool,
   deleteTenantSecurityGroup,
   deleteTenantSubnet,
+  deleteTenantVirtualNetwork,
   getTenantExternalIpPoolOptions,
   getTenantExternalIpPools,
   getTenantSecurityGroupOptions,
@@ -57,6 +59,7 @@ export type NetworkInventoryScope = {
   getExternalIpPools: () => ExternalIpPool[]
   addVirtualNetwork: (network: ProviderVirtualNetwork) => void
   updateVirtualNetwork: (network: ProviderVirtualNetwork) => void
+  deleteVirtualNetwork: (networkId: string) => void
   addSubnet: (subnet: ProviderSubnet) => void
   updateSubnet: (subnet: ProviderSubnet) => void
   deleteSubnet: (subnetId: string) => void
@@ -85,6 +88,7 @@ export function resolveNetworkInventoryScope(
       getExternalIpPools: () => getTenantExternalIpPools(tenantSlug),
       addVirtualNetwork: (network) => addTenantVirtualNetwork(tenantSlug, network),
       updateVirtualNetwork: (network) => updateTenantVirtualNetwork(tenantSlug, network),
+      deleteVirtualNetwork: (networkId) => deleteTenantVirtualNetwork(tenantSlug, networkId),
       addSubnet: (subnet) => addTenantSubnet(tenantSlug, subnet),
       updateSubnet: (subnet) => updateTenantSubnet(tenantSlug, subnet),
       deleteSubnet: (subnetId) => deleteTenantSubnet(tenantSlug, subnetId),
@@ -110,6 +114,7 @@ export function resolveNetworkInventoryScope(
     getExternalIpPools: getProviderExternalIpPools,
     addVirtualNetwork: addProviderVirtualNetwork,
     updateVirtualNetwork: updateProviderVirtualNetwork,
+    deleteVirtualNetwork: deleteProviderVirtualNetwork,
     addSubnet: addProviderSubnet,
     updateSubnet: updateProviderSubnet,
     deleteSubnet: deleteProviderSubnet,

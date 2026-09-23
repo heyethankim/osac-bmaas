@@ -56,6 +56,7 @@ import {
   formatVirtualNetworkSubnetsSummary,
   hasVirtualNetworkNatGateway,
   isNetworkInventoryResourceDeletable,
+  NETWORK_INVENTORY_PROVISIONING_DELETE_TOOLTIP,
   NETWORK_INVENTORY_STATUSES,
   updateNatGatewayProfileOnVirtualNetwork,
 } from '../../providerAdmin/networkInventory'
@@ -87,6 +88,7 @@ function getVirtualNetworkActions(
     readOnly: boolean
     onViewDetails: (network: ProviderVirtualNetwork) => void
     onEdit: (network: ProviderVirtualNetwork) => void
+    onDelete: (network: ProviderVirtualNetwork) => void
   },
 ): IAction[] {
   const actions: IAction[] = [
@@ -100,6 +102,8 @@ function getVirtualNetworkActions(
     return actions
   }
 
+  const canDelete = isNetworkInventoryResourceDeletable(network)
+
   actions.push({
     title: 'Edit',
     onClick: () => options.onEdit(network),
@@ -110,7 +114,9 @@ function getVirtualNetworkActions(
     {
       title: 'Delete',
       isDanger: true,
-      onClick: () => undefined,
+      isDisabled: !canDelete,
+      description: canDelete ? undefined : NETWORK_INVENTORY_PROVISIONING_DELETE_TOOLTIP,
+      onClick: () => options.onDelete(network),
     },
   )
 
@@ -158,6 +164,9 @@ export function ProviderAdminVirtualNetworksPage({
   const [subnetPendingDelete, setSubnetPendingDelete] = useState<ProviderSubnet | null>(null)
   const [securityGroupPendingDelete, setSecurityGroupPendingDelete] =
     useState<ProviderSecurityGroup | null>(null)
+  const [networkPendingDelete, setNetworkPendingDelete] = useState<ProviderVirtualNetwork | null>(
+    null,
+  )
   const networkDisplayOrderRef = useRef<string[] | null>(null)
   const {
     creatingItemId: creatingNetworkId,
@@ -281,6 +290,30 @@ export function ProviderAdminVirtualNetworksPage({
     closeDetachNatGateway()
   }
 
+  const openDeleteNetwork = (network: ProviderVirtualNetwork) => {
+    if (!isNetworkInventoryResourceDeletable(network)) {
+      return
+    }
+    setNetworkPendingDelete(network)
+  }
+
+  const closeDeleteNetwork = () => {
+    setNetworkPendingDelete(null)
+  }
+
+  const handleConfirmDeleteNetwork = () => {
+    if (!networkPendingDelete) {
+      return
+    }
+
+    inventory.deleteVirtualNetwork(networkPendingDelete.id)
+    if (selectedNetwork?.id === networkPendingDelete.id) {
+      closeDetails()
+    }
+    refreshInventory()
+    closeDeleteNetwork()
+  }
+
   const openDeleteSubnet = (subnetId: string) => {
     const subnet = inventory.getSubnets().find((entry) => entry.id === subnetId) ?? null
     if (!subnet || !isNetworkInventoryResourceDeletable(subnet)) {
@@ -369,6 +402,14 @@ export function ProviderAdminVirtualNetworksPage({
         isOpen={networkPendingNatDetach !== null}
         onClose={closeDetachNatGateway}
         onConfirm={handleConfirmDetachNatGateway}
+      />
+      <NetworkInventoryDeleteModal
+        isOpen={networkPendingDelete !== null}
+        title="Delete virtual network?"
+        resourceName={networkPendingDelete?.name ?? ''}
+        impactMessage="will be permanently removed along with its subnets and security groups. Workloads using this network may lose connectivity."
+        onClose={closeDeleteNetwork}
+        onConfirm={handleConfirmDeleteNetwork}
       />
       <NetworkInventoryDeleteModal
         isOpen={subnetPendingDelete !== null}
@@ -679,7 +720,7 @@ export function ProviderAdminVirtualNetworksPage({
           tenantSlug={tenantSlug}
           onBack={closeDetails}
           onEdit={readOnly ? undefined : () => openEdit(selectedNetwork)}
-          onDelete={() => undefined}
+          onDelete={readOnly ? undefined : () => openDeleteNetwork(selectedNetwork)}
           onAttachNatGateway={
             readOnly ? undefined : () => openAttachNatGateway(selectedNetwork)
           }
@@ -848,6 +889,7 @@ export function ProviderAdminVirtualNetworksPage({
                             readOnly,
                             onViewDetails: openDetails,
                             onEdit: openEdit,
+                            onDelete: openDeleteNetwork,
                           })}
                         />
                       </div>
@@ -1045,6 +1087,7 @@ export function ProviderAdminVirtualNetworksPage({
                           readOnly,
                           onViewDetails: openDetails,
                           onEdit: openEdit,
+                          onDelete: openDeleteNetwork,
                         })}
                       />
                     </Td>
