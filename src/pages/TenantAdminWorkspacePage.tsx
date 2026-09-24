@@ -9,6 +9,7 @@ import { ProviderAdminVirtualNetworksPage } from './infrastructure/ProviderAdmin
 import { TenantAdminCatalogPage } from './tenant-admin/TenantAdminCatalogPage'
 import { TenantAdminOverviewPage } from './tenant-admin/TenantAdminOverviewPage'
 import { TenantAdminAdministratorsPage } from './tenant-admin/TenantAdminAdministratorsPage'
+import { TenantAdminBillingPage } from './tenant-admin/TenantAdminBillingPage'
 import { TenantAdminProjectsTeamsPage } from './tenant-admin/TenantAdminProjectsTeamsPage'
 import { TenantSecretsPage } from './tenant/TenantSecretsPage'
 import { TenantUserInstancesPage } from './tenant-user/TenantUserInstancesPage'
@@ -65,7 +66,8 @@ function isTenantAdminNavId(value: string | null): value is TenantAdminNavId {
     value === 'services-models' ||
     value === 'services-virtual-machines' ||
     value === 'projects-teams' ||
-    value === 'administrators' ||
+    value === 'administration-roles' ||
+    value === 'administration-billing' ||
     value === 'networking-virtual-networks' ||
     value === 'networking-external-ip-pools' ||
     value === 'secrets'
@@ -75,6 +77,12 @@ function isTenantAdminNavId(value: string | null): value is TenantAdminNavId {
 function normalizeTenantAdminNavParam(value: string | null): TenantAdminNavId | null {
   if (isTenantAdminNavId(value)) {
     return value
+  }
+  if (value === 'administrators') {
+    return 'administration-roles'
+  }
+  if (value === 'billing') {
+    return 'administration-billing'
   }
   if (value === 'services' || value === 'my-instances' || value === 'instances') {
     return 'services-baremetal'
@@ -348,13 +356,15 @@ export function TenantAdminWorkspacePage() {
             }}
           />
         )
-      case 'administrators':
+      case 'administration-roles':
         return (
           <TenantAdminAdministratorsPage
             organization={organization}
             onOrganizationChange={setOrganization}
           />
         )
+      case 'administration-billing':
+        return <TenantAdminBillingPage organization={organization} />
       case 'networking-virtual-networks':
         return (
           <ProviderAdminVirtualNetworksPage

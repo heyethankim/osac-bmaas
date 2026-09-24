@@ -433,6 +433,7 @@ export type BreakGlassIssuePatch = Pick<
 export const DEMO_BLUESOLACE_COMPANY_LOGO_FILE_NAME = 'bluesolace-financial-group-logo.png'
 export const DEMO_NORTH_SUMMIT_BANK_COMPANY_LOGO_FILE_NAME = 'north-summit-bank-logo.svg'
 export const DEMO_HARBORLINE_CAPITAL_COMPANY_LOGO_FILE_NAME = 'harborline-capital-logo.svg'
+export const DEMO_REDWOOD_MUTUAL_COMPANY_LOGO_FILE_NAME = 'redwood-mutual-logo.svg'
 
 export function getDemoBluesolaceCompanyLogoSrc(): string {
   return `${import.meta.env.BASE_URL}${DEMO_BLUESOLACE_COMPANY_LOGO_FILE_NAME}`
@@ -444,6 +445,10 @@ export function getDemoNorthSummitBankCompanyLogoSrc(): string {
 
 export function getDemoHarborlineCapitalCompanyLogoSrc(): string {
   return `${import.meta.env.BASE_URL}${DEMO_HARBORLINE_CAPITAL_COMPANY_LOGO_FILE_NAME}`
+}
+
+export function getDemoRedwoodMutualCompanyLogoSrc(): string {
+  return `${import.meta.env.BASE_URL}${DEMO_REDWOOD_MUTUAL_COMPANY_LOGO_FILE_NAME}`
 }
 
 export function isNorthSummitBankOrganization(
@@ -458,6 +463,13 @@ export function isHarborlineCapitalOrganization(
 ): boolean {
   const slug = organization.slug.trim().toLowerCase()
   return slug === 'harborline' || slug === 'harborline-capital'
+}
+
+export function isRedwoodMutualOrganization(
+  organization: Pick<RegisteredOrganization, 'slug'>,
+): boolean {
+  const slug = organization.slug.trim().toLowerCase()
+  return slug === 'redwood' || slug === 'redwood-mutual'
 }
 
 export function getOrganizationNameInitial(name: string): string {
@@ -498,6 +510,10 @@ export function resolveOrganizationCompanyLogo(
 
   if (slug === 'harborline' || slug === 'harborline-capital') {
     return getDemoHarborlineCapitalCompanyLogoSrc()
+  }
+
+  if (slug === 'redwood' || slug === 'redwood-mutual') {
+    return getDemoRedwoodMutualCompanyLogoSrc()
   }
 
   return null
@@ -1033,6 +1049,15 @@ export const DEMO_HARBORLINE_CAPITAL_TENANT_ID = DEMO_HARBORLINE_CAPITAL_NAME
 export const DEMO_HARBORLINE_CAPITAL_SLUG = 'harborline'
 export const DEMO_HARBORLINE_CAPITAL_DOMAIN = 'harborlinecapital.com'
 
+export const DEMO_REDWOOD_MUTUAL_ORG_ID = 'org-redwood-mutual'
+export const DEMO_REDWOOD_MUTUAL_NAME = 'redwood-mutual'
+export const DEMO_REDWOOD_MUTUAL_TENANT_ID = DEMO_REDWOOD_MUTUAL_NAME
+export const DEMO_REDWOOD_MUTUAL_SLUG = 'redwood'
+export const DEMO_REDWOOD_MUTUAL_DOMAIN = 'redwoodmutual.com'
+export const DEMO_REDWOOD_MUTUAL_DISPLAY_NAME = 'Redwood Mutual'
+export const DEMO_REDWOOD_MUTUAL_IDP_DISPLAY_NAME = `${DEMO_REDWOOD_MUTUAL_NAME}-idp`
+export const DEMO_REDWOOD_MUTUAL_IDP_CLIENT_ID = DEMO_REDWOOD_MUTUAL_NAME
+
 export const REGISTER_ORGANIZATION_STEPS = [
   { id: 'organization', label: 'Tenant' },
   { id: 'review', label: 'Review' },
@@ -1324,6 +1349,80 @@ export function createDemoHarborlineCapitalOrganization(
   }
 }
 
+/**
+ * Redwood Mutual — IdP connected, no M360 billing yet.
+ * Setup status Incomplete; lifecycle still Pending activation.
+ */
+export function createDemoRedwoodMutualOrganization(
+  options: {
+    catalogItemId?: string | null
+    catalogDisplayName?: string | null
+    externalIpPoolId?: string | null
+    externalIpPoolName?: string | null
+    externalIpPoolCidr?: string | null
+  } = {},
+): RegisteredOrganization {
+  const primaryDomain = DEMO_REDWOOD_MUTUAL_DOMAIN
+
+  return {
+    id: DEMO_REDWOOD_MUTUAL_ORG_ID,
+    name: DEMO_REDWOOD_MUTUAL_NAME,
+    tenantId: DEMO_REDWOOD_MUTUAL_TENANT_ID,
+    slug: DEMO_REDWOOD_MUTUAL_SLUG,
+    primaryDomain,
+    additionalDomains: [],
+    displayName: DEMO_REDWOOD_MUTUAL_DISPLAY_NAME,
+    m360AccountId: '',
+    m360ConnectionStatus: 'pending',
+    billingAccountId: '',
+    billingAccountName: '',
+    billingAccountLinked: false,
+    tenantSetupStatus: 'incomplete',
+    logoSrc: getDemoRedwoodMutualCompanyLogoSrc(),
+    logoFileName: DEMO_REDWOOD_MUTUAL_COMPANY_LOGO_FILE_NAME,
+    catalogItemId: options.catalogItemId ?? null,
+    catalogDisplayName: options.catalogDisplayName ?? null,
+    externalIpPoolId: options.externalIpPoolId ?? null,
+    externalIpPoolName: options.externalIpPoolName ?? null,
+    externalIpPoolCidr: options.externalIpPoolCidr ?? null,
+    maxInstances: 12,
+    tenantAdminName: '',
+    tenantAdminEmail: '',
+    additionalTenantAdmins: [],
+    invitedTenantUserEmails: [],
+    identityProviderConnected: true,
+    identityProviderConnectedBy: 'provider-admin',
+    identityProviderName: buildDemoIdentityProviderName('OIDC', primaryDomain),
+    identityProviderDisplayName: DEMO_REDWOOD_MUTUAL_IDP_DISPLAY_NAME,
+    identityProviderProtocol: 'OIDC',
+    identityProviderIssuerUrl: `https://login.${primaryDomain}/oauth2`,
+    identityProviderClientId: DEMO_REDWOOD_MUTUAL_IDP_CLIENT_ID,
+    identityProviders: [
+      {
+        id: 'idp-redwood-primary',
+        name: buildDemoIdentityProviderName('OIDC', primaryDomain),
+        displayName: DEMO_REDWOOD_MUTUAL_IDP_DISPLAY_NAME,
+        protocol: 'OIDC',
+        issuerUrl: `https://login.${primaryDomain}/oauth2`,
+        clientId: DEMO_REDWOOD_MUTUAL_IDP_CLIENT_ID,
+      },
+    ],
+    idpManagerEmail: null,
+    idpInviteToken: null,
+    idpInviteStatus: 'none',
+    idpInviteSentAt: null,
+    idpInviteExpiresAt: null,
+    breakGlassName: 'IdP manager',
+    breakGlassEmail: `idp-admin@${primaryDomain}`,
+    breakGlassUsername: generateBreakGlassUsername(DEMO_REDWOOD_MUTUAL_SLUG),
+    breakGlassPassword: getDemoBreakGlassPassword(DEMO_REDWOOD_MUTUAL_SLUG),
+    breakGlassIssuedAt: '2026-07-02T09:15:00.000Z',
+    rbacConfigured: false,
+    status: 'Pending activation',
+    createdAt: '2026-07-02T09:15:00.000Z',
+  }
+}
+
 /** Demo presets cycled so the wizard never prefill a name/domain already registered. */
 const REGISTER_ORGANIZATION_DEMO_PRESETS: Array<{
   organizationName: string
@@ -1516,6 +1615,13 @@ export function slugifyOrganizationName(name: string): string {
     normalized === 'bluestone-financial-group'
   ) {
     return 'evergreen'
+  }
+
+  if (
+    normalized === 'redwood mutual' ||
+    normalized === 'redwood-mutual'
+  ) {
+    return DEMO_REDWOOD_MUTUAL_SLUG
   }
 
   return normalized

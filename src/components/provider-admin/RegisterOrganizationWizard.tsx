@@ -604,20 +604,26 @@ export function RegisterOrganizationWizard({
         )
       }
     >
-      {REGISTER_ORGANIZATION_STEPS.map((step) => (
-        <WizardStep
-          key={step.id}
-          name={
-            isEditMode && modifiedStepIds.has(step.id)
-              ? `${step.label} (modified)`
-              : step.label
-          }
-          id={`register-org-step-${step.id}`}
-          footer={getStepFooter(step.id)}
-        >
-          {renderStepContent(step.id)}
-        </WizardStep>
-      ))}
+      {REGISTER_ORGANIZATION_STEPS.map((step) => {
+        const isOrganizationStepModified =
+          step.id === 'organization' &&
+          (modifiedStepIds.has('general') || modifiedStepIds.has('billing_account'))
+
+        return (
+          <WizardStep
+            key={step.id}
+            name={
+              isEditMode && isOrganizationStepModified
+                ? `${step.label} (modified)`
+                : step.label
+            }
+            id={`register-org-step-${step.id}`}
+            footer={getStepFooter(step.id)}
+          >
+            {renderStepContent(step.id)}
+          </WizardStep>
+        )
+      })}
     </Wizard>
   ) : null
 

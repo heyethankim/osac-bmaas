@@ -2,8 +2,8 @@ import {
   normalizeAdditionalDomains,
   normalizePrimaryDomain,
   type RegisterOrganizationForm,
-  type RegisterOrganizationStepId,
   type RegisteredOrganization,
+  type TenantOnboardingStepId,
 } from './organizations'
 import {
   editSnapshotValue,
@@ -34,9 +34,13 @@ function formatLogo(logoSrc: string, logoFileName: string): string {
   return logoFileName.trim() || 'Custom logo'
 }
 
-export function buildOrganizationEditSnapshot(form: RegisterOrganizationForm): OrganizationEditSnapshot {
+export function buildOrganizationEditSnapshot(
+  form: RegisterOrganizationForm,
+  options?: { m360AccountId?: string },
+): OrganizationEditSnapshot {
   const primaryDomain = normalizePrimaryDomain(form.primaryDomain)
   const additionalDomains = normalizeAdditionalDomains(form.additionalDomains, primaryDomain)
+  const m360AccountId = (options?.m360AccountId ?? form.m360AccountId).trim()
 
   return {
     organizationName: editSnapshotValue(form.organizationName, form.organizationName.trim() || '—'),
@@ -50,10 +54,7 @@ export function buildOrganizationEditSnapshot(form: RegisterOrganizationForm): O
       form.logoSrc.trim(),
       formatLogo(form.logoSrc, form.logoFileName),
     ),
-    m360AccountId: editSnapshotValue(
-      form.m360AccountId,
-      form.m360AccountId.trim() || '—',
-    ),
+    m360AccountId: editSnapshotValue(m360AccountId, m360AccountId || '—'),
   }
 }
 
@@ -83,17 +84,17 @@ export function getOrganizationEditChanges(
   current: OrganizationEditSnapshot,
 ) {
   return getEditChanges(baseline, current, [
-    { id: 'organizationName', stepId: 'organization', label: 'Tenant name' },
-    { id: 'displayName', stepId: 'organization', label: 'Display name' },
-    { id: 'primaryDomain', stepId: 'organization', label: 'Primary email domain' },
-    { id: 'additionalDomains', stepId: 'organization', label: 'Additional email domains' },
-    { id: 'logo', stepId: 'organization', label: 'Company logo' },
-    { id: 'm360AccountId', stepId: 'organization', label: 'M360 tenant name' },
+    { id: 'organizationName', stepId: 'general', label: 'Tenant name' },
+    { id: 'displayName', stepId: 'general', label: 'Display name' },
+    { id: 'primaryDomain', stepId: 'general', label: 'Primary email domain' },
+    { id: 'additionalDomains', stepId: 'general', label: 'Additional email domains' },
+    { id: 'logo', stepId: 'general', label: 'Company logo' },
+    { id: 'm360AccountId', stepId: 'billing_account', label: 'M360 billing account' },
   ])
 }
 
 export function getOrganizationEditModifiedStepIds(
-  changes: ReadonlyArray<{ stepId: RegisterOrganizationStepId }>,
+  changes: ReadonlyArray<{ stepId: TenantOnboardingStepId }>,
 ) {
   return getEditModifiedStepIds(changes)
 }

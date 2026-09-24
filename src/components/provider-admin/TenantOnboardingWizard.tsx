@@ -84,7 +84,14 @@ import {
   AdditionalEmailDomainsField,
   AdditionalEmailDomainsValue,
 } from './AdditionalEmailDomainsField'
+import { CatalogEditChangesSummary } from './CatalogEditChangesSummary'
 import { TenantCompanyLogoField } from './TenantCompanyLogoField'
+import {
+  buildOrganizationEditSnapshot,
+  buildOrganizationEditSnapshotFromOrganization,
+  getOrganizationEditChanges,
+  getOrganizationEditModifiedStepIds,
+} from '../../providerAdmin/organizationEditDiff'
 import {
   getKubernetesResourceNameValidation,
   isValidKubernetesResourceName,
@@ -95,8 +102,12 @@ type TenantOnboardingWizardProps = {
   /** `page` replaces the Tenants list. Use `modal` when stacked over another flow (e.g. catalog create). */
   presentation?: 'modal' | 'page'
   catalogDraft: ProviderCatalogDraft | null
-  /** Resume billing setup for an existing tenant (starts on billing setup). */
+  /** Resume billing setup for an existing tenant (starts on Billing; General is read-only). */
   resumeOrganization?: RegisteredOrganization | null
+  /** Full edit of an existing tenant (General → Billing → Review). */
+  editingOrganization?: RegisteredOrganization | null
+  /** Which step to open on. Defaults to General; Billing pending uses `billing_account`. */
+  initialStepId?: TenantOnboardingStepId
   onClose: () => void
   onPersistOrganization: (organization: RegisteredOrganization) => void
   onComplete?: (organization: RegisteredOrganization) => void
@@ -159,12 +170,25 @@ export function TenantOnboardingWizard({
   presentation = 'page',
   catalogDraft,
   resumeOrganization = null,
+  editingOrganization = null,
+  initialStepId = 'general',
   onClose,
   onPersistOrganization,
   onComplete,
 }: TenantOnboardingWizardProps) {
   const isPage = presentation === 'page'
-  const wizardTitle = resumeOrganization ? 'Edit tenant' : 'Register tenant'
+  const sourceOrganization = editingOrganization ?? resumeOrganization
+  const isEditMode = Boolean(editingOrganization)
+  const isResumeBillingMode = Boolean(resumeOrganization) && !editingOrganization
+  const isExistingTenantMode = Boolean(sourceOrganization)
+  const wizardTitle = isExistingTenantMode ? 'Edit tenant' : 'Register tenant'
+  const wizardStartIndex = (() => {
+    if (isResumeBillingMode) {
+      return 2
+    }
+    const stepIndex = TENANT_ONBOARDING_STEPS.findIndex((step) => step.id === initialStepId)
+    return stepIndex >= 0 ? stepIndex + 1 : 1
+  })()
   const m360AccountsHref = useHref(M360_ACCOUNTS_PATH)
   const [form, setForm] = useState<RegisterOrganizationForm>(() =>
     buildTenantOnboardingForm(getProviderRegisteredOrganizations()),
@@ -183,7 +207,7 @@ export function TenantOnboardingWizard({
     [isOpen],
   )
 
-  const excludeOrganizationId = resumeOrganization?.id
+  const excludeOrganizationId = sourceOrganization?.id
   const nameTaken = isOrganizationNameTaken(
     form.organizationName,
     existingOrganizations,
@@ -217,9 +241,40 @@ export function TenantOnboardingWizard({
     !domainTaken &&
     !slugTaken
 
+  const editBaseline = useMemo(() => {
+    if (!isEditMode || !editingOrganization) {
+      return null
+    }
+
+    return buildOrganizationEditSnapshotFromOrganization(editingOrganization)
+  }, [editingOrganization, isEditMode])
+
+  const currentEditSnapshot = useMemo(() => {
+    if (!isEditMode) {
+      return null
+    }
+
+    return buildOrganizationEditSnapshot(form, { m360AccountId: selectedAccountName })
+  }, [form, isEditMode, selectedAccountName])
+
+  const editChanges = useMemo(() => {
+    if (!editBaseline || !currentEditSnapshot) {
+      return []
+    }
+
+    return getOrganizationEditChanges(editBaseline, currentEditSnapshot)
+  }, [currentEditSnapshot, editBaseline])
+
+  const modifiedStepIds = useMemo(
+    () => getOrganizationEditModifiedStepIds(editChanges),
+    [editChanges],
+  )
+
+  const canSaveOrganizationEdit = !isEditMode || editChanges.length > 0
+
   const draftTenantName =
     createdOrganization?.name.trim() ||
-    resumeOrganization?.name.trim() ||
+    sourceOrganization?.name.trim() ||
     form.organizationName.trim()
 
   const matchedExternalAccount = useMemo(() => {
@@ -229,7 +284,6 @@ export function TenantOnboardingWizard({
     return findM360AccountByTenantName(draftTenantName, billingAccounts)
   }, [billingAccounts, draftTenantName])
 
-  const isResumeMode = Boolean(resumeOrganization)
   const selectedAccount = selectedAccountName
     ? findM360AccountByReference(selectedAccountName)
     : null
@@ -237,16 +291,16 @@ export function TenantOnboardingWizard({
   const draftOrganizationSlug = slugifyOrganizationName(form.organizationName)
   const accountConflict =
     selectedAccount &&
-    (createdOrganization?.slug || resumeOrganization?.slug || draftOrganizationSlug)
+    (createdOrganization?.slug || sourceOrganization?.slug || draftOrganizationSlug)
       ? isM360AccountLinkedToAnotherTenant(
           selectedAccount,
-          createdOrganization?.slug || resumeOrganization?.slug || draftOrganizationSlug,
+          createdOrganization?.slug || sourceOrganization?.slug || draftOrganizationSlug,
         )
       : false
 
   const sortedBillingAccounts = useMemo(() => {
     const currentTenantSlug =
-      createdOrganization?.slug || resumeOrganization?.slug || draftOrganizationSlug
+      createdOrganization?.slug || sourceOrganization?.slug || draftOrganizationSlug
 
     return [...billingAccounts].sort((left, right) => {
       const leftLinkedElsewhere = isM360AccountLinkedToAnotherTenant(left, currentTenantSlug)
@@ -264,7 +318,7 @@ export function TenantOnboardingWizard({
     billingAccounts,
     createdOrganization?.slug,
     draftOrganizationSlug,
-    resumeOrganization?.slug,
+    sourceOrganization?.slug,
   ])
 
   const getDefaultBillingSelections = (organization: RegisteredOrganization | null) => {
@@ -305,19 +359,22 @@ export function TenantOnboardingWizard({
       return
     }
 
-    if (resumeOrganization) {
-      const billingDefaults = getDefaultBillingSelections(resumeOrganization)
-      setForm(formFromRegisteredOrganization(resumeOrganization))
-      setCreatedOrganization(resumeOrganization)
-      const resumedAccount = findM360AccountByReference(
-        resumeOrganization.m360AccountId?.trim() ||
-          resumeOrganization.billingAccountId.trim() ||
-          billingDefaults.accountName,
-      )
+    if (sourceOrganization) {
+      const linkedReference =
+        sourceOrganization.m360AccountId?.trim() ||
+        sourceOrganization.billingAccountId.trim()
+      const resumedAccount = linkedReference
+        ? findM360AccountByReference(linkedReference)
+        : null
+      const billingDefaults = getDefaultBillingSelections(sourceOrganization)
+      setForm(formFromRegisteredOrganization(sourceOrganization))
+      setCreatedOrganization(sourceOrganization)
       setSelectedAccountName(
         resumedAccount
           ? getM360AccountTenantName(resumedAccount)
-          : billingDefaults.accountName,
+          : isEditMode
+            ? ''
+            : billingDefaults.accountName,
       )
       setBillingApiState('idle')
       return
@@ -325,7 +382,7 @@ export function TenantOnboardingWizard({
 
     setForm(buildTenantOnboardingForm(getProviderRegisteredOrganizations()))
     setSelectedAccountName(DEFAULT_ONBOARDING_M360_ACCOUNT_NAME)
-  }, [isOpen, resumeOrganization])
+  }, [editingOrganization, isOpen, resumeOrganization])
 
   useEffect(() => {
     if (!isOpen || billingApiState !== 'idle') {
@@ -335,7 +392,7 @@ export function TenantOnboardingWizard({
     setBillingApiState('loading')
     fetchM360BillingAccounts()
       .then((accounts) => {
-        const organization = createdOrganization ?? resumeOrganization
+        const organization = createdOrganization ?? sourceOrganization
         const mergedAccounts = mergeResumedM360BillingAccounts(accounts, organization)
         setBillingAccounts(mergedAccounts)
         setBillingApiState('ready')
@@ -343,19 +400,24 @@ export function TenantOnboardingWizard({
           ? findM360AccountByTenantName(draftTenantName, mergedAccounts)
           : null
         const billingDefaults = getDefaultBillingSelections(organization)
-        if (match) {
+        const hasLinkedBilling = Boolean(
+          organization?.m360AccountId?.trim() || organization?.billingAccountId.trim(),
+        )
+        if (match && (hasLinkedBilling || !isEditMode)) {
           setSelectedAccountName(getM360AccountTenantName(match))
         } else {
-          setSelectedAccountName((current) => current || billingDefaults.accountName)
+          setSelectedAccountName((current) =>
+            current || (isEditMode ? '' : billingDefaults.accountName),
+          )
         }
       })
       .catch(() => {
         setBillingApiState('error')
       })
-  }, [billingApiState, createdOrganization, draftTenantName, isOpen, resumeOrganization])
+  }, [billingApiState, createdOrganization, draftTenantName, isEditMode, isOpen, sourceOrganization])
 
   useEffect(() => {
-    if (!matchedExternalAccount || billingApiState !== 'ready') {
+    if (!matchedExternalAccount || billingApiState !== 'ready' || isEditMode) {
       return
     }
 
@@ -366,7 +428,7 @@ export function TenantOnboardingWizard({
       }
       return current
     })
-  }, [billingApiState, matchedExternalAccount])
+  }, [billingApiState, isEditMode, matchedExternalAccount])
 
   const buildOrganizationFromForm = (): RegisteredOrganization | null => {
     if (!isGeneralStepValid) {
@@ -441,7 +503,46 @@ export function TenantOnboardingWizard({
     return organization
   }
 
+  const applyGeneralFormToOrganization = (
+    organization: RegisteredOrganization,
+  ): RegisteredOrganization | null => {
+    if (!isGeneralStepValid) {
+      return null
+    }
+
+    const slug = slugifyOrganizationName(form.organizationName)
+    const normalizedPrimaryDomain = normalizePrimaryDomain(form.primaryDomain)
+    const normalizedAdditionalDomains = normalizeAdditionalDomains(
+      form.additionalDomains,
+      normalizedPrimaryDomain,
+    )
+    const normalizedTenantName = form.organizationName.trim()
+
+    return {
+      ...organization,
+      name: normalizedTenantName,
+      displayName: form.displayName.trim() || normalizedTenantName,
+      tenantId: normalizedTenantName,
+      slug,
+      primaryDomain: normalizedPrimaryDomain,
+      additionalDomains: normalizedAdditionalDomains,
+      logoSrc: form.logoSrc.trim() || null,
+      logoFileName: form.logoFileName.trim() || null,
+    }
+  }
+
   const handleCreateTenant = (): boolean => {
+    if (isEditMode && editingOrganization) {
+      const organization = applyGeneralFormToOrganization(
+        createdOrganization ?? editingOrganization,
+      )
+      if (!organization) {
+        return false
+      }
+      setCreatedOrganization(organization)
+      return true
+    }
+
     const organization = buildOrganizationFromForm()
     if (!organization) {
       return false
@@ -452,8 +553,12 @@ export function TenantOnboardingWizard({
   }
 
   const handleLinkBillingAccount = async (): Promise<RegisteredOrganization | null> => {
+    const baseOrganization =
+      createdOrganization ?? sourceOrganization ?? buildOrganizationFromForm()
     const organization =
-      createdOrganization ?? resumeOrganization ?? buildOrganizationFromForm()
+      isEditMode && baseOrganization
+        ? applyGeneralFormToOrganization(baseOrganization) ?? baseOrganization
+        : baseOrganization
     if (
       !organization ||
       !selectedAccount ||
@@ -508,7 +613,7 @@ export function TenantOnboardingWizard({
   }
 
   function renderGeneralStep() {
-    if (resumeOrganization) {
+    if (isResumeBillingMode && resumeOrganization) {
       const resumePrimaryDomain = normalizePrimaryDomain(resumeOrganization.primaryDomain)
       const resumeAdditionalDomains = normalizeAdditionalDomains(
         resumeOrganization.additionalDomains ?? [],
@@ -564,7 +669,7 @@ export function TenantOnboardingWizard({
     return (
       <div className="provider-admin-organizations__wizard-step tenant-onboarding__step">
         <Content component="p" className="provider-admin-organizations__wizard-lede">
-          Enter tenant details.
+          {isEditMode ? 'Update tenant details.' : 'Enter tenant details.'}
         </Content>
         <Form autoComplete="off" className="provider-admin-organizations__wizard-form">
           <FormGroup label="Tenant name" fieldId="tenant-onboarding-name" isRequired>
@@ -752,7 +857,7 @@ export function TenantOnboardingWizard({
                   const titleId = `tenant-onboarding-account-${tenantName}-name`
                   const currentTenantSlug =
                     createdOrganization?.slug ||
-                    resumeOrganization?.slug ||
+                    sourceOrganization?.slug ||
                     draftOrganizationSlug
                   const isInactive = account.accountStatus === 'Inactive'
                   const isLinkedElsewhere = isM360AccountLinkedToAnotherTenant(
@@ -871,7 +976,28 @@ export function TenantOnboardingWizard({
   }
 
   function renderReviewStep() {
-    const organization = createdOrganization ?? resumeOrganization
+    if (isEditMode) {
+      return (
+        <div className="provider-admin-organizations__wizard-step tenant-onboarding__step">
+          <Content component="p" className="provider-admin-organizations__wizard-lede">
+            Review your changes before saving.
+          </Content>
+          <CatalogEditChangesSummary changes={editChanges} ariaLabel="Tenant changes" />
+          {linkError ? (
+            <Alert
+              variant="danger"
+              isInline
+              title="Unable to save tenant"
+              className="tenant-onboarding__alert"
+            >
+              {linkError}
+            </Alert>
+          ) : null}
+        </div>
+      )
+    }
+
+    const organization = createdOrganization ?? sourceOrganization
     const tenantName = organization?.name || draftTenantName || '—'
     const primaryDomain =
       organization?.primaryDomain || normalizePrimaryDomain(form.primaryDomain) || '—'
@@ -886,7 +1012,9 @@ export function TenantOnboardingWizard({
     return (
       <div className="provider-admin-organizations__wizard-step tenant-onboarding__step">
         <Content component="p" className="provider-admin-organizations__wizard-lede">
-          Review your tenant and billing settings before registering.
+          {isExistingTenantMode
+            ? 'Review your tenant and billing settings before saving.'
+            : 'Review your tenant and billing settings before registering.'}
         </Content>
         <DescriptionList isCompact className="provider-admin-organizations__wizard-review">
           <DescriptionListGroup>
@@ -951,8 +1079,10 @@ export function TenantOnboardingWizard({
       return (
         <TenantOnboardingNavigateFooter
           onClose={requestClose}
-          isNextDisabled={resumeOrganization ? false : !isGeneralStepValid}
-          onNavigateNext={() => (resumeOrganization ? true : handleCreateTenant())}
+          isNextDisabled={isResumeBillingMode ? false : !isGeneralStepValid}
+          onNavigateNext={() =>
+            isResumeBillingMode ? true : handleCreateTenant()
+          }
         />
       )
     }
@@ -970,7 +1100,8 @@ export function TenantOnboardingWizard({
     }
 
     if (stepId === 'review') {
-      const canRegister = Boolean(selectedAccount) && !accountConflict
+      const canRegister =
+        Boolean(selectedAccount) && !accountConflict && canSaveOrganizationEdit
 
       return (
         <TenantOnboardingNavigateFooter
@@ -978,10 +1109,10 @@ export function TenantOnboardingWizard({
           isNextDisabled={isLinking || !canRegister}
           nextButtonText={
             isLinking
-              ? isResumeMode
+              ? isExistingTenantMode
                 ? 'Saving…'
                 : 'Registering…'
-              : isResumeMode
+              : isExistingTenantMode
                 ? 'Save'
                 : 'Register tenant'
           }
@@ -1004,14 +1135,20 @@ export function TenantOnboardingWizard({
     return null
   }
 
+  const wizardKey = editingOrganization
+    ? `tenant-onboarding-edit-${editingOrganization.id}-${initialStepId}`
+    : resumeOrganization
+      ? `tenant-onboarding-resume-${resumeOrganization.id}`
+      : 'tenant-onboarding-wizard'
+
   const wizard = (
     <Wizard
-      key={resumeOrganization ? `tenant-onboarding-resume-${resumeOrganization.id}` : 'tenant-onboarding-wizard'}
+      key={wizardKey}
       className="provider-admin-organizations__wizard tenant-onboarding__wizard"
       height={isPage ? '100%' : '40rem'}
       isPlain={isPage}
       onClose={isPage ? undefined : requestClose}
-      startIndex={resumeOrganization ? 2 : 1}
+      startIndex={wizardStartIndex}
       header={
         isPage ? undefined : (
           <WizardHeader
@@ -1026,7 +1163,11 @@ export function TenantOnboardingWizard({
       {TENANT_ONBOARDING_STEPS.map((step) => (
         <WizardStep
           key={step.id}
-          name={step.label}
+          name={
+            isEditMode && modifiedStepIds.has(step.id)
+              ? `${step.label} (modified)`
+              : step.label
+          }
           id={`tenant-onboarding-step-${step.id}`}
           isDisabled={isStepDisabled(step.id)}
           footer={getStepFooter(step.id)}

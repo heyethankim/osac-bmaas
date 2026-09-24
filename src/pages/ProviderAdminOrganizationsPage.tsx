@@ -36,7 +36,6 @@ import { ViewModeToggle } from '../components/catalog/CatalogViewToggle'
 import { getAdministrationViewMode, setAdministrationViewMode, type ViewMode } from '../catalog/viewMode'
 import { OrganizationDetailsPage } from '../components/provider-admin/OrganizationDetailsPage'
 import { ProviderAdminWorkspacePageHeader } from '../components/provider-admin/ProviderAdminWorkspacePageHeader'
-import { RegisterOrganizationWizard } from '../components/provider-admin/RegisterOrganizationWizard'
 import { TenantOnboardingWizard } from '../components/provider-admin/TenantOnboardingWizard'
 import { SetupIdentityProviderWizard } from '../components/provider-admin/SetupIdentityProviderWizard'
 import { AddTenantAdministratorWizard } from '../components/tenant-admin/AddTenantAdministratorWizard'
@@ -59,6 +58,7 @@ import {
   type OrganizationSetupFilter,
   type OrganizationSetupNextAction,
   type RegisteredOrganization,
+  type TenantOnboardingStepId,
 } from '../providerAdmin/organizations'
 import {
   addProviderRegisteredOrganization,
@@ -145,13 +145,14 @@ export function ProviderAdminOrganizationsPage({
   const [organizations, setOrganizations] = useState<RegisteredOrganization[]>(() =>
     ensureProviderDemoOrganizations(),
   )
-  const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [isOnboardingWizardOpen, setIsOnboardingWizardOpen] = useState(false)
   const [onboardingResumeOrganization, setOnboardingResumeOrganization] =
     useState<RegisteredOrganization | null>(null)
   const [editingOrganization, setEditingOrganization] = useState<RegisteredOrganization | null>(
     null,
   )
+  const [onboardingInitialStepId, setOnboardingInitialStepId] =
+    useState<TenantOnboardingStepId>('general')
   const [editReturnToDetails, setEditReturnToDetails] = useState(false)
   const [selectedOrganization, setSelectedOrganization] = useState<RegisteredOrganization | null>(
     null,
@@ -235,6 +236,7 @@ export function ProviderAdminOrganizationsPage({
       setEditingOrganization(null)
       setEditReturnToDetails(false)
       setOnboardingResumeOrganization(null)
+      setOnboardingInitialStepId('general')
       setIsOnboardingWizardOpen(true)
       syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_REGISTER_TENANT, {
         replace: true,
@@ -250,6 +252,7 @@ export function ProviderAdminOrganizationsPage({
     setEditingOrganization(null)
     setEditReturnToDetails(false)
     setOnboardingResumeOrganization(null)
+    setOnboardingInitialStepId('general')
     setIsDetailsOpen(false)
     setIsOnboardingWizardOpen(true)
   }, [searchParams])
@@ -341,46 +344,53 @@ export function ProviderAdminOrganizationsPage({
     setEditingOrganization(null)
     setEditReturnToDetails(false)
     setOnboardingResumeOrganization(null)
+    setOnboardingInitialStepId('general')
     setIsOnboardingWizardOpen(true)
     syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_REGISTER_TENANT, {
       replace: true,
     })
   }
 
-  const openBillingSetup = (organization: RegisteredOrganization) => {
-    setEditingOrganization(null)
-    setEditReturnToDetails(false)
-    setOnboardingResumeOrganization(organization)
-    setIsOnboardingWizardOpen(true)
+  const openEdit = (organization: RegisteredOrganization, returnToDetails = false) => {
+    setSelectedOrganization(organization)
+    setEditingOrganization(organization)
+    setOnboardingResumeOrganization(null)
+    setOnboardingInitialStepId('general')
+    setEditReturnToDetails(returnToDetails)
     setIsDetailsOpen(false)
+    setIsOnboardingWizardOpen(true)
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_REGISTER_TENANT) {
+      syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    }
+  }
+
+  const openBillingSetup = (organization: RegisteredOrganization, returnToDetails = false) => {
+    // Same editable Edit-tenant wizard, but land on Billing.
+    setSelectedOrganization(organization)
+    setEditingOrganization(organization)
+    setOnboardingResumeOrganization(null)
+    setOnboardingInitialStepId('billing_account')
+    setEditReturnToDetails(returnToDetails)
+    setIsDetailsOpen(false)
+    setIsOnboardingWizardOpen(true)
     if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_REGISTER_TENANT) {
       syncWorkspaceActionParam(setSearchParams, null, { replace: true })
     }
   }
 
   const closeOnboardingWizard = () => {
+    const shouldReturnToDetails = editReturnToDetails && selectedOrganization
     setIsOnboardingWizardOpen(false)
     setOnboardingResumeOrganization(null)
+    setEditingOrganization(null)
+    setOnboardingInitialStepId('general')
+    setEditReturnToDetails(false)
+    if (shouldReturnToDetails) {
+      setIsDetailsOpen(true)
+    }
     if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_REGISTER_TENANT) {
       syncWorkspaceActionParam(setSearchParams, null, { replace: true })
     }
-  }
-
-  const openEdit = (organization: RegisteredOrganization, returnToDetails = false) => {
-    setSelectedOrganization(organization)
-    setEditingOrganization(organization)
-    setEditReturnToDetails(returnToDetails)
-    setIsDetailsOpen(false)
-    setIsWizardOpen(true)
-  }
-
-  const closeWizard = () => {
-    setIsWizardOpen(false)
-    setEditingOrganization(null)
-    if (editReturnToDetails && selectedOrganization) {
-      setIsDetailsOpen(true)
-    }
-    setEditReturnToDetails(false)
   }
 
   const openDetails = (organization: RegisteredOrganization) => {
@@ -435,7 +445,12 @@ export function ProviderAdminOrganizationsPage({
       updateProviderRegisteredOrganization(organization.id, {
         name: organization.name,
         tenantId: organization.tenantId,
+        slug: organization.slug,
         displayName: organization.displayName,
+        primaryDomain: organization.primaryDomain,
+        additionalDomains: organization.additionalDomains,
+        logoSrc: organization.logoSrc,
+        logoFileName: organization.logoFileName,
         m360AccountId: organization.m360AccountId,
         m360ConnectionStatus: organization.m360ConnectionStatus,
         m360RateCardId: organization.m360RateCardId,
@@ -461,6 +476,24 @@ export function ProviderAdminOrganizationsPage({
   }
 
   const handleOnboardingComplete = (organization: RegisteredOrganization) => {
+    if (editingOrganization) {
+      refreshOrganizations(organization.id)
+      const shouldReturnToDetails = editReturnToDetails
+      setIsOnboardingWizardOpen(false)
+      setOnboardingResumeOrganization(null)
+      setEditingOrganization(null)
+      setOnboardingInitialStepId('general')
+      setEditReturnToDetails(false)
+      if (shouldReturnToDetails) {
+        setSelectedOrganization(
+          getProviderRegisteredOrganizations().find((item) => item.id === organization.id) ??
+            organization,
+        )
+        setIsDetailsOpen(true)
+      }
+      return
+    }
+
     setSearchValue('')
     setSelectedStatus('all')
     setSelectedSetup('all')
@@ -471,42 +504,6 @@ export function ProviderAdminOrganizationsPage({
     }
 
     beginOrganizationCreateReveal(organization.id)
-  }
-
-  const handleRegister = (organization: RegisteredOrganization) => {
-    addProviderRegisteredOrganization(organization)
-    if (organization.externalIpPoolId) {
-      assignExternalIpPoolToRegisteredOrganization(organization.externalIpPoolId, organization.id)
-    }
-    if (organization.catalogItemId && catalogDraft) {
-      assignCatalogToRegisteredOrganization(organization.id, catalogDraft)
-    }
-    setOrganizations(getProviderRegisteredOrganizations())
-    closeWizard()
-    setSearchValue('')
-    setSelectedStatus('all')
-    setSelectedSetup('all')
-
-    if (peekProviderVipCatalogResumeIntent()) {
-      onNavigate?.('catalog')
-      return
-    }
-
-    beginOrganizationCreateReveal(organization.id)
-  }
-
-  const handleSave = (organization: RegisteredOrganization) => {
-    updateProviderRegisteredOrganization(organization.id, {
-      name: organization.name,
-      slug: organization.slug,
-      primaryDomain: organization.primaryDomain,
-      additionalDomains: organization.additionalDomains,
-      billingAccountName: organization.billingAccountName,
-      logoSrc: organization.logoSrc,
-      logoFileName: organization.logoFileName,
-    })
-    refreshOrganizations(organization.id)
-    closeWizard()
   }
 
   const handleSetupNextAction = (
@@ -597,20 +594,11 @@ export function ProviderAdminOrganizationsPage({
           isOpen={isOnboardingWizardOpen}
           catalogDraft={catalogDraft}
           resumeOrganization={onboardingResumeOrganization}
+          editingOrganization={editingOrganization}
+          initialStepId={onboardingInitialStepId}
           onClose={closeOnboardingWizard}
           onPersistOrganization={handleOnboardingPersist}
           onComplete={handleOnboardingComplete}
-        />
-      ) : isWizardOpen ? (
-        <RegisterOrganizationWizard
-          key={editingOrganization?.id ?? 'register-tenant'}
-          presentation="page"
-          isOpen={isWizardOpen}
-          catalogDraft={catalogDraft}
-          editingOrganization={editingOrganization}
-          onClose={closeWizard}
-          onRegister={handleRegister}
-          onSave={handleSave}
         />
       ) : idpDelegationOrganization !== null ? (
         <SetupIdentityProviderWizard
@@ -641,7 +629,7 @@ export function ProviderAdminOrganizationsPage({
           onBack={closeDetails}
           onEdit={() => openEdit(selectedOrganization, true)}
           onRemove={() => openRemove(selectedOrganization)}
-          onReviewBilling={(organization) => openBillingSetup(organization)}
+          onReviewBilling={(organization) => openBillingSetup(organization, true)}
           onReviewIdentityProvider={(organization) => {
             if (organization.identityProviderConnected) {
               openIdpDirectory(organization)

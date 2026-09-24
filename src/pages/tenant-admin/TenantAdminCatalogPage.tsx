@@ -38,6 +38,7 @@ import { CatalogViewToggle } from '../../components/catalog/CatalogViewToggle'
 import { TenantCatalogItemDetailsPage } from '../../components/tenant-admin/TenantCatalogItemDetailsPage'
 import { ProviderSetupPublishCatalogWizard } from '../provider-setup/ProviderSetupPublishCatalogWizard'
 import { TenantUserLaunchInstanceWizard } from '../../components/tenant-user/TenantUserLaunchInstanceWizard'
+import { CatalogRateCell } from '../../components/catalog/CatalogRateCell'
 import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
 import { KubernetesResourceNameField } from '../../components/shared/KubernetesResourceNameHelper'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
@@ -58,6 +59,7 @@ import { sortByDemoCatalogOrder } from '../../providerSetup/prototypeEntry'
 import {
   CATALOG_SERVICE_FILTER_LABELS,
   DEMO_EXISTING_MASTER_TEMPLATES,
+  formatRateCardSummary,
   type CatalogServiceId,
 } from '../../providerSetup/templateDemo'
 import {
@@ -945,6 +947,13 @@ export function TenantAdminCatalogPage({
                       valueClassName="tenant-admin-catalog-manager__spec-value"
                     />
 
+                    <dl className="tenant-admin-catalog-manager__card-specs">
+                      <div className="tenant-admin-catalog-manager__card-spec">
+                        <dt>Rate</dt>
+                        <dd>{formatRateCardSummary(item.rateCard)}</dd>
+                      </div>
+                    </dl>
+
                     <div className="tenant-admin-catalog-manager__card-footer">
                       <div
                         className="tenant-admin-catalog-manager__card-footer-visibility"
@@ -992,6 +1001,7 @@ export function TenantAdminCatalogPage({
                   <Th className="tenant-admin-catalog-manager__col-name">Name</Th>
                   <Th className="tenant-admin-catalog-manager__col-status">Status</Th>
                   <Th className="tenant-admin-catalog-manager__col-configuration">Configuration</Th>
+                  <Th className="tenant-admin-catalog-manager__col-rate">Rate</Th>
                   <Th className="tenant-admin-catalog-manager__col-source">Source</Th>
                   <Th className="tenant-admin-catalog-manager__col-added">Added</Th>
                   <Th screenReaderText="Actions" className="tenant-admin-catalog-manager__col-action" />
@@ -1029,6 +1039,9 @@ export function TenantAdminCatalogPage({
                           labelClassName="catalog-table-spec-label"
                           valueClassName="catalog-table-spec-value"
                         />
+                      </Td>
+                      <Td dataLabel="Rate" className="tenant-admin-catalog-manager__col-rate">
+                        <CatalogRateCell rateCard={item.rateCard} />
                       </Td>
                       <Td dataLabel="Source" className="tenant-admin-catalog-manager__col-source">
                         <TenantAdminCatalogOriginLine

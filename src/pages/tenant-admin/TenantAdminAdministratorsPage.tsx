@@ -247,6 +247,7 @@ export function TenantAdminAdministratorsPage({
   return (
     <div className="provider-admin-workspace-page tenant-admin-administration">
       <ProviderAdminWorkspacePageHeader
+        kicker="Administration"
         title={title}
         lede={lede}
         action={

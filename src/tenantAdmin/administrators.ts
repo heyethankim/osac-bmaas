@@ -13,7 +13,7 @@ export type TenantAdministrator = {
 }
 
 export const TENANT_ADMINISTRATORS_DEMO = {
-  title: 'Administration',
+  title: 'Roles',
   lede: 'Manage who has tenant admin access to catalog, networking, and projects for your tenant.',
   addAdministratorLabel: 'Add tenant administrator',
   roleLabel: 'Tenant administrator',

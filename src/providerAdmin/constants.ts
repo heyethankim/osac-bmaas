@@ -49,7 +49,6 @@ export const PROVIDER_ADMIN_INFRASTRUCTURE_NAV_ITEMS: ProviderAdminNavItem[] = [
 export const PROVIDER_ADMIN_ADMINISTRATION_NAV_ITEMS: ProviderAdminNavItem[] = [
   { id: 'administration-organizations', label: 'Tenants' },
   { id: 'administration-billing', label: 'Billing' },
-  { id: 'administration-rate-cards', label: 'Rates' },
 ]
 
 export function isServicesNavId(navId: string): boolean {

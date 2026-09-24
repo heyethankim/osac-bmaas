@@ -6,7 +6,8 @@ export type TenantAdminNavId =
   | 'services-models'
   | 'services-virtual-machines'
   | 'projects-teams'
-  | 'administrators'
+  | 'administration-roles'
+  | 'administration-billing'
   | 'networking-virtual-networks'
   | 'networking-subnets'
   | 'networking-security-groups'
@@ -48,6 +49,14 @@ export const TENANT_ADMIN_NETWORKING_NAV_ITEMS: ReadonlyArray<{
   { id: 'networking-external-ip-pools', label: TENANT_EXTERNAL_IPS_PAGE_LABEL },
 ]
 
+export const TENANT_ADMIN_ADMINISTRATION_NAV_ITEMS: ReadonlyArray<{
+  id: TenantAdminNavId
+  label: string
+}> = [
+  { id: 'administration-roles', label: 'Roles' },
+  { id: 'administration-billing', label: 'Billing' },
+]
+
 export const TENANT_ADMIN_NAV_ITEMS: TenantAdminNavItem[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'catalog', label: 'Catalog' },
@@ -62,8 +71,12 @@ export const TENANT_ADMIN_NAV_ITEMS: TenantAdminNavItem[] = [
     label: 'Networking',
     children: TENANT_ADMIN_NETWORKING_NAV_ITEMS,
   },
+  {
+    id: 'administration',
+    label: 'Administration',
+    children: TENANT_ADMIN_ADMINISTRATION_NAV_ITEMS,
+  },
   { id: 'secrets', label: 'Secrets' },
-  { id: 'administrators', label: 'Administration' },
 ]
 
 export function getTenantAdminLeafNavItems(
@@ -82,6 +95,10 @@ export function isNetworkingNavId(navId: string): boolean {
 
 export function isServicesNavId(navId: string): boolean {
   return navId.startsWith('services-')
+}
+
+export function isAdministrationNavId(navId: string): boolean {
+  return navId.startsWith('administration-')
 }
 
 /** @deprecated Use TENANT_ADMIN_NAV_ITEMS for navigation. */

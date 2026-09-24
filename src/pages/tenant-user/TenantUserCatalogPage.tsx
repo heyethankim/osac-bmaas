@@ -24,6 +24,7 @@ import {
 import { CatalogFilterEmptyState } from '../../components/catalog/CatalogFilterEmptyState'
 import { CatalogFilterResultsSummary } from '../../components/catalog/CatalogFilterResultsSummary'
 import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
+import { CatalogRateCell } from '../../components/catalog/CatalogRateCell'
 import { CatalogViewToggle } from '../../components/catalog/CatalogViewToggle'
 import {
   createCatalogServiceFilterSet,
@@ -35,7 +36,11 @@ import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import { getCatalogViewMode, setCatalogViewMode, type CatalogViewMode } from '../../catalog/viewMode'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
-import { CATALOG_SERVICE_FILTER_LABELS, type CatalogServiceId } from '../../providerSetup/templateDemo'
+import {
+  CATALOG_SERVICE_FILTER_LABELS,
+  formatRateCardSummary,
+  type CatalogServiceId,
+} from '../../providerSetup/templateDemo'
 import {
   getTenantUserCatalogCards,
   type TenantUserCatalogCard,
@@ -476,6 +481,13 @@ export function TenantUserCatalogPage({
                       valueClassName="tenant-user-catalog__spec-value"
                     />
 
+                    <dl className="tenant-user-catalog__card-specs">
+                      <div className="tenant-user-catalog__card-spec">
+                        <dt>Rate</dt>
+                        <dd>{formatRateCardSummary(item.rateCard)}</dd>
+                      </div>
+                    </dl>
+
                     <div className="tenant-user-catalog__footer-note">
                       <LockIcon aria-hidden />
                       <span>{item.footerNote}</span>
@@ -513,6 +525,7 @@ export function TenantUserCatalogPage({
                   <Th className="tenant-user-catalog__col-name">Name</Th>
                   <Th className="tenant-user-catalog__col-status">Status</Th>
                   <Th className="tenant-user-catalog__col-configuration">Configuration</Th>
+                  <Th className="tenant-user-catalog__col-rate">Rate</Th>
                   <Th className="tenant-user-catalog__col-action">Action</Th>
                 </Tr>
               </Thead>
@@ -545,6 +558,9 @@ export function TenantUserCatalogPage({
                         labelClassName="catalog-table-spec-label"
                         valueClassName="catalog-table-spec-value"
                       />
+                    </Td>
+                    <Td dataLabel="Rate" className="tenant-user-catalog__col-rate">
+                      <CatalogRateCell rateCard={item.rateCard} />
                     </Td>
                     <Td dataLabel="Action" className="tenant-user-catalog__col-action">
                       <Button

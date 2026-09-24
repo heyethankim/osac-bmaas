@@ -5,6 +5,7 @@ import {
   createDemoBlueSolaceOnboardingOrganization,
   createDemoHarborlineCapitalOrganization,
   createDemoNorthSummitBankOrganization,
+  createDemoRedwoodMutualOrganization,
   DEMO_BLUESOLACE_ORG_ID,
   DEMO_HARBORLINE_CAPITAL_ORG_ID,
   DEMO_HARBORLINE_CAPITAL_SLUG,
@@ -17,6 +18,8 @@ import {
   DEMO_NORTH_SUMMIT_BANK_ORG_NAME,
   DEMO_NORTH_SUMMIT_BANK_PRIMARY_DOMAIN,
   DEMO_NORTH_SUMMIT_BANK_SLUG,
+  DEMO_REDWOOD_MUTUAL_ORG_ID,
+  DEMO_REDWOOD_MUTUAL_SLUG,
   DEMO_BLUESOLACE_ADDITIONAL_DOMAIN,
   DEMO_BLUESOLACE_BILLING_ACCOUNT_NAME,
   DEMO_BLUESOLACE_IDP_CLIENT_ID,
@@ -1563,6 +1566,7 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
 const CANONICAL_DEMO_ORG_IDS = new Set([
   DEMO_NORTH_SUMMIT_BANK_ORG_ID,
   DEMO_HARBORLINE_CAPITAL_ORG_ID,
+  DEMO_REDWOOD_MUTUAL_ORG_ID,
   DEMO_BLUESOLACE_ORG_ID,
 ])
 
@@ -1839,7 +1843,7 @@ function removeRegisteredOrganizationsRaw(): void {
 }
 
 /**
- * Seeds North Summit Bank and Harborline Capital as Tenants page baselines.
+ * Seeds North Summit Bank, Harborline Capital, and Redwood Mutual as Tenants page baselines.
  */
 export function ensureProviderDemoOrganizations(): RegisteredOrganization[] {
   try {
@@ -1872,12 +1876,18 @@ export function ensureProviderDemoOrganizations(): RegisteredOrganization[] {
       externalIpPoolCidr: harborlinePool?.cidr ?? null,
     })
 
+    const redwoodBase = createDemoRedwoodMutualOrganization()
+
     const replacedTenants = current.filter(
       (tenant) =>
         tenant.id === northSummitBase.id ||
         tenant.slug === northSummitBase.slug ||
         tenant.id === harborlineBase.id ||
-        tenant.slug === DEMO_HARBORLINE_CAPITAL_SLUG,
+        tenant.slug === DEMO_HARBORLINE_CAPITAL_SLUG ||
+        tenant.id === redwoodBase.id ||
+        tenant.slug === DEMO_REDWOOD_MUTUAL_SLUG ||
+        tenant.name === 'redwood-mutual' ||
+        tenant.name === 'Redwood Mutual',
     )
     const replacedIds = new Set(replacedTenants.map((tenant) => tenant.id))
     const remainingTenants = current.filter(
@@ -1930,6 +1940,7 @@ export function ensureProviderDemoOrganizations(): RegisteredOrganization[] {
     setProviderRegisteredOrganizations([
       northSummit,
       harborlineBase,
+      redwoodBase,
       ...remainingTenants,
     ])
 
