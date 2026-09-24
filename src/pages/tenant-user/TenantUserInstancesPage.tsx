@@ -88,6 +88,7 @@ import {
   removeTenantUserInstance,
   updateTenantUserInstance,
 } from '../../tenantUser/storage'
+import { shouldHideDemoServicesInstances } from '../../demo/billingInactiveScenario'
 import { ensureTenantDemoProjects } from '../../tenantAdmin/storage'
 import type { TenantProject } from '../../tenantAdmin/projects'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
@@ -214,6 +215,11 @@ export function TenantUserInstancesPage({
 
   useEffect(() => {
     if (showTenantFilter) {
+      return
+    }
+
+    if (shouldHideDemoServicesInstances(tenantSlug)) {
+      onInstancesChange((current) => (current.length === 0 ? current : []))
       return
     }
 

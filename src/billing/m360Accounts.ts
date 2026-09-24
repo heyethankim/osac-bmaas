@@ -197,12 +197,12 @@ export function formatM360AccountStatusLabel(status: M360AccountLifecycleStatus)
 
 export function getM360AccountStatusLabelColor(
   status: M360AccountLifecycleStatus,
-): 'green' | 'grey' | undefined {
+): 'green' | 'red' | undefined {
   if (status === 'Active') {
     return 'green'
   }
   if (status === 'Inactive') {
-    return 'grey'
+    return 'red'
   }
   return undefined
 }
@@ -279,6 +279,23 @@ function isOnboardingEligibleAccount(account: M360BillingAccount): boolean {
 
 export function isM360BillingAccountInactive(account: M360BillingAccount | null): boolean {
   return account?.accountStatus === 'Inactive'
+}
+
+/** Demo helper: flip an M360 account lifecycle status in the in-memory store. */
+export function setDemoM360AccountLifecycleStatus(
+  reference: string,
+  status: M360AccountLifecycleStatus,
+  approvalStatus?: M360ApprovalStatus,
+): void {
+  const account = findM360AccountByReference(reference)
+  if (!account) {
+    return
+  }
+
+  account.accountStatus = status
+  if (approvalStatus) {
+    account.approvalStatus = approvalStatus
+  }
 }
 
 export function mergeResumedM360BillingAccounts(

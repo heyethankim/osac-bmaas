@@ -195,6 +195,10 @@ export function BmaasLandingPage() {
             to: '/tenant-admin/northsummit/workspace?nav=networking-external-ip-pools',
           },
         },
+        {
+          label: 'Billing account inactive',
+          to: '/tenant-admin/northsummit/workspace?nav=catalog&scenario=billing-inactive&item=bare-metal-general-purpose-server',
+        },
       ],
     },
     {

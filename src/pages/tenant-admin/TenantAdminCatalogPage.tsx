@@ -5,6 +5,7 @@ import {
   Card,
   CardBody,
   Content,
+  Alert,
   EmptyState,
   EmptyStateBody,
   Flex,
@@ -40,6 +41,7 @@ import { ProviderSetupPublishCatalogWizard } from '../provider-setup/ProviderSet
 import { TenantUserLaunchInstanceWizard } from '../../components/tenant-user/TenantUserLaunchInstanceWizard'
 import { CatalogRateCell } from '../../components/catalog/CatalogRateCell'
 import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
+import { LaunchBillingBlockedModal } from '../../components/billing/LaunchBillingBlockedModal'
 import { KubernetesResourceNameField } from '../../components/shared/KubernetesResourceNameHelper'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import {
@@ -53,12 +55,14 @@ import {
   syncWorkspaceCatalogItemParam,
 } from '../../shared/workspaceNavUrl'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
+import { isOrganizationM360AccountInactive } from '../../billing/m360'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import { getProviderCatalogItems, getProviderSavedTemplate } from '../../providerSetup/storage'
 import { sortByDemoCatalogOrder } from '../../providerSetup/prototypeEntry'
 import {
   CATALOG_SERVICE_FILTER_LABELS,
   DEMO_EXISTING_MASTER_TEMPLATES,
+  PUBLISH_CATALOG_SUGGESTED_DISPLAY_NAME,
   formatRateCardSummary,
   type CatalogServiceId,
 } from '../../providerSetup/templateDemo'
@@ -114,6 +118,7 @@ type TenantAdminCatalogPageProps = {
   onProjectScopeChange?: (projectId: string) => void
   onCreateProject?: (project: TenantProject) => void
   onNavigateToProjectsTeams: () => void
+  onNavigateToBilling?: () => void
   existingInstanceNames?: readonly string[]
   /** When set, open this catalog item's detail page (id or display name). */
   openCatalogItemKey?: string | null
@@ -254,6 +259,7 @@ export function TenantAdminCatalogPage({
   onProjectScopeChange,
   onCreateProject,
   onNavigateToProjectsTeams,
+  onNavigateToBilling,
   existingInstanceNames = [],
   openCatalogItemKey = null,
   onOpenCatalogItemConsumed,
@@ -284,10 +290,17 @@ export function TenantAdminCatalogPage({
   const [isCreateWizardOpen, setIsCreateWizardOpen] = useState(false)
   const [creatingCatalogItemId, setCreatingCatalogItemId] = useState<string | null>(null)
   const [creatingCardHeightPx, setCreatingCardHeightPx] = useState<number | null>(null)
+  const [isLaunchBillingBlockedOpen, setIsLaunchBillingBlockedOpen] = useState(false)
+  const [launchBlockedItemName, setLaunchBlockedItemName] = useState(
+    PUBLISH_CATALOG_SUGGESTED_DISPLAY_NAME,
+  )
   const createRevealTimeoutRef = useRef<number | null>(null)
   const catalogCardGridRef = useRef<HTMLDivElement | null>(null)
   const catalogDisplayOrderRef = useRef<string[] | null>(null)
   const itemParam = getWorkspaceCatalogItemParam(searchParams)
+  const billingAccountInactive = isOrganizationM360AccountInactive(organization)
+  const organizationDisplayName =
+    organization.displayName?.trim() || organization.name
   const catalogTemplates = useMemo(
     () => [getProviderSavedTemplate() ?? DEMO_EXISTING_MASTER_TEMPLATES[0]!],
     [isCreateWizardOpen],
@@ -548,6 +561,13 @@ export function TenantAdminCatalogPage({
     if (item.status === 'Unpublished') {
       return
     }
+
+    if (billingAccountInactive) {
+      setLaunchBlockedItemName(item.displayName)
+      setIsLaunchBillingBlockedOpen(true)
+      return
+    }
+
     setSelectedCatalogItem(item)
     setIsDetailsDrawerOpen(false)
     setIsWizardOpen(true)
@@ -816,6 +836,20 @@ export function TenantAdminCatalogPage({
             </Button>
           </FlexItem>
         </Flex>
+
+        {billingAccountInactive ? (
+          <Alert
+            variant="danger"
+            isInline
+            title="Billing account inactive"
+            className="tenant-admin-catalog-manager__billing-alert"
+          >
+            <Content component="p">
+              {organizationDisplayName} cannot launch instances until its M360 billing account is
+              active.
+            </Content>
+          </Alert>
+        ) : null}
 
         <div className="catalog-view-toolbar tenant-admin-catalog-manager__toolbar">
           <div className="catalog-view-toolbar__start">
@@ -1165,6 +1199,21 @@ export function TenantAdminCatalogPage({
           </Button>
         </ModalFooter>
       </Modal>
+
+      <LaunchBillingBlockedModal
+        isOpen={isLaunchBillingBlockedOpen}
+        catalogItemName={launchBlockedItemName}
+        organizationName={organizationDisplayName}
+        onClose={() => setIsLaunchBillingBlockedOpen(false)}
+        onOpenBilling={
+          onNavigateToBilling
+            ? () => {
+                setIsLaunchBillingBlockedOpen(false)
+                onNavigateToBilling()
+              }
+            : undefined
+        }
+      />
     </>
   )
 }

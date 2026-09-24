@@ -41,6 +41,10 @@ import {
   getProviderCatalogDraft,
 } from '../providerSetup/storage'
 import {
+  shouldHideDemoServicesInstances,
+  syncNorthSummitBillingInactiveScenarioFromSearch,
+} from '../demo/billingInactiveScenario'
+import {
   addTenantUserInstance,
   ensureTenantDemoInstances,
   getOrEnsureTenantUserInstances,
@@ -122,11 +126,18 @@ function getServicesNavId(serviceId: CatalogServiceId): TenantAdminNavId {
 }
 
 /** Seeds Tenant Admin state so landing-page prototype links can open finished screens. */
-function ensureTenantAdminPostOnboardingPrototype(tenant: string, navId: TenantAdminNavId) {
+function ensureTenantAdminPostOnboardingPrototype(
+  tenant: string,
+  navId: TenantAdminNavId,
+  searchParams?: URLSearchParams,
+) {
   setTenantOnboardingComplete(tenant)
   setTenantActiveNav(tenant, navId)
   ensureProviderDemoOrganizations()
   activateProviderRegisteredOrganizationBySlug(tenant)
+  if (searchParams) {
+    syncNorthSummitBillingInactiveScenarioFromSearch(searchParams)
+  }
 }
 
 function readInitialTenantAdminNav(
@@ -135,10 +146,11 @@ function readInitialTenantAdminNav(
 ): TenantAdminNavId {
   const requestedNav = normalizeTenantAdminNavParam(searchParams.get('nav'))
   if (requestedNav) {
-    ensureTenantAdminPostOnboardingPrototype(tenant, requestedNav)
+    ensureTenantAdminPostOnboardingPrototype(tenant, requestedNav, searchParams)
     return requestedNav
   }
 
+  syncNorthSummitBillingInactiveScenarioFromSearch(searchParams)
   return getTenantActiveNav(tenant)
 }
 
@@ -158,11 +170,15 @@ export function TenantAdminWorkspacePage() {
   const [projectScopeId, setProjectScopeIdState] = useState<ProjectScopeId>(() =>
     getProjectScopeId(tenant),
   )
-  const [instances, setInstances] = useState(() =>
-    isValidTenant
-      ? getOrEnsureTenantUserInstances(tenant, getWorkspaceOrganization(tenant).name)
-      : [],
-  )
+  const [instances, setInstances] = useState(() => {
+    if (!isValidTenant) {
+      return []
+    }
+    if (shouldHideDemoServicesInstances(tenant)) {
+      return []
+    }
+    return getOrEnsureTenantUserInstances(tenant, getWorkspaceOrganization(tenant).name)
+  })
   const [openVirtualNetworkId, setOpenVirtualNetworkId] = useState<string | null>(null)
   const [openSubnetId, setOpenSubnetId] = useState<string | null>(null)
   const [openSecurityGroupId, setOpenSecurityGroupId] = useState<string | null>(null)
@@ -181,15 +197,20 @@ export function TenantAdminWorkspacePage() {
     setTenantOnboardingComplete(tenant)
     ensureProviderDemoOrganizations()
     activateProviderRegisteredOrganizationBySlug(tenant)
+    syncNorthSummitBillingInactiveScenarioFromSearch(searchParams)
     const workspaceOrganization = getWorkspaceOrganization(tenant)
     setOrganization(workspaceOrganization)
-    setInstances(ensureTenantDemoInstances(tenant, workspaceOrganization.name))
+    setInstances(
+      shouldHideDemoServicesInstances(tenant)
+        ? []
+        : ensureTenantDemoInstances(tenant, workspaceOrganization.name),
+    )
     setProjects(ensureTenantDemoProjects(tenant))
     setProjectScopeIdState(getProjectScopeId(tenant))
 
     const requestedNav = normalizeTenantAdminNavParam(searchParams.get('nav'))
     if (requestedNav) {
-      ensureTenantAdminPostOnboardingPrototype(tenant, requestedNav)
+      ensureTenantAdminPostOnboardingPrototype(tenant, requestedNav, searchParams)
       setActiveNavId(requestedNav)
       setTenantActiveNav(tenant, requestedNav)
       return
@@ -218,7 +239,11 @@ export function TenantAdminWorkspacePage() {
     setNavContentKey((current) => current + 1)
     syncWorkspaceNavParam(setSearchParams, nextNavId, { showLanding: true })
     if (isServicesNavId(nextNavId)) {
-      setInstances(ensureTenantDemoInstances(tenant, organization.name))
+      setInstances(
+        shouldHideDemoServicesInstances(tenant)
+          ? []
+          : ensureTenantDemoInstances(tenant, organization.name),
+      )
     }
   }
 
@@ -328,6 +353,7 @@ export function TenantAdminWorkspacePage() {
               setProjects((current) => [...current, project])
             }}
             onNavigateToProjectsTeams={() => handleNavChange('projects-teams')}
+            onNavigateToBilling={() => handleNavChange('administration-billing')}
             existingInstanceNames={instances.map((instance) => instance.name)}
             openCatalogItemKey={openCatalogItemKey}
             onOpenCatalogItemConsumed={() => setOpenCatalogItemKey(null)}

@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { CheckCircleIcon } from '@patternfly/react-icons/dist/esm/icons/check-circle-icon'
 import { ClipboardCheckIcon } from '@patternfly/react-icons/dist/esm/icons/clipboard-check-icon'
+import { ExclamationTriangleIcon } from '@patternfly/react-icons/dist/esm/icons/exclamation-triangle-icon'
 import { ExternalLinkAltIcon } from '@patternfly/react-icons/dist/esm/icons/external-link-alt-icon'
 import { MoneyBillAltIcon } from '@patternfly/react-icons/dist/esm/icons/money-bill-alt-icon'
 import { OutlinedBuildingIcon } from '@patternfly/react-icons/dist/esm/icons/outlined-building-icon'
@@ -66,10 +67,12 @@ export function TenantAdminBillingPage({ organization }: TenantAdminBillingPageP
   const rateLineCount = rateCard ? countM360RateLines(rateCard.id) : 0
   const rateHeadlines = rateCard ? listM360RateLineHeadlines(rateCard.id, 4) : []
   const isPending = isOrganizationBillingPending(organization)
+  const accountInactive = account?.accountStatus === 'Inactive'
   const accountDisplay = getOrganizationBillingAccountDisplay(organization)
   const m360DetailPath = account
     ? buildM360AccountDetailPath(getM360AccountTenantName(account))
     : M360_ACCOUNTS_PATH
+  const AccountStatusIcon = accountInactive ? ExclamationTriangleIcon : CheckCircleIcon
 
   return (
     <div className="provider-admin-workspace-page tenant-admin-billing">
@@ -153,11 +156,22 @@ export function TenantAdminBillingPage({ organization }: TenantAdminBillingPageP
           </Card>
 
           <div className="tenant-admin-billing__kpi-grid">
-            <Card isFullHeight className="tenant-admin-billing__kpi-card">
+            <Card
+              isFullHeight
+              className={
+                accountInactive
+                  ? 'tenant-admin-billing__kpi-card tenant-admin-billing__kpi-card--danger'
+                  : 'tenant-admin-billing__kpi-card'
+              }
+            >
               <CardHeader>
                 <CardTitle>
-                  <CheckCircleIcon
-                    className="tenant-admin-billing__kpi-icon"
+                  <AccountStatusIcon
+                    className={
+                      accountInactive
+                        ? 'tenant-admin-billing__kpi-icon tenant-admin-billing__kpi-icon--danger'
+                        : 'tenant-admin-billing__kpi-icon'
+                    }
                     aria-hidden
                   />
                   Account status
@@ -167,12 +181,18 @@ export function TenantAdminBillingPage({ organization }: TenantAdminBillingPageP
                 <Title
                   headingLevel="h3"
                   size="2xl"
-                  className="tenant-admin-billing__kpi-value"
+                  className={
+                    accountInactive
+                      ? 'tenant-admin-billing__kpi-value tenant-admin-billing__kpi-value--danger'
+                      : 'tenant-admin-billing__kpi-value'
+                  }
                 >
                   {account.accountStatus ?? 'Unknown'}
                 </Title>
                 <Content component="p" className="tenant-admin-billing__kpi-hint">
-                  Lifecycle status from M360
+                  {accountInactive
+                    ? 'Inactive accounts cannot launch instances'
+                    : 'Lifecycle status from M360'}
                 </Content>
               </CardBody>
             </Card>
