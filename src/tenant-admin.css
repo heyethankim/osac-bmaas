@@ -2657,9 +2657,9 @@
 }
 
 .tenant-secrets__review-list .pf-v6-c-description-list__group.tenant-secrets__review-pair-start {
-  /* Space above the rule comes from description-list row gap. */
+  /* Row gap already spaces above the rule; match that below so Key isn’t pushed down. */
   margin-block-start: 0;
-  padding-block-start: var(--pf-t--global--spacer--xl);
+  padding-block-start: var(--pf-v6-c-description-list--RowGap, var(--pf-t--global--spacer--md));
   border-block-start: 1px solid var(--pf-t--global--border--color--default);
 }
 
