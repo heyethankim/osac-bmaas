@@ -37,6 +37,7 @@ import {
   migrateLegacyIdentityProviderClientId,
   hydrateIdentityProvidersFromOrganizationFields,
   normalizeAdditionalDomains,
+  normalizeDemoCompanyLogoSrc,
   normalizeOrganizationIdentityProviders,
   resolveIdentityProviderConnectedBy,
   type OrganizationRoleAssignment,
@@ -1436,8 +1437,9 @@ function normalizeRegisteredOrganization(org: RegisteredOrganization): Registere
       : null,
     externalIpPoolCidr: org.externalIpPoolCidr ?? null,
     billingAccountName,
-    logoSrc:
+    logoSrc: normalizeDemoCompanyLogoSrc(
       typeof org.logoSrc === 'string' && org.logoSrc.trim() ? org.logoSrc.trim() : null,
+    ),
     logoFileName:
       typeof org.logoFileName === 'string' && org.logoFileName.trim()
         ? org.logoFileName.trim()

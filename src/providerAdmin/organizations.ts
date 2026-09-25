@@ -451,6 +451,35 @@ export function getDemoRedwoodMutualCompanyLogoSrc(): string {
   return `${import.meta.env.BASE_URL}${DEMO_REDWOOD_MUTUAL_COMPANY_LOGO_FILE_NAME}`
 }
 
+const DEMO_COMPANY_LOGO_FILE_NAMES = new Set([
+  DEMO_BLUESOLACE_COMPANY_LOGO_FILE_NAME,
+  DEMO_NORTH_SUMMIT_BANK_COMPANY_LOGO_FILE_NAME,
+  DEMO_HARBORLINE_CAPITAL_COMPANY_LOGO_FILE_NAME,
+  DEMO_REDWOOD_MUTUAL_COMPANY_LOGO_FILE_NAME,
+])
+
+/**
+ * Rewrite demo logo paths so they keep working when the app base changes
+ * (local `/` vs GitHub Pages `/osac-bmaas/`), or when only a filename was stored.
+ */
+export function normalizeDemoCompanyLogoSrc(logoSrc: string | null | undefined): string | null {
+  const raw = logoSrc?.trim()
+  if (!raw) {
+    return null
+  }
+
+  if (raw.startsWith('data:')) {
+    return raw
+  }
+
+  const fileName = raw.split('/').pop()?.split('?')[0]?.trim() || ''
+  if (!fileName || !DEMO_COMPANY_LOGO_FILE_NAMES.has(fileName)) {
+    return raw
+  }
+
+  return `${import.meta.env.BASE_URL}${fileName}`
+}
+
 export function isNorthSummitBankOrganization(
   organization: Pick<RegisteredOrganization, 'slug'>,
 ): boolean {
@@ -487,8 +516,11 @@ export function resolveOrganizationCompanyLogo(
     logoSrc?: string | null
   },
 ): string | null {
-  if (organization.logoSrc?.trim()) {
-    return organization.logoSrc.trim()
+  const raw = organization.logoSrc?.trim() || ''
+
+  // Keep user-uploaded data URLs as-is.
+  if (raw.startsWith('data:')) {
+    return raw
   }
 
   const slug = organization.slug.trim().toLowerCase()
@@ -516,7 +548,7 @@ export function resolveOrganizationCompanyLogo(
     return getDemoRedwoodMutualCompanyLogoSrc()
   }
 
-  return null
+  return normalizeDemoCompanyLogoSrc(raw)
 }
 
 export function generateBreakGlassUsername(slug: string): string {
@@ -1738,7 +1770,7 @@ export function formFromRegisteredOrganization(
     billingAccountName: organization.billingAccountName,
     externalIpPoolId: organization.externalIpPoolId ?? '',
     maxInstances: String(organization.maxInstances),
-    logoSrc: organization.logoSrc?.trim() || '',
+    logoSrc: normalizeDemoCompanyLogoSrc(organization.logoSrc) ?? '',
     logoFileName: organization.logoFileName?.trim() || '',
     breakGlassUsername: organization.breakGlassUsername?.trim() || '',
     breakGlassPassword: organization.breakGlassPassword?.trim()
@@ -1751,10 +1783,41 @@ function registerFormLogoFields(organizationName: string): Pick<
   RegisterOrganizationForm,
   'logoSrc' | 'logoFileName'
 > {
-  if (organizationName.trim().toLowerCase() === DEMO_BLUESOLACE_ORG_NAME) {
+  const normalized = organizationName.trim().toLowerCase()
+
+  if (normalized === DEMO_BLUESOLACE_ORG_NAME) {
     return {
       logoSrc: getDemoBluesolaceCompanyLogoSrc(),
       logoFileName: DEMO_BLUESOLACE_COMPANY_LOGO_FILE_NAME,
+    }
+  }
+
+  if (
+    normalized === DEMO_NORTH_SUMMIT_BANK_ORG_NAME ||
+    normalized === 'north-summit-bank' ||
+    normalized === 'northsummit'
+  ) {
+    return {
+      logoSrc: getDemoNorthSummitBankCompanyLogoSrc(),
+      logoFileName: DEMO_NORTH_SUMMIT_BANK_COMPANY_LOGO_FILE_NAME,
+    }
+  }
+
+  if (normalized === DEMO_HARBORLINE_CAPITAL_NAME || normalized === 'harborline') {
+    return {
+      logoSrc: getDemoHarborlineCapitalCompanyLogoSrc(),
+      logoFileName: DEMO_HARBORLINE_CAPITAL_COMPANY_LOGO_FILE_NAME,
+    }
+  }
+
+  if (
+    normalized === DEMO_REDWOOD_MUTUAL_NAME ||
+    normalized === DEMO_REDWOOD_MUTUAL_DISPLAY_NAME.toLowerCase() ||
+    normalized === 'redwood'
+  ) {
+    return {
+      logoSrc: getDemoRedwoodMutualCompanyLogoSrc(),
+      logoFileName: DEMO_REDWOOD_MUTUAL_COMPANY_LOGO_FILE_NAME,
     }
   }
 
