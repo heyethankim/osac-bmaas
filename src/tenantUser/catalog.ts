@@ -116,10 +116,11 @@ export const TENANT_USER_CATALOG_FALLBACK: TenantUserCatalogCard = {
   categoryLabel: TENANT_USER_CATALOG_SPECS.categoryLabel,
   hardwareProfile: TENANT_USER_CATALOG_SPECS.hardwareProfile,
   specRows: [
+    { label: 'Instance type', value: 'Large', badge: { text: 'Locked', color: 'grey' } },
     { label: 'CPU', value: TENANT_USER_CATALOG_SPECS.cpu },
     { label: 'RAM', value: TENANT_USER_CATALOG_SPECS.ram },
     { label: 'GPU', value: TENANT_USER_CATALOG_SPECS.gpu },
-    { label: 'OS image', value: TENANT_USER_CATALOG_SPECS.osImage },
+    { label: 'OS image', value: TENANT_USER_CATALOG_SPECS.osImage, badge: { text: 'Locked', color: 'grey' } },
   ],
   cpu: TENANT_USER_CATALOG_SPECS.cpu,
   ram: TENANT_USER_CATALOG_SPECS.ram,

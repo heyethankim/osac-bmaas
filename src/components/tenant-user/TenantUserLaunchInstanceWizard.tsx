@@ -29,6 +29,7 @@ import {
   MenuToggle,
   Modal,
   ModalVariant,
+  Button,
   Spinner,
   TextArea,
   TextInput,
@@ -60,7 +61,9 @@ import {
   getCatalogClusterVersionModeLabel,
   getCatalogClusterVersionOptions,
   getCatalogDiskImageOptions,
+  getCatalogHardwareOsModeLabel,
   getCatalogInstanceTypeOptions,
+  getCatalogOsImageModeLabel,
   getLatestCatalogClusterVersionId,
   getReleaseImageForClusterVersion,
   resolveCatalogClusterNodeTopologyMode,
@@ -121,13 +124,16 @@ import { CreateTenantProjectWizard } from '../tenant-admin/CreateTenantProjectWi
 import { estimateLaunchHourlyCost } from '../../billing/m360'
 import {
   DEFAULT_M360_RATE_CARD_ID,
+  findM360OsLicenseRateLine,
   findM360RateLineForPublishSelection,
-  formatClusterComposedWorkerLineLabel,
+  formatBareMetalOsLicenseRateLabel,
+  formatClusterTopologyWorkerLineLabel,
   formatM360RateLineSummary,
   getM360RateCardDisplayName,
   mapClusterHostTypeToBareMetalInstanceType,
   getDefaultClusterWorkerCount,
-  resolveClusterComposedRateEstimate,
+  resolveBareMetalComposedRateEstimate,
+  resolveMultiClusterComposedRateEstimate,
 } from '../../billing/m360RateLines'
 import { LaunchCostPanel } from '../billing/LaunchCostPanel'
 import { CatalogDiskImageValue } from '../catalog/CatalogDiskImageValue'
@@ -440,6 +446,12 @@ export function TenantUserLaunchInstanceWizard({
   const clusterVersionModeLabel = getCatalogClusterVersionModeLabel(
     resolveCatalogClusterVersionMode(catalogItem.clusterVersionMode),
   )
+  const bareMetalHardwareModeLabel = getCatalogHardwareOsModeLabel(
+    resolveCatalogHardwareOsMode(catalogItem.hardwareOsMode),
+  )
+  const bareMetalOsModeLabel = getCatalogOsImageModeLabel(
+    resolveCatalogOsImageMode(catalogItem.osImageMode, catalogItem.hardwareOsMode),
+  )
   const bareMetalInstanceTypeOptions = useMemo(() => {
     const options = getCatalogInstanceTypeOptions('baremetal')
     const catalogId = catalogItem.instanceTypeId?.trim()
@@ -491,7 +503,7 @@ export function TenantUserLaunchInstanceWizard({
         osImageMode: catalogItem.osImageMode,
       })
       if (rows.length > 0) {
-        return rows.slice(0, 4)
+        return rows
       }
     }
 
@@ -527,6 +539,15 @@ export function TenantUserLaunchInstanceWizard({
   ])
 
   const hourlyLaunchEstimate = useMemo(() => {
+    if (isBareMetalCatalogItem) {
+      const estimate = resolveBareMetalComposedRateEstimate(
+        form.instanceType || catalogItem.instanceTypeId,
+        form.diskImageId || catalogItem.diskImageId,
+        DEFAULT_M360_RATE_CARD_ID,
+      )
+      return estimate?.hourlyRate ?? null
+    }
+
     if (!catalogDraft) {
       return null
     }
@@ -538,9 +559,12 @@ export function TenantUserLaunchInstanceWizard({
     })
   }, [
     catalogDraft,
+    catalogItem.diskImageId,
     catalogItem.instanceTypeId,
     form.bootDiskSizeGiB,
+    form.diskImageId,
     form.instanceType,
+    isBareMetalCatalogItem,
     isVmCatalogItem,
   ])
   const selectedProjectName = selectedProject?.name
@@ -1561,7 +1585,60 @@ export function TenantUserLaunchInstanceWizard({
     return rateLine ? formatM360RateLineSummary(rateLine) : 'No M360 rate line'
   }
 
-  const renderBareMetalHardwareStep = () => (
+  const resolveOsLicenseM360RateLabel = (diskImageId: string): string => {
+    const line = findM360OsLicenseRateLine(diskImageId, DEFAULT_M360_RATE_CARD_ID)
+    return line ? formatBareMetalOsLicenseRateLabel(line) : 'No OS rate'
+  }
+
+  const resolvedLaunchBareMetalComposedRate = useMemo(() => {
+    if (!isBareMetalCatalogItem) {
+      return null
+    }
+    return resolveBareMetalComposedRateEstimate(
+      form.instanceType || catalogItem.instanceTypeId,
+      form.diskImageId || catalogItem.diskImageId,
+      DEFAULT_M360_RATE_CARD_ID,
+    )
+  }, [
+    catalogItem.diskImageId,
+    catalogItem.instanceTypeId,
+    form.diskImageId,
+    form.instanceType,
+    isBareMetalCatalogItem,
+  ])
+
+  const renderBareMetalHardwareStep = () => {
+    const lockedInstanceTypeLabel =
+      formatBaremetalInstanceTypeLabel(form.instanceType) ||
+      catalogItem.instanceTypeLabel?.trim() ||
+      form.instanceType ||
+      '—'
+
+    if (!isBareMetalHardwareEditable) {
+      return (
+        <div className="tenant-user-launch-wizard__step">
+          <Form autoComplete="off" className="tenant-user-launch-wizard__form">
+            <FormGroup label="Instance type" fieldId="launch-bm-instance-type">
+              <TextInput
+                id="launch-bm-instance-type"
+                value={lockedInstanceTypeLabel}
+                isDisabled
+                aria-label="Instance type"
+              />
+              <FormHelperText>
+                <HelperText>
+                  <HelperTextItem>
+                    Locked by the catalog item ({bareMetalHardwareModeLabel}).
+                  </HelperTextItem>
+                </HelperText>
+              </FormHelperText>
+            </FormGroup>
+          </Form>
+        </div>
+      )
+    }
+
+    return (
     <div className="tenant-user-launch-wizard__step provider-setup-template__publish-hardware-step">
       <Content component="p" className="tenant-user-launch-wizard__step-lede">
         Choose the instance type for this launch.
@@ -1636,9 +1713,41 @@ export function TenantUserLaunchInstanceWizard({
         </div>
       </FormGroup>
     </div>
-  )
+    )
+  }
 
-  const renderBareMetalOsStep = () => (
+  const renderBareMetalOsStep = () => {
+    const lockedOsLabel =
+      formatCatalogDiskImageLabel(form.diskImageId, catalogItem.diskImageLabel) ||
+      catalogItem.osImage?.trim() ||
+      form.diskImageId ||
+      '—'
+
+    if (!isBareMetalOsEditable) {
+      return (
+        <div className="tenant-user-launch-wizard__step">
+          <Form autoComplete="off" className="tenant-user-launch-wizard__form">
+            <FormGroup label="OS image" fieldId="launch-bm-disk-image">
+              <TextInput
+                id="launch-bm-disk-image"
+                value={lockedOsLabel}
+                isDisabled
+                aria-label="OS image"
+              />
+              <FormHelperText>
+                <HelperText>
+                  <HelperTextItem>
+                    Locked by the catalog item ({bareMetalOsModeLabel}).
+                  </HelperTextItem>
+                </HelperText>
+              </FormHelperText>
+            </FormGroup>
+          </Form>
+        </div>
+      )
+    }
+
+    return (
     <div className="tenant-user-launch-wizard__step provider-setup-template__publish-hardware-step">
       <Content component="p" className="tenant-user-launch-wizard__step-lede">
         Choose the OS image for this launch.
@@ -1687,13 +1796,81 @@ export function TenantUserLaunchInstanceWizard({
                 <Content component="p" className="provider-setup-template__select-card-detail">
                   {option.detail}
                 </Content>
+                <Content
+                  component="p"
+                  className={`provider-setup-template__select-card-rate${
+                    isSelected ? ' provider-setup-template__select-card-rate--selected' : ''
+                  }`}
+                >
+                  {resolveOsLicenseM360RateLabel(option.id)}
+                </Content>
               </button>
             )
           })}
         </div>
       </FormGroup>
+
+      <div className="provider-setup-template__cluster-estimate" aria-live="polite">
+        {resolvedLaunchBareMetalComposedRate ? (
+          <>
+            <div className="provider-setup-template__cluster-estimate-header">
+              <Content component="p" className="provider-setup-template__cluster-estimate-label">
+                Estimated total
+              </Content>
+              <div className="provider-setup-template__cluster-estimate-totals">
+                <span className="provider-setup-template__cluster-estimate-hourly">
+                  ${resolvedLaunchBareMetalComposedRate.hourlyRate.toFixed(2)}
+                  <span className="provider-setup-template__cluster-estimate-unit">/hr</span>
+                </span>
+                <span className="provider-setup-template__cluster-estimate-monthly">
+                  $
+                  {resolvedLaunchBareMetalComposedRate.monthlyRate.toLocaleString('en-US', {
+                    maximumFractionDigits: 0,
+                  })}
+                  /mo
+                </span>
+              </div>
+            </div>
+            <DescriptionList
+              isCompact
+              isHorizontal
+              className="provider-setup-template__cluster-estimate-breakdown"
+              aria-label="Estimated rate breakdown"
+            >
+              <DescriptionListGroup>
+                <DescriptionListTerm>Hardware</DescriptionListTerm>
+                <DescriptionListDescription>
+                  ${resolvedLaunchBareMetalComposedRate.hardware.hourlyRate.toFixed(2)}/hr
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>OS license</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {resolvedLaunchBareMetalComposedRate.osLicense.hourlyRate <= 0
+                    ? 'Included'
+                    : `$${resolvedLaunchBareMetalComposedRate.osLicense.hourlyRate.toFixed(2)}/hr`}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+            </DescriptionList>
+            <Content component="p" className="provider-setup-template__cluster-estimate-meta">
+              {getM360RateCardDisplayName(DEFAULT_M360_RATE_CARD_ID)}
+            </Content>
+          </>
+        ) : (
+          <>
+            <Content component="p" className="provider-setup-template__cluster-estimate-label">
+              Estimated total
+            </Content>
+            <Content component="p" className="provider-setup-template__cluster-estimate-meta">
+              Missing hardware or OS rates on{' '}
+              {getM360RateCardDisplayName(DEFAULT_M360_RATE_CARD_ID)}.
+            </Content>
+          </>
+        )}
+      </div>
     </div>
-  )
+    )
+  }
 
   const renderClusterVersionStep = () => {
     const selectedVersionLabel = formatClusterPlatformLabel(
@@ -1760,24 +1937,23 @@ export function TenantUserLaunchInstanceWizard({
     )
   }
 
-  const primaryClusterNodeSet = form.nodeSets[0]
-  const selectedClusterNodeSetId =
-    primaryClusterNodeSet?.nodeSetId?.trim() || catalogDefaultNodeSetId
-  const selectedClusterHostTypeId =
-    primaryClusterNodeSet?.hostType?.trim() || catalogDefaultHostType
   const resolvedLaunchClusterComposedRate = useMemo(() => {
-    if (!isClusterCatalogItem || !selectedClusterNodeSetId || !selectedClusterHostTypeId) {
+    if (!isClusterCatalogItem || form.nodeSets.length === 0) {
       return null
     }
-    return resolveClusterComposedRateEstimate(
-      selectedClusterNodeSetId,
-      selectedClusterHostTypeId,
+    return resolveMultiClusterComposedRateEstimate(
+      form.nodeSets.map((nodeSet) => ({
+        nodeSetId: nodeSet.nodeSetId.trim() || catalogDefaultNodeSetId,
+        hostTypeId: nodeSet.hostType.trim() || catalogDefaultHostType,
+        workerCount: nodeSet.nodeCount,
+      })),
       DEFAULT_M360_RATE_CARD_ID,
     )
   }, [
+    catalogDefaultHostType,
+    catalogDefaultNodeSetId,
+    form.nodeSets,
     isClusterCatalogItem,
-    selectedClusterHostTypeId,
-    selectedClusterNodeSetId,
   ])
 
   const resolveClusterHostTypeM360RateLabel = (hostTypeId: string): string => {
@@ -1793,153 +1969,261 @@ export function TenantUserLaunchInstanceWizard({
     return rateLine ? `$${rateLine.hourlyRate.toFixed(2)}/hr · per worker` : 'No rate'
   }
 
-  const updatePrimaryClusterTopology = (patch: {
-    nodeSetId?: string
-    hostType?: string
-  }) => {
+  const updateClusterNodeSetAt = (
+    entryId: string,
+    patch: { nodeSetId?: string; hostType?: string },
+  ) => {
+    setForm((current) => ({
+      ...current,
+      nodeSets: current.nodeSets.map((entry) => {
+        if (entry.id !== entryId) {
+          return entry
+        }
+        const nextNodeSetId = patch.nodeSetId ?? entry.nodeSetId
+        const nextHostType = patch.hostType ?? entry.hostType
+        return {
+          ...entry,
+          nodeSetId: nextNodeSetId,
+          hostType: nextHostType,
+          nodeCount:
+            patch.nodeSetId !== undefined
+              ? getDefaultClusterWorkerCount(nextNodeSetId)
+              : entry.nodeCount,
+        }
+      }),
+    }))
+  }
+
+  const addClusterNodeSet = () => {
     setForm((current) => {
-      const existing = current.nodeSets[0]
-      const nextNodeSetId = patch.nodeSetId ?? existing?.nodeSetId ?? catalogDefaultNodeSetId
-      const nextHostType = patch.hostType ?? existing?.hostType ?? catalogDefaultHostType
-      const nextCount =
-        patch.nodeSetId !== undefined
-          ? getDefaultClusterWorkerCount(nextNodeSetId)
-          : (existing?.nodeCount ?? getDefaultClusterWorkerCount(nextNodeSetId))
-      const primary = {
-        ...(existing ??
-          createDefaultClusterNodeSet(1, catalogDefaultHostType, catalogDefaultNodeSetId)),
-        nodeSetId: nextNodeSetId,
-        hostType: nextHostType,
-        nodeCount: nextCount,
+      const usedNodeSetIds = new Set(current.nodeSets.map((entry) => entry.nodeSetId))
+      const nextOption =
+        clusterNodeSetOptions.find((option) => !usedNodeSetIds.has(option.id)) ??
+        clusterNodeSetOptions[0]
+      if (!nextOption) {
+        return current
       }
+      const nextIndex =
+        current.nodeSets.reduce((max, entry) => {
+          const match = entry.id.match(/node-set-(\d+)/)
+          const value = match ? Number(match[1]) : 0
+          return value > max ? value : max
+        }, 0) + 1
       return {
         ...current,
-        nodeSets: [primary, ...current.nodeSets.slice(1)],
+        nodeSets: [
+          ...current.nodeSets,
+          createDefaultClusterNodeSet(
+            nextIndex,
+            catalogDefaultHostType,
+            nextOption.id,
+          ),
+        ],
       }
     })
   }
 
+  const removeClusterNodeSet = (nodeSetId: string) => {
+    setForm((current) => {
+      if (current.nodeSets.length <= 1) {
+        return current
+      }
+      return {
+        ...current,
+        nodeSets: current.nodeSets.filter((entry) => entry.id !== nodeSetId),
+      }
+    })
+  }
+
+  const canAddClusterNodeSet =
+    isClusterNodeTopologyEditable &&
+    form.nodeSets.length < clusterNodeSetOptions.length
+
   const renderClusterNodeTopologyStep = () => (
     <div className="tenant-user-launch-wizard__step provider-setup-template__publish-hardware-step">
-      <FormGroup
-        label="Node set"
-        fieldId="launch-cluster-node-set"
-        isRequired
-        className="provider-setup-template__publish-subsection"
-        role="radiogroup"
-      >
-        <div
-          id="launch-cluster-node-set"
-          className="provider-setup-template__card-group provider-setup-template__card-group--instance-types provider-setup-template__card-group--instance-types-fill"
-          role="presentation"
-        >
-          {clusterNodeSetOptions.map((option) => {
-            const isSelected = option.id === selectedClusterNodeSetId
-            return (
-              <button
-                key={option.id}
-                type="button"
-                role="radio"
-                aria-checked={isSelected}
-                disabled={!isClusterNodeTopologyEditable}
-                className={`provider-setup-template__select-card provider-setup-template__select-card--instance-type${
-                  isSelected ? ' provider-setup-template__select-card--selected' : ''
-                }`}
-                onClick={() => {
-                  if (!isClusterNodeTopologyEditable) {
-                    return
-                  }
-                  updatePrimaryClusterTopology({ nodeSetId: option.id })
-                }}
-              >
-                {isSelected ? (
-                  <Label
-                    color="grey"
-                    isCompact
-                    className="provider-setup-template__select-card-selected-badge"
-                  >
-                    Selected
-                  </Label>
-                ) : null}
-                <Title
-                  headingLevel="h3"
-                  size="md"
-                  className="provider-setup-template__select-card-title"
-                >
-                  {option.label}
-                </Title>
-                <Content component="p" className="provider-setup-template__select-card-detail">
-                  {option.detail}
-                </Content>
-              </button>
-            )
-          })}
-        </div>
-      </FormGroup>
+      <div className="tenant-user-launch-wizard__node-sets" role="list">
+        {form.nodeSets.map((nodeSet, index) => {
+          const selectedNodeSetId = nodeSet.nodeSetId.trim() || catalogDefaultNodeSetId
+          const selectedHostTypeId = nodeSet.hostType.trim() || catalogDefaultHostType
+          const usedByOthers = new Set(
+            form.nodeSets
+              .filter((entry) => entry.id !== nodeSet.id)
+              .map((entry) => entry.nodeSetId),
+          )
 
-      <FormGroup
-        label="Host type"
-        fieldId="launch-cluster-host-type"
-        isRequired
-        className="provider-setup-template__publish-subsection"
-        role="radiogroup"
-      >
-        <div
-          id="launch-cluster-host-type"
-          className="provider-setup-template__card-group provider-setup-template__card-group--instance-types provider-setup-template__card-group--instance-types-fill"
-          role="presentation"
-        >
-          {clusterHostTypeOptions.map((option) => {
-            const isSelected = option.id === selectedClusterHostTypeId
-            return (
-              <button
-                key={option.id}
-                type="button"
-                role="radio"
-                aria-checked={isSelected}
-                disabled={!isClusterNodeTopologyEditable}
-                className={`provider-setup-template__select-card provider-setup-template__select-card--instance-type${
-                  isSelected ? ' provider-setup-template__select-card--selected' : ''
-                }`}
-                onClick={() => {
-                  if (!isClusterNodeTopologyEditable) {
-                    return
-                  }
-                  updatePrimaryClusterTopology({ hostType: option.id })
-                }}
+          return (
+            <div
+              key={nodeSet.id}
+              className="tenant-user-launch-wizard__node-set"
+              role="listitem"
+            >
+              <Flex
+                justifyContent={{ default: 'justifyContentSpaceBetween' }}
+                alignItems={{ default: 'alignItemsCenter' }}
+                className="tenant-user-launch-wizard__node-set-header"
               >
-                {isSelected ? (
-                  <Label
-                    color="grey"
-                    isCompact
-                    className="provider-setup-template__select-card-selected-badge"
-                  >
-                    Selected
-                  </Label>
+                <FlexItem>
+                  <Content component="p" className="tenant-user-launch-wizard__node-set-heading">
+                    {form.nodeSets.length > 1 ? `Node set ${index + 1}` : 'Node set'}
+                  </Content>
+                </FlexItem>
+                {isClusterNodeTopologyEditable && form.nodeSets.length > 1 ? (
+                  <FlexItem>
+                    <Button
+                      variant="link"
+                      isDanger
+                      isInline
+                      onClick={() => removeClusterNodeSet(nodeSet.id)}
+                    >
+                      {CLUSTER_LAUNCH_INSTANCE_DEMO.removeNodeSetLabel}
+                    </Button>
+                  </FlexItem>
                 ) : null}
-                <Title
-                  headingLevel="h3"
-                  size="md"
-                  className="provider-setup-template__select-card-title"
+              </Flex>
+
+              <FormGroup
+                label="Node set"
+                fieldId={`launch-cluster-node-set-${nodeSet.id}`}
+                isRequired
+                className="provider-setup-template__publish-subsection"
+                role="radiogroup"
+              >
+                <div
+                  id={`launch-cluster-node-set-${nodeSet.id}`}
+                  className="provider-setup-template__card-group provider-setup-template__card-group--instance-types provider-setup-template__card-group--instance-types-fill"
+                  role="presentation"
                 >
-                  {option.label}
-                </Title>
-                <Content component="p" className="provider-setup-template__select-card-detail">
-                  {option.detail}
-                </Content>
-                <Content
-                  component="p"
-                  className={`provider-setup-template__select-card-rate${
-                    isSelected ? ' provider-setup-template__select-card-rate--selected' : ''
-                  }`}
+                  {clusterNodeSetOptions.map((option) => {
+                    const isSelected = option.id === selectedNodeSetId
+                    const isTaken = usedByOthers.has(option.id)
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={isSelected}
+                        disabled={!isClusterNodeTopologyEditable || (isTaken && !isSelected)}
+                        className={`provider-setup-template__select-card provider-setup-template__select-card--instance-type${
+                          isSelected ? ' provider-setup-template__select-card--selected' : ''
+                        }`}
+                        onClick={() => {
+                          if (!isClusterNodeTopologyEditable || isTaken) {
+                            return
+                          }
+                          updateClusterNodeSetAt(nodeSet.id, { nodeSetId: option.id })
+                        }}
+                      >
+                        {isSelected ? (
+                          <Label
+                            color="grey"
+                            isCompact
+                            className="provider-setup-template__select-card-selected-badge"
+                          >
+                            Selected
+                          </Label>
+                        ) : null}
+                        <Title
+                          headingLevel="h3"
+                          size="md"
+                          className="provider-setup-template__select-card-title"
+                        >
+                          {option.label}
+                        </Title>
+                        <Content
+                          component="p"
+                          className="provider-setup-template__select-card-detail"
+                        >
+                          {option.detail}
+                        </Content>
+                      </button>
+                    )
+                  })}
+                </div>
+              </FormGroup>
+
+              <FormGroup
+                label="Host type"
+                fieldId={`launch-cluster-host-type-${nodeSet.id}`}
+                isRequired
+                className="provider-setup-template__publish-subsection"
+                role="radiogroup"
+              >
+                <div
+                  id={`launch-cluster-host-type-${nodeSet.id}`}
+                  className="provider-setup-template__card-group provider-setup-template__card-group--instance-types provider-setup-template__card-group--instance-types-fill"
+                  role="presentation"
                 >
-                  {resolveClusterHostTypeM360RateLabel(option.id)}
-                </Content>
-              </button>
-            )
-          })}
-        </div>
-      </FormGroup>
+                  {clusterHostTypeOptions.map((option) => {
+                    const isSelected = option.id === selectedHostTypeId
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={isSelected}
+                        disabled={!isClusterNodeTopologyEditable}
+                        className={`provider-setup-template__select-card provider-setup-template__select-card--instance-type${
+                          isSelected ? ' provider-setup-template__select-card--selected' : ''
+                        }`}
+                        onClick={() => {
+                          if (!isClusterNodeTopologyEditable) {
+                            return
+                          }
+                          updateClusterNodeSetAt(nodeSet.id, { hostType: option.id })
+                        }}
+                      >
+                        {isSelected ? (
+                          <Label
+                            color="grey"
+                            isCompact
+                            className="provider-setup-template__select-card-selected-badge"
+                          >
+                            Selected
+                          </Label>
+                        ) : null}
+                        <Title
+                          headingLevel="h3"
+                          size="md"
+                          className="provider-setup-template__select-card-title"
+                        >
+                          {option.label}
+                        </Title>
+                        <Content
+                          component="p"
+                          className="provider-setup-template__select-card-detail"
+                        >
+                          {option.detail}
+                        </Content>
+                        <Content
+                          component="p"
+                          className={`provider-setup-template__select-card-rate${
+                            isSelected
+                              ? ' provider-setup-template__select-card-rate--selected'
+                              : ''
+                          }`}
+                        >
+                          {resolveClusterHostTypeM360RateLabel(option.id)}
+                        </Content>
+                      </button>
+                    )
+                  })}
+                </div>
+              </FormGroup>
+            </div>
+          )
+        })}
+      </div>
+
+      {canAddClusterNodeSet ? (
+        <Button
+          variant="link"
+          icon={<PlusIcon />}
+          className="tenant-user-launch-wizard__add-node-set"
+          onClick={addClusterNodeSet}
+        >
+          {CLUSTER_LAUNCH_INSTANCE_DEMO.addNodeSetLabel}
+        </Button>
+      ) : null}
 
       <div className="provider-setup-template__cluster-estimate" aria-live="polite">
         {resolvedLaunchClusterComposedRate ? (
@@ -1974,19 +2258,17 @@ export function TenantUserLaunchInstanceWizard({
                   ${resolvedLaunchClusterComposedRate.controlPlane.hourlyRate.toFixed(2)}/hr
                 </DescriptionListDescription>
               </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>
-                  {formatClusterComposedWorkerLineLabel(resolvedLaunchClusterComposedRate)}
-                </DescriptionListTerm>
-                <DescriptionListDescription>
-                  $
-                  {(
-                    resolvedLaunchClusterComposedRate.workerCount *
-                    resolvedLaunchClusterComposedRate.worker.hourlyRate
-                  ).toFixed(2)}
-                  /hr
-                </DescriptionListDescription>
-              </DescriptionListGroup>
+              {resolvedLaunchClusterComposedRate.workerLines.map((line) => (
+                <DescriptionListGroup key={`${line.nodeSetId}-${line.hostTypeId}`}>
+                  <DescriptionListTerm>
+                    {formatClusterNodeSetLabel(line.nodeSetId)}:{' '}
+                    {formatClusterTopologyWorkerLineLabel(line)}
+                  </DescriptionListTerm>
+                  <DescriptionListDescription>
+                    ${line.hourlySubtotal.toFixed(2)}/hr
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              ))}
             </DescriptionList>
             <Content component="p" className="provider-setup-template__cluster-estimate-meta">
               {getM360RateCardDisplayName(DEFAULT_M360_RATE_CARD_ID)}

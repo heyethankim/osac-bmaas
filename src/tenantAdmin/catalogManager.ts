@@ -219,10 +219,11 @@ export const TENANT_CATALOG_GOVERNANCE_ITEMS: TenantCatalogGovernanceItem[] = [
     instanceTypeId: 'large',
     instanceTypeLabel: formatBaremetalInstanceTypeLabel('large'),
     specRows: [
+      { label: 'Instance type', value: 'Large', badge: { text: 'Locked', color: 'grey' } },
       { label: 'CPU', value: '64 vCPU' },
       { label: 'RAM', value: '512 GB' },
       { label: 'GPU', value: 'NVIDIA A100 80 GB' },
-      { label: 'OS image', value: 'RHEL 9.4' },
+      { label: 'OS image', value: 'RHEL 9.4', badge: { text: 'Locked', color: 'grey' } },
     ],
     categoryLabel: 'Compute · Standard',
     cpu: '64 vCPU',

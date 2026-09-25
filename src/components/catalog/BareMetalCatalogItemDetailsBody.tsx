@@ -32,12 +32,18 @@ type BareMetalCatalogItemDetailsBodyProps = {
   publishingExtras?: ReactNode
 }
 
+const INSTANCE_TYPE_CHILD_LABELS = new Set(['CPU', 'RAM', 'GPU'])
+
 function getClassPrefix(variant: BareMetalCatalogDetailsVariant): string {
   return variant === 'entity' ? 'entity-details-page' : 'provider-admin-catalog-item-details'
 }
 
 function isOsImageSpecLabel(label: string): boolean {
   return label === 'OS image' || label === 'Disk image'
+}
+
+function isInstanceTypeParentLabel(label: string): boolean {
+  return label === 'Instance type' || label === 'Size'
 }
 
 function renderHardwareSpecRowValue(row: CatalogSpecRow) {
@@ -61,6 +67,20 @@ function renderHardwareSpecRowValue(row: CatalogSpecRow) {
   )
 }
 
+function partitionBareMetalHardwareRows(rows: CatalogSpecRow[]) {
+  const instanceType = rows.find((row) => isInstanceTypeParentLabel(row.label)) ?? null
+  const instanceTypeChildren = rows.filter((row) => INSTANCE_TYPE_CHILD_LABELS.has(row.label))
+  const osImage = rows.find((row) => isOsImageSpecLabel(row.label)) ?? null
+  const otherRows = rows.filter(
+    (row) =>
+      !isInstanceTypeParentLabel(row.label) &&
+      !INSTANCE_TYPE_CHILD_LABELS.has(row.label) &&
+      !isOsImageSpecLabel(row.label),
+  )
+
+  return { instanceType, instanceTypeChildren, osImage, otherRows }
+}
+
 export function BareMetalCatalogItemDetailsBody({
   content,
   variant,
@@ -74,6 +94,9 @@ export function BareMetalCatalogItemDetailsBody({
     variant === 'entity'
       ? 'tenant-admin-catalog-manager__scope-icon'
       : 'provider-admin-catalog__scope-icon'
+  const { instanceType, instanceTypeChildren, osImage, otherRows } = partitionBareMetalHardwareRows(
+    content.hardwareSpecRows,
+  )
 
   return (
     <div className={`${prefix}__columns`}>
@@ -156,7 +179,48 @@ export function BareMetalCatalogItemDetailsBody({
               className={`${prefix}__dl`}
               aria-label={specsSectionLabel}
             >
-              {content.hardwareSpecRows.map((row) => (
+              {instanceType ? (
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Instance type</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {renderHardwareSpecRowValue(instanceType)}
+                    {instanceTypeChildren.length > 0 ? (
+                      <DescriptionList
+                        isCompact
+                        className={`${prefix}__dl ${prefix}__dl--nested`}
+                        aria-label="Instance type specifications"
+                      >
+                        {instanceTypeChildren.map((row) => (
+                          <DescriptionListGroup key={row.label}>
+                            <DescriptionListTerm>{row.label}</DescriptionListTerm>
+                            <DescriptionListDescription>
+                              {renderHardwareSpecRowValue(row)}
+                            </DescriptionListDescription>
+                          </DescriptionListGroup>
+                        ))}
+                      </DescriptionList>
+                    ) : null}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              ) : (
+                instanceTypeChildren.map((row) => (
+                  <DescriptionListGroup key={row.label}>
+                    <DescriptionListTerm>{row.label}</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      {renderHardwareSpecRowValue(row)}
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                ))
+              )}
+              {osImage ? (
+                <DescriptionListGroup>
+                  <DescriptionListTerm>OS image</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {renderHardwareSpecRowValue(osImage)}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              ) : null}
+              {otherRows.map((row) => (
                 <DescriptionListGroup key={row.label}>
                   <DescriptionListTerm>{row.label}</DescriptionListTerm>
                   <DescriptionListDescription>

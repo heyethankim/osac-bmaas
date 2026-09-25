@@ -359,10 +359,10 @@ function buildBaremetalCatalogSpecRows(
 
   if (typeHardware) {
     return [
-      { label: 'Size', value: typeHardware.sizeLabel, badge: hardwareOsBadge },
-      { label: 'CPU', value: typeHardware.cpu, badge: hardwareOsBadge },
-      { label: 'RAM', value: typeHardware.ram, badge: hardwareOsBadge },
-      { label: 'GPU', value: typeHardware.gpu, badge: hardwareOsBadge },
+      { label: 'Instance type', value: typeHardware.sizeLabel, badge: hardwareOsBadge },
+      { label: 'CPU', value: typeHardware.cpu },
+      { label: 'RAM', value: typeHardware.ram },
+      { label: 'GPU', value: typeHardware.gpu },
       { label: 'OS image', value: diskImage, badge: osImageBadge },
     ]
   }
@@ -371,24 +371,27 @@ function buildBaremetalCatalogSpecRows(
   const rows: CatalogSpecRow[] = []
 
   if (sizeLabel) {
-    rows.push({ label: 'Size', value: sizeLabel, badge: hardwareOsBadge })
+    rows.push({ label: 'Instance type', value: sizeLabel, badge: hardwareOsBadge })
   }
 
   rows.push(
-    { label: 'CPU', value: hardware.cpu, badge: hardwareOsBadge },
-    { label: 'RAM', value: hardware.ram, badge: hardwareOsBadge },
-    { label: 'GPU', value: hardware.gpu, badge: hardwareOsBadge },
+    { label: 'CPU', value: hardware.cpu },
+    { label: 'RAM', value: hardware.ram },
+    { label: 'GPU', value: hardware.gpu },
     { label: 'OS image', value: diskImage, badge: osImageBadge },
   )
 
   return rows
 }
 
-/** Bare metal service cards show CPU/RAM/GPU/OS image — not the Size preset label. */
+/**
+ * Bare metal card/list rows: Instance type (with Locked/Editable) + CPU/RAM/GPU + OS image.
+ * Instance type carries the hardware access mode; OS image carries its own.
+ */
 export function resolveBaremetalCatalogCardSpecRows(
   item: Parameters<typeof buildBaremetalCatalogSpecRows>[0],
 ): CatalogSpecRow[] {
-  return buildBaremetalCatalogSpecRows(item).filter((row) => row.label !== 'Size')
+  return buildBaremetalCatalogSpecRows(item)
 }
 
 /** Grid and list catalog views share the same card-level specification rows. */
@@ -510,7 +513,7 @@ export function getCatalogSpecsSectionLabel(serviceId: CatalogServiceId): string
   if (serviceId === 'virtual-machine') {
     return 'Instance configuration'
   }
-  return 'Hardware specifications'
+  return 'Hardware & OS'
 }
 
 export function getCatalogProfileFieldLabel(serviceId: CatalogServiceId): string {

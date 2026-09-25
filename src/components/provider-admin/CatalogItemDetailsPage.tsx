@@ -562,13 +562,13 @@ export function CatalogItemDetailsPage({
                       size="md"
                       className="provider-admin-catalog-item-details__section-title provider-admin-catalog-item-details__section-title--config"
                     >
-                      Hardware specifications
+                      {getCatalogSpecsSectionLabel('baremetal')}
                     </Title>
                   ) : null}
                   <DescriptionList
                     isCompact
                     className="provider-admin-catalog-item-details__dl"
-                    aria-label="Published hardware"
+                    aria-label="Published Hardware & OS"
                   >
                     {catalog.instanceTypeLabel && parsedInstanceType ? (
                       <DescriptionListGroup>

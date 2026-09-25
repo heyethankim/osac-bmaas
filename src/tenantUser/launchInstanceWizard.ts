@@ -13,6 +13,7 @@ import {
   getLatestCatalogClusterVersionId,
   getReleaseImageForClusterVersion,
 } from '../catalog/catalogPublishConfig'
+import { getDefaultClusterWorkerCount } from '../billing/m360RateLines'
 import {
   KUBERNETES_RESOURCE_NAME_HELPER,
   isValidKubernetesResourceName,
@@ -134,29 +135,8 @@ export function getLaunchInstanceWizardSteps(options: {
   }
 
   if (options.serviceId === 'baremetal') {
-    const hardwareEditable =
-      options.bareMetalHardwareEditable ?? Boolean(options.bareMetalHardwareOsEditable)
-    const osEditable = options.bareMetalOsEditable ?? Boolean(options.bareMetalHardwareOsEditable)
-
-    if (!hardwareEditable && !osEditable) {
-      return BAREMETAL_LAUNCH_INSTANCE_WIZARD_STEPS
-    }
-
-    const steps: Array<{ id: LaunchInstanceWizardStepId; label: string; description: string }> = [
-      { id: 'general', label: 'General', description: '' },
-    ]
-    if (hardwareEditable) {
-      steps.push({ id: 'hardware', label: 'Hardware', description: '' })
-    }
-    if (osEditable) {
-      steps.push({ id: 'os', label: 'OS', description: '' })
-    }
-    steps.push(
-      { id: 'networking', label: 'Networking', description: '' },
-      { id: 'review', label: 'Review', description: '' },
-      { id: 'provisioning', label: 'Provisioning', description: '' },
-    )
-    return steps
+    // Always include Hardware and OS steps (locked values use read-only fields like cluster version).
+    return [...BAREMETAL_HARDWARE_OS_LAUNCH_INSTANCE_WIZARD_STEPS]
   }
 
   // Models / legacy: always include Networking at service launch.
@@ -410,7 +390,7 @@ export function createDefaultClusterNodeSet(
     id: `node-set-${index}`,
     nodeSetId,
     hostType,
-    nodeCount: CLUSTER_LAUNCH_INSTANCE_DEMO.defaultNodeCount,
+    nodeCount: getDefaultClusterWorkerCount(nodeSetId),
   }
 }
 

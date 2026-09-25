@@ -19,6 +19,8 @@ export type M360RateLine = {
   billingUnit: M360RateLineBillingUnit
   catalogItemId?: string
   instanceTypeId?: string
+  /** Bare-metal OS license add-on; omit on hardware flavor lines. */
+  diskImageId?: string
 }
 
 export const DEFAULT_M360_RATE_CARD_ID = DEFAULT_ONBOARDING_RATE_CARD_ID
@@ -219,6 +221,51 @@ export const DEMO_M360_RATE_LINES: M360RateLine[] = [
     billingUnit: 'per-endpoint',
     instanceTypeId: 'model-gpu',
   }),
+  // Bare-metal OS license add-ons (compose with hardware flavor)
+  line({
+    id: 'line-enterprise-us-os-rhel-10',
+    rateCardId: 'rate-enterprise-us',
+    serviceId: 'baremetal',
+    resourceLabel: 'RHEL 10 · OS license',
+    resourceShortLabel: 'OS — RHEL 10',
+    hourlyRate: 0.48,
+    monthlyRate: 322,
+    billingUnit: 'per-instance',
+    diskImageId: 'rhel-10',
+  }),
+  line({
+    id: 'line-enterprise-us-os-rhel-9-4',
+    rateCardId: 'rate-enterprise-us',
+    serviceId: 'baremetal',
+    resourceLabel: 'RHEL 9.4 · OS license',
+    resourceShortLabel: 'OS — RHEL 9.4',
+    hourlyRate: 0.42,
+    monthlyRate: 282,
+    billingUnit: 'per-instance',
+    diskImageId: 'rhel-9.4',
+  }),
+  line({
+    id: 'line-enterprise-us-os-ubuntu-22-04',
+    rateCardId: 'rate-enterprise-us',
+    serviceId: 'baremetal',
+    resourceLabel: 'Ubuntu 22.04 LTS · included image',
+    resourceShortLabel: 'OS — Ubuntu 22.04',
+    hourlyRate: 0,
+    monthlyRate: 0,
+    billingUnit: 'per-instance',
+    diskImageId: 'ubuntu-22.04',
+  }),
+  line({
+    id: 'line-enterprise-us-os-rocky-9-3',
+    rateCardId: 'rate-enterprise-us',
+    serviceId: 'baremetal',
+    resourceLabel: 'Rocky Linux 9.3 · included image',
+    resourceShortLabel: 'OS — Rocky 9.3',
+    hourlyRate: 0,
+    monthlyRate: 0,
+    billingUnit: 'per-instance',
+    diskImageId: 'rocky-9.3',
+  }),
 
   // Enterprise — EU (higher regional multiplier on key lines)
   line({
@@ -277,6 +324,50 @@ export const DEMO_M360_RATE_LINES: M360RateLine[] = [
     billingUnit: 'per-instance',
     instanceTypeId: 'ocp-small',
   }),
+  line({
+    id: 'line-enterprise-eu-os-rhel-10',
+    rateCardId: 'rate-enterprise-eu',
+    serviceId: 'baremetal',
+    resourceLabel: 'RHEL 10 · OS license',
+    resourceShortLabel: 'OS — RHEL 10',
+    hourlyRate: 0.53,
+    monthlyRate: 356,
+    billingUnit: 'per-instance',
+    diskImageId: 'rhel-10',
+  }),
+  line({
+    id: 'line-enterprise-eu-os-rhel-9-4',
+    rateCardId: 'rate-enterprise-eu',
+    serviceId: 'baremetal',
+    resourceLabel: 'RHEL 9.4 · OS license',
+    resourceShortLabel: 'OS — RHEL 9.4',
+    hourlyRate: 0.46,
+    monthlyRate: 309,
+    billingUnit: 'per-instance',
+    diskImageId: 'rhel-9.4',
+  }),
+  line({
+    id: 'line-enterprise-eu-os-ubuntu-22-04',
+    rateCardId: 'rate-enterprise-eu',
+    serviceId: 'baremetal',
+    resourceLabel: 'Ubuntu 22.04 LTS · included image',
+    resourceShortLabel: 'OS — Ubuntu 22.04',
+    hourlyRate: 0,
+    monthlyRate: 0,
+    billingUnit: 'per-instance',
+    diskImageId: 'ubuntu-22.04',
+  }),
+  line({
+    id: 'line-enterprise-eu-os-rocky-9-3',
+    rateCardId: 'rate-enterprise-eu',
+    serviceId: 'baremetal',
+    resourceLabel: 'Rocky Linux 9.3 · included image',
+    resourceShortLabel: 'OS — Rocky 9.3',
+    hourlyRate: 0,
+    monthlyRate: 0,
+    billingUnit: 'per-instance',
+    diskImageId: 'rocky-9.3',
+  }),
 
   // Standard — US (subset)
   line({
@@ -312,6 +403,50 @@ export const DEMO_M360_RATE_LINES: M360RateLine[] = [
     billingUnit: 'per-instance',
     catalogItemId: DEMO_CATALOG_ITEM_IDS.bareMetalGpuTraining,
     instanceTypeId: 'large',
+  }),
+  line({
+    id: 'line-standard-us-os-rhel-10',
+    rateCardId: 'rate-standard-us',
+    serviceId: 'baremetal',
+    resourceLabel: 'RHEL 10 · OS license',
+    resourceShortLabel: 'OS — RHEL 10',
+    hourlyRate: 0.58,
+    monthlyRate: 390,
+    billingUnit: 'per-instance',
+    diskImageId: 'rhel-10',
+  }),
+  line({
+    id: 'line-standard-us-os-rhel-9-4',
+    rateCardId: 'rate-standard-us',
+    serviceId: 'baremetal',
+    resourceLabel: 'RHEL 9.4 · OS license',
+    resourceShortLabel: 'OS — RHEL 9.4',
+    hourlyRate: 0.5,
+    monthlyRate: 336,
+    billingUnit: 'per-instance',
+    diskImageId: 'rhel-9.4',
+  }),
+  line({
+    id: 'line-standard-us-os-ubuntu-22-04',
+    rateCardId: 'rate-standard-us',
+    serviceId: 'baremetal',
+    resourceLabel: 'Ubuntu 22.04 LTS · included image',
+    resourceShortLabel: 'OS — Ubuntu 22.04',
+    hourlyRate: 0,
+    monthlyRate: 0,
+    billingUnit: 'per-instance',
+    diskImageId: 'ubuntu-22.04',
+  }),
+  line({
+    id: 'line-standard-us-os-rocky-9-3',
+    rateCardId: 'rate-standard-us',
+    serviceId: 'baremetal',
+    resourceLabel: 'Rocky Linux 9.3 · included image',
+    resourceShortLabel: 'OS — Rocky 9.3',
+    hourlyRate: 0,
+    monthlyRate: 0,
+    billingUnit: 'per-instance',
+    diskImageId: 'rocky-9.3',
   }),
   line({
     id: 'line-standard-us-cluster-control-plane',
@@ -429,7 +564,7 @@ export function formatM360RateLineCatalogSummary(line: M360RateLine): string {
 
 type CatalogRateLineMatchInput = Pick<
   ProviderCatalogDraft,
-  'catalogItemId' | 'serviceId' | 'instanceTypeId'
+  'catalogItemId' | 'serviceId' | 'instanceTypeId' | 'diskImageId'
 >
 
 export function findM360RateLineForCatalogItem(
@@ -437,7 +572,9 @@ export function findM360RateLineForCatalogItem(
   rateCardId: string,
 ): M360RateLine | null {
   const lines = listM360RateLines(rateCardId)
-  const byCatalogId = lines.find((line) => line.catalogItemId === item.catalogItemId)
+  const byCatalogId = lines.find(
+    (line) => line.catalogItemId === item.catalogItemId && !line.diskImageId,
+  )
   if (byCatalogId) {
     return byCatalogId
   }
@@ -450,7 +587,26 @@ export function findM360RateLineForCatalogItem(
 
   return (
     lines.find(
-      (line) => line.serviceId === serviceId && line.instanceTypeId === instanceTypeId,
+      (line) =>
+        line.serviceId === serviceId &&
+        line.instanceTypeId === instanceTypeId &&
+        !line.diskImageId,
+    ) ?? null
+  )
+}
+
+export function findM360OsLicenseRateLine(
+  diskImageId: string | undefined | null,
+  rateCardId = DEFAULT_M360_RATE_CARD_ID,
+): M360RateLine | null {
+  const normalized = diskImageId?.trim()
+  if (!normalized) {
+    return null
+  }
+
+  return (
+    listM360RateLines(rateCardId).find(
+      (line) => line.serviceId === 'baremetal' && line.diskImageId === normalized,
     ) ?? null
   )
 }
@@ -508,6 +664,35 @@ export type ClusterComposedRateEstimate = {
   workerCount: number
   nodeSetId: string
   hostTypeId: string
+  hourlyRate: number
+  monthlyRate: number
+  currency: string
+  rateCardId: string
+}
+
+export type ClusterTopologyWorkerLineEstimate = {
+  nodeSetId: string
+  hostTypeId: string
+  worker: M360RateLine
+  workerCount: number
+  hourlySubtotal: number
+  monthlySubtotal: number
+}
+
+/** Control plane once + worker subtotals for each topology row. */
+export type ClusterMultiComposedRateEstimate = {
+  controlPlane: M360RateLine
+  workerLines: ClusterTopologyWorkerLineEstimate[]
+  hourlyRate: number
+  monthlyRate: number
+  currency: string
+  rateCardId: string
+}
+
+/** Bare metal: hardware flavor + OS license add-on. */
+export type BareMetalComposedRateEstimate = {
+  hardware: M360RateLine
+  osLicense: M360RateLine
   hourlyRate: number
   monthlyRate: number
   currency: string
@@ -593,6 +778,100 @@ export function resolveClusterComposedRateEstimate(
   }
 }
 
+export function resolveMultiClusterComposedRateEstimate(
+  rows: ReadonlyArray<{
+    nodeSetId: string
+    hostTypeId: string
+    workerCount?: number
+  }>,
+  rateCardId = DEFAULT_M360_RATE_CARD_ID,
+): ClusterMultiComposedRateEstimate | null {
+  if (rows.length === 0) {
+    return null
+  }
+
+  const controlPlane = findM360RateLineForPublishSelection(
+    'cluster',
+    CLUSTER_CONTROL_PLANE_INSTANCE_TYPE_ID,
+    rateCardId,
+  )
+  if (!controlPlane) {
+    return null
+  }
+
+  const workerLines: ClusterTopologyWorkerLineEstimate[] = []
+  for (const row of rows) {
+    const nodeSetId = row.nodeSetId.trim()
+    const hostTypeId = row.hostTypeId.trim()
+    if (!nodeSetId || !hostTypeId) {
+      return null
+    }
+
+    const workerInstanceTypeId = mapClusterHostTypeToBareMetalInstanceType(hostTypeId)
+    if (!workerInstanceTypeId) {
+      return null
+    }
+
+    const worker = findM360RateLineForPublishSelection(
+      'baremetal',
+      workerInstanceTypeId,
+      rateCardId,
+    )
+    if (!worker) {
+      return null
+    }
+
+    const workerCount = row.workerCount ?? getDefaultClusterWorkerCount(nodeSetId)
+    workerLines.push({
+      nodeSetId,
+      hostTypeId,
+      worker,
+      workerCount,
+      hourlySubtotal: Math.round(workerCount * worker.hourlyRate * 100) / 100,
+      monthlySubtotal: Math.round(workerCount * worker.monthlyRate),
+    })
+  }
+
+  const workersHourly = workerLines.reduce((sum, line) => sum + line.hourlySubtotal, 0)
+  const workersMonthly = workerLines.reduce((sum, line) => sum + line.monthlySubtotal, 0)
+
+  return {
+    controlPlane,
+    workerLines,
+    hourlyRate: Math.round((controlPlane.hourlyRate + workersHourly) * 100) / 100,
+    monthlyRate: Math.round(controlPlane.monthlyRate + workersMonthly),
+    currency: controlPlane.currency,
+    rateCardId,
+  }
+}
+
+export function resolveBareMetalComposedRateEstimate(
+  instanceTypeId: string | undefined | null,
+  diskImageId: string | undefined | null,
+  rateCardId = DEFAULT_M360_RATE_CARD_ID,
+): BareMetalComposedRateEstimate | null {
+  const hardwareId = instanceTypeId?.trim()
+  const imageId = diskImageId?.trim()
+  if (!hardwareId || !imageId) {
+    return null
+  }
+
+  const hardware = findM360RateLineForPublishSelection('baremetal', hardwareId, rateCardId)
+  const osLicense = findM360OsLicenseRateLine(imageId, rateCardId)
+  if (!hardware || !osLicense) {
+    return null
+  }
+
+  return {
+    hardware,
+    osLicense,
+    hourlyRate: Math.round((hardware.hourlyRate + osLicense.hourlyRate) * 100) / 100,
+    monthlyRate: Math.round(hardware.monthlyRate + osLicense.monthlyRate),
+    currency: hardware.currency,
+    rateCardId,
+  }
+}
+
 /** Topology used to compose the OpenShift package SKUs on the Rates page. */
 const CLUSTER_PACKAGE_COMPOSE: Record<
   string,
@@ -674,7 +953,7 @@ export function listM360RatesPageServiceGroups(
 }
 
 export function clusterComposedRateToRateCard(
-  estimate: ClusterComposedRateEstimate,
+  estimate: Pick<ClusterComposedRateEstimate, 'hourlyRate' | 'monthlyRate' | 'currency'>,
 ): RateCard {
   return {
     hourlyRate: estimate.hourlyRate,
@@ -685,7 +964,7 @@ export function clusterComposedRateToRateCard(
 }
 
 export function formatClusterComposedRateSummary(
-  estimate: ClusterComposedRateEstimate,
+  estimate: Pick<ClusterComposedRateEstimate, 'hourlyRate' | 'monthlyRate'>,
 ): string {
   const hourly = estimate.hourlyRate.toFixed(2)
   const monthly = estimate.monthlyRate.toLocaleString('en-US', { maximumFractionDigits: 0 })
@@ -693,9 +972,15 @@ export function formatClusterComposedRateSummary(
 }
 
 export function formatClusterComposedRateBreakdown(
-  estimate: ClusterComposedRateEstimate,
+  estimate: ClusterComposedRateEstimate | ClusterMultiComposedRateEstimate,
 ): string {
   const cp = estimate.controlPlane.hourlyRate.toFixed(2)
+  if ('workerLines' in estimate) {
+    const workers = estimate.workerLines
+      .map((line) => `$${line.hourlySubtotal.toFixed(2)}/hr`)
+      .join(' · ')
+    return `Control plane $${cp}/hr · Workers ${workers}`
+  }
   const workerSubtotal = (estimate.workerCount * estimate.worker.hourlyRate).toFixed(2)
   return `Control plane $${cp}/hr · Workers $${workerSubtotal}/hr`
 }
@@ -707,4 +992,34 @@ export function formatClusterComposedWorkerLineLabel(
     estimate.worker.resourceShortLabel.replace(/^Bare metal —\s*/i, '').trim() ||
     estimate.worker.resourceShortLabel
   return `${estimate.workerCount} × ${flavor}`
+}
+
+export function formatClusterTopologyWorkerLineLabel(
+  line: ClusterTopologyWorkerLineEstimate,
+): string {
+  const flavor =
+    line.worker.resourceShortLabel.replace(/^Bare metal —\s*/i, '').trim() ||
+    line.worker.resourceShortLabel
+  return `${line.workerCount} × ${flavor}`
+}
+
+export function formatBareMetalComposedRateSummary(
+  estimate: Pick<BareMetalComposedRateEstimate, 'hourlyRate' | 'monthlyRate'>,
+): string {
+  return formatClusterComposedRateSummary(estimate)
+}
+
+export function formatBareMetalComposedRateBreakdown(
+  estimate: BareMetalComposedRateEstimate,
+): string {
+  const hardware = estimate.hardware.hourlyRate.toFixed(2)
+  const os = estimate.osLicense.hourlyRate.toFixed(2)
+  return `Hardware $${hardware}/hr · OS $${os}/hr`
+}
+
+export function formatBareMetalOsLicenseRateLabel(line: M360RateLine): string {
+  if (line.hourlyRate <= 0) {
+    return 'Included'
+  }
+  return `$${line.hourlyRate.toFixed(2)}/hr · OS license`
 }

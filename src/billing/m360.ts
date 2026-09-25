@@ -2,9 +2,11 @@ import {
   DEFAULT_M360_RATE_CARD_ID,
   clusterComposedRateToRateCard,
   findM360RateLineForCatalogItem,
+  formatBareMetalComposedRateSummary,
   formatM360RateLineSummary,
   listM360RateLineHeadlines,
   m360RateLineToRateCard,
+  resolveBareMetalComposedRateEstimate,
   resolveClusterComposedRateEstimate,
 } from './m360RateLines'
 import {
@@ -59,6 +61,7 @@ export type CatalogItemPricingInput = Pick<
   | 'enterpriseTenantIds'
   | 'serviceId'
   | 'instanceTypeId'
+  | 'diskImageId'
   | 'displayName'
   | 'nodeSetId'
   | 'hostTypeId'
@@ -359,6 +362,24 @@ function resolveCatalogItemRateLinePricing(
         rateCardId,
       ),
       tenantName,
+    }
+  }
+
+  if ((item.serviceId ?? 'baremetal') === 'baremetal') {
+    const composed = resolveBareMetalComposedRateEstimate(
+      item.instanceTypeId,
+      item.diskImageId,
+      rateCardId,
+    )
+    if (composed) {
+      return {
+        ...resolveConfiguredPricingFromRateCard(
+          clusterComposedRateToRateCard(composed),
+          rateCardId,
+        ),
+        summary: formatBareMetalComposedRateSummary(composed),
+        tenantName,
+      }
     }
   }
 
