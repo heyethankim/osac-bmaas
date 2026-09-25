@@ -10,8 +10,6 @@ import {
   EmptyStateBody,
   Flex,
   FlexItem,
-  Form,
-  FormGroup,
   FormSelect,
   FormSelectOption,
   Label,
@@ -42,7 +40,6 @@ import { TenantUserLaunchInstanceWizard } from '../../components/tenant-user/Ten
 import { CatalogRateCell } from '../../components/catalog/CatalogRateCell'
 import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
 import { LaunchBillingBlockedModal } from '../../components/billing/LaunchBillingBlockedModal'
-import { KubernetesResourceNameField } from '../../components/shared/KubernetesResourceNameHelper'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import {
   createCatalogServiceFilterSet,
@@ -71,9 +68,10 @@ import {
   TENANT_CATALOG_MANAGER_DEMO,
   type TenantCatalogGovernanceItemWithNetworking,
 } from '../../tenantAdmin/catalogManager'
-import { ensureTenantDemoProjects } from '../../tenantAdmin/storage'
 import {
   addTenantCatalogItem,
+  ensureTenantDemoCatalogItems,
+  ensureTenantDemoProjects,
   getTenantCatalogItems,
   removeTenantCatalogItem,
   updateTenantCatalogItem,
@@ -83,9 +81,11 @@ import { getTenantUserCatalogCardFromDraft } from '../../tenantUser/catalog'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
 import type { TenantInstance } from '../../tenantUser/instances'
 import {
+  applyPublishedPayloadToTenantCatalogItem,
   createTenantCatalogItem,
   createTenantCatalogItemFromPayload,
   isTenantScopedCatalogItemId,
+  toProviderCatalogDraftFromTenantCatalogItem,
 } from '../../tenantAdmin/catalogItems'
 import type { PublishedTemplatePayload } from '../../providerSetup/templateDemo'
 import {
@@ -94,11 +94,13 @@ import {
   getTenantAdminCatalogSourceLabel,
   getTenantAdminCatalogSourceTooltip,
 } from '../../tenantAdmin/catalogSource'
-import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
 
 function isTenantScopedCatalogItem(item: TenantCatalogGovernanceItemWithNetworking): boolean {
   return isTenantScopedCatalogItemId(item.id)
 }
+
+const PROVIDER_ORIGIN_EDIT_DISABLED_REASON = 'Created by provider admin'
+const PROVIDER_ORIGIN_DELETE_DISABLED_REASON = 'Created by provider admin'
 
 function toCatalogDisplayOrderInput(item: TenantCatalogGovernanceItemWithNetworking) {
   return {
@@ -161,9 +163,16 @@ function toLaunchCatalogDraft(
 
 function toLaunchCatalogCard(
   item: TenantCatalogGovernanceItemWithNetworking,
+  tenantSlug: string,
 ): ReturnType<typeof getTenantUserCatalogCardFromDraft> {
-  // Tenant-scoped offerings are not in the provider catalog — always build from governance.
-  if (isTenantScopedCatalogItemId(item.id) || isTenantScopedCatalogItemId(item.catalogItemId ?? '')) {
+  // Prefer the live tenant-scoped session record so launch keeps Editable hardware/OS.
+  if (isTenantScopedCatalogItemId(item.id)) {
+    ensureTenantDemoCatalogItems(tenantSlug)
+    const stored = getTenantCatalogItems(tenantSlug).find((entry) => entry.id === item.id)
+    const fromStored = stored ? toProviderCatalogDraftFromTenantCatalogItem(stored) : null
+    if (fromStored) {
+      return getTenantUserCatalogCardFromDraft(fromStored)
+    }
     return getTenantUserCatalogCardFromDraft(toLaunchCatalogDraft(item))
   }
 
@@ -171,6 +180,26 @@ function toLaunchCatalogCard(
     (catalogItem) => catalogItem.catalogItemId === item.catalogItemId,
   )
   return getTenantUserCatalogCardFromDraft(draft ?? toLaunchCatalogDraft(item))
+}
+
+function toLaunchCatalogDraftForItem(
+  item: TenantCatalogGovernanceItemWithNetworking,
+  tenantSlug: string,
+): ProviderCatalogDraft {
+  if (isTenantScopedCatalogItemId(item.id)) {
+    ensureTenantDemoCatalogItems(tenantSlug)
+    const stored = getTenantCatalogItems(tenantSlug).find((entry) => entry.id === item.id)
+    const fromStored = stored ? toProviderCatalogDraftFromTenantCatalogItem(stored) : null
+    if (fromStored) {
+      return fromStored
+    }
+  }
+
+  return (
+    getProviderCatalogItems().find(
+      (catalogItem) => catalogItem.catalogItemId === item.catalogItemId,
+    ) ?? toLaunchCatalogDraft(item)
+  )
 }
 
 /** Grid: blue label chip. List: subtle subtext under the item name. */
@@ -226,6 +255,7 @@ function getCatalogItemActions(
   onDelete: () => void,
 ): IAction[] {
   const isUnpublished = item.status === 'Unpublished'
+  const canMutateOrigin = isTenantScopedCatalogItem(item)
 
   const actions: IAction[] = [
     {
@@ -245,6 +275,12 @@ function getCatalogItemActions(
     {
       title: 'Edit',
       onClick: onEdit,
+      isDisabled: !canMutateOrigin,
+      description: !canMutateOrigin ? PROVIDER_ORIGIN_EDIT_DISABLED_REASON : undefined,
+      tooltipProps:
+        !canMutateOrigin
+          ? { content: PROVIDER_ORIGIN_EDIT_DISABLED_REASON }
+          : undefined,
     },
     {
       title: 'Duplicate',
@@ -259,8 +295,14 @@ function getCatalogItemActions(
     },
     {
       title: 'Delete',
-      isDanger: true,
+      isDanger: canMutateOrigin,
       onClick: onDelete,
+      isDisabled: !canMutateOrigin,
+      description: !canMutateOrigin ? PROVIDER_ORIGIN_DELETE_DISABLED_REASON : undefined,
+      tooltipProps:
+        !canMutateOrigin
+          ? { content: PROVIDER_ORIGIN_DELETE_DISABLED_REASON }
+          : undefined,
     },
   )
 
@@ -299,8 +341,8 @@ export function TenantAdminCatalogPage({
     useState<TenantCatalogGovernanceItemWithNetworking | null>(null)
   const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false)
   const [isWizardOpen, setIsWizardOpen] = useState(false)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [editDisplayName, setEditDisplayName] = useState('')
+  const [isEditWizardOpen, setIsEditWizardOpen] = useState(false)
+  const [editReturnToDetails, setEditReturnToDetails] = useState(false)
   const [isUnpublishModalOpen, setIsUnpublishModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isCreateWizardOpen, setIsCreateWizardOpen] = useState(false)
@@ -319,7 +361,7 @@ export function TenantAdminCatalogPage({
     organization.displayName?.trim() || organization.name
   const catalogTemplates = useMemo(
     () => [getProviderSavedTemplate() ?? DEMO_EXISTING_MASTER_TEMPLATES[0]!],
-    [isCreateWizardOpen],
+    [isCreateWizardOpen, isEditWizardOpen],
   )
 
   const refreshCatalogItems = () => {
@@ -584,17 +626,22 @@ export function TenantAdminCatalogPage({
       return
     }
 
-    setSelectedCatalogItem(item)
+    // Re-read governance so Editable hardware/OS from session storage is current.
+    const freshItems = getTenantCatalogGovernanceItems(organization, catalogDraft)
+    setCatalogItems(freshItems)
+    const freshItem = freshItems.find((entry) => entry.id === item.id) ?? item
+
+    setSelectedCatalogItem(freshItem)
     setIsDetailsDrawerOpen(false)
     setIsWizardOpen(true)
     syncWorkspaceCatalogItemParam(setSearchParams, null, { replace: true })
   }
 
-  const launchCatalogCard = selectedCatalogItem ? toLaunchCatalogCard(selectedCatalogItem) : null
+  const launchCatalogCard = selectedCatalogItem
+    ? toLaunchCatalogCard(selectedCatalogItem, organization.slug)
+    : null
   const launchCatalogDraft = selectedCatalogItem
-    ? (getProviderCatalogItems().find(
-        (item) => item.catalogItemId === selectedCatalogItem.catalogItemId,
-      ) ?? toLaunchCatalogDraft(selectedCatalogItem))
+    ? toLaunchCatalogDraftForItem(selectedCatalogItem, organization.slug)
     : catalogDraft
 
   const closeDetails = () => {
@@ -647,22 +694,54 @@ export function TenantAdminCatalogPage({
     })
   }
 
-  const openEdit = (item: TenantCatalogGovernanceItemWithNetworking) => {
-    setSelectedCatalogItem(item)
-    setEditDisplayName(item.displayName)
-    setIsEditModalOpen(true)
-  }
-
-  const handleSaveEdit = () => {
-    if (!selectedCatalogItem || !editDisplayName.trim()) {
+  const openEdit = (
+    item: TenantCatalogGovernanceItemWithNetworking,
+    options?: { returnToDetails?: boolean },
+  ) => {
+    if (!isTenantScopedCatalogItem(item)) {
       return
     }
 
-    updateCatalogItem(selectedCatalogItem.id, (item) => ({
-      ...item,
-      displayName: editDisplayName.trim(),
-    }))
-    setIsEditModalOpen(false)
+    setSelectedCatalogItem(item)
+    setEditReturnToDetails(options?.returnToDetails ?? isDetailsDrawerOpen)
+    setIsDetailsDrawerOpen(false)
+    setIsCreateWizardOpen(false)
+    setIsWizardOpen(false)
+    setIsEditWizardOpen(true)
+  }
+
+  const closeEditWizard = () => {
+    const returnToDetails = editReturnToDetails
+    setIsEditWizardOpen(false)
+    setEditReturnToDetails(false)
+    if (returnToDetails && selectedCatalogItem) {
+      setIsDetailsDrawerOpen(true)
+      syncWorkspaceCatalogItemParam(setSearchParams, selectedCatalogItem.id)
+    }
+  }
+
+  const handleSaveCatalogItemFromWizard = (
+    catalogItemId: string,
+    payload: PublishedTemplatePayload,
+  ) => {
+    updateTenantCatalogItem(organization.slug, catalogItemId, (stored) =>
+      applyPublishedPayloadToTenantCatalogItem(stored, payload),
+    )
+    refreshCatalogItems()
+    const nextItems = getTenantCatalogGovernanceItems(organization, catalogDraft)
+    const updated = nextItems.find((item) => item.id === catalogItemId)
+    if (updated) {
+      setSelectedCatalogItem(updated)
+    }
+
+    const returnToDetails = editReturnToDetails
+    setIsEditWizardOpen(false)
+    setEditReturnToDetails(false)
+
+    if (returnToDetails && updated) {
+      setIsDetailsDrawerOpen(true)
+      syncWorkspaceCatalogItemParam(setSearchParams, updated.id)
+    }
   }
 
   const handleDuplicate = (item: TenantCatalogGovernanceItemWithNetworking) => {
@@ -730,25 +809,25 @@ export function TenantAdminCatalogPage({
   }
 
   const openDelete = (item: TenantCatalogGovernanceItemWithNetworking) => {
+    if (!isTenantScopedCatalogItem(item)) {
+      return
+    }
+
     setSelectedCatalogItem(item)
     setIsDeleteModalOpen(true)
   }
 
   const handleConfirmDelete = () => {
-    if (!selectedCatalogItem) {
+    if (!selectedCatalogItem || !isTenantScopedCatalogItem(selectedCatalogItem)) {
       return
     }
 
     const deletedId = selectedCatalogItem.id
-    if (isTenantScopedCatalogItem(selectedCatalogItem)) {
-      removeTenantCatalogItem(organization.slug, deletedId)
-      setCatalogItems(getTenantCatalogGovernanceItems(organization, catalogDraft))
-    } else {
-      setCatalogItems((current) => current.filter((item) => item.id !== deletedId))
-    }
+    removeTenantCatalogItem(organization.slug, deletedId)
+    setCatalogItems(getTenantCatalogGovernanceItems(organization, catalogDraft))
     setIsDetailsDrawerOpen(false)
     syncWorkspaceCatalogItemParam(setSearchParams, null, { replace: true })
-    setIsEditModalOpen(false)
+    setIsEditWizardOpen(false)
     setSelectedCatalogItem(null)
     setIsDeleteModalOpen(false)
   }
@@ -768,6 +847,19 @@ export function TenantAdminCatalogPage({
     ? (catalogItems.find((entry) => entry.id === selectedCatalogItem.id) ?? selectedCatalogItem)
     : null
   const projectCount = ensureTenantDemoProjects(organization.slug).length
+  const editingCatalogDraft =
+    isEditWizardOpen && detailsItem && isTenantScopedCatalogItem(detailsItem)
+      ? (() => {
+          ensureTenantDemoCatalogItems(organization.slug)
+          const stored = getTenantCatalogItems(organization.slug).find(
+            (entry) => entry.id === detailsItem.id,
+          )
+          return (
+            (stored ? toProviderCatalogDraftFromTenantCatalogItem(stored) : null) ??
+            toLaunchCatalogDraft(detailsItem)
+          )
+        })()
+      : null
 
   return (
     <>
@@ -781,6 +873,22 @@ export function TenantAdminCatalogPage({
           defaultTemplateRefId={catalogTemplates[0]?.templateRefId}
           onClose={() => setIsCreateWizardOpen(false)}
           onCreateCatalogItem={handleCreateCatalogItem}
+        />
+      ) : isEditWizardOpen && editingCatalogDraft ? (
+        <ProviderSetupPublishCatalogWizard
+          mode="edit"
+          presentation="page"
+          isOpen={isEditWizardOpen}
+          hidePublishScope
+          editingCatalog={editingCatalogDraft}
+          templates={catalogTemplates}
+          organizations={[organization]}
+          leaveConfirmActionLabel={
+            editReturnToDetails ? 'Back to catalog item' : 'Go to Catalog'
+          }
+          onClose={closeEditWizard}
+          onCreateCatalogItem={() => undefined}
+          onSaveCatalogItem={handleSaveCatalogItemFromWizard}
         />
       ) : isWizardOpen && launchCatalogCard ? (
         <TenantUserLaunchInstanceWizard
@@ -822,6 +930,10 @@ export function TenantAdminCatalogPage({
           onBack={closeDetails}
           onNavigateToProjectsTeams={onNavigateToProjectsTeams}
           onLaunch={() => openLaunchWizard(detailsItem)}
+          onEdit={() => openEdit(detailsItem, { returnToDetails: true })}
+          onDuplicate={() => handleDuplicate(detailsItem)}
+          onTogglePublish={() => openTogglePublish(detailsItem)}
+          onDelete={() => openDelete(detailsItem)}
         />
       ) : (
       <div className="tenant-admin-workspace-page tenant-admin-catalog-manager">
@@ -1113,40 +1225,6 @@ export function TenantAdminCatalogPage({
         )}
       </div>
       )}
-
-      <Modal
-        variant={ModalVariant.small}
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        aria-labelledby="tenant-edit-catalog-item-title"
-      >
-        <ModalHeader title="Edit catalog item" labelId="tenant-edit-catalog-item-title" />
-        <ModalBody>
-          <Form>
-            <FormGroup label="Name" fieldId="tenant-edit-catalog-display-name" isRequired>
-              <KubernetesResourceNameField
-                id="tenant-edit-catalog-display-name"
-                value={editDisplayName}
-                onChange={setEditDisplayName}
-                aria-label="Name"
-                isRequired
-              />
-            </FormGroup>
-          </Form>
-        </ModalBody>
-        <ModalFooter>
-          <Button
-            variant="primary"
-            onClick={handleSaveEdit}
-            isDisabled={!isValidKubernetesResourceName(editDisplayName)}
-          >
-            Save
-          </Button>
-          <Button variant="link" onClick={() => setIsEditModalOpen(false)}>
-            Cancel
-          </Button>
-        </ModalFooter>
-      </Modal>
 
       <Modal
         variant={ModalVariant.small}

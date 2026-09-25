@@ -21,6 +21,10 @@ import {
 export type LaunchInstanceWizardStepId =
   | 'general'
   | 'configure'
+  | 'hardware'
+  | 'os'
+  | 'cluster-version'
+  | 'node-topology'
   | 'networking'
   | 'review'
   | 'provisioning'
@@ -72,27 +76,29 @@ export const BAREMETAL_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   { id: 'provisioning', label: 'Provisioning', description: '' },
 ]
 
-/** Bare metal with editable Hardware & OS: General → Hardware & OS → Networking → Review → Provisioning. */
+/** Bare metal with editable Hardware & OS: General → Hardware → OS → Networking → Review → Provisioning. */
 export const BAREMETAL_HARDWARE_OS_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   id: LaunchInstanceWizardStepId
   label: string
   description: string
 }> = [
   { id: 'general', label: 'General', description: '' },
-  { id: 'configure', label: 'Hardware & OS', description: '' },
+  { id: 'hardware', label: 'Hardware', description: '' },
+  { id: 'os', label: 'OS', description: '' },
   { id: 'networking', label: 'Networking', description: '' },
   { id: 'review', label: 'Review', description: '' },
   { id: 'provisioning', label: 'Provisioning', description: '' },
 ]
 
-/** Cluster launch flow: General → Configure → Networking → Review → Provisioning. */
+/** Cluster launch flow: General → Cluster version → Node topology → Networking → Review → Provisioning. */
 export const CLUSTER_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   id: LaunchInstanceWizardStepId
   label: string
   description: string
 }> = [
   { id: 'general', label: 'General', description: '' },
-  { id: 'configure', label: 'Configure', description: '' },
+  { id: 'cluster-version', label: 'Cluster version', description: '' },
+  { id: 'node-topology', label: 'Node topology', description: '' },
   { id: 'networking', label: 'Networking', description: '' },
   { id: 'review', label: 'Review', description: '' },
   { id: 'provisioning', label: 'Provisioning', description: '' },
@@ -114,6 +120,9 @@ export const VM_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
 export function getLaunchInstanceWizardSteps(options: {
   includeNetworking: boolean
   serviceId?: CatalogServiceId
+  bareMetalHardwareEditable?: boolean
+  bareMetalOsEditable?: boolean
+  /** @deprecated Prefer bareMetalHardwareEditable / bareMetalOsEditable. */
   bareMetalHardwareOsEditable?: boolean
 }) {
   if (options.serviceId === 'cluster') {
@@ -125,9 +134,29 @@ export function getLaunchInstanceWizardSteps(options: {
   }
 
   if (options.serviceId === 'baremetal') {
-    return options.bareMetalHardwareOsEditable
-      ? BAREMETAL_HARDWARE_OS_LAUNCH_INSTANCE_WIZARD_STEPS
-      : BAREMETAL_LAUNCH_INSTANCE_WIZARD_STEPS
+    const hardwareEditable =
+      options.bareMetalHardwareEditable ?? Boolean(options.bareMetalHardwareOsEditable)
+    const osEditable = options.bareMetalOsEditable ?? Boolean(options.bareMetalHardwareOsEditable)
+
+    if (!hardwareEditable && !osEditable) {
+      return BAREMETAL_LAUNCH_INSTANCE_WIZARD_STEPS
+    }
+
+    const steps: Array<{ id: LaunchInstanceWizardStepId; label: string; description: string }> = [
+      { id: 'general', label: 'General', description: '' },
+    ]
+    if (hardwareEditable) {
+      steps.push({ id: 'hardware', label: 'Hardware', description: '' })
+    }
+    if (osEditable) {
+      steps.push({ id: 'os', label: 'OS', description: '' })
+    }
+    steps.push(
+      { id: 'networking', label: 'Networking', description: '' },
+      { id: 'review', label: 'Review', description: '' },
+      { id: 'provisioning', label: 'Provisioning', description: '' },
+    )
+    return steps
   }
 
   // Models / legacy: always include Networking at service launch.
@@ -571,4 +600,28 @@ export function isBareMetalGeneralStepValid(form: LaunchInstanceWizardForm): boo
 
 export function isBareMetalHardwareOsStepValid(form: LaunchInstanceWizardForm): boolean {
   return form.instanceType.trim().length > 0 && form.diskImageId.trim().length > 0
+}
+
+export function isBareMetalHardwareStepValid(form: LaunchInstanceWizardForm): boolean {
+  return form.instanceType.trim().length > 0
+}
+
+export function isBareMetalOsStepValid(form: LaunchInstanceWizardForm): boolean {
+  return form.diskImageId.trim().length > 0
+}
+
+export function isClusterVersionStepValid(form: LaunchInstanceWizardForm): boolean {
+  return form.clusterVersionId.trim().length > 0 || form.releaseImage.trim().length > 0
+}
+
+export function isClusterNodeTopologyStepValid(form: LaunchInstanceWizardForm): boolean {
+  return (
+    form.nodeSets.length > 0 &&
+    form.nodeSets.every(
+      (nodeSet) =>
+        nodeSet.nodeSetId.trim().length > 0 &&
+        nodeSet.hostType.trim().length > 0 &&
+        nodeSet.nodeCount >= 1,
+    )
+  )
 }

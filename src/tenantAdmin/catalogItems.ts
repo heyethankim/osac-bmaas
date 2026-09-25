@@ -128,9 +128,13 @@ export function toProviderCatalogDraftFromTenantCatalogItem(
   }
 }
 
-export function createTenantCatalogItemFromPayload(
-  payload: PublishedTemplatePayload,
-): TenantCatalogItem {
+function catalogFieldsFromPublishedPayload(payload: PublishedTemplatePayload): {
+  displayName: string
+  description: string | undefined
+  rateCard: TenantCatalogItem['rateCard']
+  status: TenantCatalogItemStatus
+  catalogConfig: TenantCatalogItemConfig
+} {
   const {
     displayName,
     description,
@@ -145,15 +149,36 @@ export function createTenantCatalogItemFromPayload(
   } = payload
 
   return {
-    id: generateTenantCatalogItemId(),
     displayName: displayName.trim(),
     description: description.trim() || undefined,
-    source: 'custom',
-    sourceCatalogItemId: null,
     rateCard,
     status: status === 'unpublished' ? 'Unpublished' : 'Live',
-    createdAt: new Date().toISOString(),
     catalogConfig,
+  }
+}
+
+export function createTenantCatalogItemFromPayload(
+  payload: PublishedTemplatePayload,
+): TenantCatalogItem {
+  const fields = catalogFieldsFromPublishedPayload(payload)
+
+  return {
+    id: generateTenantCatalogItemId(),
+    ...fields,
+    source: 'custom',
+    sourceCatalogItemId: null,
+    createdAt: new Date().toISOString(),
+  }
+}
+
+/** Apply publish-wizard save payload onto an existing tenant-scoped catalog item. */
+export function applyPublishedPayloadToTenantCatalogItem(
+  item: TenantCatalogItem,
+  payload: PublishedTemplatePayload,
+): TenantCatalogItem {
+  return {
+    ...item,
+    ...catalogFieldsFromPublishedPayload(payload),
   }
 }
 

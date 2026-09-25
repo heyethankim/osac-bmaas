@@ -11,6 +11,7 @@ import {
   Title,
 } from '@patternfly/react-core'
 import { EntityDetailsPageShell } from '../shared/EntityDetailsPageShell'
+import { EntityDetailsActionsDropdown } from '../shared/EntityDetailsActionsDropdown'
 import { BareMetalCatalogItemDetailsBody } from '../catalog/BareMetalCatalogItemDetailsBody'
 import { ClusterCatalogItemDetailsBody } from '../catalog/ClusterCatalogItemDetailsBody'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
@@ -35,7 +36,11 @@ import {
 import {
   getTenantAdminCatalogSourceLabel,
 } from '../../tenantAdmin/catalogSource'
+import { isTenantScopedCatalogItemId } from '../../tenantAdmin/catalogItems'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
+
+const PROVIDER_ORIGIN_EDIT_DISABLED_REASON = 'Created by provider admin'
+const PROVIDER_ORIGIN_DELETE_DISABLED_REASON = 'Created by provider admin'
 
 type TenantCatalogItemDetailsPageProps = {
   item: TenantCatalogGovernanceItemWithNetworking
@@ -43,6 +48,10 @@ type TenantCatalogItemDetailsPageProps = {
   onBack: () => void
   onNavigateToProjectsTeams: () => void
   onLaunch?: () => void
+  onEdit?: () => void
+  onDuplicate?: () => void
+  onTogglePublish?: () => void
+  onDelete?: () => void
 }
 
 export function TenantCatalogItemDetailsPage({
@@ -51,6 +60,10 @@ export function TenantCatalogItemDetailsPage({
   onBack,
   onNavigateToProjectsTeams,
   onLaunch,
+  onEdit,
+  onDuplicate,
+  onTogglePublish,
+  onDelete,
 }: TenantCatalogItemDetailsPageProps) {
   const specRows = getTenantCatalogItemDetailSpecRows(item)
   const isBareMetal = item.serviceId === 'baremetal'
@@ -117,6 +130,21 @@ export function TenantCatalogItemDetailsPage({
     serviceId: item.serviceId,
     description: item.description,
   })
+  const canMutateOrigin = isTenantScopedCatalogItemId(item.id)
+  const isUnpublished = item.status === 'Unpublished'
+  const actionsAdditionalItems = [
+    ...(onDuplicate
+      ? [{ label: 'Duplicate', onClick: onDuplicate }]
+      : []),
+    ...(onTogglePublish
+      ? [
+          {
+            label: isUnpublished ? 'Publish' : 'Unpublish',
+            onClick: onTogglePublish,
+          },
+        ]
+      : []),
+  ]
 
   return (
     <EntityDetailsPageShell
@@ -131,11 +159,23 @@ export function TenantCatalogItemDetailsPage({
         </Icon>
       }
       actions={
-        onLaunch && item.status !== 'Unpublished' ? (
-          <Button variant="primary" icon={<RocketIcon />} onClick={onLaunch}>
-            {LAUNCH_INSTANCE_WIZARD_DEMO.launchInstanceLabel}
-          </Button>
-        ) : undefined
+        <>
+          {onLaunch && !isUnpublished ? (
+            <Button variant="primary" icon={<RocketIcon />} onClick={onLaunch}>
+              {LAUNCH_INSTANCE_WIZARD_DEMO.launchInstanceLabel}
+            </Button>
+          ) : null}
+          <EntityDetailsActionsDropdown
+            onEdit={onEdit}
+            editDisabled={!canMutateOrigin}
+            editDisabledReason={PROVIDER_ORIGIN_EDIT_DISABLED_REASON}
+            additionalItems={actionsAdditionalItems}
+            onRemove={onDelete}
+            removeLabel="Delete"
+            removeDisabled={!canMutateOrigin}
+            removeDisabledReason={PROVIDER_ORIGIN_DELETE_DISABLED_REASON}
+          />
+        </>
       }
     >
       {isBareMetal ? (
