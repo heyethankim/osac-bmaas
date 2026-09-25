@@ -42,6 +42,7 @@ import {
   ensureTenantDemoSecrets,
   formatTenantSecretKeyNames,
   getSecretById,
+  getTenantSecretTypeLabel,
   PROVIDER_SECRETS_COPY,
   TENANT_SECRETS_COPY,
   type SecretVaultScope,
@@ -76,12 +77,11 @@ function formatSecretCreatedAt(value: string): string {
 }
 
 function getSecretSearchHaystack(secret: TenantSecret): string {
-  const keyNames =
-    secret.data.kind === 'key-value'
-      ? secret.data.pairs.map((pair) => pair.key).join(' ')
-      : ''
+  const keyNames = secret.data.pairs.map((pair) => pair.key).join(' ')
 
-  return [secret.name, keyNames].join(' ').toLowerCase()
+  return [secret.name, secret.description, secret.summary, keyNames, ...secret.labels]
+    .join(' ')
+    .toLowerCase()
 }
 
 export function TenantSecretsPage({
@@ -217,7 +217,6 @@ export function TenantSecretsPage({
         <CreateTenantSecretFlow
           tenantSlug={tenantSlug}
           scope={scope}
-          initialType={isCreating ? 'key-value' : undefined}
           editingSecret={editingSecret}
           onClose={() => {
             setIsCreating(false)
@@ -383,6 +382,7 @@ export function TenantSecretsPage({
                       </Content>
                       <CatalogSpecRowsList
                         rows={[
+                          { label: 'Type', value: getTenantSecretTypeLabel(secret.type) },
                           { label: 'Keys', value: formatTenantSecretKeyNames(secret) },
                           { label: 'Added', value: formatSecretCreatedAt(secret.createdAt) },
                         ]}
@@ -420,6 +420,7 @@ export function TenantSecretsPage({
                 <Thead>
                   <Tr>
                     <Th>Name</Th>
+                    <Th>Type</Th>
                     <Th>Keys</Th>
                     <Th>Added</Th>
                     {!readOnly ? <Th screenReaderText="Actions" /> : null}
@@ -433,7 +434,7 @@ export function TenantSecretsPage({
                           key={secret.id}
                           itemId={secret.id}
                           label="Creating secret…"
-                          colSpan={readOnly ? 3 : 4}
+                          colSpan={readOnly ? 4 : 5}
                         />
                       )
                     }
@@ -452,6 +453,7 @@ export function TenantSecretsPage({
                           </Button>
                         </Content>
                       </Td>
+                      <Td dataLabel="Type">{getTenantSecretTypeLabel(secret.type)}</Td>
                       <Td dataLabel="Keys">{formatTenantSecretKeyNames(secret)}</Td>
                       <Td dataLabel="Added">{formatSecretCreatedAt(secret.createdAt)}</Td>
                       {!readOnly ? (

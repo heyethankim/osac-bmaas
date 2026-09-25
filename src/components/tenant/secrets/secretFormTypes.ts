@@ -1,4 +1,9 @@
 import type { TenantSecretType } from '../../../tenant/secretTypes'
+import {
+  getTenantSecretTypeOption,
+  isTenantSecretType,
+  type StoredKeyValuePair,
+} from '../../../tenant/secretTypes'
 import type { TenantSecret } from '../../../tenant/secrets'
 import {
   CLUSTER_LAUNCH_DEMO_PULL_SECRET,
@@ -15,282 +20,316 @@ export type KeyValuePair = {
   valueFileName: string
 }
 
-export type ImagePullCredential = {
-  id: string
-  registryServer: string
-  username: string
-  password: string
-  email: string
-}
-
-export type ImagePullAuthMode = 'registry-credentials' | 'upload-configuration'
-
-export type SourceAuthMode = 'basic' | 'ssh-key'
-
-export type KeyValueSecretForm = {
-  name: string
-  pairs: KeyValuePair[]
-}
-
-export type ImagePullSecretForm = {
-  name: string
-  authMode: ImagePullAuthMode
-  credentials: ImagePullCredential[]
-  configurationFileName: string
-  configurationFileContents: string
-}
-
-export type SourceSecretForm = {
-  name: string
-  authMode: SourceAuthMode
-  username: string
-  passwordOrToken: string
-  sshPrivateKeyFileName: string
-  sshPrivateKeyContents: string
-}
-
-export type WebhookSecretForm = {
-  name: string
-  webhookSecretKey: string
-}
-
 export type TenantSecretFormState = {
+  name: string
   description: string
-  type: TenantSecretType
-  keyValue: KeyValueSecretForm
-  imagePull: ImagePullSecretForm
-  source: SourceSecretForm
-  webhook: WebhookSecretForm
+  labels: string[]
+  /** Null until the user picks a type on the Secret data step (create flow). */
+  type: TenantSecretType | null
+  pairs: KeyValuePair[]
+  uploadedFileName: string
 }
 
 function createRowId(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 8)}`
 }
 
-export function createKeyValuePair(): KeyValuePair {
-  return { id: createRowId('kv'), key: '', value: '', valueMode: 'paste', valueFileName: '' }
-}
-
-export function createImagePullCredential(): ImagePullCredential {
+export function createKeyValuePair(overrides: Partial<KeyValuePair> = {}): KeyValuePair {
   return {
-    id: createRowId('cred'),
-    registryServer: '',
-    username: '',
-    password: '',
-    email: '',
+    id: createRowId('kv'),
+    key: '',
+    value: '',
+    valueMode: 'paste',
+    valueFileName: '',
+    ...overrides,
   }
 }
 
-function createDemoImagePullCredential(): ImagePullCredential {
-  return {
-    id: createRowId('cred'),
-    registryServer: 'quay.io',
-    username: 'platform+pull',
-    password: 'demo-pull-password',
-    email: 'brotman@redhat.com',
+function pairsForType(type: TenantSecretType, prefill = false): KeyValuePair[] {
+  const option = getTenantSecretTypeOption(type)
+
+  if (option.requiredKeys.length > 0) {
+    return option.requiredKeys.map((key) =>
+      createKeyValuePair({
+        key,
+        valueMode: option.preferUpload ? 'upload-file' : 'paste',
+        value: prefill ? demoValueForType(type) : '',
+        valueFileName: prefill && option.preferUpload ? demoFileNameForType(type) : '',
+      }),
+    )
   }
-}
 
-export const DEFAULT_KEY_VALUE_SECRET_FORM: KeyValueSecretForm = {
-  name: '',
-  pairs: [createKeyValuePair()],
-}
-
-export const DEFAULT_IMAGE_PULL_SECRET_FORM: ImagePullSecretForm = {
-  name: '',
-  authMode: 'registry-credentials',
-  credentials: [createImagePullCredential()],
-  configurationFileName: '',
-  configurationFileContents: '',
-}
-
-export const DEFAULT_SOURCE_SECRET_FORM: SourceSecretForm = {
-  name: '',
-  authMode: 'basic',
-  username: '',
-  passwordOrToken: '',
-  sshPrivateKeyFileName: '',
-  sshPrivateKeyContents: '',
-}
-
-export const DEFAULT_WEBHOOK_SECRET_FORM: WebhookSecretForm = {
-  name: '',
-  webhookSecretKey: '',
-}
-
-export function createDefaultSecretFormState(type: TenantSecretType): TenantSecretFormState {
-  return {
-    description: '',
-    type,
-    keyValue: { ...DEFAULT_KEY_VALUE_SECRET_FORM, pairs: [createKeyValuePair()] },
-    imagePull: {
-      ...DEFAULT_IMAGE_PULL_SECRET_FORM,
-      credentials: [createImagePullCredential()],
-    },
-    source: { ...DEFAULT_SOURCE_SECRET_FORM },
-    webhook: { ...DEFAULT_WEBHOOK_SECRET_FORM },
+  if (prefill) {
+    return [
+      createKeyValuePair({
+        key: 'prometheus-token',
+        value: 'prom_demo_ns_bank_001',
+      }),
+      createKeyValuePair({
+        key: 'grafana-api-key',
+        value: 'glc_demo_grafana_key_9a2b',
+      }),
+    ]
   }
+
+  return [createKeyValuePair()]
 }
 
-const DEMO_WEBHOOK_SECRET_KEY = 'whsec_demo_ci_webhook_8f2c91a4b7e3d056'
-
-const DEMO_SSH_PRIVATE_KEY = `-----BEGIN OPENSSH PRIVATE KEY-----
-b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
-QyNTUxOQAAACBExampleDemoKeyOnlyNotRealPrivateKeyMaterial==
------END OPENSSH PRIVATE KEY-----`
-
-/** Demo prefills so the create flow is ready to submit for every secret type. */
-export function createDemoSecretFormState(type: TenantSecretType): TenantSecretFormState {
-  const base = createDefaultSecretFormState(type)
-
+function demoValueForType(type: TenantSecretType): string {
   switch (type) {
-    case 'key-value':
-      return {
-        ...base,
-        description: 'SSH public key for bastion host access',
-        keyValue: {
-          name: 'bastion-access-ssh',
-          pairs: [
-            {
-              id: createRowId('kv'),
-              key: 'ssh-public-key',
-              value: CLUSTER_LAUNCH_DEMO_SSH_PUBLIC_KEY,
-              valueMode: 'paste',
-              valueFileName: '',
-            },
-          ],
-        },
-      }
+    case 'kubeconfig':
+      return `apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    server: https://api.cluster.example.com:6443
+  name: demo-cluster
+contexts:
+- context:
+    cluster: demo-cluster
+    user: demo-admin
+  name: demo-cluster
+current-context: demo-cluster
+users:
+- name: demo-admin
+  user:
+    token: demo-kubeconfig-token
+`
     case 'image-pull':
-      return {
-        ...base,
-        description: 'OpenShift pull secret',
-        imagePull: {
-          name: 'ocp-pull-secret',
-          authMode: 'registry-credentials',
-          credentials: [createDemoImagePullCredential()],
-          configurationFileName: 'pull-secret.json',
-          configurationFileContents: CLUSTER_LAUNCH_DEMO_PULL_SECRET,
-        },
-      }
-    case 'source':
-      return {
-        ...base,
-        description: 'Git credentials for platform repositories',
-        source: {
-          name: 'github-source',
-          authMode: 'basic',
-          username: 'platform-bot',
-          passwordOrToken: 'ghp_demo_platform_bot_token',
-          sshPrivateKeyFileName: 'id_ed25519',
-          sshPrivateKeyContents: DEMO_SSH_PRIVATE_KEY,
-        },
-      }
-    case 'webhook':
-      return {
-        ...base,
-        description: 'Signing key for inbound CI webhooks',
-        webhook: {
-          name: 'ci-webhook',
-          webhookSecretKey: DEMO_WEBHOOK_SECRET_KEY,
-        },
-      }
+      return CLUSTER_LAUNCH_DEMO_PULL_SECRET
+    case 'ssh-public-key':
+      return CLUSTER_LAUNCH_DEMO_SSH_PUBLIC_KEY
+    case 'user-data':
+      return `#cloud-config
+users:
+  - name: cloud-user
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - ${CLUSTER_LAUNCH_DEMO_SSH_PUBLIC_KEY}
+`
+    case 'single-value':
+      return 'bmaas_demo_platform_token_8f2c91a4'
+    case 'opaque':
     default:
-      return base
+      return ''
+  }
+}
+
+function demoFileNameForType(type: TenantSecretType): string {
+  switch (type) {
+    case 'kubeconfig':
+      return 'kubeconfig'
+    case 'image-pull':
+      return 'pull-secret.json'
+    case 'user-data':
+      return 'user-data.yaml'
+    default:
+      return ''
+  }
+}
+
+function demoNameForType(type: TenantSecretType): string {
+  switch (type) {
+    case 'kubeconfig':
+      return 'demo-cluster-kubeconfig'
+    case 'opaque':
+      return 'observability-credentials'
+    case 'image-pull':
+      return 'ocp-pull-secret'
+    case 'ssh-public-key':
+      return 'cluster-admin-ssh'
+    case 'user-data':
+      return 'bastion-cloud-init'
+    case 'single-value':
+      return 'platform-api-token'
+    default:
+      return ''
+  }
+}
+
+function demoDescriptionForType(type: TenantSecretType): string {
+  switch (type) {
+    case 'kubeconfig':
+      return 'Admin kubeconfig for the demo cluster'
+    case 'opaque':
+      return 'Monitoring stack credentials'
+    case 'image-pull':
+      return 'OpenShift pull secret'
+    case 'ssh-public-key':
+      return 'SSH public key for cluster nodes'
+    case 'user-data':
+      return 'Cloud-init user data for bastion hosts'
+    case 'single-value':
+      return 'Platform automation token'
+    default:
+      return ''
+  }
+}
+
+export function createDefaultSecretFormState(
+  type: TenantSecretType | null = null,
+): TenantSecretFormState {
+  if (!type) {
+    return {
+      name: '',
+      description: '',
+      labels: [],
+      type: null,
+      pairs: [],
+      uploadedFileName: '',
+    }
+  }
+
+  return {
+    name: '',
+    description: '',
+    labels: [],
+    type,
+    pairs: pairsForType(type, false),
+    uploadedFileName: '',
+  }
+}
+
+function demoLabelsForType(type: TenantSecretType): string[] {
+  switch (type) {
+    case 'opaque':
+      return ['observability']
+    case 'image-pull':
+    case 'ssh-public-key':
+      return ['cluster-launch']
+    case 'single-value':
+      return ['platform']
+    case 'kubeconfig':
+      return ['cluster']
+    case 'user-data':
+      return ['cloud-init']
+    default:
+      return []
+  }
+}
+
+export function createDemoSecretFormState(type: TenantSecretType): TenantSecretFormState {
+  const option = getTenantSecretTypeOption(type)
+  return {
+    name: demoNameForType(type),
+    description: demoDescriptionForType(type),
+    labels: demoLabelsForType(type),
+    type,
+    pairs: pairsForType(type, true),
+    uploadedFileName: option.preferUpload ? demoFileNameForType(type) : '',
+  }
+}
+
+export function createUnsetSecretFormState(): TenantSecretFormState {
+  return createDefaultSecretFormState(null)
+}
+
+/** Create flow start: General fields prefilled; type remains unset until Secret data. */
+export function createPrefillGeneralSecretFormState(): TenantSecretFormState {
+  const demo = createDemoSecretFormState('opaque')
+  return {
+    name: demo.name,
+    description: demo.description,
+    labels: demo.labels,
+    type: null,
+    pairs: [],
+    uploadedFileName: '',
   }
 }
 
 export function createSecretFormState(
-  type: TenantSecretType,
+  type: TenantSecretType | null,
   options?: { prefill?: boolean },
 ): TenantSecretFormState {
+  if (!type) {
+    return options?.prefill ? createPrefillGeneralSecretFormState() : createUnsetSecretFormState()
+  }
   return options?.prefill ? createDemoSecretFormState(type) : createDefaultSecretFormState(type)
 }
 
-export function generateWebhookSecretKey(): string {
-  const bytes = new Uint8Array(24)
-  crypto.getRandomValues(bytes)
-  const encoded = btoa(String.fromCharCode(...bytes))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/g, '')
-  return `whsec_${encoded}`
+export function applySecretTypeToForm(
+  form: TenantSecretFormState,
+  type: TenantSecretType,
+  options?: { keepValues?: boolean },
+): TenantSecretFormState {
+  const option = getTenantSecretTypeOption(type)
+  const previousByKey = new Map(
+    form.pairs.map((pair) => [pair.key.trim(), pair] as const).filter(([key]) => Boolean(key)),
+  )
+
+  let pairs: KeyValuePair[]
+  if (option.requiredKeys.length > 0) {
+    pairs = option.requiredKeys.map((key) => {
+      const previous = previousByKey.get(key)
+      if (options?.keepValues && previous) {
+        return {
+          ...previous,
+          key,
+          valueMode: option.preferUpload ? 'upload-file' : previous.valueMode,
+        }
+      }
+      return createKeyValuePair({
+        key,
+        valueMode: option.preferUpload ? 'upload-file' : 'paste',
+      })
+    })
+  } else if (options?.keepValues && form.pairs.some((pair) => pair.key.trim() || pair.value.trim())) {
+    pairs = form.pairs
+  } else {
+    pairs = [createKeyValuePair()]
+  }
+
+  return {
+    ...form,
+    type,
+    pairs,
+    uploadedFileName: option.preferUpload ? form.uploadedFileName : '',
+  }
 }
 
-function createRowIdFromKey(prefix: string, key: string): string {
-  return `${prefix}_${key.replace(/\W/g, '').slice(0, 12) || createRowId(prefix)}`
+function createRowIdFromKey(key: string): string {
+  return `kv_${key.replace(/\W/g, '').slice(0, 12) || createRowId('kv')}`
 }
 
 export function secretFormStateFromTenantSecret(secret: TenantSecret): TenantSecretFormState {
-  const base = createDefaultSecretFormState(secret.type)
+  const type = isTenantSecretType(secret.type) ? secret.type : 'opaque'
+  const option = getTenantSecretTypeOption(type)
+  const storedPairs =
+    secret.data.pairs.length > 0
+      ? secret.data.pairs
+      : option.requiredKeys.map((key) => ({ key, value: '' }))
 
-  switch (secret.data.kind) {
-    case 'key-value':
-      return {
-        ...base,
-        description: secret.summary,
-        type: 'key-value',
-        keyValue: {
-          name: secret.name,
-          pairs:
-            secret.data.pairs.length > 0
-              ? secret.data.pairs.map((pair) => ({
-                  id: createRowIdFromKey('kv', pair.key),
-                  key: pair.key,
-                  value: pair.value,
-                  valueMode: 'paste' as const,
-                  valueFileName: '',
-                }))
-              : [createKeyValuePair()],
-        },
-      }
-    case 'image-pull':
-      return {
-        ...base,
-        description: secret.summary,
-        type: 'image-pull',
-        imagePull: {
-          name: secret.name,
-          authMode: secret.data.authMode,
-          credentials:
-            secret.data.credentials.length > 0
-              ? secret.data.credentials.map((credential) => ({
-                  id: createRowIdFromKey('cred', credential.registryServer),
-                  registryServer: credential.registryServer,
-                  username: credential.username,
-                  password: credential.password,
-                  email: credential.email,
-                }))
-              : [createImagePullCredential()],
-          configurationFileName: secret.data.configurationFileName,
-          configurationFileContents: secret.data.configurationFileContents,
-        },
-      }
-    case 'source':
-      return {
-        ...base,
-        description: secret.summary,
-        type: 'source',
-        source: {
-          name: secret.name,
-          authMode: secret.data.authMode,
-          username: secret.data.username,
-          passwordOrToken: secret.data.passwordOrToken,
-          sshPrivateKeyFileName: secret.data.sshPrivateKeyFileName,
-          sshPrivateKeyContents: secret.data.sshPrivateKeyContents,
-        },
-      }
-    case 'webhook':
-      return {
-        ...base,
-        description: secret.summary,
-        type: 'webhook',
-        webhook: {
-          name: secret.name,
-          webhookSecretKey: secret.data.webhookSecretKey,
-        },
-      }
-    default:
-      return base
+  return {
+    name: secret.name,
+    description: secret.description?.trim() || secret.summary,
+    labels: [...(secret.labels ?? [])],
+    type,
+    pairs: storedPairs.map((pair) =>
+      createKeyValuePair({
+        id: createRowIdFromKey(pair.key),
+        key: pair.key,
+        value: pair.value,
+        valueMode: option.preferUpload ? 'upload-file' : 'paste',
+        valueFileName: secret.data.uploadedFileName ?? '',
+      }),
+    ),
+    uploadedFileName: secret.data.uploadedFileName ?? '',
   }
+}
+
+export function formPairsToStored(pairs: KeyValuePair[]): StoredKeyValuePair[] {
+  return pairs
+    .filter((pair) => pair.key.trim() && pair.value.trim())
+    .map((pair) => ({ key: pair.key.trim(), value: pair.value }))
+}
+
+export function parseLabelsInput(value: string): string[] {
+  return value
+    .split(/[,]+/)
+    .map((label) => label.trim())
+    .filter(Boolean)
+}
+
+export function formatLabelsInput(labels: readonly string[]): string {
+  return labels.join(', ')
 }

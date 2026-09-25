@@ -315,7 +315,7 @@ export function TenantUserLaunchInstanceWizard({
   }
   const catalogDetailSpecRows = useMemo(
     () =>
-      isServiceAwareCatalogItem
+      isServiceAwareCatalogItem || isBareMetalCatalogItem
         ? resolveCatalogSpecRows(
             {
               serviceId: catalogItem.serviceId,
@@ -339,6 +339,7 @@ export function TenantUserLaunchInstanceWizard({
         : catalogItem.specRows,
     [
       isServiceAwareCatalogItem,
+      isBareMetalCatalogItem,
       catalogItem.serviceId,
       catalogItem.templateRefId,
       catalogItem.templateName,
@@ -348,6 +349,7 @@ export function TenantUserLaunchInstanceWizard({
       catalogItem.diskImageId,
       catalogItem.clusterVersionMode,
       catalogItem.hardwareOsMode,
+      catalogItem.osImageMode,
       catalogItem.nodeSetId,
       catalogItem.nodeSetLabel,
       catalogItem.hostTypeId,
@@ -356,24 +358,6 @@ export function TenantUserLaunchInstanceWizard({
       catalogItem.specRows,
     ],
   )
-  const launchCatalogSummaryRows = useMemo(() => {
-    if (catalogDetailSpecRows.length > 0) {
-      return catalogDetailSpecRows.slice(0, 4)
-    }
-
-    return [
-      { label: 'CPU', value: catalogItem.cpu },
-      { label: 'RAM', value: catalogItem.ram },
-      { label: 'GPU', value: catalogItem.gpu },
-      { label: 'OS image', value: catalogItem.osImage },
-    ].filter((row) => row.value.trim().length > 0 && row.value !== '—')
-  }, [
-    catalogDetailSpecRows,
-    catalogItem.cpu,
-    catalogItem.ram,
-    catalogItem.gpu,
-    catalogItem.osImage,
-  ])
   const resolvedVmOsImage = useMemo(() => {
     if (!isVmCatalogItem) {
       return ''
@@ -482,6 +466,59 @@ export function TenantUserLaunchInstanceWizard({
       tenantSlug,
     }),
   )
+
+  /** Prefer launch form selections so Pre-configured stays in sync with Review. */
+  const launchCatalogSummaryRows = useMemo(() => {
+    if (isBareMetalCatalogItem) {
+      const rows = resolveBaremetalCatalogCardSpecRows({
+        templateRefId: catalogItem.templateRefId,
+        templateName: catalogItem.templateName,
+        instanceTypeId: form.instanceType || catalogItem.instanceTypeId,
+        instanceTypeLabel:
+          formatBaremetalInstanceTypeLabel(form.instanceType) ?? catalogItem.instanceTypeLabel,
+        diskImageId: form.diskImageId || catalogItem.diskImageId,
+        diskImageLabel:
+          formatCatalogDiskImageLabel(form.diskImageId, catalogItem.diskImageLabel) ??
+          catalogItem.diskImageLabel,
+        hardwareOsMode: catalogItem.hardwareOsMode,
+        osImageMode: catalogItem.osImageMode,
+      })
+      if (rows.length > 0) {
+        return rows.slice(0, 4)
+      }
+    }
+
+    if (catalogDetailSpecRows.length > 0) {
+      return catalogDetailSpecRows
+        .filter((row) => row.label !== 'Size')
+        .slice(0, 4)
+    }
+
+    return [
+      { label: 'CPU', value: catalogItem.cpu },
+      { label: 'RAM', value: catalogItem.ram },
+      { label: 'GPU', value: catalogItem.gpu },
+      { label: 'OS image', value: catalogItem.osImage },
+    ].filter((row) => row.value.trim().length > 0 && row.value !== '—')
+  }, [
+    isBareMetalCatalogItem,
+    catalogItem.templateRefId,
+    catalogItem.templateName,
+    catalogItem.instanceTypeId,
+    catalogItem.instanceTypeLabel,
+    catalogItem.diskImageId,
+    catalogItem.diskImageLabel,
+    catalogItem.hardwareOsMode,
+    catalogItem.osImageMode,
+    catalogItem.cpu,
+    catalogItem.ram,
+    catalogItem.gpu,
+    catalogItem.osImage,
+    form.instanceType,
+    form.diskImageId,
+    catalogDetailSpecRows,
+  ])
+
   const hourlyLaunchEstimate = useMemo(() => {
     if (!catalogDraft) {
       return null
@@ -2088,6 +2125,12 @@ export function TenantUserLaunchInstanceWizard({
           projectName={selectedProjectName}
         />
 
+        <DescriptionList isCompact className="tenant-user-launch-wizard__review-list">
+          {reviewRows}
+        </DescriptionList>
+
+        {usesGeneralFirstStep ? renderCatalogOfferingSummary() : null}
+
         <Alert
           variant="info"
           isInline
@@ -2099,12 +2142,6 @@ export function TenantUserLaunchInstanceWizard({
             {LAUNCH_INSTANCE_WIZARD_DEMO.reviewProvisioningNote}
           </Content>
         </Alert>
-
-        {usesGeneralFirstStep ? renderCatalogOfferingSummary() : null}
-
-        <DescriptionList isCompact className="tenant-user-launch-wizard__review-list">
-          {reviewRows}
-        </DescriptionList>
       </div>
     )
   }

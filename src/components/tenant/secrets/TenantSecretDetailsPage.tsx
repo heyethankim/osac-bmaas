@@ -5,6 +5,7 @@ import {
   DescriptionListDescription,
   DescriptionListGroup,
   DescriptionListTerm,
+  Label,
   Title,
 } from '@patternfly/react-core'
 import { EyeIcon } from '@patternfly/react-icons/dist/esm/icons/eye-icon'
@@ -14,7 +15,7 @@ import { EntityDetailsPageShell } from '../../shared/EntityDetailsPageShell'
 import { EntityDetailsActionsDropdown } from '../../shared/EntityDetailsActionsDropdown'
 import {
   formatSecretDetailValue,
-  getTenantSecretUsageLabel,
+  getTenantSecretTypeLabel,
   isMaskedSecretField,
   MASKED_SECRET_VALUE,
   tenantSecretHasRevealableValues,
@@ -66,167 +67,12 @@ function SecretValueDisplay({
   }
 
   if (multiline) {
-    return <pre className="tenant-secret-details__pre tenant-secret-details__pre--revealed">{formatted}</pre>
+    return (
+      <pre className="tenant-secret-details__pre tenant-secret-details__pre--revealed">{formatted}</pre>
+    )
   }
 
   return <code className="tenant-secret-details__code tenant-secret-details__code--revealed">{formatted}</code>
-}
-
-function renderSecretDataDetails(secret: TenantSecret, valuesRevealed: boolean) {
-  switch (secret.data.kind) {
-    case 'key-value':
-      return (
-        <>
-          {secret.data.pairs.map((pair, index) => (
-            <DescriptionListGroup
-              className="tenant-secret-details__pair-group"
-              key={`${pair.key}-${index}`}
-            >
-              <DescriptionListTerm>Key</DescriptionListTerm>
-              <DescriptionListDescription>
-                <code className="tenant-secret-details__code">{pair.key}</code>
-              </DescriptionListDescription>
-              <DescriptionListTerm>Value</DescriptionListTerm>
-              <DescriptionListDescription>
-                <SecretValueDisplay
-                  fieldId={`key-value-${pair.key}`}
-                  value={pair.value}
-                  reveal={valuesRevealed}
-                  multiline={pair.value.includes('\n')}
-                />
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-          ))}
-        </>
-      )
-    case 'image-pull':
-      return (
-        <>
-          <DescriptionListGroup>
-            <DescriptionListTerm>Authentication type</DescriptionListTerm>
-            <DescriptionListDescription>
-              {secret.data.authMode === 'upload-configuration'
-                ? 'Upload configuration file'
-                : 'Image registry credentials'}
-            </DescriptionListDescription>
-          </DescriptionListGroup>
-          {secret.data.authMode === 'upload-configuration' ? (
-            <>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Configuration file</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {secret.data.configurationFileName.trim() || '—'}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>File contents</DescriptionListTerm>
-                <DescriptionListDescription>
-                  <SecretValueDisplay
-                    fieldId="configuration-file-contents"
-                    value={secret.data.configurationFileContents}
-                    reveal={valuesRevealed}
-                    multiline
-                  />
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-            </>
-          ) : (
-            secret.data.credentials.map((credential, index) => (
-              <DescriptionListGroup key={`${credential.registryServer}-${index}`}>
-                <DescriptionListTerm>
-                  {secret.data.kind === 'image-pull' && secret.data.credentials.length > 1
-                    ? `Registry ${index + 1}`
-                    : 'Registry server address'}
-                </DescriptionListTerm>
-                <DescriptionListDescription>
-                  {credential.registryServer.trim() || '—'}
-                </DescriptionListDescription>
-                <DescriptionListTerm>User name</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {credential.username.trim() || '—'}
-                </DescriptionListDescription>
-                <DescriptionListTerm>Password</DescriptionListTerm>
-                <DescriptionListDescription>
-                  <SecretValueDisplay
-                    fieldId="registry-password"
-                    value={credential.password}
-                    reveal={valuesRevealed}
-                  />
-                </DescriptionListDescription>
-                <DescriptionListTerm>Email</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {credential.email.trim() || '—'}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-            ))
-          )}
-        </>
-      )
-    case 'source':
-      return (
-        <>
-          <DescriptionListGroup>
-            <DescriptionListTerm>Authentication type</DescriptionListTerm>
-            <DescriptionListDescription>
-              {secret.data.authMode === 'ssh-key' ? 'SSH key' : 'Basic authentication'}
-            </DescriptionListDescription>
-          </DescriptionListGroup>
-          {secret.data.authMode === 'basic' ? (
-            <>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Username</DescriptionListTerm>
-                <DescriptionListDescription>{secret.data.username || '—'}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Password or token</DescriptionListTerm>
-                <DescriptionListDescription>
-                  <SecretValueDisplay
-                    fieldId="source-password-or-token"
-                    value={secret.data.passwordOrToken}
-                    reveal={valuesRevealed}
-                  />
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-            </>
-          ) : (
-            <>
-              <DescriptionListGroup>
-                <DescriptionListTerm>SSH private key file</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {secret.data.sshPrivateKeyFileName.trim() || '—'}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>SSH private key</DescriptionListTerm>
-                <DescriptionListDescription>
-                  <SecretValueDisplay
-                    fieldId="ssh-private-key-contents"
-                    value={secret.data.sshPrivateKeyContents}
-                    reveal={valuesRevealed}
-                    multiline
-                  />
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-            </>
-          )}
-        </>
-      )
-    case 'webhook':
-      return (
-        <DescriptionListGroup>
-          <DescriptionListTerm>Webhook secret key</DescriptionListTerm>
-          <DescriptionListDescription>
-            <SecretValueDisplay
-              fieldId="webhook-secret-key"
-              value={secret.data.webhookSecretKey}
-              reveal={valuesRevealed}
-            />
-          </DescriptionListDescription>
-        </DescriptionListGroup>
-      )
-    default:
-      return null
-  }
 }
 
 export function TenantSecretDetailsPage({
@@ -245,7 +91,7 @@ export function TenantSecretDetailsPage({
       onBack={onBack}
       title={secret.name}
       titleId="tenant-secret-details-title"
-      description={secret.summary}
+      description={secret.description.trim() || secret.summary}
       actions={
         onEdit || onDelete ? (
           <EntityDetailsActionsDropdown
@@ -271,15 +117,47 @@ export function TenantSecretDetailsPage({
               <DescriptionListDescription>{secret.name}</DescriptionListDescription>
             </DescriptionListGroup>
             <DescriptionListGroup>
-              <DescriptionListTerm>Use</DescriptionListTerm>
+              <DescriptionListTerm>Type</DescriptionListTerm>
               <DescriptionListDescription>
-                {getTenantSecretUsageLabel(secret.usage)}
+                {getTenantSecretTypeLabel(secret.type)}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Description</DescriptionListTerm>
+              <DescriptionListDescription>
+                {secret.description.trim() || '—'}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Labels</DescriptionListTerm>
+              <DescriptionListDescription>
+                {secret.labels.length > 0 ? (
+                  <div className="tenant-secrets__required-keys">
+                    {secret.labels.map((label) => (
+                      <Label key={label} color="grey" isCompact>
+                        {label}
+                      </Label>
+                    ))}
+                  </div>
+                ) : (
+                  '—'
+                )}
               </DescriptionListDescription>
             </DescriptionListGroup>
             <DescriptionListGroup>
               <DescriptionListTerm>Created at</DescriptionListTerm>
-              <DescriptionListDescription>{formatCreatedAt(secret.createdAt)}</DescriptionListDescription>
+              <DescriptionListDescription>
+                {formatCreatedAt(secret.createdAt)}
+              </DescriptionListDescription>
             </DescriptionListGroup>
+            {secret.data.uploadedFileName ? (
+              <DescriptionListGroup>
+                <DescriptionListTerm>Uploaded file</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {secret.data.uploadedFileName}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+            ) : null}
           </DescriptionList>
         </div>
 
@@ -287,7 +165,7 @@ export function TenantSecretDetailsPage({
           {hasRevealableValues ? (
             <div className="entity-details-page__section-header tenant-secret-details__values-header">
               <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
-                Secret values
+                Secret data
               </Title>
               <Button
                 variant="link"
@@ -300,16 +178,35 @@ export function TenantSecretDetailsPage({
             </div>
           ) : (
             <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
-              Secret values
+              Secret data
             </Title>
           )}
 
           <DescriptionList
             isCompact
             className="entity-details-page__dl tenant-secret-details__values"
-            aria-label="Secret values"
+            aria-label="Secret data"
           >
-            {renderSecretDataDetails(secret, valuesRevealed)}
+            {secret.data.pairs.map((pair, index) => (
+              <DescriptionListGroup
+                className="tenant-secret-details__pair-group"
+                key={`${pair.key}-${index}`}
+              >
+                <DescriptionListTerm>Key</DescriptionListTerm>
+                <DescriptionListDescription>
+                  <code className="tenant-secret-details__code">{pair.key}</code>
+                </DescriptionListDescription>
+                <DescriptionListTerm>Value</DescriptionListTerm>
+                <DescriptionListDescription>
+                  <SecretValueDisplay
+                    fieldId={`pair-${pair.key}`}
+                    value={pair.value}
+                    reveal={valuesRevealed}
+                    multiline={pair.value.includes('\n')}
+                  />
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+            ))}
           </DescriptionList>
         </div>
       </div>

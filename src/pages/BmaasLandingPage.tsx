@@ -197,7 +197,7 @@ export function BmaasLandingPage() {
         },
         {
           label: 'Billing account inactive',
-          to: '/tenant-admin/northsummit/workspace?nav=catalog&scenario=billing-inactive&item=bare-metal-general-purpose-server',
+          to: '/tenant-admin/northsummit/workspace?nav=catalog&scenario=billing-inactive',
         },
       ],
     },

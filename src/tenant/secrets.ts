@@ -1,45 +1,24 @@
-import type { TenantSecretData, TenantSecretType, TenantSecretUsage } from './secretTypes'
+import {
+  buildTenantSecretData,
+  isTenantSecretType,
+  type TenantSecretData,
+  type TenantSecretType,
+  type TenantSecretUsage,
+} from './secretTypes'
 import {
   CLUSTER_LAUNCH_DEMO_PULL_SECRET,
   CLUSTER_LAUNCH_DEMO_SSH_PUBLIC_KEY,
 } from '../tenantUser/clusterLaunchDemoSecrets'
 
-export type {
-  StoredImagePullCredential,
-  StoredKeyValuePair,
-  TenantSecretData,
-  TenantSecretType,
-  TenantSecretUsage,
+export type { StoredKeyValuePair, TenantSecretData, TenantSecretType, TenantSecretUsage } from './secretTypes'
+
+export {
+  buildTenantSecretData,
+  getTenantSecretTypeLabel,
+  getTenantSecretTypeOption,
+  isTenantSecretType,
+  TENANT_SECRET_TYPE_OPTIONS,
 } from './secretTypes'
-
-export { buildTenantSecretData } from './secretTypes'
-
-export const TENANT_SECRET_TYPE_OPTIONS: ReadonlyArray<{
-  id: TenantSecretType
-  label: string
-  description: string
-}> = [
-  {
-    id: 'key-value',
-    label: 'Key/value',
-    description: 'SSH keys, tokens, and custom pairs.',
-  },
-  {
-    id: 'image-pull',
-    label: 'Image pull',
-    description: 'Registry credentials or pull-secret file.',
-  },
-  {
-    id: 'source',
-    label: 'Source',
-    description: 'Git credentials or SSH private key.',
-  },
-  {
-    id: 'webhook',
-    label: 'Webhook',
-    description: 'Signing key for inbound webhooks.',
-  },
-]
 
 export const TENANT_SECRETS_COPY = {
   title: 'Secrets',
@@ -66,6 +45,8 @@ export type TenantSecret = {
   usage: TenantSecretUsage
   createdAt: string
   summary: string
+  description: string
+  labels: string[]
   data: TenantSecretData
 }
 
@@ -75,6 +56,8 @@ export const DEMO_TENANT_PLATFORM_API_TOKEN_SECRET_ID = 'demo-tenant-secret-plat
 export const DEMO_TENANT_OBSERVABILITY_SECRET_ID = 'demo-tenant-secret-observability'
 export const DEMO_TENANT_GITHUB_SOURCE_SECRET_ID = 'demo-tenant-secret-github-source'
 export const DEMO_TENANT_CI_WEBHOOK_SECRET_ID = 'demo-tenant-secret-ci-webhook'
+export const DEMO_TENANT_KUBECONFIG_SECRET_ID = 'demo-tenant-secret-kubeconfig'
+export const DEMO_TENANT_USER_DATA_SECRET_ID = 'demo-tenant-secret-user-data'
 
 export const TENANT_SECRET_USAGE_OPTIONS: ReadonlyArray<{
   id: TenantSecretUsage
@@ -87,8 +70,8 @@ export const TENANT_SECRET_USAGE_OPTIONS: ReadonlyArray<{
 export type TenantSecretTypeFilter = 'all' | TenantSecretType
 export type TenantSecretUsageFilter = 'all' | TenantSecretUsage
 
-const TENANT_SECRETS_KEY_PREFIX = 'bmaas-tenant-secrets-'
-const PROVIDER_SECRETS_STORAGE_KEY = 'bmaas-provider-secrets'
+const TENANT_SECRETS_KEY_PREFIX = 'bmaas-tenant-secrets-v2-'
+const PROVIDER_SECRETS_STORAGE_KEY = 'bmaas-provider-secrets-v2'
 const REMOVED_PROVIDER_DEMO_SECRET_IDS = new Set(['demo-provider-secret-artifactory-pull'])
 
 export const DEMO_PROVIDER_VAULT_TOKEN_SECRET_ID = 'demo-provider-secret-vault-token'
@@ -108,25 +91,7 @@ function isTenantSecretData(value: unknown, type: TenantSecretType): value is Te
   }
 
   const data = value as TenantSecretData
-  if (data.kind !== type) {
-    return false
-  }
-
-  switch (data.kind) {
-    case 'key-value':
-      return Array.isArray(data.pairs)
-    case 'image-pull':
-      return (
-        (data.authMode === 'registry-credentials' || data.authMode === 'upload-configuration') &&
-        Array.isArray(data.credentials)
-      )
-    case 'source':
-      return data.authMode === 'basic' || data.authMode === 'ssh-key'
-    case 'webhook':
-      return typeof data.webhookSecretKey === 'string'
-    default:
-      return false
-  }
+  return data.kind === type && Array.isArray(data.pairs)
 }
 
 function isTenantSecret(value: unknown): value is TenantSecret {
@@ -138,24 +103,18 @@ function isTenantSecret(value: unknown): value is TenantSecret {
   return (
     typeof secret.id === 'string' &&
     typeof secret.name === 'string' &&
-    (secret.type === 'key-value' ||
-      secret.type === 'image-pull' ||
-      secret.type === 'source' ||
-      secret.type === 'webhook') &&
+    isTenantSecretType(secret.type) &&
     (secret.usage === 'cluster-launch' || secret.usage === 'general') &&
     typeof secret.createdAt === 'string' &&
     typeof secret.summary === 'string' &&
+    typeof secret.description === 'string' &&
+    Array.isArray(secret.labels) &&
     isTenantSecretData(secret.data, secret.type)
   )
 }
 
 export function generateTenantSecretId(): string {
   return `secret_${Math.random().toString(36).slice(2, 10)}`
-}
-
-export function getTenantSecretTypeLabel(type: TenantSecretType): string {
-  const match = TENANT_SECRET_TYPE_OPTIONS.find((option) => option.id === type)
-  return match?.label ?? type
 }
 
 export function getTenantSecretUsageLabel(usage: TenantSecretUsage): string {
@@ -172,58 +131,118 @@ const DEMO_PLATFORM_API_TOKEN = 'bmaas_demo_platform_token_8f2c91a4'
 const DEMO_PROMETHEUS_TOKEN = 'prom_demo_ns_bank_001'
 const DEMO_GRAFANA_API_KEY = 'glc_demo_grafana_key_9a2b'
 
+const DEMO_KUBECONFIG = `apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    server: https://api.cluster.example.com:6443
+  name: demo-cluster
+contexts:
+- context:
+    cluster: demo-cluster
+    user: demo-admin
+  name: demo-cluster
+current-context: demo-cluster
+users:
+- name: demo-admin
+  user:
+    token: demo-kubeconfig-token
+`
+
+const DEMO_USER_DATA = `#cloud-config
+users:
+  - name: cloud-user
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - ${CLUSTER_LAUNCH_DEMO_SSH_PUBLIC_KEY}
+`
+
 function createSampleTenantSecrets(): TenantSecret[] {
   return [
     {
       id: DEMO_TENANT_CLUSTER_SSH_SECRET_ID,
       name: 'cluster-admin-ssh',
-      type: 'key-value',
+      type: 'ssh-public-key',
       usage: 'cluster-launch',
       createdAt: '2026-03-12T14:20:00.000Z',
       summary: 'SSH public key for cluster nodes',
-      data: {
-        kind: 'key-value',
-        pairs: [{ key: 'ssh-public-key', value: CLUSTER_LAUNCH_DEMO_SSH_PUBLIC_KEY }],
-      },
+      description: 'SSH public key for cluster nodes',
+      labels: ['cluster-launch'],
+      data: buildTenantSecretData('ssh-public-key', [
+        { key: 'ssh-publickey', value: CLUSTER_LAUNCH_DEMO_SSH_PUBLIC_KEY },
+      ]),
     },
     {
       id: DEMO_TENANT_CLUSTER_PULL_SECRET_ID,
       name: 'ocp-pull-secret',
-      type: 'key-value',
+      type: 'image-pull',
       usage: 'cluster-launch',
       createdAt: '2026-03-12T14:18:00.000Z',
       summary: 'OpenShift pull secret',
-      data: {
-        kind: 'key-value',
-        pairs: [{ key: 'pull-secret', value: CLUSTER_LAUNCH_DEMO_PULL_SECRET }],
-      },
+      description: 'OpenShift pull secret',
+      labels: ['cluster-launch'],
+      data: buildTenantSecretData(
+        'image-pull',
+        [{ key: '.dockerconfigjson', value: CLUSTER_LAUNCH_DEMO_PULL_SECRET }],
+        'pull-secret.json',
+      ),
+    },
+    {
+      id: DEMO_TENANT_KUBECONFIG_SECRET_ID,
+      name: 'demo-cluster-kubeconfig',
+      type: 'kubeconfig',
+      usage: 'general',
+      createdAt: '2026-03-10T11:00:00.000Z',
+      summary: 'Admin kubeconfig for the demo cluster',
+      description: 'Admin kubeconfig for the demo cluster',
+      labels: [],
+      data: buildTenantSecretData(
+        'kubeconfig',
+        [{ key: 'kubeconfig', value: DEMO_KUBECONFIG }],
+        'kubeconfig',
+      ),
     },
     {
       id: DEMO_TENANT_PLATFORM_API_TOKEN_SECRET_ID,
       name: 'platform-api-token',
-      type: 'key-value',
+      type: 'single-value',
       usage: 'general',
       createdAt: '2026-02-28T09:45:00.000Z',
       summary: 'Platform automation token',
-      data: {
-        kind: 'key-value',
-        pairs: [{ key: 'api-token', value: DEMO_PLATFORM_API_TOKEN }],
-      },
+      description: 'Platform automation token',
+      labels: [],
+      data: buildTenantSecretData('single-value', [
+        { key: 'value', value: DEMO_PLATFORM_API_TOKEN },
+      ]),
     },
     {
       id: DEMO_TENANT_OBSERVABILITY_SECRET_ID,
       name: 'observability-credentials',
-      type: 'key-value',
+      type: 'opaque',
       usage: 'general',
       createdAt: '2026-02-15T16:30:00.000Z',
       summary: 'Monitoring stack credentials',
-      data: {
-        kind: 'key-value',
-        pairs: [
-          { key: 'prometheus-token', value: DEMO_PROMETHEUS_TOKEN },
-          { key: 'grafana-api-key', value: DEMO_GRAFANA_API_KEY },
-        ],
-      },
+      description: 'Monitoring stack credentials',
+      labels: ['observability'],
+      data: buildTenantSecretData('opaque', [
+        { key: 'prometheus-token', value: DEMO_PROMETHEUS_TOKEN },
+        { key: 'grafana-api-key', value: DEMO_GRAFANA_API_KEY },
+      ]),
+    },
+    {
+      id: DEMO_TENANT_USER_DATA_SECRET_ID,
+      name: 'bastion-cloud-init',
+      type: 'user-data',
+      usage: 'general',
+      createdAt: '2026-02-12T10:15:00.000Z',
+      summary: 'Cloud-init user data for bastion hosts',
+      description: 'Cloud-init user data for bastion hosts',
+      labels: [],
+      data: buildTenantSecretData(
+        'user-data',
+        [{ key: 'user-data', value: DEMO_USER_DATA }],
+        'user-data.yaml',
+      ),
     },
   ]
 }
@@ -233,30 +252,29 @@ function createSampleProviderSecrets(): TenantSecret[] {
     {
       id: DEMO_PROVIDER_VAULT_TOKEN_SECRET_ID,
       name: 'platform-vault-token',
-      type: 'key-value',
+      type: 'single-value',
       usage: 'general',
       createdAt: '2026-01-18T08:30:00.000Z',
       summary: 'Vault automation token for provider services',
-      data: {
-        kind: 'key-value',
-        pairs: [{ key: 'vault-token', value: 'hvs_demo_provider_vault_token_91f2c4' }],
-      },
+      description: 'Vault automation token for provider services',
+      labels: ['platform'],
+      data: buildTenantSecretData('single-value', [
+        { key: 'value', value: 'hvs_demo_provider_vault_token_91f2c4' },
+      ]),
     },
     {
       id: DEMO_PROVIDER_GITOPS_DEPLOY_KEY_SECRET_ID,
       name: 'gitops-deploy-key',
-      type: 'source',
+      type: 'opaque',
       usage: 'general',
       createdAt: '2026-01-10T15:45:00.000Z',
       summary: 'Deploy key for platform GitOps repositories',
-      data: {
-        kind: 'source',
-        authMode: 'basic',
-        username: 'platform-gitops',
-        passwordOrToken: 'ghp_demo_provider_gitops_token',
-        sshPrivateKeyFileName: '',
-        sshPrivateKeyContents: '',
-      },
+      description: 'Deploy key for platform GitOps repositories',
+      labels: ['gitops'],
+      data: buildTenantSecretData('opaque', [
+        { key: 'username', value: 'platform-gitops' },
+        { key: 'token', value: 'ghp_demo_provider_gitops_token' },
+      ]),
     },
   ]
 }
@@ -289,9 +307,7 @@ function sortTenantSecrets(secrets: TenantSecret[], scope: SecretVaultScope): Te
 }
 
 function migrateTenantSecrets(secrets: TenantSecret[]): TenantSecret[] {
-  return secrets.filter(
-    (secret) => secret.type === 'key-value' && !LEGACY_REMOVED_SECRET_IDS.has(secret.id),
-  )
+  return secrets.filter((secret) => !LEGACY_REMOVED_SECRET_IDS.has(secret.id))
 }
 
 function saveSecrets(scope: SecretVaultScope, tenantSlug: string, secrets: TenantSecret[]): void {
@@ -333,10 +349,7 @@ export function getSecretById(
   return getSecrets(scope, tenantSlug).find((secret) => secret.id === secretId) ?? null
 }
 
-export function getTenantSecretById(
-  tenantSlug: string,
-  secretId: string,
-): TenantSecret | null {
+export function getTenantSecretById(tenantSlug: string, secretId: string): TenantSecret | null {
   return getSecretById('tenant', tenantSlug, secretId)
 }
 
@@ -389,10 +402,6 @@ export function ensureProviderDemoSecrets(): TenantSecret[] {
 }
 
 export function formatTenantSecretKeyNames(secret: TenantSecret): string {
-  if (secret.data.kind !== 'key-value') {
-    return '—'
-  }
-
   const keys = secret.data.pairs.map((pair) => pair.key.trim()).filter(Boolean)
   if (keys.length === 0) {
     return '—'
@@ -406,10 +415,6 @@ export function formatTenantSecretKeyNames(secret: TenantSecret): string {
 }
 
 export function getTenantSecretPairCount(secret: TenantSecret): number {
-  if (secret.data.kind !== 'key-value') {
-    return 0
-  }
-
   return secret.data.pairs.filter((pair) => pair.key.trim()).length
 }
 
@@ -472,9 +477,9 @@ export const MASKED_SECRET_VALUE = '•'.repeat(24)
 export type LaunchSecretPurpose = 'ssh-public-key' | 'pull-secret'
 
 export function getTenantSecretTypeForLaunchPurpose(
-  _purpose: LaunchSecretPurpose,
+  purpose: LaunchSecretPurpose,
 ): TenantSecretType {
-  return 'key-value'
+  return purpose === 'ssh-public-key' ? 'ssh-public-key' : 'image-pull'
 }
 
 export function filterTenantSecretsForLaunch(
@@ -491,56 +496,35 @@ export function filterTenantSecretsForLaunch(
 }
 
 export function resolveSshPublicKeySecretValue(secret: TenantSecret): string | null {
-  if (secret.data.kind !== 'key-value') {
-    return null
+  if (secret.type === 'ssh-public-key' || secret.data.kind === 'ssh-public-key') {
+    const value = secret.data.pairs[0]?.value.trim()
+    return value || null
   }
 
   const sshPair =
-    secret.data.pairs.find((pair) => pair.key.trim() === 'ssh-public-key') ??
-    secret.data.pairs.find((pair) => pair.value.trim())
+    secret.data.pairs.find((pair) =>
+      ['ssh-publickey', 'ssh-public-key'].includes(pair.key.trim()),
+    ) ?? secret.data.pairs.find((pair) => pair.value.trim().startsWith('ssh-'))
   const value = sshPair?.value.trim()
   return value || null
 }
 
 export function resolvePullSecretValue(secret: TenantSecret): string | null {
-  if (secret.data.kind === 'key-value') {
-    const pullPair =
-      secret.data.pairs.find((pair) => pair.key.trim() === 'pull-secret') ??
-      secret.data.pairs.find((pair) => {
-        const value = pair.value.trim()
-        return value.startsWith('{') && value.includes('"auths"')
-      })
-    const value = pullPair?.value.trim()
+  if (secret.type === 'image-pull' || secret.data.kind === 'image-pull') {
+    const value = secret.data.pairs[0]?.value.trim()
     return value || null
   }
 
-  if (secret.data.kind !== 'image-pull') {
-    return null
-  }
-
-  if (secret.data.authMode === 'upload-configuration') {
-    const contents = secret.data.configurationFileContents.trim()
-    return contents || null
-  }
-
-  if (secret.data.credentials.length === 0) {
-    return null
-  }
-
-  const auths = Object.fromEntries(
-    secret.data.credentials
-      .filter((credential) => credential.registryServer.trim())
-      .map((credential) => [
-        credential.registryServer.trim(),
-        {
-          username: credential.username,
-          password: credential.password,
-          email: credential.email,
-        },
-      ]),
-  )
-
-  return Object.keys(auths).length > 0 ? JSON.stringify({ auths }) : null
+  const pullPair =
+    secret.data.pairs.find((pair) =>
+      ['.dockerconfigjson', 'pull-secret'].includes(pair.key.trim()),
+    ) ??
+    secret.data.pairs.find((pair) => {
+      const value = pair.value.trim()
+      return value.startsWith('{') && value.includes('"auths"')
+    })
+  const value = pullPair?.value.trim()
+  return value || null
 }
 
 export function getDefaultLaunchSecretSelections(tenantSlug: string): {
@@ -583,33 +567,29 @@ export function isSensitiveSecretField(fieldId: string): boolean {
   return (
     fieldId.includes('password') ||
     fieldId.includes('token') ||
-    fieldId.includes('webhook-secret-key') ||
-    fieldId.includes('ssh-private-key-contents') ||
-    fieldId.includes('configuration-file-contents')
+    fieldId.includes('value') ||
+    fieldId.includes('kubeconfig') ||
+    fieldId.includes('user-data') ||
+    fieldId.includes('dockerconfig') ||
+    fieldId.includes('ssh-public')
   )
 }
 
 export function isMaskedSecretField(fieldId: string): boolean {
-  return fieldId.startsWith('key-value-') || isSensitiveSecretField(fieldId)
+  return fieldId.startsWith('pair-') || isSensitiveSecretField(fieldId)
 }
 
 export function tenantSecretHasRevealableValues(secret: TenantSecret): boolean {
-  switch (secret.data.kind) {
-    case 'key-value':
-      return secret.data.pairs.some((pair) => pair.value.trim())
-    case 'image-pull':
-      if (secret.data.authMode === 'upload-configuration') {
-        return Boolean(secret.data.configurationFileContents.trim())
-      }
-      return secret.data.credentials.some((credential) => credential.password.trim())
-    case 'source':
-      if (secret.data.authMode === 'basic') {
-        return Boolean(secret.data.passwordOrToken.trim())
-      }
-      return Boolean(secret.data.sshPrivateKeyContents.trim())
-    case 'webhook':
-      return Boolean(secret.data.webhookSecretKey.trim())
-    default:
-      return false
+  return secret.data.pairs.some((pair) => pair.value.trim())
+}
+
+export function buildSecretSummaryFromPairs(pairs: { key: string }[]): string {
+  const keys = pairs.map((pair) => pair.key.trim()).filter(Boolean)
+  if (keys.length === 0) {
+    return 'No keys'
   }
+  if (keys.length === 1) {
+    return keys[0]!
+  }
+  return `${keys.length} keys`
 }

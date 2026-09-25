@@ -2470,9 +2470,12 @@
 .tenant-secrets__pair-row {
   display: grid;
   gap: var(--pf-t--global--spacer--md);
-  margin-block-end: var(--pf-t--global--spacer--lg);
-  padding-block-end: var(--pf-t--global--spacer--md);
-  border-block-end: 1px solid var(--pf-t--global--border--color--default);
+}
+
+.tenant-secrets__pair-row + .tenant-secrets__pair-row {
+  margin-block-start: var(--pf-t--global--spacer--md);
+  padding-block-start: var(--pf-t--global--spacer--md);
+  border-block-start: 1px solid var(--pf-t--global--border--color--default);
 }
 
 .tenant-secrets__pair-value-row {
@@ -2513,6 +2516,151 @@
   flex-direction: column;
   gap: var(--pf-t--global--spacer--sm);
   margin-block-end: var(--pf-t--global--spacer--sm);
+}
+
+.tenant-secrets__step-lede {
+  margin-block-end: var(--pf-t--global--spacer--md);
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.tenant-secrets__helper {
+  margin-block-end: var(--pf-t--global--spacer--md);
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.tenant-secrets__required-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pf-t--global--spacer--xs);
+}
+
+.tenant-secrets__pair-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.tenant-secrets__type-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--pf-t--global--spacer--md);
+}
+
+@media (min-width: 40rem) {
+  .tenant-secrets__type-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 64rem) {
+  .tenant-secrets__type-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.tenant-secrets__type-card.pf-v6-c-card {
+  cursor: pointer;
+  text-align: start;
+  height: 100%;
+  outline-offset: 2px;
+  --pf-v6-c-card--m-selectable--hover--BorderWidth: 1px;
+  --pf-v6-c-card--m-selectable--m-selected--BorderWidth: 1px;
+}
+
+.tenant-secrets__type-card.pf-v6-c-card.pf-m-selectable:not(.pf-m-selected) {
+  --pf-v6-c-card--BorderWidth: 1px;
+  --pf-v6-c-card--BorderColor: var(--pf-t--global--border--color--100);
+  border: 1px solid var(--pf-t--global--border--color--100);
+  background-color: var(--pf-t--global--background--color--primary--default);
+  box-shadow: none;
+}
+
+.tenant-secrets__type-card.pf-v6-c-card.pf-m-selectable.pf-m-selected {
+  --pf-v6-c-card--BorderWidth: 1px;
+  --pf-v6-c-card--BorderColor: var(--pf-t--global--border--color--clicked);
+  border: 1px solid var(--pf-t--global--border--color--clicked);
+  background-color: var(--pf-t--global--background--color--primary--default);
+  box-shadow: 0 0 0 2px var(--pf-t--global--border--color--clicked);
+}
+
+.tenant-secrets__type-card.pf-v6-c-card.pf-m-selectable:hover:not(.pf-m-selected) {
+  --pf-v6-c-card--BorderWidth: 1px;
+  --pf-v6-c-card--BorderColor: var(--pf-t--global--border--color--hover);
+  border: 1px solid var(--pf-t--global--border--color--hover);
+}
+
+.tenant-secrets__type-card.pf-v6-c-card:focus-visible {
+  outline: 2px solid var(--pf-v6-c-card--m-selectable--focus--BorderColor);
+}
+
+.tenant-secrets__type-card--readonly.pf-v6-c-card {
+  cursor: default;
+}
+
+.tenant-secrets__type-card-body.pf-v6-c-card__body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--pf-t--global--spacer--xs);
+  padding: var(--pf-t--global--spacer--md);
+  min-height: 100%;
+}
+
+.tenant-secrets__type-card-badge.pf-v6-c-label {
+  position: absolute;
+  top: var(--pf-t--global--spacer--sm);
+  right: var(--pf-t--global--spacer--sm);
+}
+
+.tenant-secrets__type-card-title.pf-v6-c-title {
+  margin-block-end: 0;
+  padding-inline-end: 4.5rem;
+}
+
+.tenant-secrets__type-card-description.pf-v6-c-content--p {
+  margin: 0;
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.tenant-secrets__review-list {
+  max-inline-size: 40rem;
+  --pf-v6-c-description-list--RowGap: var(--pf-t--global--spacer--md);
+  --pf-v6-c-description-list--ColumnGap: 0;
+}
+
+.tenant-secrets__review-list .pf-v6-c-description-list__group {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--pf-t--global--spacer--xs);
+  margin: 0;
+  padding: 0;
+}
+
+.tenant-secrets__review-list .pf-v6-c-description-list__term,
+.tenant-secrets__review-list .pf-v6-c-description-list__description {
+  margin: 0;
+  padding: 0;
+  max-inline-size: none;
+  inline-size: 100%;
+}
+
+.tenant-secrets__review-list .pf-v6-c-description-list__term {
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+}
+
+.tenant-secrets__review-list .pf-v6-c-description-list__text {
+  margin: 0;
+  padding: 0;
+}
+
+.tenant-secrets__review-list .pf-v6-c-description-list__group.tenant-secrets__review-pair-start {
+  /* Space above the rule comes from description-list row gap. */
+  margin-block-start: 0;
+  padding-block-start: var(--pf-t--global--spacer--xl);
+  border-block-start: 1px solid var(--pf-t--global--border--color--default);
 }
 
 .tenant-secrets__webhook-key-row {
@@ -3563,16 +3711,45 @@
 }
 
 .tenant-user-launch-wizard__review-list {
-  margin-block: 0;
+  margin-block: 0 var(--pf-t--global--spacer--lg);
+}
+
+.tenant-user-launch-wizard__review-list .pf-v6-c-description-list__term {
+  font-weight: var(--pf-t--global--font--weight--body--bold);
 }
 
 .tenant-user-launch-wizard__review-alert {
-  margin-block: 0 var(--pf-t--global--spacer--md);
+  margin-block: var(--pf-t--global--spacer--md) 0;
 }
 
 .tenant-user-launch-wizard__review-alert-text.pf-v6-c-content--p {
   margin: 0;
-  white-space: nowrap;
+}
+
+.billing-launch-cost-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--sm);
+  margin-block-end: var(--pf-t--global--spacer--lg);
+}
+
+.billing-launch-cost-panel__label.pf-v6-c-content--p {
+  margin: 0;
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.billing-launch-cost-panel__value.pf-v6-c-content--p {
+  margin: 0;
+  font-size: var(--pf-t--global--font--size--lg);
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+}
+
+.billing-launch-cost-panel__budget {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm);
 }
 
 .tenant-user-launch-wizard__provisioning-kicker.pf-v6-c-content--p {

@@ -11,6 +11,9 @@ type LaunchCostPanelProps = {
 
 export function LaunchCostPanel({ hourlyEstimate, projectName }: LaunchCostPanelProps) {
   const estimateLabel = formatLaunchCostEstimate(hourlyEstimate)
+  const budgetLabel = projectName?.trim()
+    ? `${projectName.trim()} · Budget remaining: $${DEMO_PROJECT_BUDGET_REMAINING_USD.toFixed(2)}`
+    : `Project budget remaining: $${DEMO_PROJECT_BUDGET_REMAINING_USD.toFixed(2)}`
 
   return (
     <div className="billing-launch-cost-panel" aria-label="Estimated launch cost">
@@ -24,13 +27,8 @@ export function LaunchCostPanel({ hourlyEstimate, projectName }: LaunchCostPanel
       </div>
       <div className="billing-launch-cost-panel__budget">
         <Label color="blue" isCompact>
-          Project budget remaining: ${DEMO_PROJECT_BUDGET_REMAINING_USD.toFixed(2)}
+          {budgetLabel}
         </Label>
-        {projectName ? (
-          <Content component="p" className="billing-launch-cost-panel__project">
-            {projectName}
-          </Content>
-        ) : null}
       </div>
     </div>
   )
