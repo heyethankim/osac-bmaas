@@ -974,7 +974,8 @@ export function ensureTenantDemoCatalogItems(slug: string): TenantCatalogItem[] 
     !current.catalogConfig ||
     current.catalogConfig.instanceTypeId !== desired.catalogConfig?.instanceTypeId ||
     current.catalogConfig.diskImageId !== desired.catalogConfig?.diskImageId ||
-    current.catalogConfig.hardwareOsMode !== desired.catalogConfig?.hardwareOsMode
+    current.catalogConfig.hardwareOsMode !== desired.catalogConfig?.hardwareOsMode ||
+    current.catalogConfig.osImageMode !== desired.catalogConfig?.osImageMode
 
   if (!needsSync) {
     return existing

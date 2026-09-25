@@ -29,7 +29,10 @@ import {
   ensureProviderCatalogDemoItems,
   sortByDemoCatalogOrder,
 } from '../providerSetup/prototypeEntry'
-import type { TenantCatalogItem } from './catalogItems'
+import {
+  toProviderCatalogDraftFromTenantCatalogItem,
+  type TenantCatalogItem,
+} from './catalogItems'
 import {
   applyTenantNetworkOverrides,
   getTenantNetworkOverrides,
@@ -240,32 +243,8 @@ function mapCustomTenantCatalogItemToGovernance(
 ): TenantCatalogGovernanceItemWithNetworking {
   const status = item.status ?? 'Live'
 
-  if (item.catalogConfig) {
-    const draftLike: ProviderCatalogDraft = {
-      catalogItemId: item.id,
-      templateRefId: item.catalogConfig.templateRefId,
-      templateName: item.catalogConfig.templateName,
-      displayName: item.displayName,
-      description: item.description,
-      scope: 'vip-enterprise',
-      createdAt: item.createdAt,
-      rateCard: item.rateCard,
-      serviceId: item.catalogConfig.serviceId,
-      networkPolicy: item.catalogConfig.networkPolicy,
-      instanceTypeId: item.catalogConfig.instanceTypeId,
-      instanceTypeLabel: item.catalogConfig.instanceTypeLabel,
-      diskImageId: item.catalogConfig.diskImageId,
-      diskImageLabel: item.catalogConfig.diskImageLabel,
-      clusterVersionMode: item.catalogConfig.clusterVersionMode,
-      hardwareOsMode: item.catalogConfig.hardwareOsMode,
-      osImageMode: item.catalogConfig.osImageMode,
-      nodeSetId: item.catalogConfig.nodeSetId,
-      nodeSetLabel: item.catalogConfig.nodeSetLabel,
-      hostTypeId: item.catalogConfig.hostTypeId,
-      hostTypeLabel: item.catalogConfig.hostTypeLabel,
-      clusterNodeTopologyMode: item.catalogConfig.clusterNodeTopologyMode,
-      fieldPolicies: item.catalogConfig.fieldPolicies,
-    }
+  const draftLike = toProviderCatalogDraftFromTenantCatalogItem(item)
+  if (draftLike) {
     const base = mapProviderCatalogToGovernanceItem(draftLike, organization)
     return {
       ...base,

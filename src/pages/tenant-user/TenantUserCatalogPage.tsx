@@ -36,6 +36,7 @@ import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import { getCatalogViewMode, setCatalogViewMode, type CatalogViewMode } from '../../catalog/viewMode'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
+import { getProviderCatalogItems } from '../../providerSetup/storage'
 import {
   CATALOG_SERVICE_FILTER_LABELS,
   formatRateCardSummary,
@@ -49,6 +50,11 @@ import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWiza
 import { TENANT_USER_CATALOG_PAGE } from '../../tenantUser/constants'
 import type { TenantInstance } from '../../tenantUser/instances'
 import type { TenantProject } from '../../tenantAdmin/projects'
+import {
+  isTenantScopedCatalogItemId,
+  toProviderCatalogDraftFromTenantCatalogItem,
+} from '../../tenantAdmin/catalogItems'
+import { getTenantCatalogItems } from '../../tenantAdmin/storage'
 import {
   findCatalogItemByWorkspaceParam,
   getWorkspaceCatalogItemParam,
@@ -91,6 +97,28 @@ function getCatalogItemActions(
       onClick: onLaunch,
     },
   ]
+}
+
+function resolveLaunchCatalogDraft(
+  card: TenantUserCatalogCard,
+  fallback: ProviderCatalogDraft | null,
+  tenantSlug: string,
+): ProviderCatalogDraft | null {
+  const fromProvider = getProviderCatalogItems().find(
+    (item) => item.catalogItemId === card.catalogItemId,
+  )
+  if (fromProvider) {
+    return fromProvider
+  }
+
+  if (isTenantScopedCatalogItemId(card.catalogItemId)) {
+    const stored = getTenantCatalogItems(tenantSlug).find((item) => item.id === card.catalogItemId)
+    if (stored) {
+      return toProviderCatalogDraftFromTenantCatalogItem(stored)
+    }
+  }
+
+  return fallback
 }
 
 /** Grid: blue label chip. List: subtle subtext under the item name. */
@@ -330,6 +358,9 @@ export function TenantUserCatalogPage({
 
   const activeCatalogItem = selectedCatalogItem ?? catalogItems[0] ?? null
   const detailsItem = isDetailsDrawerOpen ? selectedCatalogItem : null
+  const launchCatalogDraft = activeCatalogItem
+    ? resolveLaunchCatalogDraft(activeCatalogItem, catalogDraft, tenantSlug)
+    : catalogDraft
 
   return (
     <>
@@ -339,8 +370,8 @@ export function TenantUserCatalogPage({
           isOpen={isWizardOpen}
           catalogItem={activeCatalogItem}
           organization={organization}
-          catalogDraft={catalogDraft}
-          preferCatalogDraft={preferCatalogDraft}
+          catalogDraft={launchCatalogDraft}
+          preferCatalogDraft={preferCatalogDraft || isTenantScopedCatalogItemId(activeCatalogItem.catalogItemId)}
           tenantSlug={tenantSlug}
           projects={projects}
           allProjects={allProjects}

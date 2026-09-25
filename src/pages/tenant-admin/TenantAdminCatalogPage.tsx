@@ -79,7 +79,7 @@ import {
   updateTenantCatalogItem,
 } from '../../tenantAdmin/storage'
 import type { TenantProject } from '../../tenantAdmin/projects'
-import { getTenantUserCatalogCardFromDraft, TENANT_USER_CATALOG_FALLBACK } from '../../tenantUser/catalog'
+import { getTenantUserCatalogCardFromDraft } from '../../tenantUser/catalog'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
 import type { TenantInstance } from '../../tenantUser/instances'
 import {
@@ -128,33 +128,49 @@ type TenantAdminCatalogPageProps = {
   onWizardFinished?: (instanceId: string, serviceId: CatalogServiceId) => void
 }
 
-function toLaunchCatalogCard(
+function toLaunchCatalogDraft(
   item: TenantCatalogGovernanceItemWithNetworking,
-): ReturnType<typeof getTenantUserCatalogCardFromDraft> {
-  const draft = getProviderCatalogItems().find(
-    (catalogItem) => catalogItem.catalogItemId === item.catalogItemId,
-  )
-  if (draft) {
-    return getTenantUserCatalogCardFromDraft(draft)
-  }
-
+): ProviderCatalogDraft {
   return {
-    ...TENANT_USER_CATALOG_FALLBACK,
-    serviceId: item.serviceId,
-    service: item.service,
-    status: item.status,
-    displayName: item.displayName,
-    description: item.description,
-    categoryLabel: item.categoryLabel,
-    specRows: item.specRows,
-    cpu: item.cpu,
-    ram: item.ram,
-    gpu: item.gpu,
-    osImage: item.osImage,
     catalogItemId: item.catalogItemId ?? item.id,
     templateRefId: item.templateRefId,
     templateName: item.templateName,
+    displayName: item.displayName,
+    description: item.description,
+    scope: item.scope,
+    createdAt: item.createdAt,
+    rateCard: item.rateCard,
+    serviceId: item.serviceId,
+    networkPolicy: item.networkPolicy,
+    instanceTypeId: item.instanceTypeId,
+    instanceTypeLabel: item.instanceTypeLabel,
+    diskImageId: item.diskImageId,
+    diskImageLabel: item.diskImageLabel,
+    clusterVersionMode: item.clusterVersionMode,
+    hardwareOsMode: item.hardwareOsMode,
+    osImageMode: item.osImageMode,
+    nodeSetId: item.nodeSetId,
+    nodeSetLabel: item.nodeSetLabel,
+    hostTypeId: item.hostTypeId,
+    hostTypeLabel: item.hostTypeLabel,
+    clusterNodeTopologyMode: item.clusterNodeTopologyMode,
+    fieldPolicies: item.fieldPolicies,
+    status: item.status === 'Unpublished' ? 'unpublished' : 'live',
   }
+}
+
+function toLaunchCatalogCard(
+  item: TenantCatalogGovernanceItemWithNetworking,
+): ReturnType<typeof getTenantUserCatalogCardFromDraft> {
+  // Tenant-scoped offerings are not in the provider catalog — always build from governance.
+  if (isTenantScopedCatalogItemId(item.id) || isTenantScopedCatalogItemId(item.catalogItemId ?? '')) {
+    return getTenantUserCatalogCardFromDraft(toLaunchCatalogDraft(item))
+  }
+
+  const draft = getProviderCatalogItems().find(
+    (catalogItem) => catalogItem.catalogItemId === item.catalogItemId,
+  )
+  return getTenantUserCatalogCardFromDraft(draft ?? toLaunchCatalogDraft(item))
 }
 
 /** Grid: blue label chip. List: subtle subtext under the item name. */
@@ -575,13 +591,11 @@ export function TenantAdminCatalogPage({
   }
 
   const launchCatalogCard = selectedCatalogItem ? toLaunchCatalogCard(selectedCatalogItem) : null
-  const launchCatalogDraft =
-    selectedCatalogItem
-      ? (getProviderCatalogItems().find(
-          (item) => item.catalogItemId === selectedCatalogItem.catalogItemId,
-        ) ??
-        catalogDraft)
-      : catalogDraft
+  const launchCatalogDraft = selectedCatalogItem
+    ? (getProviderCatalogItems().find(
+        (item) => item.catalogItemId === selectedCatalogItem.catalogItemId,
+      ) ?? toLaunchCatalogDraft(selectedCatalogItem))
+    : catalogDraft
 
   const closeDetails = () => {
     setIsDetailsDrawerOpen(false)

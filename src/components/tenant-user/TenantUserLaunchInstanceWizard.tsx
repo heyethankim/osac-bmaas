@@ -1233,11 +1233,15 @@ export function TenantUserLaunchInstanceWizard({
       return null
     }
 
+    const summaryTitle = isBareMetalHardwareOsEditable
+      ? 'Defaults from catalog'
+      : LAUNCH_INSTANCE_WIZARD_DEMO.preConfiguredTitle
+
     return (
       <div className="tenant-user-launch-wizard__preconfigured-section">
         <div className="tenant-user-launch-wizard__preconfigured-title">
-          <LockIcon aria-hidden />
-          <span>{LAUNCH_INSTANCE_WIZARD_DEMO.preConfiguredTitle}</span>
+          {isBareMetalHardwareOsEditable ? null : <LockIcon aria-hidden />}
+          <span>{summaryTitle}</span>
         </div>
         <Content component="p" className="tenant-user-launch-wizard__preconfigured-catalog-name">
           {catalogItem.displayName}

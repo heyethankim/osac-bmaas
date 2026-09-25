@@ -25,6 +25,12 @@ import {
   type PublishCatalogScope,
   type RateCard,
 } from '../providerSetup/templateDemo'
+import {
+  ensureTenantDemoCatalogItems,
+} from '../tenantAdmin/storage'
+import {
+  toProviderCatalogDraftFromTenantCatalogItem,
+} from '../tenantAdmin/catalogItems'
 
 export type TenantUserCatalogCard = {
   serviceId: CatalogServiceId
@@ -229,26 +235,43 @@ export function getTenantUserCatalogCards(
     isCatalogVisibleToTenantUser(item, organization),
   )
 
+  const cards: TenantUserCatalogCard[] = []
+
   if (providerItems.length > 0) {
-    const cards = sortByDemoCatalogOrder(providerItems).map((item) =>
-      getTenantUserCatalogCardFromDraft(item),
+    cards.push(
+      ...sortByDemoCatalogOrder(providerItems).map((item) =>
+        getTenantUserCatalogCardFromDraft(item),
+      ),
     )
+  } else if (catalogDraft) {
+    cards.push(getTenantUserCatalogCardFromDraft(catalogDraft))
+  }
 
-    if (options?.preferCatalogDraft && catalogDraft) {
-      const preferredId = catalogDraft.catalogItemId
-      if (!cards.some((card) => card.catalogItemId === preferredId)) {
-        return [getTenantUserCatalogCardFromDraft(catalogDraft), ...cards]
-      }
+  if (options?.preferCatalogDraft && catalogDraft) {
+    const preferredId = catalogDraft.catalogItemId
+    if (!cards.some((card) => card.catalogItemId === preferredId)) {
+      cards.unshift(getTenantUserCatalogCardFromDraft(catalogDraft))
     }
-
-    return cards
   }
 
-  if (catalogDraft) {
-    return [getTenantUserCatalogCardFromDraft(catalogDraft)]
+  // Live tenant-admin offerings (e.g. bare-metal-general-purpose-server).
+  if (organization?.slug) {
+    for (const item of ensureTenantDemoCatalogItems(organization.slug)) {
+      if ((item.status ?? 'Live') !== 'Live') {
+        continue
+      }
+      const draft = toProviderCatalogDraftFromTenantCatalogItem(item)
+      if (!draft) {
+        continue
+      }
+      if (cards.some((card) => card.catalogItemId === draft.catalogItemId)) {
+        continue
+      }
+      cards.unshift(getTenantUserCatalogCardFromDraft(draft))
+    }
   }
 
-  return [TENANT_USER_CATALOG_FALLBACK]
+  return cards.length > 0 ? cards : [TENANT_USER_CATALOG_FALLBACK]
 }
 
 /** @deprecated Prefer getTenantUserCatalogCards for multi-item catalogs. */
