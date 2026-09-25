@@ -20,6 +20,34 @@
   gap: var(--pf-t--global--spacer--sm);
 }
 
+.catalog-spec-instance-type-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.catalog-spec-instance-type-group__children {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--sm);
+  position: relative;
+  margin-block-start: calc(var(--pf-t--global--spacer--xs) * -1);
+}
+
+/* Hierarchy rail without shifting the value column off Instance type (Large / Medium). */
+.catalog-spec-instance-type-group__children::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: var(--pf-t--global--border--width--regular);
+  background-color: var(--pf-t--global--border--color--default);
+}
+
+.catalog-spec-instance-type-group__children dt {
+  padding-inline-start: var(--pf-t--global--spacer--md);
+}
+
 .entity-details-page__dl--nested.pf-v6-c-description-list,
 .provider-admin-catalog-item-details__dl--nested.pf-v6-c-description-list {
   margin-block-start: var(--pf-t--global--spacer--sm);
