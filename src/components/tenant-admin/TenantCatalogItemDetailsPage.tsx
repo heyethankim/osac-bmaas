@@ -158,6 +158,7 @@ export function TenantCatalogItemDetailsPage({
               diskImageLabel: item.diskImageLabel,
               diskImageId: item.diskImageId,
               hardwareOsMode: item.hardwareOsMode,
+              osImageMode: item.osImageMode,
             }),
           }}
         />
@@ -229,7 +230,7 @@ export function TenantCatalogItemDetailsPage({
             ) : null}
             {!isVirtualMachine && !isCluster && item.diskImageLabel ? (
               <DescriptionListGroup>
-                <DescriptionListTerm>Disk image</DescriptionListTerm>
+                <DescriptionListTerm>OS image</DescriptionListTerm>
                 <DescriptionListDescription>{item.diskImageLabel}</DescriptionListDescription>
               </DescriptionListGroup>
             ) : null}

@@ -22,7 +22,7 @@ export type InstanceSpecFilterGroup = {
 }
 
 const INSTANCE_SPEC_FILTER_DIMENSIONS: Partial<Record<CatalogServiceId, string[]>> = {
-  baremetal: ['Disk image', 'GPU', 'RAM', 'CPU'],
+  baremetal: ['OS image', 'GPU', 'RAM', 'CPU'],
   cluster: ['Cluster version', 'Node set', 'Host type'],
   'virtual-machine': ['Instance type', 'Size', 'OS image', 'CPU', 'RAM', 'GPU'],
   models: ['Model profile', 'Runtime', 'Size', 'Replicas'],
@@ -70,7 +70,10 @@ export function getInstanceSpecDimensionValue(
     return isPopulatedSpecValue(gpu) ? gpu : null
   }
 
-  if (dimension === 'Disk image') {
+  if (
+    dimension === 'Disk image' ||
+    (dimension === 'OS image' && getTenantInstanceServiceId(instance) === 'baremetal')
+  ) {
     const fromFilter = getBareMetalInstanceDiskImageFilterLabel(instance)
     if (fromFilter) {
       return fromFilter

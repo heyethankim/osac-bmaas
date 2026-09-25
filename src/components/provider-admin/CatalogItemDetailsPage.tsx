@@ -580,7 +580,7 @@ export function CatalogItemDetailsPage({
                     ) : null}
                     {catalog.diskImageLabel ? (
                       <DescriptionListGroup>
-                        <DescriptionListTerm>Disk image</DescriptionListTerm>
+                        <DescriptionListTerm>OS image</DescriptionListTerm>
                         <DescriptionListDescription>
                           {catalog.diskImageLabel}
                         </DescriptionListDescription>

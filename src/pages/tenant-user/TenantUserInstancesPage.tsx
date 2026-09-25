@@ -1254,8 +1254,7 @@ export function TenantUserInstancesPage({
                     <Th>Name</Th>
                     <Th>Status</Th>
                     <Th>Project</Th>
-                    <Th>Profile</Th>
-                    <Th>Detail</Th>
+                    <Th>Configuration</Th>
                     <Th>Created</Th>
                     <Th screenReaderText="Actions" />
                   </Tr>
@@ -1263,8 +1262,6 @@ export function TenantUserInstancesPage({
                 <Tbody>
                   {filteredInstances.map((instance) => {
                     const tableSpecRows = getTenantInstanceSpecRows(instance)
-                    const profileRow = tableSpecRows[0]
-                    const detailRow = tableSpecRows[1]
 
                     return (
                     <Tr key={instance.id}>
@@ -1282,8 +1279,15 @@ export function TenantUserInstancesPage({
                       <InstanceStatusLabel status={instance.status} />
                     </Td>
                       <Td dataLabel="Project">{getTenantInstanceProjectLabel(instance, projects)}</Td>
-                      <Td dataLabel={profileRow?.label ?? 'Profile'}>{profileRow?.value ?? '—'}</Td>
-                      <Td dataLabel={detailRow?.label ?? 'Detail'}>{detailRow?.value ?? '—'}</Td>
+                      <Td dataLabel="Configuration">
+                        <CatalogSpecRowsList
+                          rows={tableSpecRows}
+                          className="catalog-table-specs-list"
+                          rowClassName="catalog-table-spec-row"
+                          labelClassName="catalog-table-spec-label"
+                          valueClassName="catalog-table-spec-value"
+                        />
+                      </Td>
                       <Td dataLabel="Created">
                         {formatTenantInstanceCreatedAt(instance.createdAt)}
                       </Td>

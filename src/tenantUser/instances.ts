@@ -223,7 +223,7 @@ function buildBareMetalFallbackSpecRows(instance: TenantInstance): CatalogSpecRo
   const diskImage = resolveBareMetalDiskImageValue(instance, [])
   return [
     { label: 'Hardware', value: instance.hardwareProfile },
-    ...(diskImage ? [{ label: 'Disk image', value: diskImage }] : []),
+    ...(diskImage ? [{ label: 'OS image', value: diskImage }] : []),
     { label: 'GPU', value: instance.gpuLabel },
   ]
 }
@@ -1257,10 +1257,10 @@ export function getBareMetalInstanceDiskImageFilterLabel(
   return resolved ? normalizeBareMetalDiskImageFilterLabel(resolved) : null
 }
 
-/** Bare metal cards use Disk image; normalize legacy OS image rows from storage. */
+/** Bare metal cards use OS image; normalize legacy Disk image rows from storage. */
 function normalizeBareMetalCardSpecRows(rows: CatalogSpecRow[]): CatalogSpecRow[] {
   return rows.map((row) =>
-    row.label === 'OS image' ? { ...row, label: 'Disk image' } : row,
+    row.label === 'Disk image' ? { ...row, label: 'OS image' } : row,
   )
 }
 
@@ -1287,7 +1287,7 @@ function ensureBaremetalInstanceSpecRows(
     const baseRows = normalized.filter(
       (row) => row.label !== 'Disk image' && row.label !== 'OS image',
     )
-    return diskImage ? [...baseRows, { label: 'Disk image', value: diskImage }] : baseRows
+    return diskImage ? [...baseRows, { label: 'OS image', value: diskImage }] : baseRows
   }
 
   return [
@@ -1296,7 +1296,7 @@ function ensureBaremetalInstanceSpecRows(
     { label: 'RAM', value: typeHardware.ram },
     { label: 'GPU', value: typeHardware.gpu },
     ...otherTrailingRows,
-    ...(diskImage ? [{ label: 'Disk image', value: diskImage }] : []),
+    ...(diskImage ? [{ label: 'OS image', value: diskImage }] : []),
   ]
 }
 
@@ -1481,13 +1481,13 @@ function createDemoTenantBareMetalInstanceVariant(
         { label: 'CPU', value: typeHardware.cpu },
         { label: 'RAM', value: typeHardware.ram },
         { label: 'GPU', value: typeHardware.gpu },
-        { label: 'Disk image', value: options.osImage },
+        { label: 'OS image', value: options.osImage },
       ]
     : [
         { label: 'CPU', value: options.cpu },
         { label: 'RAM', value: options.ram },
         { label: 'GPU', value: options.gpuLabel },
-        { label: 'Disk image', value: options.osImage },
+        { label: 'OS image', value: options.osImage },
       ]
 
   return {

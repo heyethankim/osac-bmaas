@@ -153,7 +153,9 @@ export function resolveCatalogOsImage(
   >,
 ): string {
   const rows = resolveCatalogSpecRows(item)
-  const fromDiskImage = rows.find((row) => row.label === 'Disk image')?.value?.trim()
+  const fromDiskImage = rows.find(
+    (row) => row.label === 'OS image' || row.label === 'Disk image',
+  )?.value?.trim()
   if (fromDiskImage) {
     return fromDiskImage
   }
@@ -358,10 +360,10 @@ function buildBaremetalCatalogSpecRows(
   if (typeHardware) {
     return [
       { label: 'Size', value: typeHardware.sizeLabel, badge: hardwareOsBadge },
-      { label: 'CPU', value: typeHardware.cpu },
-      { label: 'RAM', value: typeHardware.ram },
-      { label: 'GPU', value: typeHardware.gpu },
-      { label: 'Disk image', value: diskImage, badge: osImageBadge },
+      { label: 'CPU', value: typeHardware.cpu, badge: hardwareOsBadge },
+      { label: 'RAM', value: typeHardware.ram, badge: hardwareOsBadge },
+      { label: 'GPU', value: typeHardware.gpu, badge: hardwareOsBadge },
+      { label: 'OS image', value: diskImage, badge: osImageBadge },
     ]
   }
 
@@ -373,16 +375,16 @@ function buildBaremetalCatalogSpecRows(
   }
 
   rows.push(
-    { label: 'CPU', value: hardware.cpu },
-    { label: 'RAM', value: hardware.ram },
-    { label: 'GPU', value: hardware.gpu },
-    { label: 'Disk image', value: diskImage, badge: osImageBadge },
+    { label: 'CPU', value: hardware.cpu, badge: hardwareOsBadge },
+    { label: 'RAM', value: hardware.ram, badge: hardwareOsBadge },
+    { label: 'GPU', value: hardware.gpu, badge: hardwareOsBadge },
+    { label: 'OS image', value: diskImage, badge: osImageBadge },
   )
 
   return rows
 }
 
-/** Bare metal service cards show CPU/RAM/GPU/Disk image — not the Size preset label. */
+/** Bare metal service cards show CPU/RAM/GPU/OS image — not the Size preset label. */
 export function resolveBaremetalCatalogCardSpecRows(
   item: Parameters<typeof buildBaremetalCatalogSpecRows>[0],
 ): CatalogSpecRow[] {
@@ -448,7 +450,7 @@ export function resolveCatalogSpecRows(
         rows.push({ label: 'Instance type', value: item.instanceTypeLabel })
       }
       if (item.diskImageLabel) {
-        rows.push({ label: 'Disk image', value: item.diskImageLabel })
+        rows.push({ label: 'OS image', value: item.diskImageLabel })
       }
     }
 
@@ -470,7 +472,7 @@ export function resolveCatalogSpecRows(
     { label: 'CPU', value: hardware.cpu },
     { label: 'RAM', value: hardware.ram },
     { label: 'GPU', value: hardware.gpu },
-    { label: 'Disk image', value: hardware.osImage },
+    { label: 'OS image', value: hardware.osImage },
   ]
 }
 

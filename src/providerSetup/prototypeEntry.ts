@@ -157,6 +157,7 @@ function createDefaultCatalogDraft(): ProviderCatalogDraft {
     serviceId: 'baremetal',
     instanceTypeId: BARE_METAL_GPU_TRAINING_INSTANCE_TYPE_ID,
     instanceTypeLabel: formatBaremetalInstanceTypeLabel(BARE_METAL_GPU_TRAINING_INSTANCE_TYPE_ID),
+    osImageMode: 'editable',
     networkPolicy: createAllEditableCatalogNetworkPolicy(),
     status: 'live',
     createdAt: new Date().toISOString(),
@@ -344,6 +345,14 @@ function syncBareMetalGpuTrainingCatalogItem(): void {
     BARE_METAL_GPU_CATALOG_ITEM_ID,
     BARE_METAL_GPU_TRAINING_INSTANCE_TYPE_ID,
   )
+
+  const synced =
+    getProviderCatalogItems().find(
+      (item) => item.catalogItemId === BARE_METAL_GPU_CATALOG_ITEM_ID,
+    ) ?? current
+  if (synced.osImageMode !== 'editable') {
+    patchProviderCatalogItem(BARE_METAL_GPU_CATALOG_ITEM_ID, { osImageMode: 'editable' })
+  }
 }
 
 /**

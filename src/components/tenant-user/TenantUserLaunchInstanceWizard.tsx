@@ -2053,7 +2053,7 @@ export function TenantUserLaunchInstanceWizard({
               '—',
           ),
           renderReviewRow(
-            'Disk image',
+            'OS image',
             formatCatalogDiskImageLabel(form.diskImageId, catalogItem.diskImageLabel) ||
               catalogItem.osImage ||
               '—',

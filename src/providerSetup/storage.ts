@@ -940,6 +940,8 @@ export function patchProviderCatalogItem(
       | 'hostTypeId'
       | 'hostTypeLabel'
       | 'clusterNodeTopologyMode'
+      | 'hardwareOsMode'
+      | 'osImageMode'
       | 'rateCard'
     >
   >,

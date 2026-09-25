@@ -1782,7 +1782,7 @@ function DefaultInstancePageBody({
                 <DescriptionListGroup key={row.label}>
                   <DescriptionListTerm>{row.label}</DescriptionListTerm>
                   <DescriptionListDescription>
-                    {row.label === 'Disk image' ? (
+                    {row.label === 'Disk image' || row.label === 'OS image' ? (
                       <CatalogDiskImageValue>{row.value}</CatalogDiskImageValue>
                     ) : (
                       row.value

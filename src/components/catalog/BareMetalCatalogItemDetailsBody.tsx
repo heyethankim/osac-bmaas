@@ -36,15 +36,18 @@ function getClassPrefix(variant: BareMetalCatalogDetailsVariant): string {
   return variant === 'entity' ? 'entity-details-page' : 'provider-admin-catalog-item-details'
 }
 
-function renderHardwareSpecRowValue(row: CatalogSpecRow) {
-  const value =
-    row.label === 'Disk image' ? (
-      <CatalogDiskImageValue badge={row.badge}>{row.value}</CatalogDiskImageValue>
-    ) : (
-      row.value
-    )
+function isOsImageSpecLabel(label: string): boolean {
+  return label === 'OS image' || label === 'Disk image'
+}
 
-  if (!row.badge || row.label === 'Disk image') {
+function renderHardwareSpecRowValue(row: CatalogSpecRow) {
+  const value = isOsImageSpecLabel(row.label) ? (
+    <CatalogDiskImageValue badge={row.badge}>{row.value}</CatalogDiskImageValue>
+  ) : (
+    row.value
+  )
+
+  if (!row.badge || isOsImageSpecLabel(row.label)) {
     return value
   }
 

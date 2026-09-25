@@ -50,6 +50,7 @@ export function TenantUserCatalogItemDetailsPage({
       diskImageId: catalogItem.diskImageId,
       clusterVersionMode: catalogItem.clusterVersionMode,
       hardwareOsMode: catalogItem.hardwareOsMode,
+      osImageMode: catalogItem.osImageMode,
       nodeSetId: catalogItem.nodeSetId,
       nodeSetLabel: catalogItem.nodeSetLabel,
       hostTypeId: catalogItem.hostTypeId,
@@ -162,6 +163,7 @@ export function TenantUserCatalogItemDetailsPage({
               diskImageLabel: catalogItem.diskImageLabel,
               diskImageId: catalogItem.diskImageId,
               hardwareOsMode: catalogItem.hardwareOsMode,
+              osImageMode: catalogItem.osImageMode,
             }),
           }}
         />
@@ -230,7 +232,7 @@ export function TenantUserCatalogItemDetailsPage({
             ) : null}
             {!isVirtualMachine && !isCluster && catalogItem.diskImageLabel ? (
               <DescriptionListGroup>
-                <DescriptionListTerm>Disk image</DescriptionListTerm>
+                <DescriptionListTerm>OS image</DescriptionListTerm>
                 <DescriptionListDescription>{catalogItem.diskImageLabel}</DescriptionListDescription>
               </DescriptionListGroup>
             ) : null}
