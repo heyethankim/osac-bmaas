@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowRightIcon } from '@patternfly/react-icons/dist/esm/icons/arrow-right-icon'
 import { CatalogIcon } from '@patternfly/react-icons/dist/esm/icons/catalog-icon'
 import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
+import { MinusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/minus-circle-icon'
 import { MinusIcon } from '@patternfly/react-icons/dist/esm/icons/minus-icon'
 import { OutlinedQuestionCircleIcon } from '@patternfly/react-icons/dist/esm/icons/outlined-question-circle-icon'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
+import { RedhatIcon } from '@patternfly/react-icons/dist/esm/icons/redhat-icon'
 import { UnlockIcon } from '@patternfly/react-icons/dist/esm/icons/unlock-icon'
 import {
   Alert,
@@ -19,8 +21,6 @@ import {
   Divider,
   ExpandableSection,
   ExpandableSectionToggle,
-  Flex,
-  FlexItem,
   Form,
   FormGroup,
   FormSelect,
@@ -46,10 +46,12 @@ import {
   WizardHeader,
   WizardStep,
 } from '@patternfly/react-core'
+import { Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table'
 import { CatalogPublishScopeIcon } from '../../components/provider-admin/CatalogPublishScopeIcon'
 import { CatalogEditChangesSummary } from '../../components/provider-admin/CatalogEditChangesSummary'
 import { CatalogEditPreviousValue } from '../../components/provider-admin/CatalogEditPreviousValue'
 import { CatalogWizardPageShell } from '../../components/catalog/CatalogWizardPageShell'
+import { ClusterMachineTypeSelect } from '../../components/catalog/ClusterMachineTypeSelect'
 import {
   formatVipEnterpriseVisibilityLabel,
   getCatalogEnterpriseTenantIds,
@@ -63,13 +65,16 @@ import {
   buildDefaultCatalogFieldPolicies,
   CATALOG_GPU_ACCELERATOR_OPTIONS,
   DEFAULT_CLUSTER_HOST_TYPE_ID,
+  DEFAULT_CLUSTER_MACHINE_TYPE_ID,
   DEFAULT_CLUSTER_NODE_SET_ID,
+  deriveClusterNodeSetIdFromName,
   formatClusterHostTypeLabel,
+  formatClusterMachineTypeLabel,
   formatClusterNodeSetLabel,
   formatClusterPlatformLabel,
   formatCustomInstanceTypeLabel,
-  getCatalogClusterHostTypeOptions,
-  getCatalogClusterNodeSetOptions,
+  getCatalogClusterMachineTypeOption,
+  getCatalogClusterMachineTypeOptions,
   getCatalogClusterNodeTopologyModeLabel,
   getCatalogClusterVersionLifecycleMeta,
   getCatalogClusterVersionModeLabel,
@@ -82,11 +87,16 @@ import {
   getDefaultCustomInstanceTypeConfig,
   getProvisioningTemplatePresentation,
   isCustomInstanceTypeId,
+  isRedHatBrandedDiskImageLabel,
   isValidCustomInstanceTypeConfig,
-  resolveCatalogClusterNodeTopologyMode,
+  MAX_CLUSTER_NODE_COUNT,
+  MAX_CLUSTER_TOPOLOGY_NODE_SETS,
+  MIN_CLUSTER_NODE_COUNT,
+  pickPrimaryClusterTopologyRowIndex,
   resolveCatalogClusterVersionMode,
   resolveCatalogHardwareOsMode,
   resolveCatalogOsImageMode,
+  resolveCatalogClusterNodeTopologyMode,
   type CatalogClusterNodeTopologyMode,
   type CatalogClusterVersionMode,
   type CatalogClusterVersionOption,
@@ -126,36 +136,121 @@ import {
   formatBareMetalComposedRateBreakdown,
   formatBareMetalComposedRateSummary,
   formatBareMetalOsLicenseRateLabel,
-  formatClusterComposedRateBreakdown,
   formatClusterComposedRateSummary,
-  formatClusterTopologyWorkerLineLabel,
+  formatClusterTopologyMachineLineLabel,
+  formatClusterTopologyMachineRateBreakdown,
   formatM360RateLineSummary,
-  getDefaultClusterWorkerCount,
   getM360RateCardDisplayName,
-  mapClusterHostTypeToBareMetalInstanceType,
   m360RateLineToRateCard,
   resolveBareMetalComposedRateEstimate,
-  resolveMultiClusterComposedRateEstimate,
+  resolveClusterTopologyMachineRateEstimate,
 } from '../../billing/m360RateLines'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import { getCatalogItemStatus } from '../../providerSetup/storage'
 
 type PublishClusterTopologyRow = {
   id: string
-  nodeSetId: string
-  hostTypeId: string
+  name: string
+  machineTypeId: string
+  nodeCount: number
 }
+
+const DEFAULT_PUBLISH_CLUSTER_TOPOLOGY_ROWS: ReadonlyArray<
+  Omit<PublishClusterTopologyRow, 'id'>
+> = [
+  { name: 'control-plane', machineTypeId: 'bm-cpu-64c', nodeCount: 3 },
+  { name: 'workers', machineTypeId: 'bm-cpu-32c', nodeCount: 5 },
+  { name: 'gpu-workers', machineTypeId: 'bm-gpu-h100', nodeCount: 2 },
+]
 
 function createPublishClusterTopologyRow(
   index: number,
-  nodeSetId: string = DEFAULT_CLUSTER_NODE_SET_ID,
-  hostTypeId: string = DEFAULT_CLUSTER_HOST_TYPE_ID,
+  overrides: Partial<Omit<PublishClusterTopologyRow, 'id'>> = {},
 ): PublishClusterTopologyRow {
+  const fallback = DEFAULT_PUBLISH_CLUSTER_TOPOLOGY_ROWS[0]
   return {
     id: `publish-node-set-${index}`,
-    nodeSetId,
-    hostTypeId,
+    name: overrides.name ?? fallback.name,
+    machineTypeId: overrides.machineTypeId ?? DEFAULT_CLUSTER_MACHINE_TYPE_ID,
+    nodeCount: overrides.nodeCount ?? fallback.nodeCount,
   }
+}
+
+function createDefaultPublishClusterTopologyRows(): PublishClusterTopologyRow[] {
+  return DEFAULT_PUBLISH_CLUSTER_TOPOLOGY_ROWS.map((row, index) =>
+    createPublishClusterTopologyRow(index + 1, row),
+  )
+}
+
+/** Map legacy display labels to DNS-1123 names used in the demo. */
+function normalizeClusterNodeSetName(name: string): string {
+  const key = name.trim().toLowerCase()
+  const legacy: Record<string, string> = {
+    'control plane': 'control-plane',
+    workers: 'workers',
+    'gpu workers': 'gpu-workers',
+  }
+  if (legacy[key]) {
+    return legacy[key]
+  }
+  return key.replace(/\s+/g, '-')
+}
+
+function clampClusterNodeCount(value: number): number {
+  return Math.min(MAX_CLUSTER_NODE_COUNT, Math.max(MIN_CLUSTER_NODE_COUNT, Math.round(value)))
+}
+
+function ClusterNodeCountInput({
+  id,
+  value,
+  onValueChange,
+  isDisabled = false,
+}: {
+  id: string
+  value: number
+  onValueChange: (value: number) => void
+  isDisabled?: boolean
+}) {
+  return (
+    <InputGroup className="provider-setup-template__cluster-node-count">
+      <InputGroupItem>
+        <Button
+          variant="control"
+          aria-label="Decrease number of nodes"
+          onClick={() => onValueChange(clampClusterNodeCount(value - 1))}
+          isDisabled={isDisabled || value <= MIN_CLUSTER_NODE_COUNT}
+          icon={<MinusIcon />}
+        />
+      </InputGroupItem>
+      <InputGroupItem isFill>
+        <TextInput
+          id={id}
+          type="number"
+          value={value}
+          min={MIN_CLUSTER_NODE_COUNT}
+          max={MAX_CLUSTER_NODE_COUNT}
+          isDisabled={isDisabled}
+          onChange={(_event, nextValue) => {
+            const next = Number(nextValue)
+            if (Number.isNaN(next)) {
+              return
+            }
+            onValueChange(clampClusterNodeCount(next))
+          }}
+          aria-label="Number of nodes"
+        />
+      </InputGroupItem>
+      <InputGroupItem>
+        <Button
+          variant="control"
+          aria-label="Increase number of nodes"
+          onClick={() => onValueChange(clampClusterNodeCount(value + 1))}
+          isDisabled={isDisabled || value >= MAX_CLUSTER_NODE_COUNT}
+          icon={<PlusIcon />}
+        />
+      </InputGroupItem>
+    </InputGroup>
+  )
 }
 
 function TenantAccessModeCards({
@@ -411,12 +506,19 @@ export function ProviderSetupPublishCatalogWizard({
   const [hardwareOsMode, setHardwareOsMode] = useState<CatalogHardwareOsMode>('locked')
   const [osImageMode, setOsImageMode] = useState<CatalogOsImageMode>('locked')
   const [clusterTopologyRows, setClusterTopologyRows] = useState<PublishClusterTopologyRow[]>(
-    () => [createPublishClusterTopologyRow(1)],
+    () => createDefaultPublishClusterTopologyRows(),
   )
-  const selectedNodeSetId =
-    clusterTopologyRows[0]?.nodeSetId ?? DEFAULT_CLUSTER_NODE_SET_ID
+  const primaryTopologyRow =
+    clusterTopologyRows[pickPrimaryClusterTopologyRowIndex(clusterTopologyRows)] ??
+    clusterTopologyRows[0]
+  const primaryMachineType = getCatalogClusterMachineTypeOption(
+    primaryTopologyRow?.machineTypeId,
+  )
+  const selectedNodeSetId = deriveClusterNodeSetIdFromName(
+    primaryTopologyRow?.name ?? DEFAULT_CLUSTER_NODE_SET_ID,
+  )
   const selectedHostTypeId =
-    clusterTopologyRows[0]?.hostTypeId ?? DEFAULT_CLUSTER_HOST_TYPE_ID
+    primaryMachineType?.hostTypeId ?? DEFAULT_CLUSTER_HOST_TYPE_ID
   const [clusterNodeTopologyMode, setClusterNodeTopologyMode] =
     useState<CatalogClusterNodeTopologyMode>('locked')
   const [fieldPolicies, setFieldPolicies] = useState<CatalogFieldPolicy[]>([])
@@ -598,11 +700,11 @@ export function ProviderSetupPublishCatalogWizard({
       return null
     }
 
-    return resolveMultiClusterComposedRateEstimate(
+    return resolveClusterTopologyMachineRateEstimate(
       clusterTopologyRows.map((row) => ({
-        nodeSetId: row.nodeSetId,
-        hostTypeId: row.hostTypeId,
-        workerCount: getDefaultClusterWorkerCount(row.nodeSetId),
+        machineTypeId: row.machineTypeId,
+        nodeCount: row.nodeCount,
+        machineTypeLabel: getCatalogClusterMachineTypeOption(row.machineTypeId)?.label,
       })),
       DEFAULT_M360_RATE_CARD_ID,
     )
@@ -629,33 +731,21 @@ export function ProviderSetupPublishCatalogWizard({
 
     return rateLine ? formatM360RateLineSummary(rateLine) : 'No M360 rate line'
   }
-  const resolveClusterHostTypeM360RateLabel = (hostTypeId: string): string | null => {
-    const bareMetalInstanceTypeId = mapClusterHostTypeToBareMetalInstanceType(hostTypeId)
-    if (!bareMetalInstanceTypeId) {
-      return 'No rate'
-    }
-
-    const rateLine = findM360RateLineForPublishSelection(
-      'baremetal',
-      bareMetalInstanceTypeId,
-      DEFAULT_M360_RATE_CARD_ID,
-    )
-
-    return rateLine ? `$${rateLine.hourlyRate.toFixed(2)}/hr · per worker` : 'No rate'
-  }
-  const clusterNodeSetOptions = useMemo(() => getCatalogClusterNodeSetOptions(), [])
-  const clusterHostTypeOptions = useMemo(() => getCatalogClusterHostTypeOptions(), [])
+  const clusterMachineTypeOptions = useMemo(() => getCatalogClusterMachineTypeOptions(), [])
   const updatePublishTopologyRow = (
     entryId: string,
-    patch: { nodeSetId?: string; hostTypeId?: string },
+    patch: Partial<Omit<PublishClusterTopologyRow, 'id'>>,
   ) => {
     setClusterTopologyRows((current) =>
       current.map((entry) =>
         entry.id === entryId
           ? {
               ...entry,
-              nodeSetId: patch.nodeSetId ?? entry.nodeSetId,
-              hostTypeId: patch.hostTypeId ?? entry.hostTypeId,
+              ...patch,
+              nodeCount:
+                patch.nodeCount !== undefined
+                  ? clampClusterNodeCount(patch.nodeCount)
+                  : entry.nodeCount,
             }
           : entry,
       ),
@@ -663,10 +753,7 @@ export function ProviderSetupPublishCatalogWizard({
   }
   const addPublishTopologyRow = () => {
     setClusterTopologyRows((current) => {
-      const used = new Set(current.map((row) => row.nodeSetId))
-      const nextOption =
-        clusterNodeSetOptions.find((option) => !used.has(option.id)) ?? clusterNodeSetOptions[0]
-      if (!nextOption) {
+      if (current.length >= MAX_CLUSTER_TOPOLOGY_NODE_SETS) {
         return current
       }
       const nextIndex =
@@ -675,9 +762,17 @@ export function ProviderSetupPublishCatalogWizard({
           const value = match ? Number(match[1]) : 0
           return value > max ? value : max
         }, 0) + 1
+      const nextMachine =
+        clusterMachineTypeOptions.find(
+          (option) => !current.some((row) => row.machineTypeId === option.id),
+        ) ?? clusterMachineTypeOptions[0]
       return [
         ...current,
-        createPublishClusterTopologyRow(nextIndex, nextOption.id, DEFAULT_CLUSTER_HOST_TYPE_ID),
+        createPublishClusterTopologyRow(nextIndex, {
+          name: `node-set-${current.length + 1}`,
+          machineTypeId: nextMachine?.id ?? DEFAULT_CLUSTER_MACHINE_TYPE_ID,
+          nodeCount: 3,
+        }),
       ]
     })
   }
@@ -687,7 +782,7 @@ export function ProviderSetupPublishCatalogWizard({
     )
   }
   const canAddPublishTopologyRow =
-    clusterTopologyRows.length < clusterNodeSetOptions.length
+    clusterTopologyRows.length < MAX_CLUSTER_TOPOLOGY_NODE_SETS
   const canCreateCatalogItem =
     Boolean(selectedServiceId) &&
     Boolean(selectedTemplate) &&
@@ -695,7 +790,10 @@ export function ProviderSetupPublishCatalogWizard({
     Boolean(selectedDiskImage) &&
     (!isClusterService ||
       clusterTopologyRows.every(
-        (row) => Boolean(row.nodeSetId.trim()) && Boolean(row.hostTypeId.trim()),
+        (row) =>
+          isValidKubernetesResourceName(row.name) &&
+          Boolean(row.machineTypeId.trim()) &&
+          row.nodeCount >= MIN_CLUSTER_NODE_COUNT,
       )) &&
     isValidKubernetesResourceName(displayName) &&
     m360RateConfigured
@@ -751,7 +849,7 @@ export function ProviderSetupPublishCatalogWizard({
     setClusterVersionMode('locked')
     setHardwareOsMode('locked')
     setOsImageMode('locked')
-    setClusterTopologyRows([createPublishClusterTopologyRow(1)])
+    setClusterTopologyRows(createDefaultPublishClusterTopologyRows())
     setClusterNodeTopologyMode('locked')
     setFieldPolicies([])
     setExpandedClusterVersionIds(new Set())
@@ -886,13 +984,7 @@ export function ProviderSetupPublishCatalogWizard({
     setOsImageMode(
       resolveCatalogOsImageMode(catalog.osImageMode, catalog.hardwareOsMode),
     )
-    setClusterTopologyRows([
-      createPublishClusterTopologyRow(
-        1,
-        catalog.nodeSetId ?? DEFAULT_CLUSTER_NODE_SET_ID,
-        catalog.hostTypeId ?? DEFAULT_CLUSTER_HOST_TYPE_ID,
-      ),
-    ])
+    setClusterTopologyRows(createDefaultPublishClusterTopologyRows())
     setClusterNodeTopologyMode(catalog.clusterNodeTopologyMode ?? 'locked')
     setFieldPolicies(catalog.fieldPolicies ?? [])
     setExpandedClusterVersionIds(new Set())
@@ -991,7 +1083,7 @@ export function ProviderSetupPublishCatalogWizard({
       setClusterVersionMode('locked')
       setHardwareOsMode('locked')
       setOsImageMode('locked')
-      setClusterTopologyRows([createPublishClusterTopologyRow(1)])
+      setClusterTopologyRows(createDefaultPublishClusterTopologyRows())
       setClusterNodeTopologyMode('locked')
       setFieldPolicies([])
       return
@@ -1022,7 +1114,7 @@ export function ProviderSetupPublishCatalogWizard({
     setClusterVersionMode('locked')
     setHardwareOsMode('locked')
     setOsImageMode('locked')
-    setClusterTopologyRows([createPublishClusterTopologyRow(1)])
+    setClusterTopologyRows(createDefaultPublishClusterTopologyRows())
     setClusterNodeTopologyMode('locked')
   }, [isEditMode, selectedServiceId])
 
@@ -1039,6 +1131,28 @@ export function ProviderSetupPublishCatalogWizard({
       current === nextInstanceTypeId ? current : nextInstanceTypeId,
     )
   }, [isClusterService, selectedHostTypeId, selectedNodeSetId])
+
+  useEffect(() => {
+    if (!isOpen || !isClusterService) {
+      return
+    }
+
+    setClusterTopologyRows((current) => {
+      if (current.every((row) => isValidKubernetesResourceName(row.name))) {
+        return current
+      }
+
+      const migrated = current.map((row) => ({
+        ...row,
+        name: normalizeClusterNodeSetName(row.name),
+      }))
+      if (migrated.every((row) => isValidKubernetesResourceName(row.name))) {
+        return migrated
+      }
+
+      return createDefaultPublishClusterTopologyRows()
+    })
+  }, [isClusterService, isOpen])
 
   useEffect(() => {
     if (!selectedServiceId || !selectedTemplate) {
@@ -1158,7 +1272,8 @@ export function ProviderSetupPublishCatalogWizard({
         ? {
             clusterVersionMode: resolveCatalogClusterVersionMode(clusterVersionMode),
             nodeSetId: selectedNodeSetId,
-            nodeSetLabel: formatClusterNodeSetLabel(selectedNodeSetId),
+            nodeSetLabel:
+              primaryTopologyRow?.name.trim() || formatClusterNodeSetLabel(selectedNodeSetId),
             hostTypeId: selectedHostTypeId,
             hostTypeLabel: formatClusterHostTypeLabel(selectedHostTypeId),
             clusterNodeTopologyMode: resolveCatalogClusterNodeTopologyMode(
@@ -1684,7 +1799,11 @@ export function ProviderSetupPublishCatalogWizard({
               <CatalogEditPreviousValue previous={editPrevious('diskImage')} />
               <div
                 id="publish-catalog-disk-image"
-                className="provider-setup-template__card-group provider-setup-template__card-group--disk-images"
+                className={`provider-setup-template__card-group provider-setup-template__card-group--disk-images${
+                  isBareMetalService
+                    ? ' provider-setup-template__card-group--disk-images-row'
+                    : ''
+                }`}
                 role="presentation"
               >
                 {isClusterService
@@ -1806,6 +1925,7 @@ export function ProviderSetupPublishCatalogWizard({
                     })
                   : softwareImageOptions.map((option) => {
                       const isSelected = option.id === selectedDiskImageId
+                      const isRedHatBranded = isRedHatBrandedDiskImageLabel(option.label)
 
                       return (
                         <button
@@ -1827,13 +1947,24 @@ export function ProviderSetupPublishCatalogWizard({
                               Selected
                             </Label>
                           ) : null}
-                          <Title
-                            headingLevel="h3"
-                            size="md"
-                            className="provider-setup-template__select-card-title"
-                          >
-                            {option.label}
-                          </Title>
+                          <div className="provider-setup-template__select-card-title-row">
+                            {isRedHatBranded ? (
+                              <Icon
+                                size="md"
+                                className="provider-setup-template__select-card-os-brand"
+                                aria-hidden
+                              >
+                                <RedhatIcon />
+                              </Icon>
+                            ) : null}
+                            <Title
+                              headingLevel="h3"
+                              size="md"
+                              className="provider-setup-template__select-card-title"
+                            >
+                              {option.label}
+                            </Title>
+                          </div>
                           <Content
                             component="p"
                             className="provider-setup-template__select-card-detail"
@@ -1943,7 +2074,7 @@ export function ProviderSetupPublishCatalogWizard({
         return (
           <div className="provider-setup-template__publish-hardware-step">
             <Content component="p" className="provider-setup-template__publish-step-lede">
-              Choose the default worker pool and host type.
+              Define default node sets, machine types, and node counts for this offering.
             </Content>
             <FormGroup
               label="Tenant access to node topology"
@@ -2044,195 +2175,91 @@ export function ProviderSetupPublishCatalogWizard({
               </div>
             </FormGroup>
 
-            <CatalogEditPreviousValue previous={editPrevious('nodeSet')} />
-            <CatalogEditPreviousValue previous={editPrevious('hostType')} />
-            <div className="tenant-user-launch-wizard__node-sets" role="list">
-              {clusterTopologyRows.map((row, index) => {
-                const usedByOthers = new Set(
-                  clusterTopologyRows
-                    .filter((entry) => entry.id !== row.id)
-                    .map((entry) => entry.nodeSetId),
-                )
-                return (
-                  <div
-                    key={row.id}
-                    className="tenant-user-launch-wizard__node-set"
-                    role="listitem"
-                  >
-                    <Flex
-                      justifyContent={{ default: 'justifyContentSpaceBetween' }}
-                      alignItems={{ default: 'alignItemsCenter' }}
-                      className="tenant-user-launch-wizard__node-set-header"
-                    >
-                      <FlexItem>
-                        <Content
-                          component="p"
-                          className="tenant-user-launch-wizard__node-set-heading"
-                        >
-                          {clusterTopologyRows.length > 1
-                            ? `Node set ${index + 1}`
-                            : clusterNodeTopologyMode === 'editable'
-                              ? 'Default node set'
-                              : 'Node set'}
-                        </Content>
-                      </FlexItem>
-                      {clusterTopologyRows.length > 1 ? (
-                        <FlexItem>
-                          <Button
-                            variant="link"
-                            isDanger
-                            isInline
-                            onClick={() => removePublishTopologyRow(row.id)}
-                          >
-                            Remove
-                          </Button>
-                        </FlexItem>
-                      ) : null}
-                    </Flex>
-
-                    <FormGroup
-                      label="Node set"
-                      fieldId={`publish-catalog-cluster-node-set-${row.id}`}
-                      isRequired
-                      className="provider-setup-template__publish-subsection"
-                      role="radiogroup"
-                    >
-                      <div
-                        id={`publish-catalog-cluster-node-set-${row.id}`}
-                        className="provider-setup-template__card-group provider-setup-template__card-group--instance-types provider-setup-template__card-group--instance-types-fill"
-                        role="presentation"
-                      >
-                        {clusterNodeSetOptions.map((option) => {
-                          const isSelected = option.id === row.nodeSetId
-                          const isTaken = usedByOthers.has(option.id)
-                          return (
-                            <button
-                              key={option.id}
-                              type="button"
-                              role="radio"
-                              aria-checked={isSelected}
-                              disabled={isTaken && !isSelected}
-                              className={`provider-setup-template__select-card provider-setup-template__select-card--instance-type${
-                                isSelected
-                                  ? ' provider-setup-template__select-card--selected'
-                                  : ''
-                              }`}
-                              onClick={() => {
-                                if (isTaken) {
-                                  return
-                                }
-                                updatePublishTopologyRow(row.id, { nodeSetId: option.id })
-                              }}
-                            >
-                              {isSelected ? (
-                                <Label
-                                  color="grey"
-                                  isCompact
-                                  className="provider-setup-template__select-card-selected-badge"
-                                >
-                                  Selected
-                                </Label>
-                              ) : null}
-                              <Title
-                                headingLevel="h3"
-                                size="md"
-                                className="provider-setup-template__select-card-title"
-                              >
-                                {option.label}
-                              </Title>
-                              <Content
-                                component="p"
-                                className="provider-setup-template__select-card-detail"
-                              >
-                                {option.detail}
-                              </Content>
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </FormGroup>
-
-                    <FormGroup
-                      label="Host type"
-                      fieldId={`publish-catalog-cluster-host-type-${row.id}`}
-                      isRequired
-                      className="provider-setup-template__publish-subsection"
-                      role="radiogroup"
-                    >
-                      <div
-                        id={`publish-catalog-cluster-host-type-${row.id}`}
-                        className="provider-setup-template__card-group provider-setup-template__card-group--instance-types provider-setup-template__card-group--instance-types-fill"
-                        role="presentation"
-                      >
-                        {clusterHostTypeOptions.map((option) => {
-                          const isSelected = option.id === row.hostTypeId
-                          return (
-                            <button
-                              key={option.id}
-                              type="button"
-                              role="radio"
-                              aria-checked={isSelected}
-                              className={`provider-setup-template__select-card provider-setup-template__select-card--instance-type${
-                                isSelected
-                                  ? ' provider-setup-template__select-card--selected'
-                                  : ''
-                              }`}
-                              onClick={() =>
-                                updatePublishTopologyRow(row.id, { hostTypeId: option.id })
-                              }
-                            >
-                              {isSelected ? (
-                                <Label
-                                  color="grey"
-                                  isCompact
-                                  className="provider-setup-template__select-card-selected-badge"
-                                >
-                                  Selected
-                                </Label>
-                              ) : null}
-                              <Title
-                                headingLevel="h3"
-                                size="md"
-                                className="provider-setup-template__select-card-title"
-                              >
-                                {option.label}
-                              </Title>
-                              <Content
-                                component="p"
-                                className="provider-setup-template__select-card-detail"
-                              >
-                                {option.detail}
-                              </Content>
-                              <Content
-                                component="p"
-                                className={`provider-setup-template__select-card-rate${
-                                  isSelected
-                                    ? ' provider-setup-template__select-card-rate--selected'
-                                    : ''
-                                }`}
-                              >
-                                {resolveClusterHostTypeM360RateLabel(option.id)}
-                              </Content>
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </FormGroup>
-                  </div>
-                )
-              })}
-            </div>
-
-            {canAddPublishTopologyRow ? (
-              <Button
-                variant="link"
-                icon={<PlusIcon />}
-                className="tenant-user-launch-wizard__add-node-set"
-                onClick={addPublishTopologyRow}
+            <FormGroup
+              label={
+                clusterNodeTopologyMode === 'editable' ? 'Default node sets' : 'Node sets'
+              }
+              fieldId="publish-catalog-cluster-node-sets"
+              isRequired
+              className="provider-setup-template__publish-subsection"
+            >
+              <CatalogEditPreviousValue previous={editPrevious('nodeSet')} />
+              <CatalogEditPreviousValue previous={editPrevious('hostType')} />
+              <Table
+                id="publish-catalog-cluster-node-sets"
+                variant="compact"
+                className="provider-setup-template__cluster-node-sets-table"
+                aria-label={
+                  clusterNodeTopologyMode === 'editable' ? 'Default node sets' : 'Node sets'
+                }
               >
-                Add node set
-              </Button>
-            ) : null}
+                <Thead>
+                  <Tr>
+                    <Th width={25} modifier="nowrap">
+                      Name
+                    </Th>
+                    <Th width={40}>Machine type</Th>
+                    <Th width={25}>Number of nodes</Th>
+                    <Th screenReaderText="Actions" />
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {clusterTopologyRows.map((row) => (
+                    <Tr key={row.id}>
+                      <Td dataLabel="Name">
+                        <KubernetesResourceNameField
+                          id={`publish-catalog-cluster-node-set-name-${row.id}`}
+                          value={row.name}
+                          onChange={(value) => updatePublishTopologyRow(row.id, { name: value })}
+                          placeholder="workers"
+                          aria-label="Node set name"
+                          isRequired
+                        />
+                      </Td>
+                      <Td dataLabel="Machine type">
+                        <ClusterMachineTypeSelect
+                          id={`publish-catalog-cluster-machine-type-${row.id}`}
+                          value={row.machineTypeId}
+                          onChange={(machineTypeId) =>
+                            updatePublishTopologyRow(row.id, { machineTypeId })
+                          }
+                          ariaLabel="Machine type"
+                        />
+                      </Td>
+                      <Td dataLabel="Number of nodes">
+                        <ClusterNodeCountInput
+                          id={`publish-catalog-cluster-node-count-${row.id}`}
+                          value={row.nodeCount}
+                          onValueChange={(nodeCount) =>
+                            updatePublishTopologyRow(row.id, { nodeCount })
+                          }
+                        />
+                      </Td>
+                      <Td isActionCell>
+                        <Button
+                          variant="plain"
+                          className="provider-setup-template__cluster-node-set-remove"
+                          aria-label={`Remove ${row.name.trim() || 'node set'}`}
+                          isDisabled={clusterTopologyRows.length <= 1}
+                          onClick={() => removePublishTopologyRow(row.id)}
+                          icon={<MinusCircleIcon />}
+                        />
+                      </Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+              {canAddPublishTopologyRow ? (
+                <Button
+                  variant="link"
+                  icon={<PlusIcon />}
+                  className="tenant-user-launch-wizard__add-node-set"
+                  onClick={addPublishTopologyRow}
+                >
+                  Add node set
+                </Button>
+              ) : null}
+            </FormGroup>
 
             <div
               className="provider-setup-template__cluster-estimate"
@@ -2269,17 +2296,10 @@ export function ProviderSetupPublishCatalogWizard({
                     className="provider-setup-template__cluster-estimate-breakdown"
                     aria-label="Estimated rate breakdown"
                   >
-                    <DescriptionListGroup>
-                      <DescriptionListTerm>Control plane</DescriptionListTerm>
-                      <DescriptionListDescription>
-                        ${resolvedClusterComposedRate.controlPlane.hourlyRate.toFixed(2)}/hr
-                      </DescriptionListDescription>
-                    </DescriptionListGroup>
-                    {resolvedClusterComposedRate.workerLines.map((line) => (
-                      <DescriptionListGroup key={`${line.nodeSetId}-${line.hostTypeId}`}>
+                    {resolvedClusterComposedRate.lines.map((line) => (
+                      <DescriptionListGroup key={`${line.machineTypeId}-${line.nodeCount}`}>
                         <DescriptionListTerm>
-                          {formatClusterNodeSetLabel(line.nodeSetId)}:{' '}
-                          {formatClusterTopologyWorkerLineLabel(line)}
+                          {formatClusterTopologyMachineLineLabel(line)}
                         </DescriptionListTerm>
                         <DescriptionListDescription>
                           ${line.hourlySubtotal.toFixed(2)}/hr
@@ -2309,7 +2329,7 @@ export function ProviderSetupPublishCatalogWizard({
                     component="p"
                     className="provider-setup-template__cluster-estimate-meta"
                   >
-                    Missing control-plane or worker rates on{' '}
+                    Missing machine-type rates on{' '}
                     {getM360RateCardDisplayName(DEFAULT_M360_RATE_CARD_ID)}.
                   </Content>
                 </>
@@ -2700,30 +2720,28 @@ export function ProviderSetupPublishCatalogWizard({
               </DescriptionListGroup>
               {includesPublishStep('node-topology') ? (
                 <>
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Tenant access to node topology</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      <Label
+                        color={clusterNodeTopologyMode === 'editable' ? 'purple' : 'grey'}
+                        isCompact
+                      >
+                        {getCatalogClusterNodeTopologyModeLabel(clusterNodeTopologyMode)}
+                      </Label>
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
                   {clusterTopologyRows.map((row, index) => (
                     <DescriptionListGroup key={row.id}>
                       <DescriptionListTerm>
-                        {clusterTopologyRows.length > 1
-                          ? `Node set ${index + 1}`
-                          : 'Node set'}
+                        {row.name.trim() ||
+                          (clusterTopologyRows.length > 1
+                            ? `Node set ${index + 1}`
+                            : 'Node set')}
                       </DescriptionListTerm>
                       <DescriptionListDescription>
-                        <span className="provider-setup-template__publish-review-version">
-                          {formatClusterNodeSetLabel(row.nodeSetId)} ·{' '}
-                          {formatClusterHostTypeLabel(row.hostTypeId)}
-                          {index === 0 ? (
-                            <Label
-                              color={
-                                clusterNodeTopologyMode === 'editable' ? 'purple' : 'grey'
-                              }
-                              isCompact
-                            >
-                              {getCatalogClusterNodeTopologyModeLabel(
-                                clusterNodeTopologyMode,
-                              )}
-                            </Label>
-                          ) : null}
-                        </span>
+                        {formatClusterMachineTypeLabel(row.machineTypeId)} · {row.nodeCount}{' '}
+                        {row.nodeCount === 1 ? 'node' : 'nodes'}
                       </DescriptionListDescription>
                     </DescriptionListGroup>
                   ))}
@@ -2740,7 +2758,7 @@ export function ProviderSetupPublishCatalogWizard({
                         {formatClusterComposedRateSummary(resolvedClusterComposedRate)}
                       </strong>
                       <span className="provider-setup-template__publish-review-rate-meta">
-                        {formatClusterComposedRateBreakdown(resolvedClusterComposedRate)}
+                        {formatClusterTopologyMachineRateBreakdown(resolvedClusterComposedRate)}
                       </span>
                       <span className="provider-setup-template__publish-review-rate-meta">
                         {getM360RateCardDisplayName(DEFAULT_M360_RATE_CARD_ID)}
@@ -2846,7 +2864,14 @@ export function ProviderSetupPublishCatalogWizard({
 
     if (stepId === 'node-topology') {
       return withLeaveConfirm({
-        isNextDisabled: !selectedNodeSetId || !selectedHostTypeId,
+        isNextDisabled:
+          clusterTopologyRows.length < 1 ||
+          clusterTopologyRows.some(
+            (row) =>
+              !isValidKubernetesResourceName(row.name) ||
+              !row.machineTypeId.trim() ||
+              row.nodeCount < MIN_CLUSTER_NODE_COUNT,
+          ),
       })
     }
 

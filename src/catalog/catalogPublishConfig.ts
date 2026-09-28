@@ -273,8 +273,51 @@ export const CATALOG_CLUSTER_HOST_TYPE_OPTIONS: ReadonlyArray<CatalogClusterHost
   },
 ]
 
+/**
+ * Machine types shown in the cluster Node topology editor.
+ * Maps to host type (catalog persistence) and bare-metal flavor (M360 rates).
+ */
+export type CatalogClusterMachineTypeOption = {
+  id: string
+  label: string
+  detail: string
+  hostTypeId: string
+  bareMetalInstanceTypeId: string
+}
+
+export const CATALOG_CLUSTER_MACHINE_TYPE_OPTIONS: ReadonlyArray<CatalogClusterMachineTypeOption> =
+  [
+    {
+      id: 'bm-cpu-32c',
+      label: 'bm-cpu-32c',
+      detail: '32 vCPU · 128 GB RAM',
+      hostTypeId: 'standard-host',
+      bareMetalInstanceTypeId: 'small',
+    },
+    {
+      id: 'bm-cpu-64c',
+      label: 'bm-cpu-64c',
+      detail: '64 vCPU · 256 GB RAM',
+      hostTypeId: 'standard-host',
+      bareMetalInstanceTypeId: 'medium',
+    },
+    {
+      id: 'bm-gpu-h100',
+      label: 'bm-gpu-h100',
+      detail: '8 x H100 GPU · 1 TB RAM',
+      hostTypeId: 'gpu-host',
+      bareMetalInstanceTypeId: 'large',
+    },
+  ]
+
 export const DEFAULT_CLUSTER_NODE_SET_ID = 'fc430-worker'
 export const DEFAULT_CLUSTER_HOST_TYPE_ID = 'standard-host'
+export const DEFAULT_CLUSTER_MACHINE_TYPE_ID = 'bm-cpu-64c'
+export const MAX_CLUSTER_TOPOLOGY_NODE_SETS = 6
+/** Demo baseline: Control plane, Workers, and GPU workers. */
+export const MIN_CLUSTER_TOPOLOGY_NODE_SETS = 3
+export const MIN_CLUSTER_NODE_COUNT = 1
+export const MAX_CLUSTER_NODE_COUNT = 20
 
 export function getCatalogClusterNodeSetOptions(): CatalogClusterNodeSetOption[] {
   return [...CATALOG_CLUSTER_NODE_SET_OPTIONS]
@@ -282,6 +325,69 @@ export function getCatalogClusterNodeSetOptions(): CatalogClusterNodeSetOption[]
 
 export function getCatalogClusterHostTypeOptions(): CatalogClusterHostTypeOption[] {
   return [...CATALOG_CLUSTER_HOST_TYPE_OPTIONS]
+}
+
+export function getCatalogClusterMachineTypeOptions(): CatalogClusterMachineTypeOption[] {
+  return [...CATALOG_CLUSTER_MACHINE_TYPE_OPTIONS]
+}
+
+export function getCatalogClusterMachineTypeOption(
+  idOrLabel: string | undefined | null,
+): CatalogClusterMachineTypeOption | undefined {
+  const needle = idOrLabel?.trim()
+  if (!needle) {
+    return undefined
+  }
+  return CATALOG_CLUSTER_MACHINE_TYPE_OPTIONS.find(
+    (option) => option.id === needle || option.label === needle,
+  )
+}
+
+export function formatClusterMachineTypeLabel(idOrLabel: string | undefined | null): string {
+  const option = getCatalogClusterMachineTypeOption(idOrLabel)
+  if (!option) {
+    return idOrLabel?.trim() || CATALOG_CLUSTER_MACHINE_TYPE_OPTIONS[0].label
+  }
+  return `${option.label} · ${option.detail}`
+}
+
+export function resolveClusterMachineTypeIdFromHostType(
+  hostTypeId: string | undefined | null,
+): string {
+  const normalized = hostTypeId?.trim()
+  if (!normalized) {
+    return DEFAULT_CLUSTER_MACHINE_TYPE_ID
+  }
+  return (
+    CATALOG_CLUSTER_MACHINE_TYPE_OPTIONS.find((option) => option.hostTypeId === normalized)?.id ??
+    DEFAULT_CLUSTER_MACHINE_TYPE_ID
+  )
+}
+
+/** Prefer a named worker pool for catalog card defaults; fall back to the first row. */
+export function pickPrimaryClusterTopologyRowIndex(
+  rows: ReadonlyArray<{ name: string }>,
+): number {
+  const workersIndex = rows.findIndex((row) => {
+    const name = row.name.trim().toLowerCase()
+    return name.includes('worker') && !name.includes('gpu')
+  })
+  if (workersIndex >= 0) {
+    return workersIndex
+  }
+  const anyWorker = rows.findIndex((row) => row.name.trim().toLowerCase().includes('worker'))
+  return anyWorker >= 0 ? anyWorker : 0
+}
+
+export function deriveClusterNodeSetIdFromName(name: string | undefined | null): string {
+  const normalized = name?.trim().toLowerCase() ?? ''
+  if (normalized.includes('gpu')) {
+    return 'fc430-gpu'
+  }
+  if (normalized.includes('infra')) {
+    return 'fc430-infra'
+  }
+  return DEFAULT_CLUSTER_NODE_SET_ID
 }
 
 export function getCatalogClusterNodeSetOption(

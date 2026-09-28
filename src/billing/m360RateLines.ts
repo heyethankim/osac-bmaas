@@ -1,6 +1,7 @@
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
 import type { RateCard } from '../providerSetup/templateDemo'
 import type { ProviderCatalogDraft } from '../providerSetup/storage'
+import { getCatalogClusterMachineTypeOption } from '../catalog/catalogPublishConfig'
 import { DEFAULT_ONBOARDING_RATE_CARD_ID, findM360RateCard } from './m360Accounts'
 
 export type M360BillableService = CatalogServiceId
@@ -1001,6 +1002,95 @@ export function formatClusterTopologyWorkerLineLabel(
     line.worker.resourceShortLabel.replace(/^Bare metal —\s*/i, '').trim() ||
     line.worker.resourceShortLabel
   return `${line.workerCount} × ${flavor}`
+}
+
+export type ClusterTopologyMachineLineEstimate = {
+  machineTypeId: string
+  machineTypeLabel: string
+  nodeCount: number
+  worker: M360RateLine
+  hourlySubtotal: number
+  monthlySubtotal: number
+}
+
+/** Sum of topology rows only (no separate management-plane fee). Matches Node topology editor. */
+export type ClusterTopologyMachineRateEstimate = {
+  lines: ClusterTopologyMachineLineEstimate[]
+  hourlyRate: number
+  monthlyRate: number
+  currency: string
+  rateCardId: string
+}
+
+export function resolveClusterTopologyMachineRateEstimate(
+  rows: ReadonlyArray<{
+    machineTypeId: string
+    nodeCount: number
+    machineTypeLabel?: string
+  }>,
+  rateCardId = DEFAULT_M360_RATE_CARD_ID,
+): ClusterTopologyMachineRateEstimate | null {
+  if (rows.length === 0) {
+    return null
+  }
+
+  const lines: ClusterTopologyMachineLineEstimate[] = []
+  for (const row of rows) {
+    const machineTypeId = row.machineTypeId.trim()
+    const nodeCount = Math.max(1, Math.round(row.nodeCount))
+    if (!machineTypeId) {
+      return null
+    }
+
+    const machineOption = getCatalogClusterMachineTypeOption(machineTypeId)
+    const bareMetalInstanceTypeId =
+      machineOption?.bareMetalInstanceTypeId ??
+      mapClusterHostTypeToBareMetalInstanceType(machineTypeId)
+    if (!bareMetalInstanceTypeId) {
+      return null
+    }
+
+    const worker = findM360RateLineForPublishSelection(
+      'baremetal',
+      bareMetalInstanceTypeId,
+      rateCardId,
+    )
+    if (!worker) {
+      return null
+    }
+
+    lines.push({
+      machineTypeId,
+      machineTypeLabel: row.machineTypeLabel?.trim() || machineOption?.label || machineTypeId,
+      nodeCount,
+      worker,
+      hourlySubtotal: Math.round(nodeCount * worker.hourlyRate * 100) / 100,
+      monthlySubtotal: Math.round(nodeCount * worker.monthlyRate),
+    })
+  }
+
+  const hourlyRate = Math.round(lines.reduce((sum, line) => sum + line.hourlySubtotal, 0) * 100) / 100
+  const monthlyRate = Math.round(lines.reduce((sum, line) => sum + line.monthlySubtotal, 0))
+
+  return {
+    lines,
+    hourlyRate,
+    monthlyRate,
+    currency: lines[0]?.worker.currency ?? 'USD',
+    rateCardId,
+  }
+}
+
+export function formatClusterTopologyMachineLineLabel(
+  line: ClusterTopologyMachineLineEstimate,
+): string {
+  return `${line.nodeCount} x ${line.machineTypeLabel}`
+}
+
+export function formatClusterTopologyMachineRateBreakdown(
+  estimate: ClusterTopologyMachineRateEstimate,
+): string {
+  return estimate.lines.map((line) => formatClusterTopologyMachineLineLabel(line)).join(' · ')
 }
 
 export function formatBareMetalComposedRateSummary(
