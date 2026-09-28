@@ -1370,6 +1370,76 @@ export function ProviderSetupPublishCatalogWizard({
     )
   }
 
+  const renderBareMetalEstimatePanel = () => {
+    if (!isBareMetalService) {
+      return null
+    }
+
+    return (
+      <div className="provider-setup-template__cluster-estimate" aria-live="polite">
+        {resolvedBareMetalComposedRate ? (
+          <>
+            <div className="provider-setup-template__cluster-estimate-header">
+              <Content component="p" className="provider-setup-template__cluster-estimate-label">
+                Estimated total
+              </Content>
+              <div className="provider-setup-template__cluster-estimate-totals">
+                <span className="provider-setup-template__cluster-estimate-hourly">
+                  ${resolvedBareMetalComposedRate.hourlyRate.toFixed(2)}
+                  <span className="provider-setup-template__cluster-estimate-unit">/hr</span>
+                </span>
+                <span className="provider-setup-template__cluster-estimate-monthly">
+                  $
+                  {resolvedBareMetalComposedRate.monthlyRate.toLocaleString('en-US', {
+                    maximumFractionDigits: 0,
+                  })}
+                  /mo
+                </span>
+              </div>
+            </div>
+            <DescriptionList
+              isCompact
+              isHorizontal
+              className="provider-setup-template__cluster-estimate-breakdown"
+              aria-label="Estimated rate breakdown"
+            >
+              <DescriptionListGroup>
+                <DescriptionListTerm>Hardware</DescriptionListTerm>
+                <DescriptionListDescription>
+                  ${resolvedBareMetalComposedRate.hardware.hourlyRate.toFixed(2)}/hr
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>OS license</DescriptionListTerm>
+                <DescriptionListDescription>
+                  {resolvedBareMetalComposedRate.osLicense.hourlyRate <= 0
+                    ? 'Included'
+                    : `$${resolvedBareMetalComposedRate.osLicense.hourlyRate.toFixed(2)}/hr`}
+                </DescriptionListDescription>
+              </DescriptionListGroup>
+            </DescriptionList>
+            <Content component="p" className="provider-setup-template__cluster-estimate-meta">
+              {getM360RateCardDisplayName(DEFAULT_M360_RATE_CARD_ID)}
+              {osImageMode === 'editable' || hardwareOsMode === 'editable'
+                ? ' · Changes if tenants adjust hardware or OS'
+                : ''}
+            </Content>
+          </>
+        ) : (
+          <>
+            <Content component="p" className="provider-setup-template__cluster-estimate-label">
+              Estimated total
+            </Content>
+            <Content component="p" className="provider-setup-template__cluster-estimate-meta">
+              Select an instance type and OS image with M360 rates on{' '}
+              {getM360RateCardDisplayName(DEFAULT_M360_RATE_CARD_ID)}.
+            </Content>
+          </>
+        )}
+      </div>
+    )
+  }
+
   function renderStepContent(stepId: (typeof PUBLISH_CATALOG_STEPS)[number]['id']) {
     switch (stepId) {
       case 'service': {
@@ -1772,6 +1842,7 @@ export function ProviderSetupPublishCatalogWizard({
                 </div>
               </Form>
             ) : null}
+            {renderBareMetalEstimatePanel()}
           </div>
         )
       case 'os':
@@ -2006,86 +2077,7 @@ export function ProviderSetupPublishCatalogWizard({
                     })}
               </div>
             </FormGroup>
-            {isBareMetalService ? (
-              <div
-                className="provider-setup-template__cluster-estimate"
-                aria-live="polite"
-              >
-                {resolvedBareMetalComposedRate ? (
-                  <>
-                    <div className="provider-setup-template__cluster-estimate-header">
-                      <Content
-                        component="p"
-                        className="provider-setup-template__cluster-estimate-label"
-                      >
-                        Estimated total
-                      </Content>
-                      <div className="provider-setup-template__cluster-estimate-totals">
-                        <span className="provider-setup-template__cluster-estimate-hourly">
-                          ${resolvedBareMetalComposedRate.hourlyRate.toFixed(2)}
-                          <span className="provider-setup-template__cluster-estimate-unit">
-                            /hr
-                          </span>
-                        </span>
-                        <span className="provider-setup-template__cluster-estimate-monthly">
-                          $
-                          {resolvedBareMetalComposedRate.monthlyRate.toLocaleString('en-US', {
-                            maximumFractionDigits: 0,
-                          })}
-                          /mo
-                        </span>
-                      </div>
-                    </div>
-                    <DescriptionList
-                      isCompact
-                      isHorizontal
-                      className="provider-setup-template__cluster-estimate-breakdown"
-                      aria-label="Estimated rate breakdown"
-                    >
-                      <DescriptionListGroup>
-                        <DescriptionListTerm>Hardware</DescriptionListTerm>
-                        <DescriptionListDescription>
-                          ${resolvedBareMetalComposedRate.hardware.hourlyRate.toFixed(2)}/hr
-                        </DescriptionListDescription>
-                      </DescriptionListGroup>
-                      <DescriptionListGroup>
-                        <DescriptionListTerm>OS license</DescriptionListTerm>
-                        <DescriptionListDescription>
-                          {resolvedBareMetalComposedRate.osLicense.hourlyRate <= 0
-                            ? 'Included'
-                            : `$${resolvedBareMetalComposedRate.osLicense.hourlyRate.toFixed(2)}/hr`}
-                        </DescriptionListDescription>
-                      </DescriptionListGroup>
-                    </DescriptionList>
-                    <Content
-                      component="p"
-                      className="provider-setup-template__cluster-estimate-meta"
-                    >
-                      {getM360RateCardDisplayName(DEFAULT_M360_RATE_CARD_ID)}
-                      {osImageMode === 'editable' || hardwareOsMode === 'editable'
-                        ? ' · Changes if tenants adjust hardware or OS'
-                        : ''}
-                    </Content>
-                  </>
-                ) : (
-                  <>
-                    <Content
-                      component="p"
-                      className="provider-setup-template__cluster-estimate-label"
-                    >
-                      Estimated total
-                    </Content>
-                    <Content
-                      component="p"
-                      className="provider-setup-template__cluster-estimate-meta"
-                    >
-                      Select an instance type and OS image with M360 rates on{' '}
-                      {getM360RateCardDisplayName(DEFAULT_M360_RATE_CARD_ID)}.
-                    </Content>
-                  </>
-                )}
-              </div>
-            ) : null}
+            {renderBareMetalEstimatePanel()}
           </div>
         )
       case 'node-topology':
