@@ -7,8 +7,11 @@ import {
   Label,
   Title,
 } from '@patternfly/react-core'
-import type { CatalogSpecRow } from '../../catalog/catalogSpecs'
-import { getCatalogSpecsSectionLabel } from '../../catalog/catalogSpecs'
+import {
+  CLUSTER_NODE_SETS_PARENT_LABEL,
+  type CatalogSpecRow,
+  getCatalogSpecsSectionLabel,
+} from '../../catalog/catalogSpecs'
 import type { CatalogClusterVersionMode } from '../../catalog/catalogPublishConfig'
 import type { PublishCatalogScope } from '../../providerSetup/templateDemo'
 import { CatalogClusterVersionValue } from './CatalogClusterVersionValue'
@@ -38,6 +41,20 @@ function getClassPrefix(variant: ClusterCatalogDetailsVariant): string {
   return variant === 'entity' ? 'entity-details-page' : 'provider-admin-catalog-item-details'
 }
 
+function isNodeSetsParentLabel(label: string): boolean {
+  return label === CLUSTER_NODE_SETS_PARENT_LABEL
+}
+
+function partitionClusterConfigurationRows(rows: CatalogSpecRow[]) {
+  const clusterVersion = rows.find((row) => row.label === 'Cluster version') ?? null
+  const nodeSets = rows.find((row) => isNodeSetsParentLabel(row.label)) ?? null
+  const nodeSetChildren = rows.filter(
+    (row) => row.label !== 'Cluster version' && !isNodeSetsParentLabel(row.label),
+  )
+
+  return { clusterVersion, nodeSets, nodeSetChildren }
+}
+
 function renderConfigurationRowValue(
   row: CatalogSpecRow,
   clusterVersionMode?: CatalogClusterVersionMode,
@@ -47,6 +64,14 @@ function renderConfigurationRowValue(
       <CatalogClusterVersionValue badge={row.badge} mode={clusterVersionMode}>
         {row.value}
       </CatalogClusterVersionValue>
+    )
+  }
+
+  if (isNodeSetsParentLabel(row.label) && row.badge) {
+    return (
+      <Label color={row.badge.color} isCompact>
+        {row.badge.text}
+      </Label>
     )
   }
 
@@ -77,6 +102,9 @@ export function ClusterCatalogItemDetailsBody({
     variant === 'entity'
       ? 'tenant-admin-catalog-manager__scope-icon'
       : 'provider-admin-catalog__scope-icon'
+  const { clusterVersion, nodeSets, nodeSetChildren } = partitionClusterConfigurationRows(
+    content.configurationRows,
+  )
 
   return (
     <div className={`${prefix}__columns`}>
@@ -159,14 +187,47 @@ export function ClusterCatalogItemDetailsBody({
               className={`${prefix}__dl`}
               aria-label={specsSectionLabel}
             >
-              {content.configurationRows.map((row) => (
-                <DescriptionListGroup key={row.label}>
-                  <DescriptionListTerm>{row.label}</DescriptionListTerm>
+              {clusterVersion ? (
+                <DescriptionListGroup>
+                  <DescriptionListTerm>{clusterVersion.label}</DescriptionListTerm>
                   <DescriptionListDescription>
-                    {renderConfigurationRowValue(row, content.clusterVersionMode)}
+                    {renderConfigurationRowValue(clusterVersion, content.clusterVersionMode)}
                   </DescriptionListDescription>
                 </DescriptionListGroup>
-              ))}
+              ) : null}
+              {nodeSets ? (
+                <DescriptionListGroup>
+                  <DescriptionListTerm>{nodeSets.label}</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {renderConfigurationRowValue(nodeSets, content.clusterVersionMode)}
+                    {nodeSetChildren.length > 0 ? (
+                      <DescriptionList
+                        isCompact
+                        className={`${prefix}__dl ${prefix}__dl--nested`}
+                        aria-label="Node sets"
+                      >
+                        {nodeSetChildren.map((row) => (
+                          <DescriptionListGroup key={row.label}>
+                            <DescriptionListTerm>{row.label}</DescriptionListTerm>
+                            <DescriptionListDescription>
+                              {renderConfigurationRowValue(row, content.clusterVersionMode)}
+                            </DescriptionListDescription>
+                          </DescriptionListGroup>
+                        ))}
+                      </DescriptionList>
+                    ) : null}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              ) : (
+                nodeSetChildren.map((row) => (
+                  <DescriptionListGroup key={row.label}>
+                    <DescriptionListTerm>{row.label}</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      {renderConfigurationRowValue(row, content.clusterVersionMode)}
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                ))
+              )}
             </DescriptionList>
           </>
         ) : null}

@@ -4,6 +4,7 @@ import {
   DEFAULT_CLUSTER_NODE_SET_ID,
   formatClusterHostTypeLabel,
   formatClusterNodeSetLabel,
+  formatClusterTopologyNodeSetValue,
   getCatalogClusterHostTypeOptions,
   getCatalogClusterNodeSetOptions,
   getCatalogClusterVersionModeLabel,
@@ -14,7 +15,10 @@ import {
   getProvisioningTemplatePresentation,
   getCatalogHardwareOsModeLabel,
   getCatalogOsImageModeLabel,
+  resolveCatalogClusterTopology,
+  serializeCatalogClusterTopology,
   type CatalogClusterNodeTopologyMode,
+  type CatalogClusterTopologyNodeSet,
   type CatalogClusterVersionMode,
   type CatalogFieldPolicy,
   type CatalogHardwareOsMode,
@@ -50,6 +54,7 @@ export type CatalogEditSnapshot = {
   osImageMode: SnapshotValue
   nodeSet: SnapshotValue
   hostType: SnapshotValue
+  clusterTopology: SnapshotValue
   clusterNodeTopologyMode: SnapshotValue
   fieldPolicies: SnapshotValue
   visibility: SnapshotValue
@@ -198,6 +203,14 @@ function resolveHostTypeLabel(hostTypeId: string, hostTypeLabel?: string): strin
   )
 }
 
+function formatClusterTopologySnapshotDisplay(
+  topology: ReadonlyArray<CatalogClusterTopologyNodeSet>,
+): string {
+  return resolveCatalogClusterTopology(topology)
+    .map((row) => `${row.name}: ${formatClusterTopologyNodeSetValue(row, { compact: true })}`)
+    .join(' · ')
+}
+
 /** Match edit-wizard hydration when catalog omits hardware selections. */
 function resolveHydratedInstanceTypeId(
   serviceId: CatalogServiceId,
@@ -262,6 +275,7 @@ export function buildCatalogEditSnapshotFromCatalog(
   const diskImageId = resolveHydratedDiskImageId(serviceId, catalog.diskImageId)
   const nodeSetId = catalog.nodeSetId ?? DEFAULT_CLUSTER_NODE_SET_ID
   const hostTypeId = catalog.hostTypeId ?? DEFAULT_CLUSTER_HOST_TYPE_ID
+  const clusterTopology = resolveCatalogClusterTopology(catalog.clusterTopology)
   const clusterVersionMode = catalog.clusterVersionMode ?? 'locked'
   const clusterNodeTopologyMode = catalog.clusterNodeTopologyMode ?? 'locked'
   const hardwareOsMode = catalog.hardwareOsMode ?? 'locked'
@@ -310,6 +324,10 @@ export function buildCatalogEditSnapshotFromCatalog(
       hostTypeId,
       isClusterService ? resolveHostTypeLabel(hostTypeId, catalog.hostTypeLabel) : '—',
     ),
+    clusterTopology: snapshotValue(
+      serializeCatalogClusterTopology(clusterTopology),
+      isClusterService ? formatClusterTopologySnapshotDisplay(clusterTopology) : '—',
+    ),
     clusterNodeTopologyMode: snapshotValue(
       clusterNodeTopologyMode,
       isClusterService
@@ -341,6 +359,7 @@ export type CatalogEditWizardState = {
   osImageMode: CatalogHardwareOsMode
   nodeSetId: string
   hostTypeId: string
+  clusterTopology: CatalogClusterTopologyNodeSet[]
   clusterNodeTopologyMode: CatalogClusterNodeTopologyMode
   fieldPolicies: CatalogFieldPolicy[]
   publishScope: PublishCatalogScope
@@ -396,6 +415,10 @@ export function buildCatalogEditSnapshotFromWizardState(
     hostType: snapshotValue(
       state.hostTypeId,
       isClusterService ? formatClusterHostTypeLabel(state.hostTypeId) : '—',
+    ),
+    clusterTopology: snapshotValue(
+      serializeCatalogClusterTopology(state.clusterTopology),
+      isClusterService ? formatClusterTopologySnapshotDisplay(state.clusterTopology) : '—',
     ),
     clusterNodeTopologyMode: snapshotValue(
       state.clusterNodeTopologyMode,
@@ -454,15 +477,9 @@ const CHANGE_FIELD_CONFIG: ReadonlyArray<{
     isApplicable: (snapshot) => snapshot.isBaremetalService,
   },
   {
-    id: 'nodeSet',
+    id: 'clusterTopology',
     stepId: 'node-topology',
-    label: 'Node set',
-    isApplicable: (snapshot) => snapshot.isClusterService,
-  },
-  {
-    id: 'hostType',
-    stepId: 'node-topology',
-    label: 'Host type',
+    label: 'Node topology',
     isApplicable: (snapshot) => snapshot.isClusterService,
   },
   {
@@ -555,6 +572,7 @@ export function getEmptyCatalogEditSnapshot(): CatalogEditSnapshot {
     osImageMode: EMPTY_SNAPSHOT_VALUE,
     nodeSet: EMPTY_SNAPSHOT_VALUE,
     hostType: EMPTY_SNAPSHOT_VALUE,
+    clusterTopology: EMPTY_SNAPSHOT_VALUE,
     clusterNodeTopologyMode: EMPTY_SNAPSHOT_VALUE,
     fieldPolicies: EMPTY_SNAPSHOT_VALUE,
     visibility: EMPTY_SNAPSHOT_VALUE,

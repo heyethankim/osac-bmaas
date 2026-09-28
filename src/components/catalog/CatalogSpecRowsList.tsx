@@ -1,12 +1,29 @@
 import type { ReactNode } from 'react'
 import { Label } from '@patternfly/react-core'
-import type { CatalogSpecRow } from '../../catalog/catalogSpecs'
+import {
+  CLUSTER_NODE_SETS_PARENT_LABEL,
+  type CatalogSpecRow,
+} from '../../catalog/catalogSpecs'
 import { CatalogClusterVersionValue } from './CatalogClusterVersionValue'
 import { CatalogDiskImageValue } from './CatalogDiskImageValue'
 
 const DISK_IMAGE_SPEC_LABELS = new Set(['OS image', 'Disk image'])
 const INSTANCE_TYPE_PARENT_LABELS = new Set(['Instance type', 'Size'])
 const INSTANCE_TYPE_CHILD_LABELS = new Set(['CPU', 'RAM', 'GPU'])
+const TOP_LEVEL_SPEC_LABELS = new Set([
+  'Cluster version',
+  'Platform',
+  'OS image',
+  'Disk image',
+  'Instance type',
+  'Size',
+  CLUSTER_NODE_SETS_PARENT_LABEL,
+  'Tenant access to node topology',
+  'Network attachments',
+  'Boot disk',
+  'Validation',
+  'Worker nodes',
+])
 
 type CatalogSpecRowsListProps = {
   rows: CatalogSpecRow[]
@@ -18,34 +35,94 @@ type CatalogSpecRowsListProps = {
 
 type SpecDisplayBlock =
   | { kind: 'row'; row: CatalogSpecRow }
-  | { kind: 'instance-type-group'; parent: CatalogSpecRow; children: CatalogSpecRow[] }
+  | {
+      kind: 'nested-group'
+      parent: CatalogSpecRow
+      children: CatalogSpecRow[]
+      ariaLabel: string
+    }
 
 function isInstanceTypeParentLabel(label: string): boolean {
   return INSTANCE_TYPE_PARENT_LABELS.has(label)
 }
 
-function buildSpecDisplayBlocks(rows: CatalogSpecRow[]): SpecDisplayBlock[] {
-  const parent = rows.find((row) => isInstanceTypeParentLabel(row.label)) ?? null
-  const children = rows.filter((row) => INSTANCE_TYPE_CHILD_LABELS.has(row.label))
+function isNodeSetsParentLabel(label: string): boolean {
+  return label === CLUSTER_NODE_SETS_PARENT_LABEL
+}
 
-  if (!parent || children.length === 0) {
-    return rows.map((row) => ({ kind: 'row', row }))
+function collectNodeSetChildren(
+  rows: CatalogSpecRow[],
+  parentIndex: number,
+): CatalogSpecRow[] {
+  const children: CatalogSpecRow[] = []
+  for (let index = parentIndex + 1; index < rows.length; index += 1) {
+    const row = rows[index]
+    if (TOP_LEVEL_SPEC_LABELS.has(row.label) || isInstanceTypeParentLabel(row.label)) {
+      break
+    }
+    children.push(row)
   }
+  return children
+}
+
+function buildSpecDisplayBlocks(rows: CatalogSpecRow[]): SpecDisplayBlock[] {
+  const instanceParent = rows.find((row) => isInstanceTypeParentLabel(row.label)) ?? null
+  const instanceChildren = rows.filter((row) => INSTANCE_TYPE_CHILD_LABELS.has(row.label))
+  const nodeSetsParentIndex = rows.findIndex((row) => isNodeSetsParentLabel(row.label))
+  const nodeSetsParent = nodeSetsParentIndex >= 0 ? rows[nodeSetsParentIndex] : null
+  const nodeSetsChildren =
+    nodeSetsParentIndex >= 0 ? collectNodeSetChildren(rows, nodeSetsParentIndex) : []
+  const nodeSetChildLabels = new Set(nodeSetsChildren.map((row) => row.label))
 
   const blocks: SpecDisplayBlock[] = []
-  let grouped = false
+  let groupedInstanceType = false
+  let groupedNodeSets = false
 
   for (const row of rows) {
     if (isInstanceTypeParentLabel(row.label)) {
-      if (!grouped) {
-        blocks.push({ kind: 'instance-type-group', parent, children })
-        grouped = true
+      if (!groupedInstanceType && instanceParent && instanceChildren.length > 0) {
+        blocks.push({
+          kind: 'nested-group',
+          parent: instanceParent,
+          children: instanceChildren,
+          ariaLabel: 'Instance type specifications',
+        })
+        groupedInstanceType = true
+      } else if (!instanceParent || instanceChildren.length === 0) {
+        blocks.push({ kind: 'row', row })
       }
       continue
     }
+
     if (INSTANCE_TYPE_CHILD_LABELS.has(row.label)) {
+      if (!instanceParent || instanceChildren.length === 0) {
+        blocks.push({ kind: 'row', row })
+      }
       continue
     }
+
+    if (isNodeSetsParentLabel(row.label)) {
+      if (!groupedNodeSets && nodeSetsParent && nodeSetsChildren.length > 0) {
+        blocks.push({
+          kind: 'nested-group',
+          parent: nodeSetsParent,
+          children: nodeSetsChildren,
+          ariaLabel: 'Node sets',
+        })
+        groupedNodeSets = true
+      } else if (!nodeSetsParent || nodeSetsChildren.length === 0) {
+        blocks.push({ kind: 'row', row })
+      }
+      continue
+    }
+
+    if (nodeSetChildLabels.has(row.label)) {
+      if (!nodeSetsParent || nodeSetsChildren.length === 0) {
+        blocks.push({ kind: 'row', row })
+      }
+      continue
+    }
+
     blocks.push({ kind: 'row', row })
   }
 
@@ -58,6 +135,13 @@ function renderSpecRowValue(row: CatalogSpecRow): ReactNode {
   }
   if (DISK_IMAGE_SPEC_LABELS.has(row.label)) {
     return <CatalogDiskImageValue badge={row.badge}>{row.value}</CatalogDiskImageValue>
+  }
+  if (isNodeSetsParentLabel(row.label) && row.badge) {
+    return (
+      <Label color={row.badge.color} isCompact>
+        {row.badge.text}
+      </Label>
+    )
   }
   if (row.badge) {
     return (
@@ -101,7 +185,7 @@ export function CatalogSpecRowsList({
             <div
               className="catalog-spec-instance-type-group__children"
               role="group"
-              aria-label="Instance type specifications"
+              aria-label={block.ariaLabel}
             >
               {block.children.map((row) => renderRow(row))}
             </div>

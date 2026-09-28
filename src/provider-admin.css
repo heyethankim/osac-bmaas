@@ -4819,7 +4819,7 @@ a.provider-admin-network-inventory__related-link:hover {
 
 .provider-admin-catalog-items__spec-row {
   display: grid;
-  grid-template-columns: 5.5rem minmax(0, 1fr);
+  grid-template-columns: var(--catalog-spec-label-column-width, 6.75rem) minmax(0, 1fr);
   gap: var(--pf-t--global--spacer--sm);
   align-items: baseline;
 }
@@ -4829,6 +4829,7 @@ a.provider-admin-network-inventory__related-link:hover {
   color: var(--pf-t--global--text--color--subtle);
   font-size: var(--pf-t--global--font--size--body--sm);
   font-weight: var(--pf-t--global--font--weight--body--bold);
+  white-space: nowrap;
 }
 
 .provider-admin-catalog-items__spec-value {

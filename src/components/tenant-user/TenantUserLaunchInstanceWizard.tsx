@@ -349,6 +349,7 @@ export function TenantUserLaunchInstanceWizard({
               hostTypeId: catalogItem.hostTypeId,
               hostTypeLabel: catalogItem.hostTypeLabel,
               clusterNodeTopologyMode: catalogItem.clusterNodeTopologyMode,
+              clusterTopology: catalogItem.clusterTopology,
             },
             { includeDetails: true },
           )
@@ -371,6 +372,7 @@ export function TenantUserLaunchInstanceWizard({
       catalogItem.hostTypeId,
       catalogItem.hostTypeLabel,
       catalogItem.clusterNodeTopologyMode,
+      catalogItem.clusterTopology,
       catalogItem.specRows,
     ],
   )
@@ -834,6 +836,7 @@ export function TenantUserLaunchInstanceWizard({
                     catalogItem.hostTypeId,
                 ),
                 clusterNodeTopologyMode: catalogItem.clusterNodeTopologyMode,
+                clusterTopology: catalogItem.clusterTopology,
               }),
               { label: 'Release image', value: form.releaseImage.trim() },
               ...form.nodeSets.map((nodeSet, index) => ({

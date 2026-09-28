@@ -67,6 +67,7 @@ import {
   DEFAULT_CLUSTER_HOST_TYPE_ID,
   DEFAULT_CLUSTER_MACHINE_TYPE_ID,
   DEFAULT_CLUSTER_NODE_SET_ID,
+  DEFAULT_CLUSTER_TOPOLOGY_NODE_SETS,
   deriveClusterNodeSetIdFromName,
   formatClusterHostTypeLabel,
   formatClusterMachineTypeLabel,
@@ -93,11 +94,13 @@ import {
   MAX_CLUSTER_TOPOLOGY_NODE_SETS,
   MIN_CLUSTER_NODE_COUNT,
   pickPrimaryClusterTopologyRowIndex,
+  resolveCatalogClusterTopology,
   resolveCatalogClusterVersionMode,
   resolveCatalogHardwareOsMode,
   resolveCatalogOsImageMode,
   resolveCatalogClusterNodeTopologyMode,
   type CatalogClusterNodeTopologyMode,
+  type CatalogClusterTopologyNodeSet,
   type CatalogClusterVersionMode,
   type CatalogClusterVersionOption,
   type CatalogFieldPolicy,
@@ -157,11 +160,7 @@ type PublishClusterTopologyRow = {
 
 const DEFAULT_PUBLISH_CLUSTER_TOPOLOGY_ROWS: ReadonlyArray<
   Omit<PublishClusterTopologyRow, 'id'>
-> = [
-  { name: 'control-plane', machineTypeId: 'bm-cpu-64c', nodeCount: 3 },
-  { name: 'workers', machineTypeId: 'bm-cpu-32c', nodeCount: 5 },
-  { name: 'gpu-workers', machineTypeId: 'bm-gpu-h100', nodeCount: 2 },
-]
+> = DEFAULT_CLUSTER_TOPOLOGY_NODE_SETS
 
 function createPublishClusterTopologyRow(
   index: number,
@@ -178,6 +177,14 @@ function createPublishClusterTopologyRow(
 
 function createDefaultPublishClusterTopologyRows(): PublishClusterTopologyRow[] {
   return DEFAULT_PUBLISH_CLUSTER_TOPOLOGY_ROWS.map((row, index) =>
+    createPublishClusterTopologyRow(index + 1, row),
+  )
+}
+
+function createPublishClusterTopologyRowsFromCatalog(
+  topology: ReadonlyArray<Partial<CatalogClusterTopologyNodeSet>> | undefined | null,
+): PublishClusterTopologyRow[] {
+  return resolveCatalogClusterTopology(topology).map((row, index) =>
     createPublishClusterTopologyRow(index + 1, row),
   )
 }
@@ -619,6 +626,11 @@ export function ProviderSetupPublishCatalogWizard({
         osImageMode,
         nodeSetId: selectedNodeSetId,
         hostTypeId: selectedHostTypeId,
+        clusterTopology: clusterTopologyRows.map((row) => ({
+          name: row.name.trim(),
+          machineTypeId: row.machineTypeId,
+          nodeCount: row.nodeCount,
+        })),
         clusterNodeTopologyMode,
         fieldPolicies,
         publishScope,
@@ -629,6 +641,7 @@ export function ProviderSetupPublishCatalogWizard({
     )
   }, [
     clusterNodeTopologyMode,
+    clusterTopologyRows,
     clusterVersionMode,
     hardwareOsMode,
     osImageMode,
@@ -984,7 +997,7 @@ export function ProviderSetupPublishCatalogWizard({
     setOsImageMode(
       resolveCatalogOsImageMode(catalog.osImageMode, catalog.hardwareOsMode),
     )
-    setClusterTopologyRows(createDefaultPublishClusterTopologyRows())
+    setClusterTopologyRows(createPublishClusterTopologyRowsFromCatalog(catalog.clusterTopology))
     setClusterNodeTopologyMode(catalog.clusterNodeTopologyMode ?? 'locked')
     setFieldPolicies(catalog.fieldPolicies ?? [])
     setExpandedClusterVersionIds(new Set())
@@ -1279,6 +1292,11 @@ export function ProviderSetupPublishCatalogWizard({
             clusterNodeTopologyMode: resolveCatalogClusterNodeTopologyMode(
               clusterNodeTopologyMode,
             ),
+            clusterTopology: clusterTopologyRows.map((row) => ({
+              name: row.name.trim(),
+              machineTypeId: row.machineTypeId,
+              nodeCount: row.nodeCount,
+            })),
           }
         : isBareMetalService
           ? {

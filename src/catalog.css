@@ -1,9 +1,14 @@
 /* Shared view-mode toggle + layout helpers (catalog + instances) */
 
+/* Slightly wider than 5.5rem so labels like control-plane / Cluster version stay on one line. */
+:root {
+  --catalog-spec-label-column-width: 6.75rem;
+}
+
 .catalog-cluster-version-value {
   display: inline-flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: var(--pf-t--global--spacer--sm);
 }
 
@@ -16,7 +21,7 @@
 .catalog-spec-row-value-with-badge {
   display: inline-flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: var(--pf-t--global--spacer--sm);
 }
 
@@ -46,6 +51,7 @@
 
 .catalog-spec-instance-type-group__children dt {
   padding-inline-start: var(--pf-t--global--spacer--md);
+  white-space: nowrap;
 }
 
 .entity-details-page__dl--nested.pf-v6-c-description-list,
@@ -54,6 +60,11 @@
   padding-inline-start: var(--pf-t--global--spacer--md);
   border-inline-start: var(--pf-t--global--border--width--regular) solid
     var(--pf-t--global--border--color--default);
+}
+
+.entity-details-page__dl--nested .pf-v6-c-description-list__term,
+.provider-admin-catalog-item-details__dl--nested .pf-v6-c-description-list__term {
+  white-space: nowrap;
 }
 
 .catalog-view-toggle {
@@ -260,7 +271,7 @@
 
 .catalog-table-spec-row {
   display: grid;
-  grid-template-columns: 5.5rem minmax(0, 1fr);
+  grid-template-columns: var(--catalog-spec-label-column-width) minmax(0, 1fr);
   gap: var(--pf-t--global--spacer--sm);
   align-items: baseline;
 }
@@ -270,6 +281,7 @@
   color: var(--pf-t--global--text--color--subtle);
   font-size: var(--pf-t--global--font--size--body--sm);
   font-weight: var(--pf-t--global--font--weight--body--bold);
+  white-space: nowrap;
 }
 
 .catalog-table-spec-value {

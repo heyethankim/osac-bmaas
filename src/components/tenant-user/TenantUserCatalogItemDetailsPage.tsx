@@ -56,6 +56,7 @@ export function TenantUserCatalogItemDetailsPage({
       hostTypeId: catalogItem.hostTypeId,
       hostTypeLabel: catalogItem.hostTypeLabel,
       clusterNodeTopologyMode: catalogItem.clusterNodeTopologyMode,
+      clusterTopology: catalogItem.clusterTopology,
     },
     { includeDetails: catalogItem.serviceId !== 'baremetal' },
   )
@@ -85,6 +86,7 @@ export function TenantUserCatalogItemDetailsPage({
         hostTypeId: catalogItem.hostTypeId,
         hostTypeLabel: catalogItem.hostTypeLabel,
         clusterNodeTopologyMode: catalogItem.clusterNodeTopologyMode,
+        clusterTopology: catalogItem.clusterTopology,
       })
     : []
   const displaySpecRows =
@@ -98,6 +100,8 @@ export function TenantUserCatalogItemDetailsPage({
             row.label !== 'Cluster version' &&
             row.label !== 'Node set' &&
             row.label !== 'Host type' &&
+            row.label !== 'Node sets' &&
+            row.label !== 'Tenant access to node topology' &&
             row.label !== 'Size' &&
             row.label !== 'OS image',
         )
@@ -114,6 +118,7 @@ export function TenantUserCatalogItemDetailsPage({
                 row.label !== 'Cluster version' &&
                 row.label !== 'Node set' &&
                 row.label !== 'Host type' &&
+                row.label !== 'Node sets' &&
                 row.label !== 'Cluster size',
             )
           : specRows
@@ -194,6 +199,7 @@ export function TenantUserCatalogItemDetailsPage({
                 hostTypeId: catalogItem.hostTypeId,
                 hostTypeLabel: catalogItem.hostTypeLabel,
                 clusterNodeTopologyMode: catalogItem.clusterNodeTopologyMode,
+                clusterTopology: catalogItem.clusterTopology,
               },
               { includeDetails: true },
             ),

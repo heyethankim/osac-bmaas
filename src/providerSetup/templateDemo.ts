@@ -403,6 +403,12 @@ export type PublishedTemplatePayload = {
   hostTypeLabel?: string
   /** Cluster node set / host type: locked (default) or editable at provisioning. */
   clusterNodeTopologyMode?: 'locked' | 'editable'
+  /** Cluster Node topology rows (name, machine type, count). */
+  clusterTopology?: Array<{
+    name: string
+    machineTypeId: string
+    nodeCount: number
+  }>
   /** Locked vs exposed field policies for launch. */
   fieldPolicies?: CatalogFieldPolicy[]
 }

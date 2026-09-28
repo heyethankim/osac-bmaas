@@ -123,6 +123,7 @@ export function toProviderCatalogDraftFromTenantCatalogItem(
     hostTypeId: config.hostTypeId,
     hostTypeLabel: config.hostTypeLabel,
     clusterNodeTopologyMode: config.clusterNodeTopologyMode,
+    clusterTopology: config.clusterTopology,
     fieldPolicies: config.fieldPolicies,
     status: item.status === 'Unpublished' ? 'unpublished' : 'live',
   }

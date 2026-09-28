@@ -2062,7 +2062,7 @@
 
 .tenant-admin-catalog-manager__spec-row {
   display: grid;
-  grid-template-columns: 5.5rem minmax(0, 1fr);
+  grid-template-columns: var(--catalog-spec-label-column-width, 6.75rem) minmax(0, 1fr);
   gap: var(--pf-t--global--spacer--sm);
   align-items: baseline;
 }
@@ -2072,6 +2072,7 @@
   color: var(--pf-t--global--text--color--subtle);
   font-size: var(--pf-t--global--font--size--body--sm);
   font-weight: var(--pf-t--global--font--weight--body--bold);
+  white-space: nowrap;
 }
 
 .tenant-admin-catalog-manager__spec-value {
@@ -3113,7 +3114,7 @@
 
 .tenant-user-catalog__spec-row {
   display: grid;
-  grid-template-columns: 5.5rem minmax(0, 1fr);
+  grid-template-columns: var(--catalog-spec-label-column-width, 6.75rem) minmax(0, 1fr);
   gap: var(--pf-t--global--spacer--sm);
   align-items: baseline;
 }
@@ -3123,6 +3124,7 @@
   color: var(--pf-t--global--text--color--subtle);
   font-size: var(--pf-t--global--font--size--body--sm);
   font-weight: var(--pf-t--global--font--weight--body--bold);
+  white-space: nowrap;
 }
 
 .tenant-user-catalog__spec-value {

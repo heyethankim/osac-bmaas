@@ -25,10 +25,12 @@ import {
   DEFAULT_CLUSTER_CATALOG_VERSION_ID,
   DEFAULT_CLUSTER_HOST_TYPE_ID,
   DEFAULT_CLUSTER_NODE_SET_ID,
+  DEFAULT_CLUSTER_TOPOLOGY_NODE_SETS,
   formatBaremetalInstanceTypeLabel,
   formatClusterHostTypeLabel,
   formatClusterNodeSetLabel,
   formatClusterPlatformLabel,
+  resolveCatalogClusterTopology,
 } from '../catalog/catalogPublishConfig'
 import { getDefaultMasterTemplate, getStandardClusterTemplate } from '../providerAdmin/bmaasTemplates'
 import {
@@ -205,6 +207,7 @@ function createClusterNodeSetsCatalogDraft(): ProviderCatalogDraft {
     hostTypeId: DEFAULT_CLUSTER_HOST_TYPE_ID,
     hostTypeLabel: formatClusterHostTypeLabel(DEFAULT_CLUSTER_HOST_TYPE_ID),
     clusterNodeTopologyMode: 'editable',
+    clusterTopology: DEFAULT_CLUSTER_TOPOLOGY_NODE_SETS.map((row) => ({ ...row })),
     networkPolicy: createAllEditableCatalogNetworkPolicy(),
     status: 'live',
     createdAt: new Date().toISOString(),
@@ -529,6 +532,18 @@ function syncClusterCatalogVersionLabels(): void {
     const hostTypeId = item.hostTypeId?.trim() || DEFAULT_CLUSTER_HOST_TYPE_ID
     const nodeSetLabel = formatClusterNodeSetLabel(item.nodeSetLabel?.trim() || nodeSetId)
     const hostTypeLabel = formatClusterHostTypeLabel(item.hostTypeLabel?.trim() || hostTypeId)
+    const clusterTopology = resolveCatalogClusterTopology(item.clusterTopology)
+    const topologyNeedsSync =
+      !item.clusterTopology?.length ||
+      item.clusterTopology.length !== clusterTopology.length ||
+      item.clusterTopology.some((row, index) => {
+        const expected = clusterTopology[index]
+        return (
+          row.name !== expected.name ||
+          row.machineTypeId !== expected.machineTypeId ||
+          row.nodeCount !== expected.nodeCount
+        )
+      })
     // Demo Node Sets offering: topology stays editable so launch can add node sets.
     const desiredTopologyMode =
       item.catalogItemId === CLUSTER_NODE_SETS_CATALOG_ITEM_ID ||
@@ -540,7 +555,8 @@ function syncClusterCatalogVersionLabels(): void {
       item.nodeSetLabel !== nodeSetLabel ||
       item.hostTypeId !== hostTypeId ||
       item.hostTypeLabel !== hostTypeLabel ||
-      item.clusterNodeTopologyMode !== desiredTopologyMode
+      item.clusterNodeTopologyMode !== desiredTopologyMode ||
+      topologyNeedsSync
     ) {
       patchProviderCatalogItem(item.catalogItemId, {
         nodeSetId,
@@ -548,6 +564,7 @@ function syncClusterCatalogVersionLabels(): void {
         hostTypeId,
         hostTypeLabel,
         clusterNodeTopologyMode: desiredTopologyMode,
+        clusterTopology,
       })
     }
   }

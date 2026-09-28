@@ -2,9 +2,8 @@ import type { ProviderCatalogDraft } from '../providerSetup/storage'
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
 import {
   CATALOG_INSTANCE_TYPE_OPTIONS,
-  formatClusterHostTypeLabel,
-  formatClusterNodeSetLabel,
   formatClusterPlatformLabel,
+  formatClusterTopologyNodeSetValue,
   getCatalogClusterNodeTopologyModeLabel,
   getCatalogClusterVersionModeLabel,
   normalizeCatalogDiskImageDisplayLabel,
@@ -13,10 +12,12 @@ import {
   getCatalogOsImageModeLabel,
   resolveBaremetalInstanceTypeHardware,
   resolveCatalogClusterNodeTopologyMode,
+  resolveCatalogClusterTopology,
   resolveCatalogClusterVersionMode,
   resolveCatalogHardwareOsMode,
   resolveCatalogOsImageMode,
   type CatalogClusterNodeTopologyMode,
+  type CatalogClusterTopologyNodeSet,
   type CatalogClusterVersionMode,
   type CatalogHardwareOsMode,
 } from './catalogPublishConfig'
@@ -61,9 +62,7 @@ export const CLUSTER_NODE_SETS_RATE_CARD = {
 }
 
 /** Extra detail-page rows for Cluster offerings (tenant-facing). */
-const CLUSTER_NODE_SETS_DETAIL_ROWS: CatalogSpecRow[] = [
-  { label: 'Worker nodes', value: '1–4 nodes' },
-]
+const CLUSTER_NODE_SETS_DETAIL_ROWS: CatalogSpecRow[] = []
 
 /** Demo offering: whole-array validation on `network_attachments`. */
 export const VM_NETWORK_ATTACHMENTS_TEMPLATE_REF_ID = 'vm-network-attachments'
@@ -248,16 +247,31 @@ function getOsImageModeBadge(
   }
 }
 
-function resolveClusterNodeSetDisplayLabel(
-  item: Pick<ProviderCatalogDraft, 'nodeSetLabel' | 'nodeSetId'>,
-): string {
-  return formatClusterNodeSetLabel(item.nodeSetLabel?.trim() || item.nodeSetId)
-}
+/** Parent row for nested node-set children (matches Instance type → CPU/RAM/GPU). */
+export const CLUSTER_NODE_SETS_PARENT_LABEL = 'Node sets'
 
-function resolveClusterHostTypeDisplayLabel(
-  item: Pick<ProviderCatalogDraft, 'hostTypeLabel' | 'hostTypeId'>,
-): string {
-  return formatClusterHostTypeLabel(item.hostTypeLabel?.trim() || item.hostTypeId)
+function buildClusterTopologySpecRows(
+  topology: ReadonlyArray<CatalogClusterTopologyNodeSet>,
+  options?: {
+    compact?: boolean
+    topologyMode?: CatalogClusterNodeTopologyMode
+  },
+): CatalogSpecRow[] {
+  const topologyBadge = getClusterNodeTopologyModeBadge(options?.topologyMode)
+  const rows: CatalogSpecRow[] = [
+    {
+      label: CLUSTER_NODE_SETS_PARENT_LABEL,
+      value: topologyBadge?.text ?? 'Locked',
+      badge: topologyBadge,
+    },
+  ]
+  for (const nodeSet of topology) {
+    rows.push({
+      label: nodeSet.name,
+      value: formatClusterTopologyNodeSetValue(nodeSet, { compact: options?.compact }),
+    })
+  }
+  return rows
 }
 
 function buildClusterCatalogSpecRows(
@@ -271,30 +285,29 @@ function buildClusterCatalogSpecRows(
     | 'hostTypeId'
     | 'hostTypeLabel'
     | 'clusterNodeTopologyMode'
+    | 'clusterTopology'
   >,
   options?: { includeDetails?: boolean },
 ): CatalogSpecRow[] {
   const versionLabel = resolveClusterVersionDisplayLabel(item)
-  const topologyBadge = getClusterNodeTopologyModeBadge(item.clusterNodeTopologyMode)
+  const topology = resolveCatalogClusterTopology(item.clusterTopology)
   const rows: CatalogSpecRow[] = [
     {
       label: 'Cluster version',
       value: versionLabel || '—',
       badge: getClusterVersionModeBadge(item.clusterVersionMode),
     },
-    {
-      label: 'Node set',
-      value: resolveClusterNodeSetDisplayLabel(item),
-      badge: topologyBadge,
-    },
-    {
-      label: 'Host type',
-      value: resolveClusterHostTypeDisplayLabel(item),
-      badge: topologyBadge,
-    },
+    ...buildClusterTopologySpecRows(topology, {
+      compact: !options?.includeDetails,
+      topologyMode: item.clusterNodeTopologyMode,
+    }),
   ]
 
-  return options?.includeDetails ? [...rows, ...CLUSTER_NODE_SETS_DETAIL_ROWS] : rows
+  if (options?.includeDetails && CLUSTER_NODE_SETS_DETAIL_ROWS.length > 0) {
+    rows.push(...CLUSTER_NODE_SETS_DETAIL_ROWS)
+  }
+
+  return rows
 }
 
 /** Cluster version + node topology for Cluster catalog drawers. */
@@ -313,13 +326,10 @@ export function resolveClusterCatalogHighlightRows(
     | 'hostTypeId'
     | 'hostTypeLabel'
     | 'clusterNodeTopologyMode'
+    | 'clusterTopology'
   >,
 ): CatalogSpecRow[] {
-  const rows = resolveCatalogSpecRows(item)
-  const labels = ['Cluster version', 'Node set', 'Host type'] as const
-  return labels
-    .map((label) => rows.find((row) => row.label === label))
-    .filter((row): row is CatalogSpecRow => Boolean(row))
+  return resolveCatalogSpecRows(item)
 }
 
 function resolveBaremetalDiskImageLabel(
@@ -419,6 +429,7 @@ export function resolveCatalogSpecRows(
     | 'hostTypeId'
     | 'hostTypeLabel'
     | 'clusterNodeTopologyMode'
+    | 'clusterTopology'
     | 'hardwareOsMode'
     | 'osImageMode'
   >,
@@ -494,6 +505,7 @@ export function formatCatalogConfigurationSummary(
     | 'hostTypeId'
     | 'hostTypeLabel'
     | 'clusterNodeTopologyMode'
+    | 'clusterTopology'
     | 'hardwareOsMode'
     | 'osImageMode'
   >,

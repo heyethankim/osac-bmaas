@@ -92,6 +92,7 @@ export function TenantCatalogItemDetailsPage({
         hostTypeId: item.hostTypeId,
         hostTypeLabel: item.hostTypeLabel,
         clusterNodeTopologyMode: item.clusterNodeTopologyMode,
+        clusterTopology: item.clusterTopology,
       })
     : []
   const displaySpecRows =
@@ -105,6 +106,8 @@ export function TenantCatalogItemDetailsPage({
             row.label !== 'Cluster version' &&
             row.label !== 'Node set' &&
             row.label !== 'Host type' &&
+            row.label !== 'Node sets' &&
+            row.label !== 'Tenant access to node topology' &&
             row.label !== 'Size' &&
             row.label !== 'OS image',
         )
@@ -121,6 +124,7 @@ export function TenantCatalogItemDetailsPage({
                 row.label !== 'Cluster version' &&
                 row.label !== 'Node set' &&
                 row.label !== 'Host type' &&
+                row.label !== 'Node sets' &&
                 row.label !== 'Cluster size',
             )
           : specRows
@@ -228,6 +232,7 @@ export function TenantCatalogItemDetailsPage({
                 hostTypeId: item.hostTypeId,
                 hostTypeLabel: item.hostTypeLabel,
                 clusterNodeTopologyMode: item.clusterNodeTopologyMode,
+                clusterTopology: item.clusterTopology,
               },
               { includeDetails: true },
             ),

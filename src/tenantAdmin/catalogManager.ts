@@ -60,6 +60,11 @@ export type TenantCatalogGovernanceItem = {
   hostTypeId?: string
   hostTypeLabel?: string
   clusterNodeTopologyMode?: 'locked' | 'editable'
+  clusterTopology?: Array<{
+    name: string
+    machineTypeId: string
+    nodeCount: number
+  }>
   fieldPolicies?: CatalogFieldPolicy[]
   /** Card/table configuration rows (service-aware). */
   specRows: CatalogSpecRow[]
@@ -189,6 +194,7 @@ function mapProviderCatalogToGovernanceItem(
     hostTypeId: draft.hostTypeId,
     hostTypeLabel: draft.hostTypeLabel,
     clusterNodeTopologyMode: draft.clusterNodeTopologyMode,
+    clusterTopology: draft.clusterTopology,
     fieldPolicies: draft.fieldPolicies,
     specRows,
     categoryLabel: specRows.map((row) => row.value).join(' · '),
@@ -371,6 +377,7 @@ export function getTenantCatalogItemDetailSpecRows(
       hostTypeId: item.hostTypeId,
       hostTypeLabel: item.hostTypeLabel,
       clusterNodeTopologyMode: item.clusterNodeTopologyMode,
+      clusterTopology: item.clusterTopology,
     },
     { includeDetails: true },
   )

@@ -299,6 +299,12 @@ export type ProviderCatalogDraft = {
    * Defaults to locked when omitted.
    */
   clusterNodeTopologyMode?: CatalogClusterNodeTopologyMode
+  /** Cluster Node topology rows from the publish wizard. */
+  clusterTopology?: Array<{
+    name: string
+    machineTypeId: string
+    nodeCount: number
+  }>
   /** Locked vs exposed field policies for launch. */
   fieldPolicies?: CatalogFieldPolicy[]
 }
@@ -683,6 +689,11 @@ export function duplicateProviderCatalogItem(catalogItemId: string): ProviderCat
     ...(source.clusterNodeTopologyMode
       ? { clusterNodeTopologyMode: source.clusterNodeTopologyMode }
       : {}),
+    ...(source.clusterTopology?.length
+      ? {
+          clusterTopology: source.clusterTopology.map((row) => ({ ...row })),
+        }
+      : {}),
     ...(source.fieldPolicies?.length
       ? { fieldPolicies: source.fieldPolicies.map((policy) => ({ ...policy })) }
       : {}),
@@ -839,6 +850,11 @@ export function updateProviderCatalogItemFromPayload(
     ...(payload.clusterNodeTopologyMode
       ? { clusterNodeTopologyMode: payload.clusterNodeTopologyMode }
       : {}),
+    ...(payload.clusterTopology?.length
+      ? {
+          clusterTopology: payload.clusterTopology.map((row) => ({ ...row })),
+        }
+      : {}),
     ...(payload.fieldPolicies?.length ? { fieldPolicies: payload.fieldPolicies } : {}),
   }
 
@@ -940,6 +956,7 @@ export function patchProviderCatalogItem(
       | 'hostTypeId'
       | 'hostTypeLabel'
       | 'clusterNodeTopologyMode'
+      | 'clusterTopology'
       | 'hardwareOsMode'
       | 'osImageMode'
       | 'rateCard'

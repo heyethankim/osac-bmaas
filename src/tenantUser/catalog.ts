@@ -62,6 +62,11 @@ export type TenantUserCatalogCard = {
   hostTypeId?: string
   hostTypeLabel?: string
   clusterNodeTopologyMode?: 'locked' | 'editable'
+  clusterTopology?: Array<{
+    name: string
+    machineTypeId: string
+    nodeCount: number
+  }>
   fieldPolicies?: CatalogFieldPolicy[]
   rateCard: RateCard
   scope: PublishCatalogScope
@@ -217,6 +222,7 @@ export function getTenantUserCatalogCardFromDraft(
     hostTypeId: catalog.hostTypeId,
     hostTypeLabel: catalog.hostTypeLabel,
     clusterNodeTopologyMode: catalog.clusterNodeTopologyMode,
+    clusterTopology: catalog.clusterTopology,
     fieldPolicies: catalog.fieldPolicies,
     rateCard,
     scope: catalog.scope,

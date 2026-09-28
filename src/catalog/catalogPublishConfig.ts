@@ -319,6 +319,71 @@ export const MIN_CLUSTER_TOPOLOGY_NODE_SETS = 3
 export const MIN_CLUSTER_NODE_COUNT = 1
 export const MAX_CLUSTER_NODE_COUNT = 20
 
+/** Persisted Node topology rows on a Cluster catalog item. */
+export type CatalogClusterTopologyNodeSet = {
+  name: string
+  machineTypeId: string
+  nodeCount: number
+}
+
+/** Demo defaults shown in the publish wizard and on cluster detail. */
+export const DEFAULT_CLUSTER_TOPOLOGY_NODE_SETS: ReadonlyArray<CatalogClusterTopologyNodeSet> = [
+  { name: 'control-plane', machineTypeId: 'bm-cpu-64c', nodeCount: 3 },
+  { name: 'workers', machineTypeId: 'bm-cpu-32c', nodeCount: 5 },
+  { name: 'gpu-workers', machineTypeId: 'bm-gpu-h100', nodeCount: 2 },
+]
+
+function normalizeCatalogClusterTopologyNodeSet(
+  row: Partial<CatalogClusterTopologyNodeSet> | null | undefined,
+  fallback: CatalogClusterTopologyNodeSet = DEFAULT_CLUSTER_TOPOLOGY_NODE_SETS[0],
+): CatalogClusterTopologyNodeSet {
+  const machineTypeId =
+    getCatalogClusterMachineTypeOption(row?.machineTypeId)?.id ??
+    fallback.machineTypeId
+  const parsedCount = Number(row?.nodeCount)
+  const nodeCount =
+    Number.isFinite(parsedCount) && parsedCount >= MIN_CLUSTER_NODE_COUNT
+      ? Math.min(MAX_CLUSTER_NODE_COUNT, Math.floor(parsedCount))
+      : fallback.nodeCount
+  const name = row?.name?.trim() || fallback.name
+  return { name, machineTypeId, nodeCount }
+}
+
+/** Prefer stored topology; fall back to the three demo node sets. */
+export function resolveCatalogClusterTopology(
+  topology: ReadonlyArray<Partial<CatalogClusterTopologyNodeSet>> | undefined | null,
+): CatalogClusterTopologyNodeSet[] {
+  if (!topology?.length) {
+    return DEFAULT_CLUSTER_TOPOLOGY_NODE_SETS.map((row) => ({ ...row }))
+  }
+  return topology.map((row, index) =>
+    normalizeCatalogClusterTopologyNodeSet(
+      row,
+      DEFAULT_CLUSTER_TOPOLOGY_NODE_SETS[index] ?? DEFAULT_CLUSTER_TOPOLOGY_NODE_SETS[0],
+    ),
+  )
+}
+
+export function formatClusterTopologyNodeSetValue(
+  nodeSet: CatalogClusterTopologyNodeSet,
+  options?: { compact?: boolean },
+): string {
+  const machineLabel = options?.compact
+    ? getCatalogClusterMachineTypeOption(nodeSet.machineTypeId)?.label ??
+      nodeSet.machineTypeId
+    : formatClusterMachineTypeLabel(nodeSet.machineTypeId)
+  const nodeLabel = `${nodeSet.nodeCount} ${nodeSet.nodeCount === 1 ? 'node' : 'nodes'}`
+  return `${machineLabel} · ${nodeLabel}`
+}
+
+export function serializeCatalogClusterTopology(
+  topology: ReadonlyArray<CatalogClusterTopologyNodeSet>,
+): string {
+  return resolveCatalogClusterTopology(topology)
+    .map((row) => `${row.name}|${row.machineTypeId}|${row.nodeCount}`)
+    .join(';')
+}
+
 export function getCatalogClusterNodeSetOptions(): CatalogClusterNodeSetOption[] {
   return [...CATALOG_CLUSTER_NODE_SET_OPTIONS]
 }
