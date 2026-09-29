@@ -7300,8 +7300,12 @@ a.provider-admin-network-inventory__related-link:hover {
 }
 
 .provider-setup-template__cluster-node-sets-table.pf-v6-c-table {
-  --pf-v6-c-table--Cell--PaddingBlock: var(--pf-t--global--spacer--sm);
-  --pf-v6-c-table--Cell--PaddingInline: var(--pf-t--global--spacer--sm);
+  --pf-v6-c-table--m-compact--cell--PaddingBlockStart: var(--pf-t--global--spacer--md);
+  --pf-v6-c-table--m-compact--cell--PaddingBlockEnd: var(--pf-t--global--spacer--md);
+  --pf-v6-c-table--m-compact__th--PaddingBlockStart: var(--pf-t--global--spacer--sm);
+  --pf-v6-c-table--m-compact__th--PaddingBlockEnd: var(--pf-t--global--spacer--xs);
+  --pf-v6-c-table--cell--PaddingInlineStart: var(--pf-t--global--spacer--sm);
+  --pf-v6-c-table--cell--PaddingInlineEnd: var(--pf-t--global--spacer--sm);
   margin-block-end: var(--pf-t--global--spacer--sm);
 }
 
