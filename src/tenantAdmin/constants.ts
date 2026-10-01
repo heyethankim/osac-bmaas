@@ -8,6 +8,7 @@ export type TenantAdminNavId =
   | 'projects-teams'
   | 'administration-roles'
   | 'administration-billing'
+  | 'administration-identity-provider'
   | 'networking-virtual-networks'
   | 'networking-subnets'
   | 'networking-security-groups'
@@ -55,6 +56,7 @@ export const TENANT_ADMIN_ADMINISTRATION_NAV_ITEMS: ReadonlyArray<{
 }> = [
   { id: 'administration-roles', label: 'Roles' },
   { id: 'administration-billing', label: 'Billing' },
+  { id: 'administration-identity-provider', label: 'Identity provider' },
 ]
 
 export const TENANT_ADMIN_NAV_ITEMS: TenantAdminNavItem[] = [

@@ -11,6 +11,7 @@ import { TenantAdminOverviewPage } from './tenant-admin/TenantAdminOverviewPage'
 import { TenantAdminAdministratorsPage } from './tenant-admin/TenantAdminAdministratorsPage'
 import { TenantAdminBillingPage } from './tenant-admin/TenantAdminBillingPage'
 import { TenantAdminProjectsTeamsPage } from './tenant-admin/TenantAdminProjectsTeamsPage'
+import { IdpManagerIdentityProviderPage } from './idp-manager/IdpManagerIdentityProviderPage'
 import { TenantSecretsPage } from './tenant/TenantSecretsPage'
 import { TenantUserInstancesPage } from './tenant-user/TenantUserInstancesPage'
 import {
@@ -72,6 +73,7 @@ function isTenantAdminNavId(value: string | null): value is TenantAdminNavId {
     value === 'projects-teams' ||
     value === 'administration-roles' ||
     value === 'administration-billing' ||
+    value === 'administration-identity-provider' ||
     value === 'networking-virtual-networks' ||
     value === 'networking-external-ip-pools' ||
     value === 'secrets'
@@ -391,6 +393,14 @@ export function TenantAdminWorkspacePage() {
         )
       case 'administration-billing':
         return <TenantAdminBillingPage organization={organization} />
+      case 'administration-identity-provider':
+        return (
+          <IdpManagerIdentityProviderPage
+            organization={organization}
+            onOrganizationChange={setOrganization}
+            identityProviderConnectedBy="provider-admin"
+          />
+        )
       case 'networking-virtual-networks':
         return (
           <ProviderAdminVirtualNetworksPage

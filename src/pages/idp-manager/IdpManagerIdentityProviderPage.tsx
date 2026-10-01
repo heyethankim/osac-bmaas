@@ -1,9 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
   Breadcrumb,
   BreadcrumbItem,
   Button,
+  Card,
+  CardBody,
   Content,
   EmptyState,
   EmptyStateActions,
@@ -23,9 +26,25 @@ import {
 import { ActionsColumn, Table, Tbody, Td, Th, Thead, Tr, type IAction } from '@patternfly/react-table'
 import { CatalogFilterEmptyState } from '../../components/catalog/CatalogFilterEmptyState'
 import { CatalogFilterResultsSummary } from '../../components/catalog/CatalogFilterResultsSummary'
+import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
+import { ViewModeToggle } from '../../components/catalog/CatalogViewToggle'
+import {
+  IDENTITY_PROVIDER_CARD_ICON,
+  renderInventoryCardIcon,
+} from '../../components/catalog/inventoryCardIcons'
 import { ConnectIdentityProviderWizard } from '../../components/idp-manager/ConnectIdentityProviderWizard'
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
+import {
+  getAdministrationViewMode,
+  setAdministrationViewMode,
+  type ViewMode,
+} from '../../catalog/viewMode'
 import { IDP_MANAGER_IDENTITY_PROVIDER_COPY } from '../../idpManager/constants'
+import {
+  WORKSPACE_ACTION_CONNECT_IDENTITY_PROVIDER,
+  getWorkspaceActionParam,
+  syncWorkspaceActionParam,
+} from '../../shared/workspaceNavUrl'
 import {
   buildIdentityProviderFilterParts,
   removeOrganizationIdentityProvider,
@@ -55,6 +74,7 @@ export function IdpManagerIdentityProviderPage({
   onBackToTenantDetails,
   identityProviderConnectedBy,
 }: IdpManagerIdentityProviderPageProps) {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [editingProvider, setEditingProvider] = useState<OrganizationIdentityProvider | null>(
     null,
@@ -65,7 +85,21 @@ export function IdpManagerIdentityProviderPage({
   const [selectedProtocol, setSelectedProtocol] =
     useState<IdentityProviderProtocolFilter>('all')
   const [selectedStatus, setSelectedStatus] = useState<IdentityProviderStatusFilter>('all')
+  const [viewMode, setViewMode] = useState<ViewMode>(() => getAdministrationViewMode())
   const providers = resolveOrganizationIdentityProviders(organization)
+
+  useEffect(() => {
+    const isCreateAction =
+      getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_CONNECT_IDENTITY_PROVIDER
+    if (isCreateAction) {
+      setEditingProvider(null)
+      setIsWizardOpen(true)
+      return
+    }
+    if (!editingProvider) {
+      setIsWizardOpen(false)
+    }
+  }, [editingProvider, searchParams])
 
   const filteredProviders = useMemo(() => {
     const query = searchValue.trim().toLowerCase()
@@ -106,9 +140,14 @@ export function IdpManagerIdentityProviderPage({
     setSelectedStatus('all')
   }
 
+  const handleViewModeChange = (mode: ViewMode) => {
+    setViewMode(mode)
+    setAdministrationViewMode(mode)
+  }
+
   const openCreateWizard = () => {
     setEditingProvider(null)
-    setIsWizardOpen(true)
+    syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_CONNECT_IDENTITY_PROVIDER)
   }
 
   const openEditWizard = (provider: OrganizationIdentityProvider) => {
@@ -117,8 +156,12 @@ export function IdpManagerIdentityProviderPage({
   }
 
   const closeWizard = () => {
-    setIsWizardOpen(false)
     setEditingProvider(null)
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_CONNECT_IDENTITY_PROVIDER) {
+      syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    } else {
+      setIsWizardOpen(false)
+    }
   }
 
   const handleConfirmRemove = () => {
@@ -275,6 +318,12 @@ export function IdpManagerIdentityProviderPage({
                 aria-label="Search identity providers"
               />
             </div>
+            <ViewModeToggle
+              viewMode={viewMode}
+              onChange={handleViewModeChange}
+              idPrefix="identity-provider-view"
+              ariaLabel="Identity providers view"
+            />
           </div>
 
           {filteredProviders.length === 0 ? (
@@ -283,6 +332,70 @@ export function IdpManagerIdentityProviderPage({
               description={IDP_MANAGER_IDENTITY_PROVIDER_COPY.filterEmptyBody}
               onClearFilters={clearAllFilters}
             />
+          ) : viewMode === 'grid' ? (
+            <>
+              <CatalogFilterResultsSummary
+                filteredCount={filteredProviders.length}
+                totalCount={providers.length}
+                singular="identity provider"
+                filterParts={filterDescriptionParts}
+                onClearFilters={hasActiveFilters ? clearAllFilters : undefined}
+              />
+              <div className="catalog-card-grid catalog-card-grid--stable tenant-admin-administration__grid">
+                {filteredProviders.map((provider) => (
+                  <Card
+                    key={provider.id}
+                    isCompact={false}
+                    className="tenant-admin-administration__card"
+                  >
+                    <CardBody>
+                      <div className="tenant-admin-administration__card-header">
+                        <span className="tenant-admin-administration__card-icon" aria-hidden>
+                          {renderInventoryCardIcon(IDENTITY_PROVIDER_CARD_ICON)}
+                        </span>
+                        <div className="tenant-admin-administration__card-header-actions">
+                          <Label
+                            color="green"
+                            isCompact
+                            className="tenant-admin-administration__card-label"
+                          >
+                            Connected
+                          </Label>
+                          <ActionsColumn items={getProviderActions(provider)} />
+                        </div>
+                      </div>
+                      <Content
+                        component="p"
+                        className="tenant-admin-administration__name-cell"
+                      >
+                        {provider.displayName}
+                      </Content>
+                      <div className="idp-manager-identity-provider__card-identity">
+                        <Content
+                          component="p"
+                          className="tenant-admin-administration__meta-cell tenant-admin-administration__card-email"
+                        >
+                          {provider.clientId}
+                        </Content>
+                      </div>
+                      <CatalogSpecRowsList
+                        rows={[
+                          {
+                            label: 'Protocol',
+                            value: identityProviderProtocolLabel(provider.protocol),
+                          },
+                          { label: 'Issuer URL', value: provider.issuerUrl },
+                        ]}
+                        className="tenant-admin-administration__specs-list"
+                        rowClassName="tenant-admin-administration__spec-row idp-manager-identity-provider__card-spec-row"
+                        labelClassName="tenant-admin-administration__spec-label"
+                        valueClassName="tenant-admin-administration__spec-value idp-manager-identity-provider__card-spec-value"
+                      />
+                    </CardBody>
+                  </Card>
+                ))}
+              </div>
+            </>
           ) : (
             <div className="catalog-table-panel">
               <CatalogFilterResultsSummary
@@ -337,9 +450,7 @@ export function IdpManagerIdentityProviderPage({
                         dataLabel="Protocol"
                         className="tenant-admin-administration__col-role"
                       >
-                        <Label color="grey" isCompact>
-                          {identityProviderProtocolLabel(provider.protocol)}
-                        </Label>
+                        {identityProviderProtocolLabel(provider.protocol)}
                       </Td>
                       <Td
                         dataLabel="Issuer URL"

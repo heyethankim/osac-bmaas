@@ -12,6 +12,7 @@ export const VIRTUAL_NETWORK_CARD_ICON: InventoryCardIconComponent = RhUiZoneIco
 export const EXTERNAL_NETWORK_CARD_ICON: InventoryCardIconComponent = RhUiConnectedIcon
 export const SECRET_CARD_ICON: InventoryCardIconComponent = RhUiKeyIcon
 export const ADMINISTRATOR_CARD_ICON: InventoryCardIconComponent = RhUiProfileIcon
+export const IDENTITY_PROVIDER_CARD_ICON: InventoryCardIconComponent = RhUiConnectedIcon
 
 export function renderInventoryCardIcon(Icon: InventoryCardIconComponent) {
   return <Icon aria-hidden />
