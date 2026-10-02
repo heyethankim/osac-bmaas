@@ -1271,6 +1271,14 @@ export function TenantUserLaunchInstanceWizard({
     }
 
     const summaryTitle = LAUNCH_INSTANCE_WIZARD_DEMO.preConfiguredTitle
+    const instanceTypeRow = launchCatalogSummaryRows.find((row) => row.label === 'Instance type')
+    const gridSummaryRows = launchCatalogSummaryRows.filter(
+      (row) => row.label !== 'Instance type',
+    )
+
+    if (gridSummaryRows.length === 0 && !includeAssignedNetwork && !instanceTypeRow) {
+      return null
+    }
 
     return (
       <div className="tenant-user-launch-wizard__preconfigured-section">
@@ -1281,38 +1289,53 @@ export function TenantUserLaunchInstanceWizard({
         <Content component="p" className="tenant-user-launch-wizard__preconfigured-catalog-name">
           {catalogItem.displayName}
         </Content>
+        {instanceTypeRow ? (
+          <Content
+            component="p"
+            className="tenant-user-launch-wizard__preconfigured-instance-type"
+          >
+            <span className="tenant-user-launch-wizard__preconfigured-instance-type-label">
+              {instanceTypeRow.label}
+            </span>
+            <span className="tenant-user-launch-wizard__preconfigured-instance-type-value">
+              {instanceTypeRow.value}
+            </span>
+          </Content>
+        ) : null}
 
-        <div
-          className={`tenant-user-launch-wizard__preconfigured-grid${
-            includeAssignedNetwork
-              ? ' tenant-user-launch-wizard__preconfigured-grid--with-network'
-              : ''
-          }`}
-        >
-          {launchCatalogSummaryRows.map((row) => (
-            <div key={row.label} className="tenant-user-launch-wizard__preconfigured-item">
-              <Content component="p" className="tenant-user-launch-wizard__preconfigured-label">
-                {row.label}
-              </Content>
-              <Content component="p" className="tenant-user-launch-wizard__preconfigured-value">
-                {row.value}
-              </Content>
-            </div>
-          ))}
-          {includeAssignedNetwork ? (
-            <div className="tenant-user-launch-wizard__preconfigured-item">
-              <Content component="p" className="tenant-user-launch-wizard__preconfigured-label">
-                Network
-              </Content>
-              <Content component="p" className="tenant-user-launch-wizard__preconfigured-value">
-                {assignedNetworkSummary}
-              </Content>
-              <Content component="p" className="tenant-user-launch-wizard__assigned-helper">
-                {LAUNCH_INSTANCE_WIZARD_DEMO.networkingAssignedHelper}
-              </Content>
-            </div>
-          ) : null}
-        </div>
+        {gridSummaryRows.length > 0 || includeAssignedNetwork ? (
+          <div
+            className={`tenant-user-launch-wizard__preconfigured-grid${
+              includeAssignedNetwork
+                ? ' tenant-user-launch-wizard__preconfigured-grid--with-network'
+                : ''
+            }`}
+          >
+            {gridSummaryRows.map((row) => (
+              <div key={row.label} className="tenant-user-launch-wizard__preconfigured-item">
+                <Content component="p" className="tenant-user-launch-wizard__preconfigured-label">
+                  {row.label}
+                </Content>
+                <Content component="p" className="tenant-user-launch-wizard__preconfigured-value">
+                  {row.value}
+                </Content>
+              </div>
+            ))}
+            {includeAssignedNetwork ? (
+              <div className="tenant-user-launch-wizard__preconfigured-item">
+                <Content component="p" className="tenant-user-launch-wizard__preconfigured-label">
+                  Network
+                </Content>
+                <Content component="p" className="tenant-user-launch-wizard__preconfigured-value">
+                  {assignedNetworkSummary}
+                </Content>
+                <Content component="p" className="tenant-user-launch-wizard__assigned-helper">
+                  {LAUNCH_INSTANCE_WIZARD_DEMO.networkingAssignedHelper}
+                </Content>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     )
   }
@@ -1764,7 +1787,7 @@ export function TenantUserLaunchInstanceWizard({
       >
         <div
           id="launch-bm-disk-image"
-          className="provider-setup-template__card-group provider-setup-template__card-group--disk-images"
+          className="provider-setup-template__card-group provider-setup-template__card-group--disk-images provider-setup-template__card-group--disk-images-row"
           role="presentation"
         >
           {bareMetalDiskImageOptions.map((option) => {
