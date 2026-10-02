@@ -32,6 +32,7 @@ import {
   NetworkInventoryCreateWizardShell,
   type NetworkInventoryCreateBreadcrumbAncestor,
 } from './NetworkInventoryCreateWizardShell'
+import { useWorkspaceWizardStepUrl } from '../../shared/useWorkspaceWizardStepUrl'
 
 type NatGatewayWizardMode = 'attach' | 'edit'
 
@@ -62,6 +63,12 @@ export function AttachNatGatewayWizard({
   onAttach,
 }: AttachNatGatewayWizardProps) {
   const isEditMode = mode === 'edit'
+  const syncStepToUrl = presentation === 'page'
+  const { startIndex: wizardStartIndex, onStepChange } = useWorkspaceWizardStepUrl(
+    syncStepToUrl,
+    isOpen,
+    NAT_GATEWAY_WIZARD_STEPS,
+  )
   const [selectedProfileId, setSelectedProfileId] = useState(NAT_GATEWAY_PROFILES[0]?.id ?? '')
 
   useEffect(() => {
@@ -248,6 +255,8 @@ export function AttachNatGatewayWizard({
           ? `${step.label} (modified)`
           : step.label
       }
+      startIndex={wizardStartIndex}
+      onStepChange={onStepChange}
     />
   )
 }

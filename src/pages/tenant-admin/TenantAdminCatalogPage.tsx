@@ -48,8 +48,11 @@ import {
 import { getCatalogViewMode, setCatalogViewMode, type CatalogViewMode } from '../../catalog/viewMode'
 import {
   findCatalogItemByWorkspaceParam,
+  getWorkspaceActionParam,
   getWorkspaceCatalogItemParam,
+  syncWorkspaceActionParam,
   syncWorkspaceCatalogItemParam,
+  WORKSPACE_ACTION_LAUNCH_INSTANCE,
 } from '../../shared/workspaceNavUrl'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import { isOrganizationM360AccountInactive } from '../../billing/m360'
@@ -602,6 +605,27 @@ export function TenantAdminCatalogPage({
   }, [openCatalogItemKey, catalogItems, onOpenCatalogItemConsumed])
 
   useEffect(() => {
+    const isLaunchAction = getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_LAUNCH_INSTANCE
+    if (!isLaunchAction) {
+      if (isWizardOpen) {
+        setIsWizardOpen(false)
+      }
+      return
+    }
+
+    const match = findCatalogItemByWorkspaceParam(catalogItems, itemParam)
+    if (match) {
+      setSelectedCatalogItem(match)
+      setIsDetailsDrawerOpen(false)
+      setIsWizardOpen(true)
+    }
+  }, [catalogItems, isWizardOpen, itemParam, searchParams])
+
+  useEffect(() => {
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_LAUNCH_INSTANCE) {
+      return
+    }
+
     const match = findCatalogItemByWorkspaceParam(catalogItems, itemParam)
     if (match) {
       setSelectedCatalogItem(match)
@@ -614,7 +638,7 @@ export function TenantAdminCatalogPage({
     if (!itemParam) {
       setIsDetailsDrawerOpen(false)
     }
-  }, [itemParam, catalogItems, isWizardOpen])
+  }, [itemParam, catalogItems, isWizardOpen, searchParams])
 
   const openLaunchWizard = (item: TenantCatalogGovernanceItemWithNetworking) => {
     if (item.status === 'Unpublished') {
@@ -634,8 +658,9 @@ export function TenantAdminCatalogPage({
 
     setSelectedCatalogItem(freshItem)
     setIsDetailsDrawerOpen(false)
-    setIsWizardOpen(true)
-    syncWorkspaceCatalogItemParam(setSearchParams, null, { replace: true })
+    syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_LAUNCH_INSTANCE, {
+      catalogItem: freshItem.displayName,
+    })
   }
 
   const launchCatalogCard = selectedCatalogItem
@@ -651,7 +676,11 @@ export function TenantAdminCatalogPage({
   }
 
   const closeLaunchWizard = () => {
-    setIsWizardOpen(false)
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_LAUNCH_INSTANCE) {
+      syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    } else {
+      setIsWizardOpen(false)
+    }
   }
 
   const updateCatalogItem = (

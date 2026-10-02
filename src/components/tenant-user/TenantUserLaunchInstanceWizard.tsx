@@ -42,6 +42,7 @@ import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import type { CatalogServiceId } from '../../providerSetup/templateDemo'
+import { useWorkspaceWizardStepUrl } from '../../shared/useWorkspaceWizardStepUrl'
 import {
   TENANT_PROJECTS_TEAMS_DEMO,
   getTenantRootProject,
@@ -417,6 +418,13 @@ export function TenantUserLaunchInstanceWizard({
       includeNetworkingStep,
     ],
   )
+  const syncStepToUrl = presentation === 'page'
+  const {
+    startIndex: wizardStartIndex,
+    onStepChange: syncWizardStepToUrl,
+    stepKey,
+    urlStepId,
+  } = useWorkspaceWizardStepUrl(syncStepToUrl, isOpen, wizardSteps)
 
   const catalogClusterVersion =
     catalogItem.diskImageId?.trim() ||
@@ -584,6 +592,15 @@ export function TenantUserLaunchInstanceWizard({
 
   onProvisioningStartedRef.current = onProvisioningStarted
   onWizardFinishedRef.current = onWizardFinished
+
+  useEffect(() => {
+    if (!syncStepToUrl || !isOpen || !urlStepId) {
+      return
+    }
+    if (wizardSteps.some((step) => step.id === urlStepId)) {
+      setActiveStepId(urlStepId as LaunchInstanceWizardStepId)
+    }
+  }, [isOpen, syncStepToUrl, urlStepId, wizardSteps])
 
   const activeStepDescription =
     wizardSteps.find((step) => step.id === activeStepId)?.description ?? ''
@@ -2978,10 +2995,11 @@ export function TenantUserLaunchInstanceWizard({
 
   const wizard = isOpen ? (
     <Wizard
-      key={`launch-instance-wizard-${catalogItem.catalogItemId}-${catalogItem.instanceTypeId ?? 'type'}-${catalogItem.hardwareOsMode ?? 'hw'}-${catalogItem.osImageMode ?? 'os'}-${includeNetworkingStep ? 'net' : 'no-net'}-${isBareMetalHardwareOsEditable ? 'hw-os' : 'std'}`}
+      key={`launch-instance-wizard-${catalogItem.catalogItemId}-${catalogItem.instanceTypeId ?? 'type'}-${catalogItem.hardwareOsMode ?? 'hw'}-${catalogItem.osImageMode ?? 'os'}-${includeNetworkingStep ? 'net' : 'no-net'}-${isBareMetalHardwareOsEditable ? 'hw-os' : 'std'}-${stepKey}`}
       className="tenant-user-launch-wizard"
       height={isPage ? '100%' : '40rem'}
       isPlain={isPage}
+      startIndex={wizardStartIndex}
       onClose={isPage ? undefined : requestClose}
       onStepChange={(_event, currentStep) => {
         const stepId = String(currentStep?.id ?? '').replace('launch-instance-step-', '')
@@ -2997,6 +3015,7 @@ export function TenantUserLaunchInstanceWizard({
           stepId === 'provisioning'
         ) {
           setActiveStepId(stepId)
+          syncWizardStepToUrl?.(stepId)
         }
       }}
       header={

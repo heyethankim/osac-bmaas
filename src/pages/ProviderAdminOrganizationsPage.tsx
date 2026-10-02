@@ -78,7 +78,10 @@ import {
   getWorkspaceOrganizationParam,
   syncWorkspaceActionParam,
   syncWorkspaceOrganizationParam,
+  syncWorkspaceStepParam,
+  WORKSPACE_ACTION_ADD_TENANT_ADMINISTRATOR,
   WORKSPACE_ACTION_REGISTER_TENANT,
+  WORKSPACE_ACTION_SETUP_IDENTITY_PROVIDER,
 } from '../shared/workspaceNavUrl'
 
 function formatRegisteredAt(iso: string): string {
@@ -316,6 +319,9 @@ export function ProviderAdminOrganizationsPage({
   }
 
   const handleIdpModalClose = () => {
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_SETUP_IDENTITY_PROVIDER) {
+      syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    }
     setIdpDelegationOrganization(null)
     const organizationId = pendingActivationAfterIdpCloseRef.current
     if (!organizationId) {
@@ -521,10 +527,12 @@ export function ProviderAdminOrganizationsPage({
         return
       }
       setIdpDelegationOrganization(organization)
+      syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_SETUP_IDENTITY_PROVIDER)
       return
     }
 
     setRolesOrganization(organization)
+    syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_ADD_TENANT_ADMINISTRATOR)
   }
 
   const handleIdentityProviderConnected = (organization: RegisteredOrganization) => {
@@ -555,6 +563,11 @@ export function ProviderAdminOrganizationsPage({
   }
 
   const closeRolesToTenants = () => {
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_ADD_TENANT_ADMINISTRATOR) {
+      syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    } else {
+      syncWorkspaceStepParam(setSearchParams, null, { replace: true })
+    }
     setRolesOrganization(null)
     setIsDetailsOpen(false)
   }
@@ -563,6 +576,11 @@ export function ProviderAdminOrganizationsPage({
     if (rolesOrganization) {
       setSelectedOrganization(rolesOrganization)
       setIsDetailsOpen(true)
+    }
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_ADD_TENANT_ADMINISTRATOR) {
+      syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    } else {
+      syncWorkspaceStepParam(setSearchParams, null, { replace: true })
     }
     setRolesOrganization(null)
   }
@@ -583,9 +601,21 @@ export function ProviderAdminOrganizationsPage({
           title={IDP_MANAGER_ROLES_COPY.wizardTitle}
           submitLabel={IDP_MANAGER_ROLES_COPY.wizardSubmitLabel}
           showRoleCatalog
-          onClose={() => setRolesOrganization(null)}
+          onClose={() => {
+            if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_ADD_TENANT_ADMINISTRATOR) {
+              syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+            } else {
+              syncWorkspaceStepParam(setSearchParams, null, { replace: true })
+            }
+            setRolesOrganization(null)
+          }}
           onAdded={(organization) => {
             handleRolesConfigured(organization)
+            if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_ADD_TENANT_ADMINISTRATOR) {
+              syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+            } else {
+              syncWorkspaceStepParam(setSearchParams, null, { replace: true })
+            }
             setRolesOrganization(null)
           }}
         />
@@ -636,8 +666,12 @@ export function ProviderAdminOrganizationsPage({
               return
             }
             setIdpDelegationOrganization(organization)
+            syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_SETUP_IDENTITY_PROVIDER)
           }}
-          onReviewRoles={(organization) => setRolesOrganization(organization)}
+          onReviewRoles={(organization) => {
+            setRolesOrganization(organization)
+            syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_ADD_TENANT_ADMINISTRATOR)
+          }}
           onOrganizationChange={(organization) => refreshOrganizations(organization.id)}
         />
       ) : (

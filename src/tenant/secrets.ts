@@ -9,6 +9,7 @@ import {
   CLUSTER_LAUNCH_DEMO_PULL_SECRET,
   CLUSTER_LAUNCH_DEMO_SSH_PUBLIC_KEY,
 } from '../tenantUser/clusterLaunchDemoSecrets'
+import { DEMO_TENANT_ROOT_PROJECT_ID } from '../tenantAdmin/projects'
 
 export type { StoredKeyValuePair, TenantSecretData, TenantSecretType, TenantSecretUsage } from './secretTypes'
 
@@ -48,6 +49,8 @@ export type TenantSecret = {
   description: string
   labels: string[]
   data: TenantSecretData
+  /** Tenant-scoped secrets only. Provider secrets are shared and omit this. */
+  projectId?: string | null
 }
 
 export const DEMO_TENANT_CLUSTER_SSH_SECRET_ID = 'demo-tenant-secret-cluster-ssh'
@@ -100,6 +103,10 @@ function isTenantSecret(value: unknown): value is TenantSecret {
   }
 
   const secret = value as TenantSecret
+  const projectIdOk =
+    secret.projectId === undefined ||
+    secret.projectId === null ||
+    typeof secret.projectId === 'string'
   return (
     typeof secret.id === 'string' &&
     typeof secret.name === 'string' &&
@@ -109,7 +116,8 @@ function isTenantSecret(value: unknown): value is TenantSecret {
     typeof secret.summary === 'string' &&
     typeof secret.description === 'string' &&
     Array.isArray(secret.labels) &&
-    isTenantSecretData(secret.data, secret.type)
+    isTenantSecretData(secret.data, secret.type) &&
+    projectIdOk
   )
 }
 
@@ -168,6 +176,7 @@ function createSampleTenantSecrets(): TenantSecret[] {
       summary: 'SSH public key for cluster nodes',
       description: 'SSH public key for cluster nodes',
       labels: ['cluster-launch'],
+      projectId: DEMO_TENANT_ROOT_PROJECT_ID,
       data: buildTenantSecretData('ssh-public-key', [
         { key: 'ssh-publickey', value: CLUSTER_LAUNCH_DEMO_SSH_PUBLIC_KEY },
       ]),
@@ -181,6 +190,7 @@ function createSampleTenantSecrets(): TenantSecret[] {
       summary: 'OpenShift pull secret',
       description: 'OpenShift pull secret',
       labels: ['cluster-launch'],
+      projectId: DEMO_TENANT_ROOT_PROJECT_ID,
       data: buildTenantSecretData(
         'image-pull',
         [{ key: '.dockerconfigjson', value: CLUSTER_LAUNCH_DEMO_PULL_SECRET }],
@@ -196,6 +206,7 @@ function createSampleTenantSecrets(): TenantSecret[] {
       summary: 'Admin kubeconfig for the demo cluster',
       description: 'Admin kubeconfig for the demo cluster',
       labels: [],
+      projectId: DEMO_TENANT_ROOT_PROJECT_ID,
       data: buildTenantSecretData(
         'kubeconfig',
         [{ key: 'kubeconfig', value: DEMO_KUBECONFIG }],
@@ -211,6 +222,7 @@ function createSampleTenantSecrets(): TenantSecret[] {
       summary: 'Platform automation token',
       description: 'Platform automation token',
       labels: [],
+      projectId: DEMO_TENANT_ROOT_PROJECT_ID,
       data: buildTenantSecretData('single-value', [
         { key: 'value', value: DEMO_PLATFORM_API_TOKEN },
       ]),
@@ -224,6 +236,7 @@ function createSampleTenantSecrets(): TenantSecret[] {
       summary: 'Monitoring stack credentials',
       description: 'Monitoring stack credentials',
       labels: ['observability'],
+      projectId: DEMO_TENANT_ROOT_PROJECT_ID,
       data: buildTenantSecretData('opaque', [
         { key: 'prometheus-token', value: DEMO_PROMETHEUS_TOKEN },
         { key: 'grafana-api-key', value: DEMO_GRAFANA_API_KEY },
@@ -238,6 +251,7 @@ function createSampleTenantSecrets(): TenantSecret[] {
       summary: 'Cloud-init user data for bastion hosts',
       description: 'Cloud-init user data for bastion hosts',
       labels: [],
+      projectId: DEMO_TENANT_ROOT_PROJECT_ID,
       data: buildTenantSecretData(
         'user-data',
         [{ key: 'user-data', value: DEMO_USER_DATA }],

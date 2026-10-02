@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { AngleDownIcon } from '@patternfly/react-icons/dist/esm/icons/angle-down-icon'
 import { AngleRightIcon } from '@patternfly/react-icons/dist/esm/icons/angle-right-icon'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
@@ -67,6 +68,12 @@ import {
 import { TENANT_EXTERNAL_IPS_PAGE_LABEL } from '../../tenantAdmin/constants'
 import { PROVIDER_ADMIN_NETWORKING_NAV_LABEL } from '../../providerAdmin/constants'
 import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope'
+import {
+  WORKSPACE_ACTION_CREATE_EXTERNAL_IP,
+  WORKSPACE_ACTION_CREATE_EXTERNAL_IP_POOL,
+  getWorkspaceActionParam,
+  syncWorkspaceActionParam,
+} from '../../shared/workspaceNavUrl'
 
 const PROVIDER_EXTERNAL_IP_POOL_STATUS_FILTERS = ['Ready', 'Unassigned'] as const
 const TENANT_EXTERNAL_IP_STATUS_FILTERS = ['In use', 'Available'] as const
@@ -440,6 +447,7 @@ export function ProviderAdminExternalNetworksPage({
   serviceInstances?: readonly TenantInstance[]
   onNavigateToServiceInstance?: (instance: TenantInstance) => void
 } = {}) {
+  const [searchParams, setSearchParams] = useSearchParams()
   const inventory = useMemo(() => resolveNetworkInventoryScope(tenantSlug), [tenantSlug])
   const isTenantScope = inventory.mode === 'tenant'
   const canManagePools = !isTenantScope && !readOnly
@@ -472,6 +480,33 @@ export function ProviderAdminExternalNetworksPage({
   const createIpRevealTimeoutRef = useRef<number | null>(null)
   const poolCardGridRef = useRef<HTMLDivElement | null>(null)
   const poolDisplayOrderRef = useRef<string[] | null>(null)
+
+  useEffect(() => {
+    if (!canManagePools && !canManageIps) {
+      return
+    }
+
+    const action = getWorkspaceActionParam(searchParams)
+
+    if (action === WORKSPACE_ACTION_CREATE_EXTERNAL_IP_POOL && canManagePools) {
+      setIsDetailsOpen(false)
+      setSelectedPool(null)
+      setIsCreateIpWizardOpen(false)
+      setCreateIpWizardPoolId(null)
+      setIsCreateWizardOpen(true)
+      return
+    }
+
+    if (action === WORKSPACE_ACTION_CREATE_EXTERNAL_IP && canManageIps) {
+      setIsDetailsOpen(false)
+      setIsCreateWizardOpen(false)
+      setIsCreateIpWizardOpen(true)
+      return
+    }
+
+    setIsCreateWizardOpen(false)
+    setIsCreateIpWizardOpen(false)
+  }, [canManageIps, canManagePools, searchParams])
 
   useEffect(() => {
     setPools(loadScopedExternalIpPools(inventory, scopeOrganization))
@@ -628,17 +663,32 @@ export function ProviderAdminExternalNetworksPage({
   }
 
   const closeWizard = () => {
-    setIsCreateWizardOpen(false)
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_CREATE_EXTERNAL_IP_POOL) {
+      syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    } else {
+      setIsCreateWizardOpen(false)
+    }
+  }
+
+  const openCreatePoolWizard = () => {
+    if (!canManagePools) {
+      return
+    }
+    syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_CREATE_EXTERNAL_IP_POOL)
   }
 
   const closeIpWizard = () => {
-    setIsCreateIpWizardOpen(false)
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_CREATE_EXTERNAL_IP) {
+      syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    } else {
+      setIsCreateIpWizardOpen(false)
+    }
     setCreateIpWizardPoolId(null)
   }
 
   const openCreateIpWizard = (poolId?: string) => {
     setCreateIpWizardPoolId(poolId ?? null)
-    setIsCreateIpWizardOpen(true)
+    syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_CREATE_EXTERNAL_IP)
   }
 
   const openDelete = (pool: ExternalIpPool) => {
@@ -908,7 +958,7 @@ export function ProviderAdminExternalNetworksPage({
                 variant="primary"
                 icon={<PlusIcon />}
                 className="provider-admin-workspace-page__action"
-                onClick={() => setIsCreateWizardOpen(true)}
+                onClick={openCreatePoolWizard}
               >
                 Create external IP pool
               </Button>

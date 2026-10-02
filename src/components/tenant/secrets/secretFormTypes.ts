@@ -24,6 +24,8 @@ export type TenantSecretFormState = {
   name: string
   description: string
   labels: string[]
+  /** Tenant-scoped secrets only; empty for provider secrets. */
+  projectId: string
   /** Null until the user picks a type on the Secret data step (create flow). */
   type: TenantSecretType | null
   pairs: KeyValuePair[]
@@ -174,6 +176,7 @@ export function createDefaultSecretFormState(
       name: '',
       description: '',
       labels: [],
+      projectId: '',
       type: null,
       pairs: [],
       uploadedFileName: '',
@@ -184,6 +187,7 @@ export function createDefaultSecretFormState(
     name: '',
     description: '',
     labels: [],
+    projectId: '',
     type,
     pairs: pairsForType(type, false),
     uploadedFileName: '',
@@ -214,6 +218,7 @@ export function createDemoSecretFormState(type: TenantSecretType): TenantSecretF
     name: demoNameForType(type),
     description: demoDescriptionForType(type),
     labels: demoLabelsForType(type),
+    projectId: '',
     type,
     pairs: pairsForType(type, true),
     uploadedFileName: option.preferUpload ? demoFileNameForType(type) : '',
@@ -231,6 +236,7 @@ export function createPrefillGeneralSecretFormState(): TenantSecretFormState {
     name: demo.name,
     description: demo.description,
     labels: demo.labels,
+    projectId: '',
     type: null,
     pairs: [],
     uploadedFileName: '',
@@ -259,7 +265,7 @@ export function applySecretTypeToForm(
 
   let pairs: KeyValuePair[]
   if (option.requiredKeys.length > 0) {
-    pairs = option.requiredKeys.map((key) => {
+    const requiredPairs = option.requiredKeys.map((key) => {
       const previous = previousByKey.get(key)
       if (options?.keepValues && previous) {
         return {
@@ -273,6 +279,12 @@ export function applySecretTypeToForm(
         valueMode: option.preferUpload ? 'upload-file' : 'paste',
       })
     })
+    const requiredKeySet = new Set(option.requiredKeys)
+    const additionalPairs =
+      options?.keepValues
+        ? form.pairs.filter((pair) => !requiredKeySet.has(pair.key.trim()))
+        : []
+    pairs = [...requiredPairs, ...additionalPairs]
   } else if (options?.keepValues && form.pairs.some((pair) => pair.key.trim() || pair.value.trim())) {
     pairs = form.pairs
   } else {
@@ -303,6 +315,7 @@ export function secretFormStateFromTenantSecret(secret: TenantSecret): TenantSec
     name: secret.name,
     description: secret.description?.trim() || secret.summary,
     labels: [...(secret.labels ?? [])],
+    projectId: secret.projectId?.trim() || '',
     type,
     pairs: storedPairs.map((pair) =>
       createKeyValuePair({

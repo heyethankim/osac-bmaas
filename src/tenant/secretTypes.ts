@@ -40,7 +40,7 @@ export const TENANT_SECRET_TYPE_OPTIONS: readonly TenantSecretTypeOption[] = [
     label: 'Image pull secret',
     description: 'Registry credentials / .dockerconfigjson',
     requiredKeys: ['.dockerconfigjson'],
-    singlePair: true,
+    singlePair: false,
     preferUpload: true,
   },
   {
@@ -48,7 +48,7 @@ export const TENANT_SECRET_TYPE_OPTIONS: readonly TenantSecretTypeOption[] = [
     label: 'Kubeconfig',
     description: 'Cluster access file (.kube/config)',
     requiredKeys: ['kubeconfig'],
-    singlePair: true,
+    singlePair: false,
     preferUpload: true,
   },
   {
@@ -64,7 +64,7 @@ export const TENANT_SECRET_TYPE_OPTIONS: readonly TenantSecretTypeOption[] = [
     label: 'Single value',
     description: 'One string (token, password, license key)',
     requiredKeys: ['value'],
-    singlePair: true,
+    singlePair: false,
     preferUpload: false,
   },
   {
@@ -72,7 +72,7 @@ export const TENANT_SECRET_TYPE_OPTIONS: readonly TenantSecretTypeOption[] = [
     label: 'SSH public key',
     description: 'One public key for node or bastion access',
     requiredKeys: ['ssh-publickey'],
-    singlePair: true,
+    singlePair: false,
     preferUpload: false,
   },
   {
@@ -80,7 +80,7 @@ export const TENANT_SECRET_TYPE_OPTIONS: readonly TenantSecretTypeOption[] = [
     label: 'User data',
     description: 'Cloud-init script or config at launch',
     requiredKeys: ['user-data'],
-    singlePair: true,
+    singlePair: false,
     preferUpload: true,
   },
 ] as const
@@ -121,7 +121,7 @@ export function buildTenantSecretData(
 
   return {
     kind: type,
-    pairs: option.singlePair ? normalizedPairs.slice(0, 1) : normalizedPairs,
+    pairs: normalizedPairs,
     uploadedFileName: uploadedFileName.trim() || undefined,
   }
 }

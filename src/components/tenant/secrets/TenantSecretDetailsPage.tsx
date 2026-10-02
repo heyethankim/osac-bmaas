@@ -21,9 +21,12 @@ import {
   tenantSecretHasRevealableValues,
   type TenantSecret,
 } from '../../../tenant/secrets'
+import { getTenantProjectById } from '../../../tenantAdmin/projects'
+import { ensureTenantDemoProjects } from '../../../tenantAdmin/storage'
 
 type TenantSecretDetailsPageProps = {
   secret: TenantSecret
+  tenantSlug?: string
   onBack: () => void
   onEdit?: () => void
   onDelete?: () => void
@@ -77,12 +80,17 @@ function SecretValueDisplay({
 
 export function TenantSecretDetailsPage({
   secret,
+  tenantSlug,
   onBack,
   onEdit,
   onDelete,
 }: TenantSecretDetailsPageProps) {
   const [valuesRevealed, setValuesRevealed] = useState(false)
   const hasRevealableValues = tenantSecretHasRevealableValues(secret)
+  const projectName =
+    secret.projectId && tenantSlug
+      ? getTenantProjectById(ensureTenantDemoProjects(tenantSlug), secret.projectId)?.name
+      : null
 
   return (
     <EntityDetailsPageShell
@@ -112,6 +120,12 @@ export function TenantSecretDetailsPage({
             className="entity-details-page__dl"
             aria-label="Secret overview"
           >
+            {projectName ? (
+              <DescriptionListGroup>
+                <DescriptionListTerm>Project</DescriptionListTerm>
+                <DescriptionListDescription>{projectName}</DescriptionListDescription>
+              </DescriptionListGroup>
+            ) : null}
             <DescriptionListGroup>
               <DescriptionListTerm>Name</DescriptionListTerm>
               <DescriptionListDescription>{secret.name}</DescriptionListDescription>

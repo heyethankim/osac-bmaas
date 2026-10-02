@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ArrowRightIcon } from '@patternfly/react-icons/dist/esm/icons/arrow-right-icon'
 import { UserPlusIcon } from '@patternfly/react-icons/dist/esm/icons/user-plus-icon'
 import {
@@ -38,6 +38,7 @@ import {
   type NetworkInventoryCreateBreadcrumbAncestor,
 } from '../networking/NetworkInventoryCreateWizardShell'
 import { NETWORK_INVENTORY_CREATE_REVIEW_STEP } from '../../networking/networkInventoryCreateWizard'
+import { useWorkspaceWizardStepUrl } from '../../shared/useWorkspaceWizardStepUrl'
 
 type AddTenantAdministratorForm = {
   name: string
@@ -45,11 +46,31 @@ type AddTenantAdministratorForm = {
   roleId: AssignableTenantRoleId | null
 }
 
-const EMPTY_FORM: AddTenantAdministratorForm = {
-  name: '',
-  email: '',
-  roleId: null,
+function buildInitialForm(
+  organization: RegisteredOrganization,
+  showRoleCatalog: boolean,
+): AddTenantAdministratorForm {
+  // Demo prefills so the wizard is ready to review/submit.
+  const prefill = buildDemoAssignRoleForm(organization)
+  if (showRoleCatalog) {
+    return prefill
+  }
+
+  return {
+    ...prefill,
+    roleId: 'tenant-administrator',
+  }
 }
+
+const ADD_ADMINISTRATOR_STEPS = [
+  { id: 'administrator', label: 'Administrator' },
+  NETWORK_INVENTORY_CREATE_REVIEW_STEP,
+] as const
+
+const ASSIGN_ROLE_STEPS = [
+  { id: 'administrator', label: 'Details' },
+  NETWORK_INVENTORY_CREATE_REVIEW_STEP,
+] as const
 
 type AddTenantAdministratorWizardProps = {
   isOpen: boolean
@@ -75,9 +96,7 @@ export function AddTenantAdministratorWizard({
   showRoleCatalog = false,
 }: AddTenantAdministratorWizardProps) {
   const [form, setForm] = useState<AddTenantAdministratorForm>(() =>
-    showRoleCatalog
-      ? buildDemoAssignRoleForm(organization)
-      : { ...EMPTY_FORM, roleId: 'tenant-administrator' },
+    buildInitialForm(organization, showRoleCatalog),
   )
   const selectedRole = form.roleId ? getAssignableTenantRole(form.roleId) : null
 
@@ -91,17 +110,22 @@ export function AddTenantAdministratorWizard({
     emailDomainOk &&
     (!showRoleCatalog || Boolean(form.roleId))
 
-  const steps = [
-    { id: 'administrator', label: showRoleCatalog ? 'Details' : 'Administrator' },
-    NETWORK_INVENTORY_CREATE_REVIEW_STEP,
-  ] as const
+  const steps = showRoleCatalog ? ASSIGN_ROLE_STEPS : ADD_ADMINISTRATOR_STEPS
+  const { startIndex: wizardStartIndex, onStepChange } = useWorkspaceWizardStepUrl(
+    true,
+    isOpen,
+    steps,
+  )
+
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+    setForm(buildInitialForm(organization, showRoleCatalog))
+  }, [isOpen, organization, showRoleCatalog])
 
   const handleClose = () => {
-    setForm(
-      showRoleCatalog
-        ? buildDemoAssignRoleForm(organization)
-        : { ...EMPTY_FORM, roleId: 'tenant-administrator' },
-    )
+    setForm(buildInitialForm(organization, showRoleCatalog))
     onClose()
   }
 
@@ -331,6 +355,8 @@ export function AddTenantAdministratorWizard({
       getStepFooter={getStepFooter}
       onClose={handleClose}
       className="tenant-admin-administrators__wizard"
+      startIndex={wizardStartIndex}
+      onStepChange={onStepChange}
     />
   )
 }

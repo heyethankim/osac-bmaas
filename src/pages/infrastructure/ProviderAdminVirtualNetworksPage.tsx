@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
   Button,
@@ -61,6 +62,14 @@ import {
   updateNatGatewayProfileOnVirtualNetwork,
 } from '../../providerAdmin/networkInventory'
 import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope'
+import {
+  WORKSPACE_ACTION_ATTACH_NAT_GATEWAY,
+  WORKSPACE_ACTION_CREATE_SECURITY_GROUP,
+  WORKSPACE_ACTION_CREATE_SUBNET,
+  WORKSPACE_ACTION_CREATE_VIRTUAL_NETWORK,
+  getWorkspaceActionParam,
+  syncWorkspaceActionParam,
+} from '../../shared/workspaceNavUrl'
 
 type ProviderAdminVirtualNetworksPageProps = {
   openVirtualNetworkId?: string | null
@@ -133,6 +142,7 @@ export function ProviderAdminVirtualNetworksPage({
   tenantSlug,
   readOnly = false,
 }: ProviderAdminVirtualNetworksPageProps = {}) {
+  const [searchParams, setSearchParams] = useSearchParams()
   const inventory = useMemo(() => resolveNetworkInventoryScope(tenantSlug), [tenantSlug])
   const [networks, setNetworks] = useState(() => inventory.getVirtualNetworks())
   const [virtualNetworks, setVirtualNetworks] = useState(() => inventory.getVirtualNetworks())
@@ -175,6 +185,48 @@ export function ProviderAdminVirtualNetworksPage({
     beginCreateReveal: beginNetworkCreateReveal,
     measureCreatingCardHeight,
   } = useResourceCreateReveal()
+
+  useEffect(() => {
+    if (readOnly) {
+      return
+    }
+
+    const action = getWorkspaceActionParam(searchParams)
+    if (action === WORKSPACE_ACTION_CREATE_VIRTUAL_NETWORK) {
+      setEditingNetwork(null)
+      setIsCreateSubnetWizardOpen(false)
+      setIsCreateSecurityGroupWizardOpen(false)
+      setNatGatewayWizard(null)
+      setIsCreateWizardOpen(true)
+      return
+    }
+    if (action === WORKSPACE_ACTION_CREATE_SUBNET) {
+      setEditingSubnet(null)
+      setIsCreateWizardOpen(false)
+      setIsCreateSecurityGroupWizardOpen(false)
+      setNatGatewayWizard(null)
+      setIsCreateSubnetWizardOpen(true)
+      return
+    }
+    if (action === WORKSPACE_ACTION_CREATE_SECURITY_GROUP) {
+      setEditingSecurityGroup(null)
+      setIsCreateWizardOpen(false)
+      setIsCreateSubnetWizardOpen(false)
+      setNatGatewayWizard(null)
+      setIsCreateSecurityGroupWizardOpen(true)
+      return
+    }
+    if (action === WORKSPACE_ACTION_ATTACH_NAT_GATEWAY) {
+      setIsCreateWizardOpen(false)
+      setIsCreateSubnetWizardOpen(false)
+      setIsCreateSecurityGroupWizardOpen(false)
+      return
+    }
+
+    setIsCreateWizardOpen(false)
+    setIsCreateSubnetWizardOpen(false)
+    setIsCreateSecurityGroupWizardOpen(false)
+  }, [readOnly, searchParams])
 
   const refreshInventory = () => {
     const nextNetworks = inventory.getVirtualNetworks()
@@ -222,18 +274,30 @@ export function ProviderAdminVirtualNetworksPage({
   }
 
   const closeWizard = () => {
-    setIsCreateWizardOpen(false)
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_CREATE_VIRTUAL_NETWORK) {
+      syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    } else {
+      setIsCreateWizardOpen(false)
+    }
     setEditingNetwork(null)
   }
 
   const closeSubnetWizard = () => {
-    setIsCreateSubnetWizardOpen(false)
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_CREATE_SUBNET) {
+      syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    } else {
+      setIsCreateSubnetWizardOpen(false)
+    }
     setEditingSubnet(null)
     setCreateSubnetNetworkId(undefined)
   }
 
   const closeSecurityGroupWizard = () => {
-    setIsCreateSecurityGroupWizardOpen(false)
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_CREATE_SECURITY_GROUP) {
+      syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    } else {
+      setIsCreateSecurityGroupWizardOpen(false)
+    }
     setEditingSecurityGroup(null)
     setCreateSecurityGroupNetworkId(undefined)
   }
@@ -262,6 +326,7 @@ export function ProviderAdminVirtualNetworksPage({
 
   const openAttachNatGateway = (network: ProviderVirtualNetwork) => {
     setNatGatewayWizard({ network, mode: 'attach' })
+    syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_ATTACH_NAT_GATEWAY)
   }
 
   const openEditNatGateway = (network: ProviderVirtualNetwork) => {
@@ -269,6 +334,9 @@ export function ProviderAdminVirtualNetworksPage({
   }
 
   const closeNatGatewayWizard = () => {
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_ATTACH_NAT_GATEWAY) {
+      syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    }
     setNatGatewayWizard(null)
   }
 
@@ -546,13 +614,13 @@ export function ProviderAdminVirtualNetworksPage({
   const openCreateSubnetWizard = (virtualNetworkId: string) => {
     setVirtualNetworks(inventory.getVirtualNetworks())
     setCreateSubnetNetworkId(virtualNetworkId)
-    setIsCreateSubnetWizardOpen(true)
+    syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_CREATE_SUBNET)
   }
 
   const openCreateSecurityGroupWizard = (virtualNetworkId: string) => {
     setVirtualNetworks(inventory.getVirtualNetworks())
     setCreateSecurityGroupNetworkId(virtualNetworkId)
-    setIsCreateSecurityGroupWizardOpen(true)
+    syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_CREATE_SECURITY_GROUP)
   }
 
   useEffect(() => {
@@ -769,7 +837,9 @@ export function ProviderAdminVirtualNetworksPage({
             variant="primary"
             icon={<PlusIcon />}
             className="provider-admin-workspace-page__action"
-            onClick={() => setIsCreateWizardOpen(true)}
+            onClick={() =>
+              syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_CREATE_VIRTUAL_NETWORK)
+            }
           >
             Create virtual network
           </Button>

@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
   Button,
@@ -46,6 +47,11 @@ import {
   type AdministratorStatusFilter,
   type TenantAdministrator,
 } from '../../tenantAdmin/administrators'
+import {
+  WORKSPACE_ACTION_ADD_TENANT_ADMINISTRATOR,
+  getWorkspaceActionParam,
+  syncWorkspaceActionParam,
+} from '../../shared/workspaceNavUrl'
 
 type TenantAdminAdministratorsPageProps = {
   organization: RegisteredOrganization
@@ -104,6 +110,7 @@ export function TenantAdminAdministratorsPage({
   showAssignmentStatus = false,
   showRoleCatalog = false,
 }: TenantAdminAdministratorsPageProps) {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const [selectedRole, setSelectedRole] = useState<AdministratorRoleFilter>('all')
@@ -115,6 +122,24 @@ export function TenantAdminAdministratorsPage({
     ? listRoleAssignments(organization)
     : listTenantAdministrators(organization)
   const assignmentStatus = (organization.identityProviders?.length ?? 0) > 0 ? 'Active' : 'Pending'
+
+  useEffect(() => {
+    const isAddAction =
+      getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_ADD_TENANT_ADMINISTRATOR
+    setIsWizardOpen(isAddAction)
+  }, [searchParams])
+
+  const openAddAdministratorWizard = () => {
+    syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_ADD_TENANT_ADMINISTRATOR)
+  }
+
+  const closeAddAdministratorWizard = () => {
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_ADD_TENANT_ADMINISTRATOR) {
+      syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    } else {
+      setIsWizardOpen(false)
+    }
+  }
 
   const filteredAdministrators = useMemo(() => {
     const query = searchValue.trim().toLowerCase()
@@ -232,7 +257,7 @@ export function TenantAdminAdministratorsPage({
         <AddTenantAdministratorWizard
           isOpen
           organization={organization}
-          onClose={() => setIsWizardOpen(false)}
+          onClose={closeAddAdministratorWizard}
           onAdded={onOrganizationChange}
           parentLabel={title}
           title={wizardTitle}
@@ -256,7 +281,7 @@ export function TenantAdminAdministratorsPage({
               variant="primary"
               icon={<PlusIcon />}
               className="provider-admin-workspace-page__action"
-              onClick={() => setIsWizardOpen(true)}
+              onClick={openAddAdministratorWizard}
             >
               {addAdministratorLabel}
             </Button>
@@ -277,7 +302,7 @@ export function TenantAdminAdministratorsPage({
               <Button
                 variant="primary"
                 icon={<PlusIcon />}
-                onClick={() => setIsWizardOpen(true)}
+                onClick={openAddAdministratorWizard}
               >
                 {firstActionLabel}
               </Button>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { useHref } from 'react-router-dom'
+import { useHref, useSearchParams } from 'react-router-dom'
 import { ExclamationTriangleIcon } from '@patternfly/react-icons/dist/esm/icons/exclamation-triangle-icon'
 import { InfoCircleIcon } from '@patternfly/react-icons/dist/esm/icons/info-circle-icon'
 import { RedoIcon } from '@patternfly/react-icons/dist/esm/icons/redo-icon'
@@ -96,6 +96,11 @@ import {
   getKubernetesResourceNameValidation,
   isValidKubernetesResourceName,
 } from '../../shared/kubernetesResourceName'
+import {
+  getWorkspaceStepParam,
+  resolveWorkspaceWizardStartIndex,
+  syncWorkspaceStepParam,
+} from '../../shared/workspaceNavUrl'
 
 type TenantOnboardingWizardProps = {
   isOpen: boolean
@@ -176,15 +181,21 @@ export function TenantOnboardingWizard({
   onPersistOrganization,
   onComplete,
 }: TenantOnboardingWizardProps) {
+  const [searchParams, setSearchParams] = useSearchParams()
   const isPage = presentation === 'page'
   const sourceOrganization = editingOrganization ?? resumeOrganization
   const isEditMode = Boolean(editingOrganization)
   const isResumeBillingMode = Boolean(resumeOrganization) && !editingOrganization
   const isExistingTenantMode = Boolean(sourceOrganization)
+  const syncStepToUrl = isPage && !isExistingTenantMode
   const wizardTitle = isExistingTenantMode ? 'Edit tenant' : 'Register tenant'
+  const urlStepId = syncStepToUrl ? getWorkspaceStepParam(searchParams) : null
   const wizardStartIndex = (() => {
     if (isResumeBillingMode) {
       return 2
+    }
+    if (syncStepToUrl && urlStepId) {
+      return resolveWorkspaceWizardStartIndex(TENANT_ONBOARDING_STEPS, urlStepId)
     }
     const stepIndex = TENANT_ONBOARDING_STEPS.findIndex((step) => step.id === initialStepId)
     return stepIndex >= 0 ? stepIndex + 1 : 1
@@ -352,6 +363,25 @@ export function TenantOnboardingWizard({
     primaryActionLabel: 'Leave',
     titleId: 'tenant-onboarding-leave-confirm',
   })
+
+  useEffect(() => {
+    if (!syncStepToUrl || !isOpen) {
+      return
+    }
+
+    const stepFromUrl = getWorkspaceStepParam(searchParams)
+    const isValidStep = Boolean(
+      stepFromUrl && TENANT_ONBOARDING_STEPS.some((step) => step.id === stepFromUrl),
+    )
+    if (isValidStep) {
+      return
+    }
+
+    const firstStepId = TENANT_ONBOARDING_STEPS[0]?.id
+    if (firstStepId) {
+      syncWorkspaceStepParam(setSearchParams, firstStepId, { replace: true })
+    }
+  }, [isOpen, searchParams, setSearchParams, syncStepToUrl])
 
   useEffect(() => {
     if (!isOpen) {
@@ -1138,8 +1168,8 @@ export function TenantOnboardingWizard({
   const wizardKey = editingOrganization
     ? `tenant-onboarding-edit-${editingOrganization.id}-${initialStepId}`
     : resumeOrganization
-      ? `tenant-onboarding-resume-${resumeOrganization.id}`
-      : 'tenant-onboarding-wizard'
+      ? `tenant-onboarding-resume-${resumeOrganization.id}-${urlStepId ?? 'start'}`
+      : `tenant-onboarding-wizard-${urlStepId ?? 'start'}`
 
   const wizard = (
     <Wizard
@@ -1149,6 +1179,19 @@ export function TenantOnboardingWizard({
       isPlain={isPage}
       onClose={isPage ? undefined : requestClose}
       startIndex={wizardStartIndex}
+      onStepChange={
+        syncStepToUrl
+          ? (_event, currentStep) => {
+              const stepId = String(currentStep?.id ?? '').replace(
+                'tenant-onboarding-step-',
+                '',
+              ) as TenantOnboardingStepId
+              if (TENANT_ONBOARDING_STEPS.some((step) => step.id === stepId)) {
+                syncWorkspaceStepParam(setSearchParams, stepId, { replace: true })
+              }
+            }
+          : undefined
+      }
       header={
         isPage ? undefined : (
           <WizardHeader

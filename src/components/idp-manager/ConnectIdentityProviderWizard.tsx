@@ -34,6 +34,7 @@ import {
 import { NetworkInventoryEditReviewPanel } from '../../networking/NetworkInventoryEditReviewPanel'
 import { ResourceCreatePageShell } from '../shared/ResourceCreatePageShell'
 import { IDP_MANAGER_IDENTITY_PROVIDER_COPY } from '../../idpManager/constants'
+import { useWorkspaceWizardStepUrl } from '../../shared/useWorkspaceWizardStepUrl'
 import {
   identityProviderProtocolLabel,
   type IdentityProviderConnectedBy,
@@ -73,6 +74,11 @@ export function ConnectIdentityProviderWizard({
   onSaved,
 }: ConnectIdentityProviderWizardProps) {
   const isEditing = editingProvider !== null
+  const { startIndex: wizardStartIndex, onStepChange } = useWorkspaceWizardStepUrl(
+    true,
+    isOpen,
+    CONNECT_IDENTITY_PROVIDER_STEPS,
+  )
   const [form, setForm] = useState<IdentityProviderDraft>(() =>
     editingProvider
       ? draftFromIdentityProvider(editingProvider)
@@ -379,6 +385,8 @@ export function ConnectIdentityProviderWizard({
           ? `${step.label} (modified)`
           : step.label
       }
+      startIndex={wizardStartIndex}
+      onStepChange={onStepChange}
     />
   )
 }

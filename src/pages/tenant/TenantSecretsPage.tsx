@@ -1,4 +1,5 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
   Button,
@@ -48,6 +49,11 @@ import {
   type SecretVaultScope,
   type TenantSecret,
 } from '../../tenant/secrets'
+import {
+  WORKSPACE_ACTION_CREATE_SECRET,
+  getWorkspaceActionParam,
+  syncWorkspaceActionParam,
+} from '../../shared/workspaceNavUrl'
 
 type TenantSecretsPageProps = {
   tenantSlug: string
@@ -89,6 +95,7 @@ export function TenantSecretsPage({
   scope = 'tenant',
   readOnly = false,
 }: TenantSecretsPageProps) {
+  const [searchParams, setSearchParams] = useSearchParams()
   const copy = resolveSecretsCopy(scope)
   const [secrets, setSecrets] = useState<TenantSecret[]>(() => ensureSecrets(scope, tenantSlug))
   const [isCreating, setIsCreating] = useState(false)
@@ -105,6 +112,39 @@ export function TenantSecretsPage({
     beginCreateReveal: beginSecretCreateReveal,
     measureCreatingCardHeight,
   } = useResourceCreateReveal()
+
+  useEffect(() => {
+    if (readOnly) {
+      return
+    }
+
+    const isCreateAction = getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_CREATE_SECRET
+
+    if (isCreateAction) {
+      setSelectedSecretId(null)
+      setEditingSecret(null)
+      setIsCreating(true)
+      return
+    }
+
+    setIsCreating(false)
+  }, [readOnly, searchParams])
+
+  const openCreateSecret = () => {
+    if (readOnly) {
+      return
+    }
+    syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_CREATE_SECRET)
+  }
+
+  const closeCreateOrEdit = () => {
+    setEditingSecret(null)
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_CREATE_SECRET) {
+      syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    } else {
+      setIsCreating(false)
+    }
+  }
 
   const orderedSecrets = useMemo(
     () => orderItemsForDisplay(secrets, secretDisplayOrderRef, sortItemsByCreatedAtDesc),
@@ -152,6 +192,10 @@ export function TenantSecretsPage({
   const handleEditSecret = (secret: TenantSecret) => {
     setSelectedSecretId(null)
     setEditingSecret(secret)
+    setIsCreating(false)
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_CREATE_SECRET) {
+      syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    }
   }
 
   const handleDeleteSecret = (secret: TenantSecret) => {
@@ -218,15 +262,12 @@ export function TenantSecretsPage({
           tenantSlug={tenantSlug}
           scope={scope}
           editingSecret={editingSecret}
-          onClose={() => {
-            setIsCreating(false)
-            setEditingSecret(null)
-          }}
+          onClose={closeCreateOrEdit}
           onCreated={(secret) => {
             refreshSecrets()
-            setIsCreating(false)
             setSearchValue('')
             beginSecretCreateReveal(secret.id)
+            closeCreateOrEdit()
           }}
           onUpdated={() => {
             refreshSecrets()
@@ -243,6 +284,7 @@ export function TenantSecretsPage({
       <>
         <TenantSecretDetailsPage
           secret={selectedSecret}
+          tenantSlug={scope === 'tenant' ? tenantSlug : undefined}
           onBack={() => setSelectedSecretId(null)}
           onEdit={readOnly ? undefined : () => handleEditSecret(selectedSecret)}
           onDelete={readOnly ? undefined : () => handleDeleteSecret(selectedSecret)}
@@ -264,7 +306,7 @@ export function TenantSecretsPage({
               variant="primary"
               icon={<PlusIcon aria-hidden />}
               className="provider-admin-workspace-page__action"
-              onClick={() => setIsCreating(true)}
+              onClick={openCreateSecret}
             >
               {copy.createSecretTypeLabel}
             </Button>
@@ -286,7 +328,7 @@ export function TenantSecretsPage({
                 <Button
                   variant="primary"
                   icon={<PlusIcon aria-hidden />}
-                  onClick={() => setIsCreating(true)}
+                  onClick={openCreateSecret}
                 >
                   {copy.createSecretTypeLabel}
                 </Button>

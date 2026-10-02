@@ -1,6 +1,7 @@
 import { EllipsisVIcon } from '@patternfly/react-icons/dist/esm/icons/ellipsis-v-icon'
 import { PlusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/plus-circle-icon'
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Button,
   ClipboardCopy,
@@ -53,6 +54,7 @@ import { AdditionalEmailDomainsValue } from './AdditionalEmailDomainsField'
 import { AddTenantAdministratorWizard } from '../tenant-admin/AddTenantAdministratorWizard'
 import { OrganizationResourceUsageSection } from './OrganizationResourceUsageSection'
 import { IDP_MANAGER_ROLES_COPY } from '../../idpManager/constants'
+import { syncWorkspaceStepParam } from '../../shared/workspaceNavUrl'
 import {
   getAssignableTenantRole,
   listRoleAssignments,
@@ -312,6 +314,7 @@ export function OrganizationDetailsPage({
   onReviewRoles,
   onOrganizationChange,
 }: OrganizationDetailsPageProps) {
+  const [, setSearchParams] = useSearchParams()
   const activationSteps = getOrganizationActivationSteps(organization)
   const tenantSetupStatus = resolveTenantSetupStatus(organization)
   const roleAssignments = listRoleAssignments(organization)
@@ -338,6 +341,7 @@ export function OrganizationDetailsPage({
 
   const handleRoleAssigned = (updated: RegisteredOrganization) => {
     onOrganizationChange?.(updated)
+    syncWorkspaceStepParam(setSearchParams, null, { replace: true })
     setIsAssignRolesOpen(false)
   }
 
@@ -360,12 +364,21 @@ export function OrganizationDetailsPage({
         organization={organization}
         breadcrumbAncestors={[
           { label: 'Tenants', onNavigate: onBack },
-          { label: organization.name, onNavigate: () => setIsAssignRolesOpen(false) },
+          {
+            label: organization.name,
+            onNavigate: () => {
+              syncWorkspaceStepParam(setSearchParams, null, { replace: true })
+              setIsAssignRolesOpen(false)
+            },
+          },
         ]}
         title={IDP_MANAGER_ROLES_COPY.wizardTitle}
         submitLabel={IDP_MANAGER_ROLES_COPY.wizardSubmitLabel}
         showRoleCatalog
-        onClose={() => setIsAssignRolesOpen(false)}
+        onClose={() => {
+          syncWorkspaceStepParam(setSearchParams, null, { replace: true })
+          setIsAssignRolesOpen(false)
+        }}
         onAdded={handleRoleAssigned}
       />
     )

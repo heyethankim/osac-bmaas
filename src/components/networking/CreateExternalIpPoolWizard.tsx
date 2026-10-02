@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ArrowRightIcon } from '@patternfly/react-icons/dist/esm/icons/arrow-right-icon'
 import { GlobeIcon } from '@patternfly/react-icons/dist/esm/icons/globe-icon'
 import { RhUiConnectedIcon } from '@patternfly/react-icons/dist/esm/icons/rh-ui-connected-icon'
@@ -53,6 +54,11 @@ import {
 import { NetworkInventoryEditReviewPanel } from '../../networking/NetworkInventoryEditReviewPanel'
 import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
 import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope'
+import {
+  getWorkspaceStepParam,
+  resolveWorkspaceWizardStartIndex,
+  syncWorkspaceStepParam,
+} from '../../shared/workspaceNavUrl'
 import { assignExternalIpPoolToRegisteredOrganization } from '../../providerSetup/storage'
 import { NetworkInventoryCreateWizardShell } from './NetworkInventoryCreateWizardShell'
 
@@ -171,14 +177,19 @@ export function CreateExternalIpPoolWizard({
   onClose,
   onCreated,
 }: CreateExternalIpPoolWizardProps) {
+  const [searchParams, setSearchParams] = useSearchParams()
   const isEditMode = resource !== null
   const isProviderFlow = !tenantSlug
   const isProviderCreate = isProviderFlow && !isEditMode
+  const syncStepToUrl = !isEditMode && presentation === 'page'
   const steps = isProviderCreate
     ? PROVIDER_CREATE_EXTERNAL_IP_POOL_STEPS
     : isProviderFlow && isEditMode
       ? PROVIDER_EDIT_EXTERNAL_IP_POOL_STEPS
       : TENANT_CREATE_EXTERNAL_IP_POOL_STEPS
+  const wizardStartIndex = syncStepToUrl
+    ? resolveWorkspaceWizardStartIndex(steps, getWorkspaceStepParam(searchParams))
+    : undefined
   const assignableOrganizations = useMemo(
     () =>
       [...organizations].sort((left, right) =>
@@ -188,6 +199,23 @@ export function CreateExternalIpPoolWizard({
   )
   const [tenantForm, setTenantForm] = useState<TenantPoolForm>(DEFAULT_TENANT_POOL_FORM)
   const [providerForm, setProviderForm] = useState<ProviderPoolForm>(DEFAULT_PROVIDER_POOL_FORM)
+
+  useEffect(() => {
+    if (!syncStepToUrl || !isOpen) {
+      return
+    }
+
+    const stepFromUrl = getWorkspaceStepParam(searchParams)
+    const isValidStep = Boolean(stepFromUrl && steps.some((step) => step.id === stepFromUrl))
+    if (isValidStep) {
+      return
+    }
+
+    const firstStepId = steps[0]?.id
+    if (firstStepId) {
+      syncWorkspaceStepParam(setSearchParams, firstStepId, { replace: true })
+    }
+  }, [isOpen, searchParams, setSearchParams, steps, syncStepToUrl])
 
   useEffect(() => {
     if (!isOpen) {
@@ -825,6 +853,12 @@ export function CreateExternalIpPoolWizard({
         isEditMode && modifiedStepIds.has(step.id as NetworkInventoryEditStepId)
           ? `${step.label} (modified)`
           : step.label
+      }
+      startIndex={wizardStartIndex}
+      onStepChange={
+        syncStepToUrl
+          ? (stepId) => syncWorkspaceStepParam(setSearchParams, stepId, { replace: true })
+          : undefined
       }
     />
   )

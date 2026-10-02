@@ -57,8 +57,11 @@ import {
 import { getTenantCatalogItems } from '../../tenantAdmin/storage'
 import {
   findCatalogItemByWorkspaceParam,
+  getWorkspaceActionParam,
   getWorkspaceCatalogItemParam,
+  syncWorkspaceActionParam,
   syncWorkspaceCatalogItemParam,
+  WORKSPACE_ACTION_LAUNCH_INSTANCE,
 } from '../../shared/workspaceNavUrl'
 
 type TenantUserCatalogPageProps = {
@@ -184,6 +187,21 @@ export function TenantUserCatalogPage({
   const itemParam = getWorkspaceCatalogItemParam(searchParams)
 
   useEffect(() => {
+    const isLaunchAction = getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_LAUNCH_INSTANCE
+    if (!isLaunchAction) {
+      setIsWizardOpen(false)
+      return
+    }
+
+    const match = findCatalogItemByWorkspaceParam(catalogItems, itemParam)
+    if (match) {
+      setSelectedCatalogItem(match)
+      setIsDetailsDrawerOpen(false)
+      setIsWizardOpen(true)
+    }
+  }, [catalogItems, itemParam, searchParams])
+
+  useEffect(() => {
     setSelectedFilters((current) => {
       const next = new Set(current)
       let changed = false
@@ -224,8 +242,11 @@ export function TenantUserCatalogPage({
         ? catalogItems.find((item) => item.catalogItemId === catalogDraft.catalogItemId)
         : null) ?? catalogItems[0]!
     setSelectedCatalogItem(preferred)
-    setIsWizardOpen(true)
-  }, [autoOpenLaunchWizard, catalogDraft, catalogItems, preferCatalogDraft])
+    syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_LAUNCH_INSTANCE, {
+      catalogItem: preferred.displayName,
+      replace: true,
+    })
+  }, [autoOpenLaunchWizard, catalogDraft, catalogItems, preferCatalogDraft, setSearchParams])
 
   useEffect(() => {
     if (!openCatalogItemKey) {
@@ -244,6 +265,10 @@ export function TenantUserCatalogPage({
   }, [openCatalogItemKey, catalogItems, onOpenCatalogItemConsumed, setSearchParams])
 
   useEffect(() => {
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_LAUNCH_INSTANCE) {
+      return
+    }
+
     const match = findCatalogItemByWorkspaceParam(catalogItems, itemParam)
     if (match) {
       setSelectedCatalogItem(match)
@@ -256,7 +281,7 @@ export function TenantUserCatalogPage({
     if (!itemParam) {
       setIsDetailsDrawerOpen(false)
     }
-  }, [itemParam, catalogItems, isWizardOpen])
+  }, [itemParam, catalogItems, isWizardOpen, searchParams])
 
   const serviceCounts = useMemo(
     () => countCatalogServices(catalogItems.map((item) => item.serviceId)),
@@ -346,14 +371,19 @@ export function TenantUserCatalogPage({
   }
 
   const closeLaunchWizard = () => {
-    setIsWizardOpen(false)
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_LAUNCH_INSTANCE) {
+      syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    } else {
+      setIsWizardOpen(false)
+    }
   }
 
   const openLaunchWizard = (item: TenantUserCatalogCard) => {
     setSelectedCatalogItem(item)
     setIsDetailsDrawerOpen(false)
-    setIsWizardOpen(true)
-    syncWorkspaceCatalogItemParam(setSearchParams, null, { replace: true })
+    syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_LAUNCH_INSTANCE, {
+      catalogItem: item.displayName,
+    })
   }
 
   const activeCatalogItem = selectedCatalogItem ?? catalogItems[0] ?? null

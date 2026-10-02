@@ -2538,7 +2538,20 @@
 .tenant-secrets__pair-list {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: var(--pf-t--global--spacer--md);
+}
+
+.tenant-secrets__additional-keys {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+  margin-block-start: var(--pf-t--global--spacer--sm);
+  padding-block-start: var(--pf-t--global--spacer--md);
+  border-block-start: 1px solid var(--pf-t--global--border--color--default);
+}
+
+.tenant-secrets__additional-keys-title.pf-v6-c-title {
+  margin: 0;
 }
 
 .tenant-secrets__type-cards {

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { UserCogIcon } from '@patternfly/react-icons/dist/esm/icons/user-cog-icon'
 import { UserPlusIcon } from '@patternfly/react-icons/dist/esm/icons/user-plus-icon'
 import {
@@ -45,6 +46,8 @@ import {
 } from './OrganizationActionSuccessState'
 import { ResourceCreatePageShell } from '../shared/ResourceCreatePageShell'
 import { useWizardLeaveConfirm } from '../shared/useWizardLeaveConfirm'
+import { useWorkspaceWizardStepUrl } from '../../shared/useWorkspaceWizardStepUrl'
+import { syncWorkspaceStepParam } from '../../shared/workspaceNavUrl'
 import {
   BreakGlassCredentialsPanel,
   issuedBreakGlassFromOrganization,
@@ -75,6 +78,14 @@ type ConnectForm = {
 const STEP_CHOICE = 'setup-idp-choice'
 const STEP_CONNECT = 'setup-idp-connect'
 const STEP_REVIEW = 'setup-idp-review'
+
+const SETUP_IDP_STEPS_CHOICE = [{ id: STEP_CHOICE }] as const
+const SETUP_IDP_STEPS_INVITE = [{ id: STEP_CHOICE }, { id: STEP_REVIEW }] as const
+const SETUP_IDP_STEPS_MYSELF = [
+  { id: STEP_CHOICE },
+  { id: STEP_CONNECT },
+  { id: STEP_REVIEW },
+] as const
 
 function buildIdpManagerHandoffText(
   link: string | null,
@@ -109,6 +120,7 @@ export function SetupIdentityProviderWizard({
   onUpdated,
   onConnected,
 }: SetupIdentityProviderWizardProps) {
+  const [, setSearchParams] = useSearchParams()
   const [setupPath, setSetupPath] = useState<SetupPath | null>(null)
   const [issuedBreakGlass, setIssuedBreakGlass] = useState<IssuedBreakGlass | null>(null)
   const [copyAllState, setCopyAllState] = useState<'idle' | 'copied'>('idle')
@@ -122,9 +134,22 @@ export function SetupIdentityProviderWizard({
   const [completionPhase, setCompletionPhase] =
     useState<OrganizationActionCompletionPhase>('idle')
   const [wizardKey, setWizardKey] = useState(0)
-  const [startIndex, setStartIndex] = useState(1)
+  const [localStartIndex, setLocalStartIndex] = useState(1)
   const completionTimersRef = useRef<number[]>([])
   const organizationIdRef = useRef<string | null>(null)
+  const syncStepToUrl = presentation === 'page'
+  const setupSteps =
+    setupPath === 'myself'
+      ? SETUP_IDP_STEPS_MYSELF
+      : setupPath === 'invite'
+        ? SETUP_IDP_STEPS_INVITE
+        : SETUP_IDP_STEPS_CHOICE
+  const {
+    startIndex: urlStartIndex,
+    onStepChange: syncWizardStepToUrl,
+    stepKey,
+  } = useWorkspaceWizardStepUrl(syncStepToUrl, isOpen, setupSteps)
+  const startIndex = syncStepToUrl ? (urlStartIndex ?? 1) : localStartIndex
 
   const clearCompletionTimers = () => {
     completionTimersRef.current.forEach((timerId) => window.clearTimeout(timerId))
@@ -159,9 +184,13 @@ export function SetupIdentityProviderWizard({
     const pending = hasPendingIdpInvite(organization)
     setSetupPath(pending ? 'invite' : null)
     // Invite path omits Connect, so Review is step 2.
-    setStartIndex(pending ? 2 : 1)
+    if (syncStepToUrl && pending) {
+      syncWorkspaceStepParam(setSearchParams, STEP_REVIEW, { replace: true })
+    } else if (!syncStepToUrl) {
+      setLocalStartIndex(pending ? 2 : 1)
+    }
     setWizardKey((current) => current + 1)
-  }, [isOpen, organization])
+  }, [isOpen, organization, setSearchParams, syncStepToUrl])
 
   if (!organization) {
     return null
@@ -325,14 +354,18 @@ export function SetupIdentityProviderWizard({
 
   const wizard = (
     <Wizard
-      key={`setup-idp-wizard-${organization.id}-${wizardKey}-${setupPath ?? 'none'}`}
+      key={`setup-idp-wizard-${organization.id}-${wizardKey}-${setupPath ?? 'none'}-${stepKey}`}
       className="provider-admin-organizations__wizard"
       height={isPage ? '100%' : '40rem'}
       isPlain={isPage}
       startIndex={startIndex}
       isVisitRequired
       onStepChange={(_event, currentStep) => {
-        if (String(currentStep.id) === STEP_REVIEW && setupPath === 'invite') {
+        const stepId = String(currentStep?.id ?? '')
+        if (setupSteps.some((step) => step.id === stepId)) {
+          syncWizardStepToUrl?.(stepId)
+        }
+        if (stepId === STEP_REVIEW && setupPath === 'invite') {
           persistInviteIfNeeded()
         }
       }}

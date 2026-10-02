@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Button,
   Content,
@@ -69,6 +70,11 @@ import {
 import type { TenantInstance } from '../../tenantUser/instances'
 import { buildTenantUserProjectTreeRows, getProjectMembershipForEmail, isTenantUserProjectManager, normalizeMemberEmail, resolveTenantUserDisplayName } from '../../tenantUser/projects'
 import { getProjectTopologyVisibleIds } from '../../tenantAdmin/projectTopology'
+import {
+  WORKSPACE_ACTION_CREATE_PROJECT,
+  getWorkspaceActionParam,
+  syncWorkspaceActionParam,
+} from '../../shared/workspaceNavUrl'
 
 type TenantAdminProjectsTeamsPageProps = {
   tenantSlug: string
@@ -100,6 +106,7 @@ export function TenantAdminProjectsTeamsPage({
   allProjects,
   lede,
 }: TenantAdminProjectsTeamsPageProps) {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<TenantProject | null>(null)
   const [nestedCreateParent, setNestedCreateParent] = useState<TenantProject | null>(null)
@@ -118,6 +125,13 @@ export function TenantAdminProjectsTeamsPage({
   const projectDisplayOrderRef = useRef<string[] | null>(null)
   const { creatingItemId: creatingProjectId, beginCreateReveal: beginProjectCreateReveal } =
     useResourceCreateReveal()
+
+  useEffect(() => {
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_CREATE_PROJECT) {
+      setEditingProject(null)
+      setIsCreateModalOpen(true)
+    }
+  }, [searchParams])
 
   const projectCatalog = allProjects ?? projects
 
@@ -338,6 +352,9 @@ export function TenantAdminProjectsTeamsPage({
   }
 
   const closeCreateWizard = () => {
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_CREATE_PROJECT) {
+      syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    }
     setIsCreateModalOpen(false)
     setEditingProject(null)
     setNestedCreateParent(null)
@@ -357,8 +374,9 @@ export function TenantAdminProjectsTeamsPage({
 
   const openCreateProject = (parent: TenantProject | null = null, fromDetails = false) => {
     const rootProject = getTenantRootProject(projectCatalog)
+    const resolvedParent = parent ?? rootProject
     setEditingProject(null)
-    setNestedCreateParent(parent ?? rootProject)
+    setNestedCreateParent(resolvedParent)
     if (fromDetails && parent) {
       setReturnToProjectAfterWizard(parent)
       if (viewMode !== 'topology') {
@@ -367,6 +385,14 @@ export function TenantAdminProjectsTeamsPage({
     } else {
       setReturnToProjectAfterWizard(null)
     }
+
+    const isRootLevel = !resolvedParent || isTenantRootProject(resolvedParent)
+    const usePage = isRootLevel || viewMode !== 'topology'
+    if (usePage) {
+      syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_CREATE_PROJECT)
+      return
+    }
+
     setIsCreateModalOpen(true)
   }
 

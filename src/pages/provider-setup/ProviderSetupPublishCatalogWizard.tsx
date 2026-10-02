@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ArrowRightIcon } from '@patternfly/react-icons/dist/esm/icons/arrow-right-icon'
 import { CatalogIcon } from '@patternfly/react-icons/dist/esm/icons/catalog-icon'
 import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
@@ -118,6 +119,13 @@ import {
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import { DEFAULT_CATALOG_NETWORK_POLICY } from '../../providerAdmin/catalogNetworkPolicy'
 import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
+import {
+  getWorkspaceCatalogServiceParam,
+  getWorkspaceStepParam,
+  resolveWorkspaceWizardStartIndex,
+  syncWorkspaceCatalogServiceParam,
+  syncWorkspaceStepParam,
+} from '../../shared/workspaceNavUrl'
 import {
   CATALOG_SERVICE_OFFERINGS,
   getCatalogServiceOffering,
@@ -492,6 +500,7 @@ export function ProviderSetupPublishCatalogWizard({
   isSaving = false,
   hidePublishScope = false,
 }: ProviderSetupPublishCatalogWizardProps) {
+  const [searchParams, setSearchParams] = useSearchParams()
   const isEditMode = mode === 'edit'
   const isSubmitting = isPublishing || isSaving
   const skipNextServiceHardwareResetRef = useRef(false)
@@ -849,6 +858,52 @@ export function ProviderSetupPublishCatalogWizard({
     })
   }
 
+  const selectCatalogService = (serviceId: CatalogServiceId) => {
+    setSelectedServiceId(serviceId)
+    if (!isEditMode && isOpen) {
+      syncWorkspaceCatalogServiceParam(setSearchParams, serviceId)
+    }
+  }
+
+  useEffect(() => {
+    if (!isOpen || isEditMode) {
+      return
+    }
+
+    const serviceFromUrl = getWorkspaceCatalogServiceParam(searchParams)
+    if (!serviceFromUrl) {
+      return
+    }
+
+    setSelectedServiceId((current) => (current === serviceFromUrl ? current : serviceFromUrl))
+  }, [isEditMode, isOpen, searchParams])
+
+  const syncCreateWizardStepToUrl = (stepId: string) => {
+    if (!isOpen || isEditMode || presentation !== 'page') {
+      return
+    }
+    syncWorkspaceStepParam(setSearchParams, stepId, { replace: true })
+  }
+
+  useEffect(() => {
+    if (!isOpen || isEditMode || presentation !== 'page') {
+      return
+    }
+
+    const stepFromUrl = getWorkspaceStepParam(searchParams)
+    const isValidStep = Boolean(
+      stepFromUrl && publishSteps.some((step) => step.id === stepFromUrl),
+    )
+    if (isValidStep) {
+      return
+    }
+
+    const firstStepId = publishSteps[0]?.id
+    if (firstStepId) {
+      syncWorkspaceStepParam(setSearchParams, firstStepId, { replace: true })
+    }
+  }, [isEditMode, isOpen, presentation, publishSteps, searchParams, setSearchParams])
+
   const resetWizard = () => {
     setSelectedServiceId(null)
     setSelectedTemplateRefId('')
@@ -1025,9 +1080,15 @@ export function ProviderSetupPublishCatalogWizard({
       setSelectedTemplateRefId(preferredTemplate.templateRefId)
     }
 
-    setSelectedServiceId('baremetal')
-    setDisplayName(defaultDisplayName ?? getPublishCatalogSuggestedDisplayName('baremetal'))
-    setDescription(getPublishCatalogSuggestedDescription('baremetal'))
+    const initialServiceId = getWorkspaceCatalogServiceParam(searchParams) ?? 'baremetal'
+    setSelectedServiceId(initialServiceId)
+    setDisplayName(
+      defaultDisplayName ?? getPublishCatalogSuggestedDisplayName(initialServiceId),
+    )
+    setDescription(getPublishCatalogSuggestedDescription(initialServiceId))
+    if (!getWorkspaceCatalogServiceParam(searchParams)) {
+      syncWorkspaceCatalogServiceParam(setSearchParams, initialServiceId, { replace: true })
+    }
     setPublishScope(initialPublishScope)
     if (initialPublishScope === 'vip-enterprise') {
       const preferredTenantIds = normalizeEnterpriseTenantIds(initialEnterpriseTenantId).filter(
@@ -1567,11 +1628,11 @@ export function ProviderSetupPublishCatalogWizard({
                         isSelected={isSelected}
                         className="provider-setup-template__service-card"
                         aria-labelledby={titleId}
-                        onClick={() => setSelectedServiceId(service.id)}
+                        onClick={() => selectCatalogService(service.id)}
                         onKeyDown={(event) => {
                           if (event.key === 'Enter' || event.key === ' ') {
                             event.preventDefault()
-                            setSelectedServiceId(service.id)
+                            selectCatalogService(service.id)
                           }
                         }}
                       >
@@ -2934,13 +2995,28 @@ export function ProviderSetupPublishCatalogWizard({
 
   const wizardTitle = isEditMode ? 'Edit catalog item' : 'Create catalog item'
   const isPage = presentation === 'page'
+  const wizardStartIndex = resolveWorkspaceWizardStartIndex(
+    publishSteps,
+    getWorkspaceStepParam(searchParams),
+  )
 
   const wizard = isOpen ? (
     <Wizard
-      key={isEditMode ? 'edit-catalog-wizard' : 'publish-catalog-wizard'}
+      key={
+        isEditMode
+          ? 'edit-catalog-wizard'
+          : `publish-catalog-wizard-${getWorkspaceStepParam(searchParams) ?? publishSteps[0]?.id ?? 'start'}`
+      }
       height={isPage ? '100%' : '40rem'}
       isPlain={isPage}
+      startIndex={wizardStartIndex}
       onClose={isPage || isSubmitting ? undefined : requestClose}
+      onStepChange={(_event, currentStep) => {
+        const stepId = String(currentStep?.id ?? '').replace('publish-catalog-step-', '')
+        if (publishSteps.some((step) => step.id === stepId)) {
+          syncCreateWizardStepToUrl(stepId)
+        }
+      }}
       header={
         isPage ? undefined : (
           <WizardHeader

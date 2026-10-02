@@ -44,8 +44,11 @@ import { CatalogSpecRowsList } from '../components/catalog/CatalogSpecRowsList'
 import { findCatalogLinkedTemplate } from '../catalog/hardwareSpecs'
 import { getCatalogViewMode, setCatalogViewMode, type CatalogViewMode } from '../catalog/viewMode'
 import {
+  WORKSPACE_ACTION_CREATE_CATALOG_ITEM,
   findCatalogItemByWorkspaceParam,
+  getWorkspaceActionParam,
   getWorkspaceCatalogItemParam,
+  syncWorkspaceActionParam,
   syncWorkspaceCatalogItemParam,
 } from '../shared/workspaceNavUrl'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
@@ -550,8 +553,9 @@ export function ProviderAdminCatalogPage({
     if (intent.kind === 'publish') {
       setPublishResumeScope('vip-enterprise')
       setPublishResumeTenantId(preferredTenantId)
-      setIsViewingDetails(false)
-      setIsPublishWizardOpen(true)
+      syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_CREATE_CATALOG_ITEM, {
+        replace: true,
+      })
       return
     }
 
@@ -578,6 +582,9 @@ export function ProviderAdminCatalogPage({
     setProviderVipCatalogResumeIntent(intent)
     setIsPublishWizardOpen(false)
     setIsEditWizardOpen(false)
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_CREATE_CATALOG_ITEM) {
+      syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    }
     onRegisterOrganization?.()
   }
 
@@ -595,9 +602,13 @@ export function ProviderAdminCatalogPage({
   }
 
   const closeCreateWizard = () => {
-    setIsPublishWizardOpen(false)
     setPublishResumeScope('global-public')
     setPublishResumeTenantId('')
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_CREATE_CATALOG_ITEM) {
+      syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    } else {
+      setIsPublishWizardOpen(false)
+    }
   }
 
   const closeEditWizard = () => {
@@ -621,12 +632,26 @@ export function ProviderAdminCatalogPage({
   }
 
   const openCreateWizard = () => {
-    setIsViewingDetails(false)
     setPublishResumeScope('global-public')
     setPublishResumeTenantId('')
-    setIsPublishWizardOpen(true)
-    syncWorkspaceCatalogItemParam(setSearchParams, null, { replace: true })
+    syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_CREATE_CATALOG_ITEM)
   }
+
+  useEffect(() => {
+    const isCreateAction =
+      getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_CREATE_CATALOG_ITEM
+
+    if (isCreateAction) {
+      setIsViewingDetails(false)
+      setIsEditWizardOpen(false)
+      setIsPublishWizardOpen(true)
+      return
+    }
+
+    setIsPublishWizardOpen(false)
+    setPublishResumeScope('global-public')
+    setPublishResumeTenantId('')
+  }, [searchParams])
 
   useEffect(() => {
     if (!openCatalogItemKey) {
@@ -704,6 +729,9 @@ export function ProviderAdminCatalogPage({
     setIsViewingDetails(false)
     setIsPublishWizardOpen(false)
     setIsEditWizardOpen(true)
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_CREATE_CATALOG_ITEM) {
+      syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    }
   }
 
   const handleDuplicate = (item: ProviderCatalogDraft) => {

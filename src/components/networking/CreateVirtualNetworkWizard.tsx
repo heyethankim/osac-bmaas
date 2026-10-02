@@ -28,6 +28,7 @@ import {
 import { NetworkInventoryEditReviewPanel } from '../../networking/NetworkInventoryEditReviewPanel'
 import { isValidKubernetesResourceName } from '../../shared/kubernetesResourceName'
 import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope'
+import { useWorkspaceWizardStepUrl } from '../../shared/useWorkspaceWizardStepUrl'
 import { NetworkInventoryCreateWizardShell } from './NetworkInventoryCreateWizardShell'
 
 type CreateVirtualNetworkForm = {
@@ -78,6 +79,12 @@ export function CreateVirtualNetworkWizard({
   onCreated,
 }: CreateVirtualNetworkWizardProps) {
   const isEditMode = resource !== null
+  const syncStepToUrl = presentation === 'page'
+  const { startIndex: wizardStartIndex, onStepChange } = useWorkspaceWizardStepUrl(
+    syncStepToUrl,
+    isOpen,
+    VIRTUAL_NETWORK_WIZARD_STEPS,
+  )
   const [form, setForm] = useState<CreateVirtualNetworkForm>(DEFAULT_FORM)
 
   useEffect(() => {
@@ -283,6 +290,8 @@ export function CreateVirtualNetworkWizard({
           ? `${step.label} (modified)`
           : step.label
       }
+      startIndex={wizardStartIndex}
+      onStepChange={onStepChange}
     />
   )
 }

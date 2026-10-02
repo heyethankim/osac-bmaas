@@ -24,6 +24,7 @@ import {
 import { formatExternalIpPoolCapacitySummary } from '../provider-admin/ExternalIpPoolHubCardSections'
 import { addTenantExternalIp } from '../../tenantAdmin/networkInventoryStorage'
 import { TENANT_EXTERNAL_IPS_PAGE_LABEL } from '../../tenantAdmin/constants'
+import { useWorkspaceWizardStepUrl } from '../../shared/useWorkspaceWizardStepUrl'
 import { NetworkInventoryCreateWizardShell } from './NetworkInventoryCreateWizardShell'
 
 const CREATE_EXTERNAL_IP_STEPS = [
@@ -52,6 +53,11 @@ export function CreateExternalIpWizard({
   onClose,
   onCreated,
 }: CreateExternalIpWizardProps) {
+  const { startIndex: wizardStartIndex, onStepChange } = useWorkspaceWizardStepUrl(
+    true,
+    isOpen,
+    CREATE_EXTERNAL_IP_STEPS,
+  )
   const [selectedPoolId, setSelectedPoolId] = useState<string>(
     () => initialPoolId ?? pools[0]?.id ?? '',
   )
@@ -224,6 +230,8 @@ export function CreateExternalIpWizard({
       className="provider-admin-external-networks-hub__create-ip-wizard"
       leaveConfirmPrimaryActionLabel="Leave create external IP"
       getStepName={(step) => step.label}
+      startIndex={wizardStartIndex}
+      onStepChange={onStepChange}
     />
   )
 }

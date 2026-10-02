@@ -64,6 +64,7 @@ import {
   getProjectEditChanges,
   getProjectEditModifiedStepIds,
 } from '../../tenantAdmin/projectEditDiff'
+import { useWorkspaceWizardStepUrl } from '../../shared/useWorkspaceWizardStepUrl'
 
 type CreateTenantProjectWizardProps = {
   isOpen: boolean
@@ -102,6 +103,12 @@ export function CreateTenantProjectWizard({
   const [selectedParentProjectId, setSelectedParentProjectId] = useState<string | null>(null)
   const [isParentMenuOpen, setIsParentMenuOpen] = useState(false)
   const isEditMode = editingProject !== null
+  const syncStepToUrl = presentation === 'page'
+  const { startIndex: wizardStartIndex, onStepChange, stepKey } = useWorkspaceWizardStepUrl(
+    syncStepToUrl,
+    isOpen,
+    CREATE_PROJECT_WIZARD_STEPS,
+  )
   const parentTreeRows = useMemo(
     () => buildTenantProjectScopeTreeRows(projects),
     [projects],
@@ -663,11 +670,22 @@ export function CreateTenantProjectWizard({
 
   const wizard = isOpen ? (
     <Wizard
-      key={editingProject?.id ?? 'create-tenant-project-wizard'}
+      key={`${editingProject?.id ?? 'create-tenant-project-wizard'}-${stepKey}`}
       className="tenant-admin-projects-teams__wizard"
       height={isPage ? '100%' : '43rem'}
       isPlain={isPage}
+      startIndex={wizardStartIndex}
       onClose={isPage ? undefined : requestClose}
+      onStepChange={
+        onStepChange
+          ? (_event, currentStep) => {
+              const stepId = String(currentStep?.id ?? '').replace('create-project-step-', '')
+              if (CREATE_PROJECT_WIZARD_STEPS.some((step) => step.id === stepId)) {
+                onStepChange(stepId)
+              }
+            }
+          : undefined
+      }
       header={
         isPage ? undefined : (
           <WizardHeader
