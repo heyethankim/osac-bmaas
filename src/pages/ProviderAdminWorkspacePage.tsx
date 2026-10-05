@@ -190,10 +190,10 @@ export function ProviderAdminWorkspacePage() {
     setCatalogItems(getProviderCatalogItems())
 
     if (status === 'unpublished') {
+      // Stay on Catalog; the catalog page closes the wizard and runs the create-card reveal.
       setProviderActiveNav('catalog')
       setProviderSetupComplete()
       setActiveNavId('catalog')
-      syncWorkspaceNavParam(setSearchParams, 'catalog', { replace: true })
       setSetupComplete(true)
       setWorkspaceTransition('idle')
       return draft
@@ -205,7 +205,7 @@ export function ProviderAdminWorkspacePage() {
       setProviderActiveNav('catalog')
       setProviderSetupComplete()
       setActiveNavId('catalog')
-      syncWorkspaceNavParam(setSearchParams, 'catalog', { replace: true })
+      syncWorkspaceNavParam(setSearchParams, 'catalog', { replace: true, showLanding: true })
       setSetupComplete(true)
       setWorkspaceTransition('entering')
     }, PUBLISH_PHASE_MS)

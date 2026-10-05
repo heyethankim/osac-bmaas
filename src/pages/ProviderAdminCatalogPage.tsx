@@ -978,17 +978,28 @@ export function ProviderAdminCatalogPage({
           initialEnterpriseTenantId={publishResumeTenantId}
           onClose={closeCreateWizard}
           onCreateCatalogItem={(payload) => {
-            closeCreateWizard()
             const created = onCreateCatalogItem(payload)
             if (created?.catalogItemId) {
+              const serviceId = created.serviceId ?? 'baremetal'
               setViewMode('grid')
               setCatalogViewMode('grid')
               setSelectedStatus('all')
               setSearchValue('')
+              setOrganizationFilter('')
+              setSelectedFilters((current) => {
+                if (current.has(serviceId)) {
+                  return current
+                }
+                const next = new Set(current)
+                next.add(serviceId)
+                return next
+              })
+              // Same delayed card treatment as Tenant Admin ("Creating catalog item…").
               beginCatalogItemCreateReveal(created.catalogItemId)
               setIsViewingDetails(false)
-              syncWorkspaceCatalogItemParam(setSearchParams, null, { replace: true })
             }
+            // Clear `?action=` after create so the list (and create reveal) can mount.
+            closeCreateWizard()
           }}
           onRegisterOrganization={() => handleRegisterOrganizationFromVip({ kind: 'publish' })}
           isPublishing={isPublishing}

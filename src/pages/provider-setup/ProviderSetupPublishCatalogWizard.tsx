@@ -502,7 +502,9 @@ export function ProviderSetupPublishCatalogWizard({
 }: ProviderSetupPublishCatalogWizardProps) {
   const [searchParams, setSearchParams] = useSearchParams()
   const isEditMode = mode === 'edit'
-  const isSubmitting = isPublishing || isSaving
+  const [isCreateSubmitting, setIsCreateSubmitting] = useState(false)
+  const createSubmitTimeoutRef = useRef<number | null>(null)
+  const isSubmitting = isPublishing || isSaving || isCreateSubmitting
   const skipNextServiceHardwareResetRef = useRef(false)
   const hydratedEditServiceIdRef = useRef<CatalogServiceId | null>(null)
   const editBaselineCapturedRef = useRef(false)
@@ -1055,7 +1057,21 @@ export function ProviderSetupPublishCatalogWizard({
   }
 
   useEffect(() => {
+    return () => {
+      if (createSubmitTimeoutRef.current !== null) {
+        window.clearTimeout(createSubmitTimeoutRef.current)
+        createSubmitTimeoutRef.current = null
+      }
+    }
+  }, [])
+
+  useEffect(() => {
     if (!isOpen) {
+      if (createSubmitTimeoutRef.current !== null) {
+        window.clearTimeout(createSubmitTimeoutRef.current)
+        createSubmitTimeoutRef.current = null
+      }
+      setIsCreateSubmitting(false)
       resetWizard()
       setEditBaseline(null)
       editBaselineCapturedRef.current = false
@@ -1386,14 +1402,22 @@ export function ProviderSetupPublishCatalogWizard({
 
   const handleCreateCatalogItem = () => {
     const payload = buildCatalogItemPayload()
-    if (!payload) {
+    if (!payload || isCreateSubmitting) {
       return
     }
 
-    onCreateCatalogItem({
-      ...payload,
-      status: hidePublishScope ? 'live' : 'unpublished',
-    })
+    // Brief submit delay so Review shows "Creating…" before the catalog card reveal.
+    setIsCreateSubmitting(true)
+    if (createSubmitTimeoutRef.current !== null) {
+      window.clearTimeout(createSubmitTimeoutRef.current)
+    }
+    createSubmitTimeoutRef.current = window.setTimeout(() => {
+      createSubmitTimeoutRef.current = null
+      onCreateCatalogItem({
+        ...payload,
+        status: hidePublishScope ? 'live' : 'unpublished',
+      })
+    }, 700)
   }
 
   const handleSaveCatalogItem = () => {
@@ -3002,11 +3026,7 @@ export function ProviderSetupPublishCatalogWizard({
 
   const wizard = isOpen ? (
     <Wizard
-      key={
-        isEditMode
-          ? 'edit-catalog-wizard'
-          : `publish-catalog-wizard-${getWorkspaceStepParam(searchParams) ?? publishSteps[0]?.id ?? 'start'}`
-      }
+      key={isEditMode ? 'edit-catalog-wizard' : 'publish-catalog-wizard'}
       height={isPage ? '100%' : '40rem'}
       isPlain={isPage}
       startIndex={wizardStartIndex}
