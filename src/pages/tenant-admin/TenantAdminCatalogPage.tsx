@@ -946,11 +946,9 @@ export function TenantAdminCatalogPage({
           }}
           onDismissDuringProvisioning={(instanceId, serviceId) => {
             onDismissDuringProvisioning?.(instanceId, serviceId)
-            closeLaunchWizard()
           }}
           onWizardFinished={(instanceId, serviceId) => {
             onWizardFinished?.(instanceId, serviceId)
-            closeLaunchWizard()
           }}
         />
       ) : isDetailsDrawerOpen && detailsItem ? (

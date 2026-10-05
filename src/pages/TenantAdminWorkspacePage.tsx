@@ -298,7 +298,11 @@ export function TenantAdminWorkspacePage() {
       ),
     )
     scheduleProvisioningCompletion(instanceId, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS)
-    handleNavChange(getServicesNavId(serviceId))
+    const nextNavId = getServicesNavId(serviceId)
+    setActiveNavId(nextNavId)
+    setTenantActiveNav(tenant, nextNavId)
+    setNavContentKey((current) => current + 1)
+    syncWorkspaceNavParam(setSearchParams, nextNavId, { replace: true })
   }
 
   const renderWorkspaceContent = () => {

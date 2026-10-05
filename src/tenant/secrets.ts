@@ -9,7 +9,7 @@ import {
   CLUSTER_LAUNCH_DEMO_PULL_SECRET,
   CLUSTER_LAUNCH_DEMO_SSH_PUBLIC_KEY,
 } from '../tenantUser/clusterLaunchDemoSecrets'
-import { DEMO_TENANT_ROOT_PROJECT_ID } from '../tenantAdmin/projects'
+import { DEMO_TENANT_ROOT_PROJECT_ID } from '../tenantAdmin/projectIds'
 
 export type { StoredKeyValuePair, TenantSecretData, TenantSecretType, TenantSecretUsage } from './secretTypes'
 

@@ -664,11 +664,11 @@ export function TenantUserLaunchInstanceWizard({
 
   const handleClose = () => {
     const provisioningId = provisioningInstanceIdRef.current
-    // Any close after provisioning has started should land on Services.
+    // Parent navigates to the matching Services page; do not also close via
+    // catalog URL params or `nav=` stays on Catalog.
     if (provisioningId) {
       onDismissDuringProvisioning(provisioningId, catalogItem.serviceId)
       resetWizard()
-      onClose()
       return
     }
 

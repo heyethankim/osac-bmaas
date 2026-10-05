@@ -301,9 +301,15 @@ export function TenantUserWorkspacePage() {
 
   const handleNavigateToInstances = useCallback(
     (options?: { serviceId?: CatalogServiceId }) => {
-      handleNavChange(getServicesNavId(options?.serviceId ?? 'baremetal'))
+      const nextNavId = getServicesNavId(options?.serviceId ?? 'baremetal')
+      setActiveNavId(nextNavId)
+      setTenantUserActiveNav(tenantSlug, nextNavId)
+      setNavContentKey((current) => current + 1)
+      // Keep the in-memory Services list (includes the instance still provisioning).
+      // Left-nav `handleNavChange` uses showLanding and would fight Catalog `?action=`.
+      syncWorkspaceNavParam(setSearchParams, nextNavId, { replace: true })
     },
-    [handleNavChange],
+    [setSearchParams, tenantSlug],
   )
 
   const handleProvisioningStarted = useCallback(

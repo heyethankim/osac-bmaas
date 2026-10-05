@@ -10,6 +10,9 @@ import {
   isValidKubernetesResourceName,
   KUBERNETES_RESOURCE_NAME_MAX_LENGTH,
 } from '../shared/kubernetesResourceName'
+import { DEMO_TENANT_ROOT_PROJECT_ID } from './projectIds'
+
+export { DEMO_TENANT_ROOT_PROJECT_ID } from './projectIds'
 
 export type TenantProjectCatalogItem = {
   id: string
@@ -127,7 +130,6 @@ export function isTenantProjectEnvironment(value: unknown): value is TenantProje
 }
 
 /** Auto-created top-level project for every tenant; all user projects nest beneath it. */
-export const DEMO_TENANT_ROOT_PROJECT_ID = 'project_root'
 export const DEMO_TENANT_ROOT_PROJECT_NAME = 'Root'
 export const DEMO_TENANT_ROOT_PROJECT_DESCRIPTION =
   'Default tenant workspace for global resource scope and the top of the project hierarchy.'

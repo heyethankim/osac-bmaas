@@ -418,14 +418,8 @@ export function TenantUserCatalogPage({
             }
           }}
           onProvisioningStarted={onProvisioningStarted}
-          onDismissDuringProvisioning={(instanceId, serviceId) => {
-            onDismissDuringProvisioning(instanceId, serviceId)
-            closeLaunchWizard()
-          }}
-          onWizardFinished={(instanceId, serviceId) => {
-            onWizardFinished(instanceId, serviceId)
-            closeLaunchWizard()
-          }}
+          onDismissDuringProvisioning={onDismissDuringProvisioning}
+          onWizardFinished={onWizardFinished}
         />
       ) : detailsItem ? (
         <TenantUserCatalogItemDetailsPage
