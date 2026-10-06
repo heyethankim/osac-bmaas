@@ -1650,6 +1650,67 @@ export function TenantUserLaunchInstanceWizard({
     isBareMetalCatalogItem,
   ])
 
+  const renderBareMetalLaunchEstimatePanel = () => (
+    <div className="provider-setup-template__cluster-estimate" aria-live="polite">
+      {resolvedLaunchBareMetalComposedRate ? (
+        <>
+          <div className="provider-setup-template__cluster-estimate-header">
+            <Content component="p" className="provider-setup-template__cluster-estimate-label">
+              Estimated total
+            </Content>
+            <div className="provider-setup-template__cluster-estimate-totals">
+              <span className="provider-setup-template__cluster-estimate-hourly">
+                ${resolvedLaunchBareMetalComposedRate.hourlyRate.toFixed(2)}
+                <span className="provider-setup-template__cluster-estimate-unit">/hr</span>
+              </span>
+              <span className="provider-setup-template__cluster-estimate-monthly">
+                $
+                {resolvedLaunchBareMetalComposedRate.monthlyRate.toLocaleString('en-US', {
+                  maximumFractionDigits: 0,
+                })}
+                /mo
+              </span>
+            </div>
+          </div>
+          <DescriptionList
+            isCompact
+            isHorizontal
+            className="provider-setup-template__cluster-estimate-breakdown"
+            aria-label="Estimated rate breakdown"
+          >
+            <DescriptionListGroup>
+              <DescriptionListTerm>Hardware</DescriptionListTerm>
+              <DescriptionListDescription>
+                ${resolvedLaunchBareMetalComposedRate.hardware.hourlyRate.toFixed(2)}/hr
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>OS license</DescriptionListTerm>
+              <DescriptionListDescription>
+                {resolvedLaunchBareMetalComposedRate.osLicense.hourlyRate <= 0
+                  ? 'Included'
+                  : `$${resolvedLaunchBareMetalComposedRate.osLicense.hourlyRate.toFixed(2)}/hr`}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+          </DescriptionList>
+          <Content component="p" className="provider-setup-template__cluster-estimate-meta">
+            {getM360RateCardDisplayName(DEFAULT_M360_RATE_CARD_ID)}
+          </Content>
+        </>
+      ) : (
+        <>
+          <Content component="p" className="provider-setup-template__cluster-estimate-label">
+            Estimated total
+          </Content>
+          <Content component="p" className="provider-setup-template__cluster-estimate-meta">
+            Missing hardware or OS rates on{' '}
+            {getM360RateCardDisplayName(DEFAULT_M360_RATE_CARD_ID)}.
+          </Content>
+        </>
+      )}
+    </div>
+  )
+
   const renderBareMetalHardwareStep = () => {
     const lockedInstanceTypeLabel =
       formatBaremetalInstanceTypeLabel(form.instanceType) ||
@@ -1755,6 +1816,7 @@ export function TenantUserLaunchInstanceWizard({
           })}
         </div>
       </FormGroup>
+      {renderBareMetalLaunchEstimatePanel()}
     </div>
     )
   }
@@ -1852,65 +1914,7 @@ export function TenantUserLaunchInstanceWizard({
           })}
         </div>
       </FormGroup>
-
-      <div className="provider-setup-template__cluster-estimate" aria-live="polite">
-        {resolvedLaunchBareMetalComposedRate ? (
-          <>
-            <div className="provider-setup-template__cluster-estimate-header">
-              <Content component="p" className="provider-setup-template__cluster-estimate-label">
-                Estimated total
-              </Content>
-              <div className="provider-setup-template__cluster-estimate-totals">
-                <span className="provider-setup-template__cluster-estimate-hourly">
-                  ${resolvedLaunchBareMetalComposedRate.hourlyRate.toFixed(2)}
-                  <span className="provider-setup-template__cluster-estimate-unit">/hr</span>
-                </span>
-                <span className="provider-setup-template__cluster-estimate-monthly">
-                  $
-                  {resolvedLaunchBareMetalComposedRate.monthlyRate.toLocaleString('en-US', {
-                    maximumFractionDigits: 0,
-                  })}
-                  /mo
-                </span>
-              </div>
-            </div>
-            <DescriptionList
-              isCompact
-              isHorizontal
-              className="provider-setup-template__cluster-estimate-breakdown"
-              aria-label="Estimated rate breakdown"
-            >
-              <DescriptionListGroup>
-                <DescriptionListTerm>Hardware</DescriptionListTerm>
-                <DescriptionListDescription>
-                  ${resolvedLaunchBareMetalComposedRate.hardware.hourlyRate.toFixed(2)}/hr
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>OS license</DescriptionListTerm>
-                <DescriptionListDescription>
-                  {resolvedLaunchBareMetalComposedRate.osLicense.hourlyRate <= 0
-                    ? 'Included'
-                    : `$${resolvedLaunchBareMetalComposedRate.osLicense.hourlyRate.toFixed(2)}/hr`}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-            </DescriptionList>
-            <Content component="p" className="provider-setup-template__cluster-estimate-meta">
-              {getM360RateCardDisplayName(DEFAULT_M360_RATE_CARD_ID)}
-            </Content>
-          </>
-        ) : (
-          <>
-            <Content component="p" className="provider-setup-template__cluster-estimate-label">
-              Estimated total
-            </Content>
-            <Content component="p" className="provider-setup-template__cluster-estimate-meta">
-              Missing hardware or OS rates on{' '}
-              {getM360RateCardDisplayName(DEFAULT_M360_RATE_CARD_ID)}.
-            </Content>
-          </>
-        )}
-      </div>
+      {renderBareMetalLaunchEstimatePanel()}
     </div>
     )
   }
