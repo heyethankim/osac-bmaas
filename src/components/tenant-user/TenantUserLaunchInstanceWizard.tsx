@@ -99,13 +99,14 @@ import {
   PROVISIONING_BOOT_LOG_STEPS,
   VM_LAUNCH_INSTANCE_DEMO,
   parseVmLaunchInstanceTypeOption,
+  type LaunchExternalIpPath,
   type LaunchInstanceWizardForm,
   type LaunchInstanceWizardStepId,
+  type LaunchNetworkPath,
   type ProvisioningBootLogStatus,
 } from '../../tenantUser/launchInstanceWizard'
 import {
   formatLaunchInstanceNetworkLabel,
-  getLaunchNetworkFieldLabel,
   resolveLaunchInstanceNetworking,
   resolveLaunchNetworkContext,
   type LaunchNetworkFieldView,
@@ -611,24 +612,69 @@ export function TenantUserLaunchInstanceWizard({
     }
   }, [isOpen, activeStepId])
 
+  const defaultVirtualNetworkId = networkContext.policy.virtualNetwork.id
+  const defaultSubnetId = networkContext.policy.subnet.id
+  const defaultSecurityGroupId = networkContext.policy.securityGroup.id
+  const defaultExternalIpPoolId = networkContext.policy.externalIpPool.id
+
   const networkSelections = {
-    virtualNetworkId: form.virtualNetworkId || networkContext.policy.virtualNetwork.id,
-    subnetId: form.subnetId || networkContext.policy.subnet.id,
-    securityGroupId: form.securityGroupId || networkContext.policy.securityGroup.id,
-    externalIpPoolId: form.externalIpPoolId || networkContext.policy.externalIpPool.id,
+    virtualNetworkId:
+      form.networkPath === 'default'
+        ? defaultVirtualNetworkId
+        : form.networkPath === 'custom'
+          ? form.virtualNetworkId || defaultVirtualNetworkId
+          : '',
+    subnetId:
+      form.networkPath === 'default'
+        ? defaultSubnetId
+        : form.networkPath === 'custom'
+          ? form.subnetId || defaultSubnetId
+          : '',
+    securityGroupId: form.securityGroupId || defaultSecurityGroupId,
+    externalIpPoolId:
+      form.externalIpPath === 'auto'
+        ? defaultExternalIpPoolId
+        : form.externalIpPath === 'pool'
+          ? form.externalIpPoolId || defaultExternalIpPoolId
+          : '',
   }
 
   const networkLabel = isClusterCatalogItem
     ? `Pod ${form.podCidr.trim()} · Service ${form.serviceCidr.trim()}`
     : formatLaunchInstanceNetworkLabel(networkContext, networkSelections)
   const networking = resolveLaunchInstanceNetworking(networkContext, networkSelections)
+
+  const selectNetworkPath = (networkPath: LaunchNetworkPath) => {
+    setForm((current) => {
+      if (networkPath === 'default') {
+        return {
+          ...current,
+          networkPath,
+          virtualNetworkId: defaultVirtualNetworkId,
+          subnetId: defaultSubnetId,
+        }
+      }
+      return { ...current, networkPath }
+    })
+  }
+
+  const selectExternalIpPath = (externalIpPath: LaunchExternalIpPath) => {
+    setForm((current) => {
+      if (externalIpPath === 'auto') {
+        return {
+          ...current,
+          externalIpPath,
+          externalIpPoolId: defaultExternalIpPoolId,
+        }
+      }
+      return {
+        ...current,
+        externalIpPath,
+        externalIpPoolId: current.externalIpPoolId || defaultExternalIpPoolId,
+      }
+    })
+  }
   const assignedNetworkSummary = networkContext.assignedNetworkSummary
-  const securityGroupField = networkContext.fields.find(
-    (field) => field.kind === 'security-group',
-  )
-  const securityGroupLabel = securityGroupField
-    ? getLaunchNetworkFieldLabel(securityGroupField, networkSelections.securityGroupId)
-    : networkContext.policy.securityGroup.name
 
   const resetWizard = () => {
     setForm(
@@ -1576,26 +1622,274 @@ export function TenantUserLaunchInstanceWizard({
     </div>
   )
 
-  const renderPlacementNetworkingFields = (idPrefix: string) => (
-    <>
-      {renderNetworkObjectField(
-        'virtual-network',
-        'Virtual network',
-        `${idPrefix}-virtual-network`,
-      )}
-      {renderNetworkObjectField('subnet', 'Subnet', `${idPrefix}-subnet`)}
-      {renderNetworkObjectField(
-        'security-group',
-        'Security group',
-        `${idPrefix}-security-group`,
-      )}
-      {renderNetworkObjectField(
-        'external-ip-pool',
-        'External IP pool',
-        `${idPrefix}-external-ip-pool`,
-      )}
-    </>
+  const renderNetworkingSummaryValue = (name: string, detail?: string) => (
+    <span className="tenant-user-launch-wizard__network-summary-value">
+      <span className="tenant-user-launch-wizard__network-summary-name">{name}</span>
+      {detail?.trim() ? (
+        <span className="tenant-user-launch-wizard__network-summary-detail">{detail}</span>
+      ) : null}
+    </span>
   )
+
+  const renderDefaultNetworkSummary = () => {
+    const virtualNetworkOption = networkInventory
+      .getVirtualNetworkOptions()
+      .find((option) => option.id === defaultVirtualNetworkId)
+    const subnetOption = networkInventory
+      .getSubnetOptions(defaultVirtualNetworkId)
+      .find((option) => option.id === defaultSubnetId)
+
+    return (
+      <DescriptionList
+        isCompact
+        isHorizontal
+        className="tenant-user-launch-wizard__network-path-summary"
+        aria-label="Tenant default network"
+      >
+        <DescriptionListGroup>
+          <DescriptionListTerm>Virtual network</DescriptionListTerm>
+          <DescriptionListDescription>
+            {renderNetworkingSummaryValue(
+              virtualNetworkOption?.name ?? networkContext.policy.virtualNetwork.name,
+              virtualNetworkOption?.detail,
+            )}
+          </DescriptionListDescription>
+        </DescriptionListGroup>
+        <DescriptionListGroup>
+          <DescriptionListTerm>Subnet</DescriptionListTerm>
+          <DescriptionListDescription>
+            {renderNetworkingSummaryValue(
+              subnetOption?.name ?? networkContext.policy.subnet.name,
+              subnetOption?.detail,
+            )}
+          </DescriptionListDescription>
+        </DescriptionListGroup>
+      </DescriptionList>
+    )
+  }
+
+  const renderAutoExternalIpSummary = () => {
+    const poolOption = networkInventory
+      .getExternalIpPoolOptions()
+      .find((option) => option.id === defaultExternalIpPoolId)
+
+    return (
+      <DescriptionList
+        isCompact
+        isHorizontal
+        className="tenant-user-launch-wizard__network-path-summary"
+        aria-label="Auto-attach external IP pool"
+      >
+        <DescriptionListGroup>
+          <DescriptionListTerm>External IP pool</DescriptionListTerm>
+          <DescriptionListDescription>
+            {renderNetworkingSummaryValue(
+              poolOption?.name ?? networkContext.policy.externalIpPool.name,
+              poolOption?.detail,
+            )}
+          </DescriptionListDescription>
+        </DescriptionListGroup>
+      </DescriptionList>
+    )
+  }
+
+  const renderNetworkPathSelectCard = (
+    idPrefix: string,
+    path: LaunchNetworkPath,
+    title: string,
+    description: string,
+  ) => {
+    const isSelected = form.networkPath === path
+    const titleId = `${idPrefix}-network-path-${path}-title`
+
+    return (
+      <button
+        key={path}
+        type="button"
+        role="radio"
+        aria-checked={isSelected}
+        aria-labelledby={titleId}
+        className={`provider-setup-template__select-card tenant-user-launch-wizard__network-choice-card${
+          isSelected ? ' provider-setup-template__select-card--selected' : ''
+        }`}
+        onClick={() => selectNetworkPath(path)}
+      >
+        {isSelected ? (
+          <Label
+            color="grey"
+            isCompact
+            className="provider-setup-template__select-card-selected-badge"
+          >
+            Selected
+          </Label>
+        ) : null}
+        <Title
+          id={titleId}
+          headingLevel="h3"
+          size="md"
+          className="provider-setup-template__select-card-title tenant-user-launch-wizard__network-choice-card-title"
+        >
+          {title}
+        </Title>
+        <Content
+          component="p"
+          className="provider-setup-template__select-card-detail tenant-user-launch-wizard__network-choice-card-detail"
+        >
+          {description}
+        </Content>
+      </button>
+    )
+  }
+
+  const renderExternalIpPathSelectCard = (
+    idPrefix: string,
+    path: LaunchExternalIpPath,
+    title: string,
+    description: string,
+  ) => {
+    const isSelected = form.externalIpPath === path
+    const titleId = `${idPrefix}-external-ip-path-${path}-title`
+
+    return (
+      <button
+        key={path}
+        type="button"
+        role="radio"
+        aria-checked={isSelected}
+        aria-labelledby={titleId}
+        className={`provider-setup-template__select-card tenant-user-launch-wizard__network-choice-card${
+          isSelected ? ' provider-setup-template__select-card--selected' : ''
+        }`}
+        onClick={() => selectExternalIpPath(path)}
+      >
+        {isSelected ? (
+          <Label
+            color="grey"
+            isCompact
+            className="provider-setup-template__select-card-selected-badge"
+          >
+            Selected
+          </Label>
+        ) : null}
+        <Title
+          id={titleId}
+          headingLevel="h3"
+          size="md"
+          className="provider-setup-template__select-card-title tenant-user-launch-wizard__network-choice-card-title"
+        >
+          {title}
+        </Title>
+        <Content
+          component="p"
+          className="provider-setup-template__select-card-detail tenant-user-launch-wizard__network-choice-card-detail"
+        >
+          {description}
+        </Content>
+      </button>
+    )
+  }
+
+  const renderPlacementNetworkingFields = (
+    idPrefix: string,
+    options?: {
+      networkSectionTitle?: string
+      networkSectionLede?: string
+    },
+  ) => {
+    const networkSectionTitle =
+      options?.networkSectionTitle ?? LAUNCH_INSTANCE_WIZARD_DEMO.networkSectionTitle
+    const networkSectionLede = options?.networkSectionLede
+    const isDefaultPath = form.networkPath === 'default'
+    const isCustomPath = form.networkPath === 'custom'
+    const isAutoExternalIp = form.externalIpPath === 'auto'
+    const isPoolExternalIp = form.externalIpPath === 'pool'
+
+    return (
+      <>
+        <div className="tenant-user-launch-wizard__network-section">
+          {networkSectionLede ? (
+            <Content component="p" className="tenant-user-launch-wizard__network-section-lede">
+              {networkSectionLede}
+            </Content>
+          ) : null}
+          <FormGroup
+            label={networkSectionTitle}
+            fieldId={`${idPrefix}-network-path`}
+            isRequired
+            role="radiogroup"
+          >
+            <div
+              id={`${idPrefix}-network-path`}
+              className="provider-setup-template__card-group tenant-user-launch-wizard__network-path-cards"
+              role="presentation"
+            >
+              {renderNetworkPathSelectCard(
+                idPrefix,
+                'default',
+                LAUNCH_INSTANCE_WIZARD_DEMO.networkPathDefaultLabel,
+                LAUNCH_INSTANCE_WIZARD_DEMO.networkPathDefaultDescription,
+              )}
+              {renderNetworkPathSelectCard(
+                idPrefix,
+                'custom',
+                LAUNCH_INSTANCE_WIZARD_DEMO.networkPathCustomLabel,
+                LAUNCH_INSTANCE_WIZARD_DEMO.networkPathCustomDescription,
+              )}
+            </div>
+          </FormGroup>
+          {isDefaultPath ? renderDefaultNetworkSummary() : null}
+          {isCustomPath ? (
+            <div className="tenant-user-launch-wizard__network-path-custom-fields">
+              {renderNetworkObjectField(
+                'virtual-network',
+                'Virtual network',
+                `${idPrefix}-virtual-network`,
+              )}
+              {renderNetworkObjectField('subnet', 'Subnet', `${idPrefix}-subnet`)}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="tenant-user-launch-wizard__network-section">
+          <FormGroup
+            label={LAUNCH_INSTANCE_WIZARD_DEMO.externalIpSectionTitle}
+            fieldId={`${idPrefix}-external-ip`}
+            isRequired
+            role="radiogroup"
+          >
+            <div
+              id={`${idPrefix}-external-ip`}
+              className="provider-setup-template__card-group tenant-user-launch-wizard__network-path-cards"
+              role="presentation"
+            >
+              {renderExternalIpPathSelectCard(
+                idPrefix,
+                'auto',
+                LAUNCH_INSTANCE_WIZARD_DEMO.externalIpPathAutoLabel,
+                LAUNCH_INSTANCE_WIZARD_DEMO.externalIpPathAutoDescription,
+              )}
+              {renderExternalIpPathSelectCard(
+                idPrefix,
+                'pool',
+                LAUNCH_INSTANCE_WIZARD_DEMO.externalIpPathPoolLabel,
+                LAUNCH_INSTANCE_WIZARD_DEMO.externalIpPathPoolDescription,
+              )}
+            </div>
+          </FormGroup>
+          {isAutoExternalIp ? renderAutoExternalIpSummary() : null}
+          {isPoolExternalIp ? (
+            <div className="tenant-user-launch-wizard__network-path-custom-fields">
+              {renderNetworkObjectField(
+                'external-ip-pool',
+                'External IP pool',
+                `${idPrefix}-external-ip-pool`,
+              )}
+            </div>
+          ) : null}
+        </div>
+      </>
+    )
+  }
 
   const renderVmNetworkingStep = () => (
     <div className="tenant-user-launch-wizard__step">
@@ -2339,15 +2633,10 @@ export function TenantUserLaunchInstanceWizard({
   const renderClusterNetworkingStep = () => (
     <div className="tenant-user-launch-wizard__step">
       <Form autoComplete="off" className="tenant-user-launch-wizard__form">
-        <div className="tenant-user-launch-wizard__network-section">
-          <Content component="h3" className="tenant-user-launch-wizard__network-section-title">
-            {CLUSTER_LAUNCH_INSTANCE_DEMO.infrastructureNetworkingTitle}
-          </Content>
-          <Content component="p" className="tenant-user-launch-wizard__network-section-lede">
-            {clusterInfrastructureNetworkingLede}
-          </Content>
-          {renderPlacementNetworkingFields('launch-cluster')}
-        </div>
+        {renderPlacementNetworkingFields('launch-cluster', {
+          networkSectionTitle: CLUSTER_LAUNCH_INSTANCE_DEMO.infrastructureNetworkingTitle,
+          networkSectionLede: clusterInfrastructureNetworkingLede,
+        })}
 
         <div className="tenant-user-launch-wizard__network-section">
           <Content component="h3" className="tenant-user-launch-wizard__network-section-title">
@@ -2462,13 +2751,7 @@ export function TenantUserLaunchInstanceWizard({
       </Content>
 
       <Form autoComplete="off" className="tenant-user-launch-wizard__form">
-        {networkContext.fields.map((field) =>
-          renderNetworkObjectField(
-            field.kind,
-            field.label,
-            `launch-instance-${field.kind}`,
-          ),
-        )}
+        {renderPlacementNetworkingFields('launch-instance')}
       </Form>
     </div>
   )
@@ -2488,16 +2771,23 @@ export function TenantUserLaunchInstanceWizard({
       networkInventory
         .getSubnetOptions(networkSelections.virtualNetworkId)
         .find((option) => option.id === networkSelections.subnetId)?.name ?? networking.subnet
-    const securityGroupReviewLabel =
-      networkInventory
-        .getSecurityGroupOptions()
-        .find((option) => option.id === networkSelections.securityGroupId)?.name ??
-      securityGroupLabel
+    const externalIpPathReviewLabel =
+      form.externalIpPath === 'auto'
+        ? LAUNCH_INSTANCE_WIZARD_DEMO.externalIpReviewAuto
+        : form.externalIpPath === 'pool'
+          ? LAUNCH_INSTANCE_WIZARD_DEMO.externalIpReviewPool
+          : LAUNCH_INSTANCE_WIZARD_DEMO.externalIpReviewUnset
     const externalIpPoolReviewLabel =
       networkInventory
         .getExternalIpPoolOptions()
         .find((option) => option.id === networkSelections.externalIpPoolId)?.name ??
       networking.externalIpPool
+    const networkPathReviewLabel =
+      form.networkPath === 'default'
+        ? LAUNCH_INSTANCE_WIZARD_DEMO.networkPathReviewDefault
+        : form.networkPath === 'custom'
+          ? LAUNCH_INSTANCE_WIZARD_DEMO.networkPathReviewCustom
+          : LAUNCH_INSTANCE_WIZARD_DEMO.networkPathReviewUnset
 
     const renderReviewRow = (term: string, description: ReactNode) => (
       <DescriptionListGroup key={term}>
@@ -2505,6 +2795,15 @@ export function TenantUserLaunchInstanceWizard({
         <DescriptionListDescription>{description}</DescriptionListDescription>
       </DescriptionListGroup>
     )
+
+    const renderRequiredReviewValue = (value: string, isSelected: boolean) =>
+      isSelected ? (
+        value
+      ) : (
+        <Label color="orange" isCompact>
+          {LAUNCH_INSTANCE_WIZARD_DEMO.networkPathReviewUnset}
+        </Label>
+      )
 
     const sshSecretName =
       (form.sshPublicKeySecretId
@@ -2526,10 +2825,23 @@ export function TenantUserLaunchInstanceWizard({
     ]
 
     const renderPlacementNetworkingRows = () => [
-      renderReviewRow('Virtual network', virtualNetworkLabel),
-      renderReviewRow('Subnet', subnetLabel),
-      renderReviewRow('Security group', securityGroupReviewLabel),
-      renderReviewRow('External IP pool', externalIpPoolReviewLabel),
+      renderReviewRow(
+        'Network',
+        renderRequiredReviewValue(networkPathReviewLabel, form.networkPath != null),
+      ),
+      ...(form.networkPath
+        ? [
+            renderReviewRow('Virtual network', virtualNetworkLabel),
+            renderReviewRow('Subnet', subnetLabel),
+          ]
+        : []),
+      renderReviewRow(
+        'External IP',
+        renderRequiredReviewValue(externalIpPathReviewLabel, form.externalIpPath != null),
+      ),
+      ...(form.externalIpPath
+        ? [renderReviewRow('External IP pool', externalIpPoolReviewLabel || '—')]
+        : []),
     ]
 
     const renderServiceSpecificRows = () => {
@@ -2593,12 +2905,7 @@ export function TenantUserLaunchInstanceWizard({
         renderReviewRow('Hardware', catalogItem.hardwareProfile),
         renderReviewRow('GPU', catalogItem.gpu),
         renderReviewRow('OS image', catalogItem.osImage),
-        ...(!networkContext.enabled
-          ? []
-          : [
-              renderReviewRow('Network', assignedNetworkSummary),
-              renderReviewRow('Security group', securityGroupLabel),
-            ]),
+        ...(networkContext.enabled ? renderPlacementNetworkingRows() : []),
       ]
     }
 
@@ -2816,7 +3123,7 @@ export function TenantUserLaunchInstanceWizard({
             : stepId === 'node-topology' || stepId === 'configure'
               ? !isClusterNodeTopologyStepValid(form) ||
                 (stepId === 'configure' && !isClusterVersionStepValid(form))
-              : stepId === 'networking'
+              : stepId === 'networking' || stepId === 'review'
                 ? !isClusterNetworkingStepValid(form)
                 : false
 
@@ -2852,7 +3159,7 @@ export function TenantUserLaunchInstanceWizard({
           ? !isVmGeneralStepValid(form) || !isProjectSelectionValid
           : stepId === 'configure'
             ? !isVmConfigureStepValid(form)
-            : stepId === 'networking'
+            : stepId === 'networking' || stepId === 'review'
               ? !isVmNetworkingStepValid(form)
               : false
 
@@ -2894,7 +3201,7 @@ export function TenantUserLaunchInstanceWizard({
               ? !isBareMetalOsStepValid(form)
               : stepId === 'configure'
                 ? !isBareMetalHardwareOsStepValid(form)
-                : stepId === 'networking'
+                : stepId === 'networking' || stepId === 'review'
                   ? !isVmNetworkingStepValid(form)
                   : false
 
@@ -2938,7 +3245,7 @@ export function TenantUserLaunchInstanceWizard({
             ? !isInstanceNameValid(form.instanceName) ||
               !form.sshPublicKey.trim() ||
               !isProjectSelectionValid
-            : false,
+            : !isVmNetworkingStepValid(form),
         nextButtonText: (
           <span className="tenant-user-launch-wizard__footer-label">
             <span>Continue</span>
@@ -2961,6 +3268,7 @@ export function TenantUserLaunchInstanceWizard({
     if (stepId === 'review') {
       return wrapStepFooter({
         isCancelHidden: true,
+        isNextDisabled: !isVmNetworkingStepValid(form),
         backButtonText: (
           <span className="tenant-user-launch-wizard__footer-label">
             <ArrowLeftIcon aria-hidden />

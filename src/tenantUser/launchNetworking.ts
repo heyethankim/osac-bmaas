@@ -200,8 +200,12 @@ export function resolveLaunchInstanceNetworking(
       ? getLaunchNetworkFieldLabel(securityGroupField, selections.securityGroupId)
       : context.policy.securityGroup.name,
     externalIpPool: externalIpPoolField
-      ? getLaunchNetworkFieldLabel(externalIpPoolField, selections.externalIpPoolId)
-      : context.policy.externalIpPool.name,
+      ? selections.externalIpPoolId.trim()
+        ? getLaunchNetworkFieldLabel(externalIpPoolField, selections.externalIpPoolId)
+        : ''
+      : selections.externalIpPoolId.trim()
+        ? context.policy.externalIpPool.name
+        : '',
   }
 }
 

@@ -3609,6 +3609,73 @@
   color: var(--pf-t--global--text--color--subtle);
 }
 
+.tenant-user-launch-wizard__network-path-cards.provider-setup-template__card-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--pf-t--global--spacer--md);
+  align-items: start;
+}
+
+@media (max-width: 575px) {
+  .tenant-user-launch-wizard__network-path-cards.provider-setup-template__card-group {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tenant-user-launch-wizard__network-choice-card.provider-setup-template__select-card {
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  min-height: 0;
+  padding: var(--pf-t--global--spacer--md);
+}
+
+.tenant-user-launch-wizard__network-choice-card-title.pf-v6-c-title {
+  margin-block: 0 var(--pf-t--global--spacer--xs);
+  padding-inline-end: 4.75rem;
+}
+
+.tenant-user-launch-wizard__network-choice-card-detail.pf-v6-c-content--p {
+  margin: 0;
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+  line-height: var(--pf-t--global--font--line-height--sm);
+}
+
+.tenant-user-launch-wizard__network-path-summary,
+.tenant-user-launch-wizard__network-path-custom-fields {
+  margin-block-start: var(--pf-t--global--spacer--md);
+  margin-inline-start: var(--pf-t--global--spacer--lg);
+  padding-inline-start: var(--pf-t--global--spacer--md);
+  border-inline-start: var(--pf-t--global--border--width--regular) solid
+    var(--pf-t--global--border--color--default);
+}
+
+.tenant-user-launch-wizard__network-path-summary {
+  --pf-v6-c-description-list--RowGap: var(--pf-t--global--spacer--sm);
+}
+
+.tenant-user-launch-wizard__network-summary-value {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.tenant-user-launch-wizard__network-summary-name {
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+}
+
+.tenant-user-launch-wizard__network-summary-detail {
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.tenant-user-launch-wizard__network-path-custom-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+}
+
 .tenant-user-launch-wizard__node-sets {
   display: flex;
   flex-direction: column;

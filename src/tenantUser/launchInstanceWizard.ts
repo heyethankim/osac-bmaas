@@ -156,8 +156,26 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   hardwareProfile: 'Dell PowerEdge R750',
   osImage: 'RHEL 9.4',
   networkingTitle: 'Networking',
-  networkingLede: 'Choose tenant network objects—Create to add inline.',
-  networkingAdminLede: 'Choose tenant network objects—Create to add inline.',
+  networkingLede: 'Choose a network and how to attach an external IP.',
+  networkingAdminLede: 'Choose a network and how to attach an external IP.',
+  networkPathGroupLabel: 'Network placement',
+  networkPathDefaultLabel: 'Tenant default',
+  networkPathDefaultDescription: 'Network created with your tenant.',
+  networkPathCustomLabel: 'Different network',
+  networkPathCustomDescription: 'Choose a virtual network and subnet.',
+  networkSectionTitle: 'Network',
+  externalIpSectionTitle: 'External IP',
+  externalIpGroupLabel: 'External IP',
+  externalIpPathAutoLabel: 'Auto-attach',
+  externalIpPathAutoDescription: 'Creates an ExternalIP and attachment.',
+  externalIpPathPoolLabel: 'Different pool',
+  externalIpPathPoolDescription: 'Select an external IP pool.',
+  externalIpReviewAuto: 'Auto-attach',
+  externalIpReviewPool: 'Different pool',
+  networkPathReviewDefault: 'Tenant default',
+  networkPathReviewCustom: 'Custom',
+  networkPathReviewUnset: 'Not selected',
+  externalIpReviewUnset: 'Not selected',
   createVirtualNetworkLabel: 'Create virtual network',
   createSubnetLabel: 'Create subnet',
   createSecurityGroupLabel: 'Create security group',
@@ -214,8 +232,8 @@ export const CLUSTER_LAUNCH_INSTANCE_DEMO = {
   defaultHostType: 'standard-host',
   defaultNodeCount: 1,
   infrastructureNetworkingTitle: 'Infrastructure networking',
-  infrastructureNetworkingLede: 'Choose tenant network objects—Create to add inline.',
-  infrastructureNetworkingAdminLede: 'Choose tenant network objects—Create to add inline.',
+  infrastructureNetworkingLede: 'Choose a network and how to attach an external IP.',
+  infrastructureNetworkingAdminLede: 'Choose a network and how to attach an external IP.',
   clusterNetworkTitle: 'Cluster network',
   clusterNetworkLede: 'Address ranges used inside the cluster for pods and services.',
   podCidr: '10.128.0.0/24',
@@ -306,6 +324,11 @@ export type ClusterNodeSetForm = {
   nodeCount: number
 }
 
+export type LaunchNetworkPath = 'default' | 'custom'
+
+/** Auto-attach from tenant default pool vs explicit pool selection. */
+export type LaunchExternalIpPath = 'auto' | 'pool'
+
 export type LaunchInstanceWizardForm = {
   instanceName: string
   /** Optional free-text description (same pattern as catalog item creation). */
@@ -328,9 +351,14 @@ export type LaunchInstanceWizardForm = {
   imageSourceType: string
   runStrategy: string
   cloudInitUserData: string
+  /** Tenant default network vs custom VNet/subnet selection. */
+  networkPath: LaunchNetworkPath
   virtualNetworkId: string
   subnetId: string
   securityGroupId: string
+  /** Auto-attach vs choose external IP pool. */
+  externalIpPath: LaunchExternalIpPath
+  /** Pool used for auto-attach or when externalIpPath is `pool`. */
   externalIpPoolId: string
 }
 
@@ -413,9 +441,11 @@ export const DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM: LaunchInstanceWizardForm = {
   imageSourceType: VM_LAUNCH_INSTANCE_DEMO.imageSourceType,
   runStrategy: VM_LAUNCH_INSTANCE_DEMO.defaultRunStrategy,
   cloudInitUserData: '',
+  networkPath: 'default',
   virtualNetworkId: '',
   subnetId: '',
   securityGroupId: '',
+  externalIpPath: 'pool',
   externalIpPoolId: '',
 }
 
@@ -505,9 +535,11 @@ export function createLaunchInstanceWizardForm(options: {
       ? VM_LAUNCH_INSTANCE_DEMO.defaultRunStrategy
       : DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM.runStrategy,
     cloudInitUserData: isVm ? VM_LAUNCH_INSTANCE_DEMO.cloudInitUserData : '',
+    networkPath: 'default',
     virtualNetworkId: options.virtualNetworkId,
     subnetId: options.subnetId,
     securityGroupId: options.securityGroupId,
+    externalIpPath: 'pool',
     externalIpPoolId: options.externalIpPoolId,
   }
 }
@@ -566,12 +598,18 @@ export function isVmConfigureStepValid(form: LaunchInstanceWizardForm): boolean 
 }
 
 export function isVmNetworkingStepValid(form: LaunchInstanceWizardForm): boolean {
-  return (
-    form.virtualNetworkId.trim().length > 0 &&
-    form.subnetId.trim().length > 0 &&
-    form.securityGroupId.trim().length > 0 &&
-    form.externalIpPoolId.trim().length > 0
-  )
+  if (form.networkPath === 'custom') {
+    if (form.virtualNetworkId.trim().length === 0 || form.subnetId.trim().length === 0) {
+      return false
+    }
+  }
+
+  if (form.externalIpPath === 'pool') {
+    return form.externalIpPoolId.trim().length > 0
+  }
+
+  // Auto-attach uses the tenant default external IP pool.
+  return true
 }
 
 export function isBareMetalGeneralStepValid(form: LaunchInstanceWizardForm): boolean {
