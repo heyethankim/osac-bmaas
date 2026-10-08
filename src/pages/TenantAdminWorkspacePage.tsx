@@ -56,6 +56,10 @@ import {
   isStickyDemoProvisioningInstance,
   type TenantInstance,
 } from '../tenantUser/instances'
+import {
+  BARE_METAL_PROVISIONING_DEMO_DURATION_MS,
+  getBareMetalProvisioningDemoRemainingMs,
+} from '../tenantUser/bareMetalProvisioning'
 import { LAUNCH_INSTANCE_PROVISIONING_DURATION_MS, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS } from '../tenantUser/launchInstanceWizard'
 
 const TENANT_ADMIN_PLACEHOLDER_PAGES: Partial<
@@ -281,7 +285,11 @@ export function TenantAdminWorkspacePage() {
 
   const handleProvisioningStarted = (instance: TenantInstance) => {
     setInstances((current) => addTenantUserInstance(tenant, instance, current))
-    scheduleProvisioningCompletion(instance.id, LAUNCH_INSTANCE_PROVISIONING_DURATION_MS)
+    const delayMs =
+      getTenantInstanceServiceId(instance) === 'baremetal'
+        ? BARE_METAL_PROVISIONING_DEMO_DURATION_MS
+        : LAUNCH_INSTANCE_PROVISIONING_DURATION_MS
+    scheduleProvisioningCompletion(instance.id, delayMs)
   }
 
   const handleNavigateToServices = (instanceId: string, serviceId: CatalogServiceId) => {
@@ -297,7 +305,18 @@ export function TenantAdminWorkspacePage() {
         current,
       ),
     )
-    scheduleProvisioningCompletion(instanceId, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS)
+    const delayMs =
+      serviceId === 'baremetal'
+        ? (() => {
+            const instance = getOrEnsureTenantUserInstances(tenant).find(
+              (item) => item.id === instanceId,
+            )
+            return instance
+              ? getBareMetalProvisioningDemoRemainingMs(instance.createdAt)
+              : BARE_METAL_PROVISIONING_DEMO_DURATION_MS
+          })()
+        : LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS
+    scheduleProvisioningCompletion(instanceId, delayMs)
     const nextNavId = getServicesNavId(serviceId)
     setActiveNavId(nextNavId)
     setTenantActiveNav(tenant, nextNavId)

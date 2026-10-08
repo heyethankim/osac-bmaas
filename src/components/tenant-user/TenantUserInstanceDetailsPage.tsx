@@ -77,6 +77,7 @@ import {
   matchNetworkOptionId,
   resolveLaunchNetworkContext,
 } from '../../tenantUser/launchNetworking'
+import { BareMetalProvisioningProgressCard } from './BareMetalProvisioningProgressCard'
 import type { TenantProject } from '../../tenantAdmin/projects'
 import {
   getTenantProjectEnvironmentLabel,
@@ -1601,6 +1602,14 @@ function DefaultInstancePageBody({
 
   return (
     <>
+      {isBareMetal && instance.status === 'provisioning' ? (
+        <div className="entity-details-page__bare-metal-provisioning">
+          <BareMetalProvisioningProgressCard
+            instanceName={formatTenantInstanceName(instance.name)}
+            startedAt={instance.createdAt}
+          />
+        </div>
+      ) : null}
       <div className="entity-details-page__columns entity-details-page__columns--with-rail">
         <div className="entity-details-page__main-stack">
           <div className="entity-details-page__columns entity-details-page__columns--2">

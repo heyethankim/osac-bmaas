@@ -3945,6 +3945,47 @@
   background: currentColor;
 }
 
+.bare-metal-provisioning-progress__stepper.pf-v6-c-progress-stepper.pf-m-center {
+  --pf-v6-c-progress-stepper--GridTemplateColumns: repeat(4, minmax(0, 1fr));
+  width: 100%;
+}
+
+.bare-metal-provisioning-progress__stepper .pf-v6-c-progress-stepper__step-title,
+.bare-metal-provisioning-progress__stepper .pf-v6-c-progress-stepper__step-description {
+  text-align: center;
+}
+
+.bare-metal-provisioning-progress__stepper .pf-v6-c-progress-stepper__step-title {
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.bare-metal-provisioning-progress__stepper .pf-v6-c-progress-stepper__step-description {
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.bare-metal-provisioning-progress__stage-spinner.pf-v6-c-spinner {
+  --pf-v6-c-spinner--diameter: 0.875rem;
+}
+
+.bare-metal-provisioning-progress__issue {
+  margin-block-start: var(--pf-t--global--spacer--md);
+  padding-block-start: var(--pf-t--global--spacer--sm);
+  border-block-start: 1px solid var(--pf-t--global--border--color--default);
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.bare-metal-provisioning-progress__issue-detail.pf-v6-c-content--p {
+  margin: 0;
+  font-size: var(--pf-t--global--font--size--body--sm);
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.entity-details-page__bare-metal-provisioning {
+  margin-block-end: var(--pf-t--global--spacer--lg);
+}
+
 .tenant-user-launch-wizard__footer-label {
   display: inline-flex;
   align-items: center;

@@ -29,6 +29,10 @@ import {
   isStickyDemoProvisioningInstance,
   type TenantInstance,
 } from '../tenantUser/instances'
+import {
+  BARE_METAL_PROVISIONING_DEMO_DURATION_MS,
+  getBareMetalProvisioningDemoRemainingMs,
+} from '../tenantUser/bareMetalProvisioning'
 import { LAUNCH_INSTANCE_PROVISIONING_DURATION_MS, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS } from '../tenantUser/launchInstanceWizard'
 import {
   addTenantUserInstance,
@@ -226,11 +230,11 @@ export function TenantUserWorkspacePage() {
       if (isStickyDemoProvisioningInstance(instance.id)) {
         continue
       }
-      const elapsedMs = now - new Date(instance.createdAt).getTime()
-      scheduleProvisioningCompletion(
-        instance.id,
-        LAUNCH_INSTANCE_PROVISIONING_DURATION_MS - elapsedMs,
-      )
+      const delayMs =
+        getTenantInstanceServiceId(instance) === 'baremetal'
+          ? getBareMetalProvisioningDemoRemainingMs(instance.createdAt, now)
+          : LAUNCH_INSTANCE_PROVISIONING_DURATION_MS - (now - new Date(instance.createdAt).getTime())
+      scheduleProvisioningCompletion(instance.id, delayMs)
     }
 
     return () => {
@@ -315,9 +319,27 @@ export function TenantUserWorkspacePage() {
   const handleProvisioningStarted = useCallback(
     (instance: TenantInstance) => {
       setInstances((current) => addTenantUserInstance(tenantSlug, instance, current))
-      scheduleProvisioningCompletion(instance.id, LAUNCH_INSTANCE_PROVISIONING_DURATION_MS)
+      const delayMs =
+        getTenantInstanceServiceId(instance) === 'baremetal'
+          ? BARE_METAL_PROVISIONING_DEMO_DURATION_MS
+          : LAUNCH_INSTANCE_PROVISIONING_DURATION_MS
+      scheduleProvisioningCompletion(instance.id, delayMs)
     },
     [scheduleProvisioningCompletion, tenantSlug],
+  )
+
+  const resolvePostWizardProvisioningDelayMs = useCallback(
+    (instanceId: string, serviceId: CatalogServiceId) => {
+      if (serviceId === 'baremetal') {
+        const instance = getTenantUserInstances(tenantSlug).find((item) => item.id === instanceId)
+        if (instance) {
+          return getBareMetalProvisioningDemoRemainingMs(instance.createdAt)
+        }
+        return BARE_METAL_PROVISIONING_DEMO_DURATION_MS
+      }
+      return LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS
+    },
+    [tenantSlug],
   )
 
   const handleDismissDuringProvisioning = useCallback(
@@ -334,12 +356,16 @@ export function TenantUserWorkspacePage() {
           current,
         ),
       )
-      scheduleProvisioningCompletion(instanceId, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS)
+      scheduleProvisioningCompletion(
+        instanceId,
+        resolvePostWizardProvisioningDelayMs(instanceId, serviceId),
+      )
       handleNavigateToInstances({ serviceId })
     },
     [
       clearProvisioningTimer,
       handleNavigateToInstances,
+      resolvePostWizardProvisioningDelayMs,
       scheduleProvisioningCompletion,
       tenantSlug,
     ],
@@ -348,23 +374,33 @@ export function TenantUserWorkspacePage() {
   const handleWizardFinished = useCallback(
     (instanceId: string, serviceId: CatalogServiceId) => {
       clearProvisioningTimer(instanceId)
-      setInstances((current) =>
-        updateTenantUserInstance(
-          tenantSlug,
+      if (serviceId === 'baremetal') {
+        // Bare-metal stages already finished in the wizard — land on Services as Running.
+        markInstanceRunning(instanceId)
+      } else {
+        setInstances((current) =>
+          updateTenantUserInstance(
+            tenantSlug,
+            instanceId,
+            {
+              status: 'provisioning',
+              provisionedAt: null,
+            },
+            current,
+          ),
+        )
+        scheduleProvisioningCompletion(
           instanceId,
-          {
-            status: 'provisioning',
-            provisionedAt: null,
-          },
-          current,
-        ),
-      )
-      scheduleProvisioningCompletion(instanceId, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS)
+          resolvePostWizardProvisioningDelayMs(instanceId, serviceId),
+        )
+      }
       handleNavigateToInstances({ serviceId })
     },
     [
       clearProvisioningTimer,
       handleNavigateToInstances,
+      markInstanceRunning,
+      resolvePostWizardProvisioningDelayMs,
       scheduleProvisioningCompletion,
       tenantSlug,
     ],

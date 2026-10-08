@@ -106,6 +106,10 @@ import {
   type ProvisioningBootLogStatus,
 } from '../../tenantUser/launchInstanceWizard'
 import {
+  BARE_METAL_PROVISIONING_LEAF_COUNT,
+} from '../../tenantUser/bareMetalProvisioning'
+import { BareMetalProvisioningProgressCard } from './BareMetalProvisioningProgressCard'
+import {
   formatLaunchInstanceNetworkLabel,
   resolveLaunchInstanceNetworking,
   resolveLaunchNetworkContext,
@@ -423,7 +427,6 @@ export function TenantUserLaunchInstanceWizard({
   const {
     startIndex: wizardStartIndex,
     onStepChange: syncWizardStepToUrl,
-    stepKey,
     urlStepId,
   } = useWorkspaceWizardStepUrl(syncStepToUrl, isOpen, wizardSteps)
 
@@ -585,8 +588,10 @@ export function TenantUserLaunchInstanceWizard({
   )
   const [activeBootLogIndex, setActiveBootLogIndex] = useState(0)
   const [isProvisioningComplete, setIsProvisioningComplete] = useState(false)
+  const [provisioningStartedAt, setProvisioningStartedAt] = useState<string | null>(null)
   const provisioningStartedRef = useRef(false)
   const provisioningInstanceIdRef = useRef<string | null>(null)
+  const provisioningFinishScheduledRef = useRef(false)
   const isOpenRef = useRef(isOpen)
   const onProvisioningStartedRef = useRef(onProvisioningStarted)
   const onWizardFinishedRef = useRef(onWizardFinished)
@@ -704,8 +709,10 @@ export function TenantUserLaunchInstanceWizard({
     setActiveStepId(usesGeneralFirstStep ? 'general' : 'configure')
     setActiveBootLogIndex(0)
     setIsProvisioningComplete(false)
+    setProvisioningStartedAt(null)
     provisioningStartedRef.current = false
     provisioningInstanceIdRef.current = null
+    provisioningFinishScheduledRef.current = false
   }
 
   const handleClose = () => {
@@ -804,164 +811,177 @@ export function TenantUserLaunchInstanceWizard({
   ])
 
   useEffect(() => {
-    if (!isOpen || activeStepId !== 'provisioning' || provisioningStartedRef.current) {
+    if (!isOpen || activeStepId !== 'provisioning') {
       return
     }
 
-    provisioningStartedRef.current = true
+    // Create the instance once. Keep the animation interval separate so React
+    // Strict Mode cleanup does not leave progress stuck after clearing timers.
+    if (!provisioningStartedRef.current) {
+      provisioningStartedRef.current = true
 
-    const detailSpecRows = catalogDetailSpecRows
-    const vmInstanceTypeParts = isVmCatalogItem
-      ? parseVmLaunchInstanceTypeOption(form.instanceType.trim())
-      : null
-    const vmOsImage = isVmCatalogItem ? resolvedVmOsImage : null
-    const bareMetalLaunchSpecRows = isBareMetalCatalogItem
-      ? resolveBaremetalCatalogCardSpecRows({
-          templateRefId: catalogItem.templateRefId,
-          templateName: catalogItem.templateName,
-          instanceTypeId: form.instanceType || catalogItem.instanceTypeId,
-          instanceTypeLabel:
-            formatBaremetalInstanceTypeLabel(form.instanceType) ?? catalogItem.instanceTypeLabel,
-          diskImageId: form.diskImageId || catalogItem.diskImageId,
-          diskImageLabel:
-            formatCatalogDiskImageLabel(form.diskImageId, catalogItem.diskImageLabel) ??
-            catalogItem.diskImageLabel,
-        })
-      : null
+      const detailSpecRows = catalogDetailSpecRows
+      const vmInstanceTypeParts = isVmCatalogItem
+        ? parseVmLaunchInstanceTypeOption(form.instanceType.trim())
+        : null
+      const vmOsImage = isVmCatalogItem ? resolvedVmOsImage : null
+      const bareMetalLaunchSpecRows = isBareMetalCatalogItem
+        ? resolveBaremetalCatalogCardSpecRows({
+            templateRefId: catalogItem.templateRefId,
+            templateName: catalogItem.templateName,
+            instanceTypeId: form.instanceType || catalogItem.instanceTypeId,
+            instanceTypeLabel:
+              formatBaremetalInstanceTypeLabel(form.instanceType) ?? catalogItem.instanceTypeLabel,
+            diskImageId: form.diskImageId || catalogItem.diskImageId,
+            diskImageLabel:
+              formatCatalogDiskImageLabel(form.diskImageId, catalogItem.diskImageLabel) ??
+              catalogItem.diskImageLabel,
+          })
+        : null
 
-    const instance: TenantInstance = {
-      id: generateTenantInstanceId(),
-      name:
-        isClusterCatalogItem || isVmCatalogItem || isBareMetalCatalogItem
-          ? form.instanceName.trim()
-          : formatTenantInstanceName(form.instanceName.trim()),
-      ...(form.description.trim() ? { description: form.description.trim() } : {}),
-      catalogItemDisplayName: catalogItem.displayName,
-      serviceId: catalogItem.serviceId,
-      hardwareProfile: catalogItem.hardwareProfile,
-      osImage: isClusterCatalogItem
-        ? formatClusterPlatformLabel(form.clusterVersionId || form.releaseImage)
-        : isVmCatalogItem
-          ? (vmOsImage ?? catalogItem.osImage)
-          : isBareMetalCatalogItem
-            ? (formatCatalogDiskImageLabel(form.diskImageId, catalogItem.diskImageLabel) ??
-              catalogItem.osImage)
-            : catalogItem.osImage,
-      networkLabel,
-      networking,
-      gpuLabel: isClusterCatalogItem
-        ? (detailSpecRows.find((row) => row.label === 'Node set')?.value ?? catalogItem.gpu)
-        : isVmCatalogItem
-          ? (vmInstanceTypeParts?.size ?? catalogItem.gpu)
-          : isBareMetalCatalogItem
-            ? (bareMetalLaunchSpecRows?.find((row) => row.label === 'GPU')?.value ??
-              catalogItem.gpu)
-            : catalogItem.gpu,
-      specRows: isBareMetalCatalogItem
-        ? (bareMetalLaunchSpecRows ?? catalogItem.specRows)
-        : isServiceAwareCatalogItem
-        ? isVmCatalogItem
-          ? [
-              {
-                label: 'Instance type',
-                value: vmInstanceTypeParts?.instanceType || form.instanceType.trim(),
-              },
-              { label: 'Size', value: vmInstanceTypeParts?.size || form.instanceType.trim() },
-              { label: 'OS image', value: vmOsImage ?? catalogItem.osImage },
-              { label: 'Container disk image', value: form.containerDiskImage.trim() },
-              { label: 'Boot disk', value: `${form.bootDiskSizeGiB} GiB` },
-              { label: 'Image source type', value: form.imageSourceType.trim() },
-              { label: 'Run strategy', value: form.runStrategy.trim() },
-              ...(form.cloudInitUserData.trim()
-                ? [{ label: 'Cloud-init', value: form.cloudInitUserData.trim() }]
-                : []),
-            ]
-          : [
-              ...resolveClusterCatalogHighlightRows({
-                serviceId: 'cluster',
-                templateRefId: catalogItem.templateRefId,
-                templateName: catalogItem.templateName,
-                diskImageId: form.clusterVersionId || catalogItem.diskImageId,
-                diskImageLabel: formatClusterPlatformLabel(
-                  form.clusterVersionId || form.releaseImage || catalogItem.diskImageLabel,
-                ),
-                clusterVersionMode: catalogItem.clusterVersionMode,
-                nodeSetId: form.nodeSets[0]?.nodeSetId || catalogItem.nodeSetId,
-                nodeSetLabel: formatClusterNodeSetLabel(
-                  form.nodeSets[0]?.nodeSetId ||
-                    catalogItem.nodeSetLabel ||
-                    catalogItem.nodeSetId,
-                ),
-                hostTypeId: form.nodeSets[0]?.hostType || catalogItem.hostTypeId,
-                hostTypeLabel: formatClusterHostTypeLabel(
-                  form.nodeSets[0]?.hostType ||
-                    catalogItem.hostTypeLabel ||
-                    catalogItem.hostTypeId,
-                ),
-                clusterNodeTopologyMode: catalogItem.clusterNodeTopologyMode,
-                clusterTopology: catalogItem.clusterTopology,
-              }),
-              { label: 'Release image', value: form.releaseImage.trim() },
-              ...form.nodeSets.map((nodeSet, index) => ({
-                label: `Node set ${index + 1}`,
-                value: `${formatClusterNodeSetLabel(nodeSet.nodeSetId)} · ${nodeSet.hostType} · ${nodeSet.nodeCount} ${
-                  nodeSet.nodeCount === 1 ? 'node' : 'nodes'
-                }`,
+      const instance: TenantInstance = {
+        id: generateTenantInstanceId(),
+        name:
+          isClusterCatalogItem || isVmCatalogItem || isBareMetalCatalogItem
+            ? form.instanceName.trim()
+            : formatTenantInstanceName(form.instanceName.trim()),
+        ...(form.description.trim() ? { description: form.description.trim() } : {}),
+        catalogItemDisplayName: catalogItem.displayName,
+        serviceId: catalogItem.serviceId,
+        hardwareProfile: catalogItem.hardwareProfile,
+        osImage: isClusterCatalogItem
+          ? formatClusterPlatformLabel(form.clusterVersionId || form.releaseImage)
+          : isVmCatalogItem
+            ? (vmOsImage ?? catalogItem.osImage)
+            : isBareMetalCatalogItem
+              ? (formatCatalogDiskImageLabel(form.diskImageId, catalogItem.diskImageLabel) ??
+                catalogItem.osImage)
+              : catalogItem.osImage,
+        networkLabel,
+        networking,
+        gpuLabel: isClusterCatalogItem
+          ? (detailSpecRows.find((row) => row.label === 'Node set')?.value ?? catalogItem.gpu)
+          : isVmCatalogItem
+            ? (vmInstanceTypeParts?.size ?? catalogItem.gpu)
+            : isBareMetalCatalogItem
+              ? (bareMetalLaunchSpecRows?.find((row) => row.label === 'GPU')?.value ??
+                catalogItem.gpu)
+              : catalogItem.gpu,
+        specRows: isBareMetalCatalogItem
+          ? (bareMetalLaunchSpecRows ?? catalogItem.specRows)
+          : isServiceAwareCatalogItem
+            ? isVmCatalogItem
+              ? [
+                  {
+                    label: 'Instance type',
+                    value: vmInstanceTypeParts?.instanceType || form.instanceType.trim(),
+                  },
+                  { label: 'Size', value: vmInstanceTypeParts?.size || form.instanceType.trim() },
+                  { label: 'OS image', value: vmOsImage ?? catalogItem.osImage },
+                  { label: 'Container disk image', value: form.containerDiskImage.trim() },
+                  { label: 'Boot disk', value: `${form.bootDiskSizeGiB} GiB` },
+                  { label: 'Image source type', value: form.imageSourceType.trim() },
+                  { label: 'Run strategy', value: form.runStrategy.trim() },
+                  ...(form.cloudInitUserData.trim()
+                    ? [{ label: 'Cloud-init', value: form.cloudInitUserData.trim() }]
+                    : []),
+                ]
+              : [
+                  ...resolveClusterCatalogHighlightRows({
+                    serviceId: 'cluster',
+                    templateRefId: catalogItem.templateRefId,
+                    templateName: catalogItem.templateName,
+                    diskImageId: form.clusterVersionId || catalogItem.diskImageId,
+                    diskImageLabel: formatClusterPlatformLabel(
+                      form.clusterVersionId || form.releaseImage || catalogItem.diskImageLabel,
+                    ),
+                    clusterVersionMode: catalogItem.clusterVersionMode,
+                    nodeSetId: form.nodeSets[0]?.nodeSetId || catalogItem.nodeSetId,
+                    nodeSetLabel: formatClusterNodeSetLabel(
+                      form.nodeSets[0]?.nodeSetId ||
+                        catalogItem.nodeSetLabel ||
+                        catalogItem.nodeSetId,
+                    ),
+                    hostTypeId: form.nodeSets[0]?.hostType || catalogItem.hostTypeId,
+                    hostTypeLabel: formatClusterHostTypeLabel(
+                      form.nodeSets[0]?.hostType ||
+                        catalogItem.hostTypeLabel ||
+                        catalogItem.hostTypeId,
+                    ),
+                    clusterNodeTopologyMode: catalogItem.clusterNodeTopologyMode,
+                    clusterTopology: catalogItem.clusterTopology,
+                  }),
+                  { label: 'Release image', value: form.releaseImage.trim() },
+                  ...form.nodeSets.map((nodeSet, index) => ({
+                    label: `Node set ${index + 1}`,
+                    value: `${formatClusterNodeSetLabel(nodeSet.nodeSetId)} · ${nodeSet.hostType} · ${nodeSet.nodeCount} ${
+                      nodeSet.nodeCount === 1 ? 'node' : 'nodes'
+                    }`,
+                  })),
+                  { label: 'Pod CIDR', value: form.podCidr.trim() },
+                  { label: 'Service CIDR', value: form.serviceCidr.trim() },
+                ]
+            : catalogItem.specRows,
+        clusterConfig: isClusterCatalogItem
+          ? {
+              releaseImage: form.releaseImage.trim(),
+              podCidr: form.podCidr.trim(),
+              serviceCidr: form.serviceCidr.trim(),
+              catalogShortName: 'ocp-small',
+              creator: 'Alex Johnson',
+              upgradeStatus: 'up-to-date',
+              nodeSets: form.nodeSets.map((nodeSet, index) => ({
+                id: nodeSet.id,
+                name: index === 0 ? 'workers' : `node-set-${index + 1}`,
+                hostType: nodeSet.hostType,
+                nodeCount: nodeSet.nodeCount,
+                version: formatClusterPlatformLabel(
+                  form.clusterVersionId || form.releaseImage.trim(),
+                ) || undefined,
+                status: 'pending' as const,
               })),
-              { label: 'Pod CIDR', value: form.podCidr.trim() },
-              { label: 'Service CIDR', value: form.serviceCidr.trim() },
-            ]
-        : catalogItem.specRows,
-      clusterConfig: isClusterCatalogItem
-        ? {
-            releaseImage: form.releaseImage.trim(),
-            podCidr: form.podCidr.trim(),
-            serviceCidr: form.serviceCidr.trim(),
-            catalogShortName: 'ocp-small',
-            creator: 'Alex Johnson',
-            upgradeStatus: 'up-to-date',
-            nodeSets: form.nodeSets.map((nodeSet, index) => ({
-              id: nodeSet.id,
-              name: index === 0 ? 'workers' : `node-set-${index + 1}`,
-              hostType: nodeSet.hostType,
-              nodeCount: nodeSet.nodeCount,
-              version: formatClusterPlatformLabel(
-                form.clusterVersionId || form.releaseImage.trim(),
-              ) || undefined,
-              status: 'pending' as const,
-            })),
-          }
-        : undefined,
-      sshPublicKey:
-        isBareMetalCatalogItem || isVmCatalogItem || isClusterCatalogItem
-          ? form.sshPublicKey.trim()
+            }
           : undefined,
-      vmConfig: isVmCatalogItem
-        ? {
-            instanceType: form.instanceType.trim() || 'small - 1 vCPU, 2 GiB',
-            containerDiskImage:
-              form.containerDiskImage.trim() || 'quay.io/containerdisks/fedora:latest',
-            bootDiskSizeGiB: form.bootDiskSizeGiB,
-            sshPublicKey: form.sshPublicKey.trim(),
-            internalIp: '10.99.1.11',
-            publicIp: null,
-            publicIpFamily: null,
-          }
-        : undefined,
-      projectIds: selectedProject ? [selectedProject.id] : [],
-      projectName: launchScopeLabel,
-      scopeKind: launchScopeKind,
-      status: 'provisioning',
-      createdAt: new Date().toISOString(),
-      provisionedAt: null,
+        sshPublicKey:
+          isBareMetalCatalogItem || isVmCatalogItem || isClusterCatalogItem
+            ? form.sshPublicKey.trim()
+            : undefined,
+        vmConfig: isVmCatalogItem
+          ? {
+              instanceType: form.instanceType.trim() || 'small - 1 vCPU, 2 GiB',
+              containerDiskImage:
+                form.containerDiskImage.trim() || 'quay.io/containerdisks/fedora:latest',
+              bootDiskSizeGiB: form.bootDiskSizeGiB,
+              sshPublicKey: form.sshPublicKey.trim(),
+              internalIp: '10.99.1.11',
+              publicIp: null,
+              publicIpFamily: null,
+            }
+          : undefined,
+        projectIds: selectedProject ? [selectedProject.id] : [],
+        projectName: launchScopeLabel,
+        scopeKind: launchScopeKind,
+        status: 'provisioning',
+        createdAt: new Date().toISOString(),
+        provisionedAt: null,
+      }
+
+      provisioningInstanceIdRef.current = instance.id
+      setProvisioningStartedAt(instance.createdAt)
+      onProvisioningStartedRef.current(instance)
     }
 
-    provisioningInstanceIdRef.current = instance.id
-    onProvisioningStartedRef.current(instance)
+    // Bare metal progress is self-driven by BareMetalProvisioningProgressCard.
+    if (isBareMetalCatalogItem) {
+      return
+    }
 
     const totalSteps = PROVISIONING_BOOT_LOG_STEPS.length
+    const stepIntervalMs = LAUNCH_INSTANCE_BOOT_LOG_STEP_MS
     let stepIndex = 0
     let settleTimeoutId: number | undefined
+    setActiveBootLogIndex(0)
+    setIsProvisioningComplete(false)
 
     const intervalId = window.setInterval(() => {
       stepIndex += 1
@@ -979,7 +999,7 @@ export function TenantUserLaunchInstanceWizard({
           }
         }, LAUNCH_INSTANCE_PROVISIONING_SETTLE_MS)
       }
-    }, LAUNCH_INSTANCE_BOOT_LOG_STEP_MS)
+    }, stepIntervalMs)
 
     return () => {
       window.clearInterval(intervalId)
@@ -990,6 +1010,23 @@ export function TenantUserLaunchInstanceWizard({
     // Intentionally start once when entering provisioning; callbacks via refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- provisioning snapshot
   }, [isOpen, activeStepId])
+
+  const handleBareMetalStagesComplete = () => {
+    if (provisioningFinishScheduledRef.current) {
+      return
+    }
+    provisioningFinishScheduledRef.current = true
+    setIsProvisioningComplete(true)
+    setActiveBootLogIndex(BARE_METAL_PROVISIONING_LEAF_COUNT)
+
+    window.setTimeout(() => {
+      const instanceId = provisioningInstanceIdRef.current
+      if (isOpenRef.current && instanceId) {
+        onWizardFinishedRef.current(instanceId, catalogItem.serviceId)
+        resetWizard()
+      }
+    }, LAUNCH_INSTANCE_PROVISIONING_SETTLE_MS)
+  }
 
   const updateNetworkSelection = (
     kind: LaunchNetworkFieldView['kind'],
@@ -2972,53 +3009,67 @@ export function TenantUserLaunchInstanceWizard({
         </Content>
       </Alert>
 
-      <Card className="tenant-user-launch-wizard__boot-log">
-        <Flex
-          alignItems={{ default: 'alignItemsCenter' }}
-          justifyContent={{ default: 'justifyContentSpaceBetween' }}
-          className="tenant-user-launch-wizard__boot-log-header"
-        >
-          <FlexItem>
-            <Content component="p" className="tenant-user-launch-wizard__boot-log-title">
-              Boot log ·{' '}
-              {isVmCatalogItem || isBareMetalCatalogItem || isClusterCatalogItem
-                ? formatTenantInstanceName(form.instanceName.trim())
-                : form.instanceName.trim()}
-            </Content>
-          </FlexItem>
-          <FlexItem>
-            <Content component="p" className="tenant-user-launch-wizard__boot-log-remaining">
-              {LAUNCH_INSTANCE_WIZARD_DEMO.bootLogRemaining}
-            </Content>
-          </FlexItem>
-        </Flex>
+      {isBareMetalCatalogItem && provisioningStartedAt ? (
+        <BareMetalProvisioningProgressCard
+          instanceName={formatTenantInstanceName(form.instanceName.trim())}
+          startedAt={provisioningStartedAt}
+          onStagesComplete={handleBareMetalStagesComplete}
+        />
+      ) : isBareMetalCatalogItem ? (
+        <Card className="tenant-user-launch-wizard__boot-log">
+          <Content component="p" className="tenant-user-launch-wizard__boot-log-remaining">
+            Starting provisioning…
+          </Content>
+        </Card>
+      ) : (
+        <Card className="tenant-user-launch-wizard__boot-log">
+          <Flex
+            alignItems={{ default: 'alignItemsCenter' }}
+            justifyContent={{ default: 'justifyContentSpaceBetween' }}
+            className="tenant-user-launch-wizard__boot-log-header"
+          >
+            <FlexItem>
+              <Content component="p" className="tenant-user-launch-wizard__boot-log-title">
+                Boot log ·{' '}
+                {isVmCatalogItem || isClusterCatalogItem
+                  ? formatTenantInstanceName(form.instanceName.trim())
+                  : form.instanceName.trim()}
+              </Content>
+            </FlexItem>
+            <FlexItem>
+              <Content component="p" className="tenant-user-launch-wizard__boot-log-remaining">
+                {LAUNCH_INSTANCE_WIZARD_DEMO.bootLogRemaining}
+              </Content>
+            </FlexItem>
+          </Flex>
 
-        <ul className="tenant-user-launch-wizard__boot-log-list">
-          {PROVISIONING_BOOT_LOG_STEPS.map((step, index) => {
-            const status = getBootLogStatus(index, activeBootLogIndex)
+          <ul className="tenant-user-launch-wizard__boot-log-list">
+            {PROVISIONING_BOOT_LOG_STEPS.map((step, index) => {
+              const status = getBootLogStatus(index, activeBootLogIndex)
 
-            return (
-              <li
-                key={step.id}
-                className={`tenant-user-launch-wizard__boot-log-item tenant-user-launch-wizard__boot-log-item--${status}`}
-              >
-                {status === 'completed' ? (
-                  <CheckIcon aria-hidden />
-                ) : status === 'in-progress' ? (
-                  <Spinner
-                    size="sm"
-                    className="tenant-user-launch-wizard__boot-log-spinner"
-                    aria-label="Step in progress"
-                  />
-                ) : (
-                  <span className="tenant-user-launch-wizard__boot-log-bullet" aria-hidden />
-                )}
-                <span>{step.label}</span>
-              </li>
-            )
-          })}
-        </ul>
-      </Card>
+              return (
+                <li
+                  key={step.id}
+                  className={`tenant-user-launch-wizard__boot-log-item tenant-user-launch-wizard__boot-log-item--${status}`}
+                >
+                  {status === 'completed' ? (
+                    <CheckIcon aria-hidden />
+                  ) : status === 'in-progress' ? (
+                    <Spinner
+                      size="sm"
+                      className="tenant-user-launch-wizard__boot-log-spinner"
+                      aria-label="Step in progress"
+                    />
+                  ) : (
+                    <span className="tenant-user-launch-wizard__boot-log-bullet" aria-hidden />
+                  )}
+                  <span>{step.label}</span>
+                </li>
+              )
+            })}
+          </ul>
+        </Card>
+      )}
     </div>
   )
 
@@ -3307,7 +3358,7 @@ export function TenantUserLaunchInstanceWizard({
 
   const wizard = isOpen ? (
     <Wizard
-      key={`launch-instance-wizard-${catalogItem.catalogItemId}-${catalogItem.instanceTypeId ?? 'type'}-${catalogItem.hardwareOsMode ?? 'hw'}-${catalogItem.osImageMode ?? 'os'}-${includeNetworkingStep ? 'net' : 'no-net'}-${isBareMetalHardwareOsEditable ? 'hw-os' : 'std'}-${stepKey}`}
+      key={`launch-instance-wizard-${catalogItem.catalogItemId}-${catalogItem.instanceTypeId ?? 'type'}-${catalogItem.hardwareOsMode ?? 'hw'}-${catalogItem.osImageMode ?? 'os'}-${includeNetworkingStep ? 'net' : 'no-net'}-${isBareMetalHardwareOsEditable ? 'hw-os' : 'std'}`}
       className="tenant-user-launch-wizard"
       height={isPage ? '100%' : '40rem'}
       isPlain={isPage}
