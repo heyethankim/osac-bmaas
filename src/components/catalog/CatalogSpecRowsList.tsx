@@ -137,10 +137,22 @@ function renderSpecRowValue(row: CatalogSpecRow): ReactNode {
     return <CatalogDiskImageValue badge={row.badge}>{row.value}</CatalogDiskImageValue>
   }
   if (isNodeSetsParentLabel(row.label) && row.badge) {
+    // Detail nested parent: value was only the mode label — show the chip alone.
+    // Card/list summary: value is "3 pools · 10 nodes" — show value + chip.
+    if (!row.value.trim() || row.value === row.badge.text) {
+      return (
+        <Label color={row.badge.color} isCompact>
+          {row.badge.text}
+        </Label>
+      )
+    }
     return (
-      <Label color={row.badge.color} isCompact>
-        {row.badge.text}
-      </Label>
+      <span className="catalog-spec-row-value-with-badge">
+        <span>{row.value}</span>
+        <Label color={row.badge.color} isCompact>
+          {row.badge.text}
+        </Label>
+      </span>
     )
   }
   if (row.badge) {

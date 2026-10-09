@@ -250,18 +250,56 @@ function getOsImageModeBadge(
 /** Parent row for nested node-set children (matches Instance type → CPU/RAM/GPU). */
 export const CLUSTER_NODE_SETS_PARENT_LABEL = 'Node sets'
 
+export type ClusterCatalogSpecOptions = {
+  /** Full topology children + optional detail rows (detail pages). */
+  includeDetails?: boolean
+  /**
+   * Show Locked/Editable on Cluster version and Node sets.
+   * Catalog cards/lists: true. Instance cards/lists: false.
+   */
+  includeModeBadges?: boolean
+}
+
+/** Card/list summary: "3 pools · 10 nodes". */
+export function formatClusterTopologySummary(
+  topology: ReadonlyArray<CatalogClusterTopologyNodeSet>,
+): string {
+  const pools = topology.length
+  const nodes = topology.reduce((sum, row) => sum + row.nodeCount, 0)
+  const poolLabel = pools === 1 ? 'pool' : 'pools'
+  const nodeLabel = nodes === 1 ? 'node' : 'nodes'
+  return `${pools} ${poolLabel} · ${nodes} ${nodeLabel}`
+}
+
 function buildClusterTopologySpecRows(
   topology: ReadonlyArray<CatalogClusterTopologyNodeSet>,
   options?: {
     compact?: boolean
     topologyMode?: CatalogClusterNodeTopologyMode
+    summaryOnly?: boolean
+    includeModeBadge?: boolean
   },
 ): CatalogSpecRow[] {
-  const topologyBadge = getClusterNodeTopologyModeBadge(options?.topologyMode)
+  const includeModeBadge = options?.includeModeBadge !== false
+  const topologyBadge = includeModeBadge
+    ? getClusterNodeTopologyModeBadge(options?.topologyMode)
+    : undefined
+
+  if (options?.summaryOnly) {
+    return [
+      {
+        label: CLUSTER_NODE_SETS_PARENT_LABEL,
+        value: formatClusterTopologySummary(topology),
+        badge: topologyBadge,
+      },
+    ]
+  }
+
   const rows: CatalogSpecRow[] = [
     {
       label: CLUSTER_NODE_SETS_PARENT_LABEL,
-      value: topologyBadge?.text ?? 'Locked',
+      // When children list the pools, the parent value is only the mode label (or empty).
+      value: topologyBadge?.text ?? (includeModeBadge ? 'Locked' : ''),
       badge: topologyBadge,
     },
   ]
@@ -287,30 +325,36 @@ function buildClusterCatalogSpecRows(
     | 'clusterNodeTopologyMode'
     | 'clusterTopology'
   >,
-  options?: { includeDetails?: boolean },
+  options?: ClusterCatalogSpecOptions,
 ): CatalogSpecRow[] {
+  const includeDetails = Boolean(options?.includeDetails)
+  const includeModeBadges = options?.includeModeBadges !== false
   const versionLabel = resolveClusterVersionDisplayLabel(item)
   const topology = resolveCatalogClusterTopology(item.clusterTopology)
   const rows: CatalogSpecRow[] = [
     {
       label: 'Cluster version',
       value: versionLabel || '—',
-      badge: getClusterVersionModeBadge(item.clusterVersionMode),
+      badge: includeModeBadges
+        ? getClusterVersionModeBadge(item.clusterVersionMode)
+        : undefined,
     },
     ...buildClusterTopologySpecRows(topology, {
-      compact: !options?.includeDetails,
+      compact: !includeDetails,
       topologyMode: item.clusterNodeTopologyMode,
+      summaryOnly: !includeDetails,
+      includeModeBadge: includeModeBadges,
     }),
   ]
 
-  if (options?.includeDetails && CLUSTER_NODE_SETS_DETAIL_ROWS.length > 0) {
+  if (includeDetails && CLUSTER_NODE_SETS_DETAIL_ROWS.length > 0) {
     rows.push(...CLUSTER_NODE_SETS_DETAIL_ROWS)
   }
 
   return rows
 }
 
-/** Cluster version + node topology for Cluster catalog drawers. */
+/** Cluster version + node topology for Cluster catalog drawers / cards. */
 export function resolveClusterCatalogHighlightRows(
   item: Pick<
     ProviderCatalogDraft,
@@ -328,8 +372,9 @@ export function resolveClusterCatalogHighlightRows(
     | 'clusterNodeTopologyMode'
     | 'clusterTopology'
   >,
+  options?: ClusterCatalogSpecOptions,
 ): CatalogSpecRow[] {
-  return resolveCatalogSpecRows(item)
+  return resolveCatalogSpecRows(item, options)
 }
 
 function resolveBaremetalDiskImageLabel(
@@ -408,9 +453,15 @@ export function resolveBaremetalCatalogCardSpecRows(
 export function resolveCatalogCardSpecRows(
   item: Parameters<typeof resolveCatalogSpecRows>[0],
 ): CatalogSpecRow[] {
-  return getDraftServiceId(item) === 'baremetal'
-    ? resolveBaremetalCatalogCardSpecRows(item)
-    : resolveCatalogSpecRows(item)
+  const serviceId = getDraftServiceId(item)
+  if (serviceId === 'baremetal') {
+    return resolveBaremetalCatalogCardSpecRows(item)
+  }
+  // Cluster cards: version + node-sets summary (with Locked/Editable).
+  if (serviceId === 'cluster') {
+    return resolveCatalogSpecRows(item, { includeModeBadges: true })
+  }
+  return resolveCatalogSpecRows(item)
 }
 
 export function resolveCatalogSpecRows(
@@ -433,7 +484,7 @@ export function resolveCatalogSpecRows(
     | 'hardwareOsMode'
     | 'osImageMode'
   >,
-  options?: { includeDetails?: boolean },
+  options?: ClusterCatalogSpecOptions,
 ): CatalogSpecRow[] {
   const serviceId = getDraftServiceId(item)
 

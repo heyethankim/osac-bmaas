@@ -16,6 +16,7 @@ import {
   getCatalogSpecRowValue,
   resolveCatalogOsImage,
   resolveBaremetalCatalogCardSpecRows,
+  resolveCatalogCardSpecRows,
   resolveCatalogSpecRows,
 } from '../catalog/catalogSpecs'
 import {
@@ -165,7 +166,7 @@ function mapProviderCatalogToGovernanceItem(
   const specRows =
     serviceId === 'baremetal'
       ? resolveBaremetalCatalogCardSpecRows(draft)
-      : resolveCatalogSpecRows(draft)
+      : resolveCatalogCardSpecRows(draft)
   const networkPolicy = applyTenantNetworkOverrides(
     getCatalogItemNetworkPolicy(draft),
     getTenantNetworkOverrides(organization.slug, draft.catalogItemId),

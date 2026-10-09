@@ -1261,7 +1261,8 @@ export function TenantUserInstancesPage({
                 </Thead>
                 <Tbody>
                   {filteredInstances.map((instance) => {
-                    const tableSpecRows = getTenantInstanceSpecRows(instance)
+                    // Match grid cards: Cluster version + nested Node sets (not full launch dump).
+                    const tableSpecRows = getTenantInstanceCardSpecRows(instance)
 
                     return (
                     <Tr key={instance.id}>

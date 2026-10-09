@@ -2,8 +2,8 @@ import type { CatalogSpecRow } from '../catalog/catalogSpecs'
 import {
   getCatalogSpecRowValue,
   resolveBaremetalCatalogCardSpecRows,
+  resolveCatalogCardSpecRows,
   resolveCatalogOsImage,
-  resolveCatalogSpecRows,
 } from '../catalog/catalogSpecs'
 import type { CatalogFieldPolicy } from '../catalog/catalogPublishConfig'
 import { formatBaremetalInstanceTypeLabel } from '../catalog/catalogPublishConfig'
@@ -191,7 +191,7 @@ export function getTenantUserCatalogCardFromDraft(
   const specRows =
     serviceId === 'baremetal'
       ? resolveBaremetalCatalogCardSpecRows(catalog)
-      : resolveCatalogSpecRows(catalog)
+      : resolveCatalogCardSpecRows(catalog)
 
   return {
     serviceId,

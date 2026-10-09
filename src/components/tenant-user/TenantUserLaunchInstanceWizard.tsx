@@ -65,12 +65,14 @@ import {
   getCatalogHardwareOsModeLabel,
   getCatalogInstanceTypeOptions,
   getCatalogOsImageModeLabel,
+  getCatalogClusterNodeSetOption,
   getLatestCatalogClusterVersionId,
   getReleaseImageForClusterVersion,
   resolveCatalogClusterNodeTopologyMode,
   resolveCatalogClusterVersionMode,
   resolveCatalogHardwareOsMode,
   resolveCatalogOsImageMode,
+  resolveClusterMachineTypeIdFromHostType,
 } from '../../catalog/catalogPublishConfig'
 import type { TenantUserCatalogCard } from '../../tenantUser/catalog'
 import {
@@ -909,15 +911,19 @@ export function TenantUserLaunchInstanceWizard({
                         catalogItem.hostTypeId,
                     ),
                     clusterNodeTopologyMode: catalogItem.clusterNodeTopologyMode,
-                    clusterTopology: catalogItem.clusterTopology,
+                    clusterTopology:
+                      catalogItem.clusterTopology ??
+                      form.nodeSets.map((nodeSet, index) => ({
+                        name:
+                          getCatalogClusterNodeSetOption(nodeSet.nodeSetId)
+                            ?.label.toLowerCase()
+                            .replace(/\s+/g, '-') ||
+                          (index === 0 ? 'workers' : `node-set-${index + 1}`),
+                        machineTypeId: resolveClusterMachineTypeIdFromHostType(nodeSet.hostType),
+                        nodeCount: nodeSet.nodeCount,
+                      })),
                   }),
                   { label: 'Release image', value: form.releaseImage.trim() },
-                  ...form.nodeSets.map((nodeSet, index) => ({
-                    label: `Node set ${index + 1}`,
-                    value: `${formatClusterNodeSetLabel(nodeSet.nodeSetId)} · ${nodeSet.hostType} · ${nodeSet.nodeCount} ${
-                      nodeSet.nodeCount === 1 ? 'node' : 'nodes'
-                    }`,
-                  })),
                   { label: 'Pod CIDR', value: form.podCidr.trim() },
                   { label: 'Service CIDR', value: form.serviceCidr.trim() },
                 ]

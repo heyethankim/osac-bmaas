@@ -2,6 +2,7 @@ import type { CatalogSpecRow } from '../catalog/catalogSpecs'
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
 import {
   getBareMetalInstanceDiskImageFilterLabel,
+  getClusterInstanceMachineTypeFilterLabel,
   getClusterNodeSetTypeLabel,
   getClusterPlatformLabel,
   getTenantInstanceCardSpecRows,
@@ -23,7 +24,7 @@ export type InstanceSpecFilterGroup = {
 
 const INSTANCE_SPEC_FILTER_DIMENSIONS: Partial<Record<CatalogServiceId, string[]>> = {
   baremetal: ['OS image', 'GPU', 'RAM', 'CPU'],
-  cluster: ['Cluster version', 'Node set', 'Host type'],
+  cluster: ['Cluster version', 'Machine type', 'Host type'],
   'virtual-machine': ['Instance type', 'Size', 'OS image', 'CPU', 'RAM', 'GPU'],
   models: ['Model profile', 'Runtime', 'Size', 'Replicas'],
 }
@@ -83,6 +84,11 @@ export function getInstanceSpecDimensionValue(
   if (dimension === 'Cluster version') {
     const platform = getClusterPlatformLabel(instance)
     return isPopulatedSpecValue(platform) ? platform : null
+  }
+
+  if (dimension === 'Machine type') {
+    const machineType = getClusterInstanceMachineTypeFilterLabel(instance)
+    return machineType && isPopulatedSpecValue(machineType) ? machineType : null
   }
 
   if (dimension === 'Host type') {

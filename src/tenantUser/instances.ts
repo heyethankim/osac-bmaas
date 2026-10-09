@@ -4,16 +4,17 @@ import {
   resolveClusterCatalogHighlightRows,
 } from '../catalog/catalogSpecs'
 import {
-  DEFAULT_CLUSTER_NODE_SET_ID,
-  formatClusterHostTypeLabel,
-  formatClusterNodeSetLabel,
+  DEFAULT_CLUSTER_TOPOLOGY_NODE_SETS,
   formatClusterPlatformLabel,
   formatCatalogDiskImageLabel,
-  getCatalogClusterNodeSetOption,
+  getCatalogClusterMachineTypeOption,
   getReleaseImageForClusterVersion,
   resolveBaremetalInstanceTypeHardware,
   resolveBaremetalInstanceTypeHardwareFromSizeLabel,
+  resolveCatalogClusterTopology,
+  resolveClusterMachineTypeIdFromHostType,
   normalizeCatalogDiskImageDisplayLabel,
+  type CatalogClusterTopologyNodeSet,
 } from '../catalog/catalogPublishConfig'
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
 import { getProviderCatalogItems } from '../providerSetup/storage'
@@ -202,6 +203,11 @@ export function normalizeBareMetalDiskImageFilterLabel(
 export function getTenantInstanceSpecRows(instance: TenantInstance): CatalogSpecRow[] {
   const serviceId = getTenantInstanceServiceId(instance)
 
+  // Always rebuild cluster detail rows from live topology (full pools, no mode badges).
+  if (serviceId === 'cluster') {
+    return getClusterInstanceDetailSpecRows(instance)
+  }
+
   if (instance.specRows?.length) {
     if (serviceId === 'baremetal') {
       return ensureBaremetalInstanceSpecRows(instance, instance.specRows)
@@ -209,7 +215,7 @@ export function getTenantInstanceSpecRows(instance: TenantInstance): CatalogSpec
     return instance.specRows
   }
 
-  if (serviceId === 'cluster' || serviceId === 'virtual-machine') {
+  if (serviceId === 'virtual-machine') {
     return resolveCatalogSpecRows(
       { serviceId, templateRefId: '', templateName: '' },
       { includeDetails: true },
@@ -1345,71 +1351,91 @@ export function getTenantInstanceCardSpecRows(instance: TenantInstance): Catalog
   return allSpecRows.slice(0, 3)
 }
 
-function resolveClusterNodeSetIdFromNodeSet(
-  nodeSet: TenantClusterNodeSet | undefined,
-): string {
-  if (!nodeSet) {
-    return DEFAULT_CLUSTER_NODE_SET_ID
+/**
+ * Map a running/demo cluster's node pools into the catalog Node topology shape
+ * (name · machine type · node count) used on catalog and Services cards.
+ */
+function resolveInstanceClusterTopology(
+  instance: TenantInstance,
+): CatalogClusterTopologyNodeSet[] {
+  const nodeSets = resolveClusterConfig(instance).nodeSets
+  if (nodeSets.length > 0) {
+    return nodeSets.map((nodeSet) => ({
+      name: nodeSet.name?.trim() || 'workers',
+      machineTypeId: resolveClusterMachineTypeIdFromHostType(nodeSet.hostType),
+      nodeCount: Math.max(1, nodeSet.nodeCount),
+    }))
   }
 
-  if (nodeSet.hostType === 'gpu-host' || nodeSet.name === 'gpu-workers') {
-    return 'fc430-gpu'
-  }
-
-  if (nodeSet.name === 'infra' || nodeSet.name === 'infra-workers') {
-    return 'fc430-infra'
-  }
-
-  return DEFAULT_CLUSTER_NODE_SET_ID
-}
-
-function resolveClusterInstanceNodeSetId(instance: TenantInstance): string {
-  const fromSpecNodeSet = instance.specRows?.find((row) => row.label === 'Node set')?.value.trim()
-  if (fromSpecNodeSet && !/·\s*\d+\s+nodes?/i.test(fromSpecNodeSet)) {
-    return getCatalogClusterNodeSetOption(fromSpecNodeSet)?.id ?? fromSpecNodeSet
-  }
-
-  return resolveClusterNodeSetIdFromNodeSet(resolveClusterConfig(instance).nodeSets[0])
-}
-
-/** Same Cluster version / Node set / Host type rows as cluster catalog cards. */
-function getClusterInstanceCardSpecRows(instance: TenantInstance): CatalogSpecRow[] {
   const catalog = findCatalogDraftForInstance(instance)
-  const catalogRows =
-    catalog?.serviceId === 'cluster' ? resolveClusterCatalogHighlightRows(catalog) : null
-  const primaryNodeSet = resolveClusterConfig(instance).nodeSets[0]
-  const fromSpecHostType = instance.specRows?.find((row) => row.label === 'Host type')?.value.trim()
+  if (catalog?.serviceId === 'cluster') {
+    return resolveCatalogClusterTopology(catalog.clusterTopology)
+  }
 
+  return resolveCatalogClusterTopology(undefined)
+}
+
+function getClusterInstanceCatalogDraftFields(instance: TenantInstance) {
+  const catalog = findCatalogDraftForInstance(instance)
   const platform =
     getClusterPlatformLabel(instance) ||
     instance.specRows
       ?.find((row) => row.label === 'Cluster version' || row.label === 'Platform')
       ?.value?.trim() ||
-    catalogRows?.find((row) => row.label === 'Cluster version')?.value ||
     '—'
 
-  const nodeSetValue = formatClusterNodeSetLabel(resolveClusterInstanceNodeSetId(instance))
-  const hostTypeValue = formatClusterHostTypeLabel(
-    fromSpecHostType ||
-      primaryNodeSet?.hostType ||
-      getClusterNodeSetTypeLabel(instance) ||
-      catalogRows?.find((row) => row.label === 'Host type')?.value,
-  )
+  return {
+    serviceId: 'cluster' as const,
+    templateRefId: catalog?.templateRefId ?? '',
+    templateName: catalog?.templateName ?? '',
+    diskImageId: catalog?.diskImageId,
+    diskImageLabel: platform,
+    clusterVersionMode: catalog?.clusterVersionMode,
+    nodeSetId: catalog?.nodeSetId,
+    nodeSetLabel: catalog?.nodeSetLabel,
+    hostTypeId: catalog?.hostTypeId,
+    hostTypeLabel: catalog?.hostTypeLabel,
+    clusterNodeTopologyMode: catalog?.clusterNodeTopologyMode ?? ('locked' as const),
+    clusterTopology: resolveInstanceClusterTopology(instance),
+  }
+}
 
-  return [
-    {
-      label: 'Cluster version',
-      value: platform,
-    },
-    {
-      label: 'Node set',
-      value: nodeSetValue,
-    },
-    {
-      label: 'Host type',
-      value: hostTypeValue,
-    },
-  ]
+/**
+ * Services card/list: Cluster version + Node sets summary (no Locked/Editable —
+ * those modes are catalog-only).
+ */
+function getClusterInstanceCardSpecRows(instance: TenantInstance): CatalogSpecRow[] {
+  return resolveClusterCatalogHighlightRows(getClusterInstanceCatalogDraftFields(instance), {
+    includeModeBadges: false,
+  })
+}
+
+/** Instance detail: full node-set list, still without catalog mode badges. */
+function getClusterInstanceDetailSpecRows(instance: TenantInstance): CatalogSpecRow[] {
+  return resolveClusterCatalogHighlightRows(getClusterInstanceCatalogDraftFields(instance), {
+    includeDetails: true,
+    includeModeBadges: false,
+  })
+}
+
+/** Compact machine-type id from the primary worker pool (for Services filters). */
+export function getClusterInstanceMachineTypeFilterLabel(
+  instance: TenantInstance,
+): string | null {
+  const topology = resolveInstanceClusterTopology(instance)
+  const primary =
+    topology.find((row) => {
+      const name = row.name.trim().toLowerCase()
+      return name.includes('worker') && !name.includes('gpu')
+    }) ??
+    topology.find((row) => row.name.trim().toLowerCase().includes('worker')) ??
+    topology[0]
+  if (!primary) {
+    return null
+  }
+  return (
+    getCatalogClusterMachineTypeOption(primary.machineTypeId)?.label ?? primary.machineTypeId
+  )
 }
 
 function resolveDemoInstanceProjectFields(options: {
@@ -1599,45 +1625,42 @@ function createDemoTenantClusterInstanceVariant(
   },
 ): TenantInstance {
   const createdAt = new Date(Date.now() - 1000 * 60 * 60 * options.hoursAgo).toISOString()
-  const baseSpecRows = resolveCatalogSpecRows(
-    { serviceId: 'cluster', templateRefId: '', templateName: '' },
-    { includeDetails: true },
-  )
   const shortVersion = getClusterVersionShortLabel(options.platform)
-  const defaultNodeSets: TenantClusterNodeSet[] = [
-    {
-      id: 'node-set-1',
-      name: options.hostType === 'gpu-host' ? 'gpu-workers' : 'workers',
-      hostType: options.hostType,
-      nodeCount: options.nodeCount,
-      version: shortVersion,
-      status: options.status === 'provisioning' ? 'pending' : 'ready',
-    },
-  ]
-  const nodeSets = options.nodeSets ?? defaultNodeSets
-  const nodeSetId =
-    options.hostType === 'gpu-host'
-      ? 'fc430-gpu'
-      : nodeSets[0]?.name === 'infra' || nodeSets[0]?.name === 'infra-workers'
-        ? 'fc430-infra'
-        : 'fc430-worker'
-  const nodeSetLabel = formatClusterNodeSetLabel(nodeSetId)
-  const hostTypeLabel = formatClusterHostTypeLabel(options.hostType)
-  const specRows = baseSpecRows.map((row) => {
-    if (row.label === 'Cluster version' || row.label === 'Platform') {
+  const defaultNodeSets: TenantClusterNodeSet[] = DEFAULT_CLUSTER_TOPOLOGY_NODE_SETS.map(
+    (row, index) => {
+      const hostType =
+        getCatalogClusterMachineTypeOption(row.machineTypeId)?.hostTypeId ?? 'standard-host'
+      const isPrimaryWorker =
+        options.hostType === 'gpu-host'
+          ? row.name.toLowerCase().includes('gpu')
+          : row.name.toLowerCase().includes('worker') && !row.name.toLowerCase().includes('gpu')
       return {
-        label: 'Cluster version',
-        value: options.platform,
+        id: `node-set-${index + 1}`,
+        name: row.name,
+        hostType: isPrimaryWorker ? options.hostType : hostType,
+        nodeCount: isPrimaryWorker ? options.nodeCount : row.nodeCount,
+        version: shortVersion,
+        status: options.status === 'provisioning' ? ('pending' as const) : ('ready' as const),
       }
-    }
-    if (row.label === 'Node set') {
-      return { ...row, value: nodeSetLabel, badge: undefined }
-    }
-    if (row.label === 'Host type') {
-      return { ...row, value: hostTypeLabel, badge: undefined }
-    }
-    return row
-  })
+    },
+  )
+  const nodeSets = options.nodeSets ?? defaultNodeSets
+  const topology: CatalogClusterTopologyNodeSet[] = nodeSets.map((nodeSet) => ({
+    name: nodeSet.name?.trim() || 'workers',
+    machineTypeId: resolveClusterMachineTypeIdFromHostType(nodeSet.hostType),
+    nodeCount: Math.max(1, nodeSet.nodeCount),
+  }))
+  const specRows = resolveClusterCatalogHighlightRows(
+    {
+      serviceId: 'cluster',
+      templateRefId: '',
+      templateName: '',
+      diskImageLabel: options.platform,
+      clusterNodeTopologyMode: 'locked',
+      clusterTopology: topology,
+    },
+    { includeModeBadges: false },
+  )
 
   return {
     id: options.id,
@@ -1695,6 +1718,14 @@ export function createDemoTenantClusterInstance(organizationName: string): Tenan
     upgradeStatus: 'upgrade-available',
     nodeSets: [
       {
+        id: 'node-set-cp',
+        name: 'control-plane',
+        hostType: 'standard-host',
+        nodeCount: 3,
+        version: '4.19',
+        status: 'ready',
+      },
+      {
         id: 'node-set-1',
         name: 'workers',
         hostType: 'standard-host',
@@ -1750,23 +1781,23 @@ export function createDemoTenantClusterInstance04(organizationName: string): Ten
     upgradeStatus: 'up-to-date',
     nodeSets: [
       {
-        id: 'node-set-1',
-        name: 'infra',
+        id: 'node-set-cp',
+        name: 'control-plane',
         hostType: 'standard-host',
         nodeCount: 3,
         version: '4.21',
         status: 'ready',
       },
       {
-        id: 'node-set-2',
-        name: 'compute',
+        id: 'node-set-1',
+        name: 'workers',
         hostType: 'standard-host',
         nodeCount: 6,
         version: '4.21',
         status: 'ready',
       },
       {
-        id: 'node-set-3',
+        id: 'node-set-2',
         name: 'gpu-workers',
         hostType: 'gpu-host',
         nodeCount: 2,
