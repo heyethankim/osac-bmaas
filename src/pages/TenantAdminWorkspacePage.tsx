@@ -1,6 +1,10 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import { Navigate, useParams, useSearchParams } from 'react-router-dom'
-import { syncWorkspaceCatalogItemParam, syncWorkspaceNavParam } from '../shared/workspaceNavUrl'
+import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import {
+  syncWorkspaceCatalogItemParam,
+  syncWorkspaceNavParam,
+  WORKSPACE_INSTANCE_PARAM,
+} from '../shared/workspaceNavUrl'
 import { TenantShell } from '../components/tenant/TenantShell'
 import { DEMO_TENANT_DISPLAY_ADMIN, isDemoTenantId } from '../demoTenant'
 import { PlaceholderTenantAdminPage } from './PlaceholderTenantAdminPage'
@@ -60,6 +64,10 @@ import {
   BARE_METAL_PROVISIONING_DEMO_DURATION_MS,
   getBareMetalProvisioningDemoRemainingMs,
 } from '../tenantUser/bareMetalProvisioning'
+import {
+  CLUSTER_PROVISIONING_DEMO_DURATION_MS,
+  getClusterProvisioningDemoRemainingMs,
+} from '../tenantUser/clusterProvisioning'
 import { LAUNCH_INSTANCE_PROVISIONING_DURATION_MS, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS } from '../tenantUser/launchInstanceWizard'
 
 const TENANT_ADMIN_PLACEHOLDER_PAGES: Partial<
@@ -163,10 +171,14 @@ function readInitialTenantAdminNav(
 export function TenantAdminWorkspacePage() {
   const { tenant: tenantParam } = useParams<{ tenant: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
   const isValidTenant = Boolean(
     tenantParam && isDemoTenantId(tenantParam) && tenantParam === 'northsummit',
   )
   const tenant = 'northsummit' as const
+  /** Prevents stale `?nav=catalog` from snapping back during launch → Services navigation. */
+  const pendingNavRef = useRef<TenantAdminNavId | null>(null)
 
   const [organization, setOrganization] = useState(() => getWorkspaceOrganization(tenant))
   const [activeNavId, setActiveNavId] = useState<TenantAdminNavId>(() =>
@@ -203,7 +215,6 @@ export function TenantAdminWorkspacePage() {
     setTenantOnboardingComplete(tenant)
     ensureProviderDemoOrganizations()
     activateProviderRegisteredOrganizationBySlug(tenant)
-    syncNorthSummitBillingInactiveScenarioFromSearch(searchParams)
     const workspaceOrganization = getWorkspaceOrganization(tenant)
     setOrganization(workspaceOrganization)
     setInstances(
@@ -213,8 +224,30 @@ export function TenantAdminWorkspacePage() {
     )
     setProjects(ensureTenantDemoProjects(tenant))
     setProjectScopeIdState(getProjectScopeId(tenant))
+  }, [isValidTenant, tenant])
+
+  useLayoutEffect(() => {
+    if (!isValidTenant) {
+      return
+    }
+
+    syncNorthSummitBillingInactiveScenarioFromSearch(searchParams)
 
     const requestedNav = normalizeTenantAdminNavParam(searchParams.get('nav'))
+    const pendingNav = pendingNavRef.current
+
+    if (pendingNav) {
+      if (requestedNav === pendingNav) {
+        pendingNavRef.current = null
+        ensureTenantAdminPostOnboardingPrototype(tenant, pendingNav, searchParams)
+        setActiveNavId(pendingNav)
+        setTenantActiveNav(tenant, pendingNav)
+        return
+      }
+      setActiveNavId(pendingNav)
+      return
+    }
+
     if (requestedNav) {
       ensureTenantAdminPostOnboardingPrototype(tenant, requestedNav, searchParams)
       setActiveNavId(requestedNav)
@@ -285,10 +318,13 @@ export function TenantAdminWorkspacePage() {
 
   const handleProvisioningStarted = (instance: TenantInstance) => {
     setInstances((current) => addTenantUserInstance(tenant, instance, current))
+    const serviceId = getTenantInstanceServiceId(instance)
     const delayMs =
-      getTenantInstanceServiceId(instance) === 'baremetal'
+      serviceId === 'baremetal'
         ? BARE_METAL_PROVISIONING_DEMO_DURATION_MS
-        : LAUNCH_INSTANCE_PROVISIONING_DURATION_MS
+        : serviceId === 'cluster'
+          ? CLUSTER_PROVISIONING_DEMO_DURATION_MS
+          : LAUNCH_INSTANCE_PROVISIONING_DURATION_MS
     scheduleProvisioningCompletion(instance.id, delayMs)
   }
 
@@ -315,13 +351,31 @@ export function TenantAdminWorkspacePage() {
               ? getBareMetalProvisioningDemoRemainingMs(instance.createdAt)
               : BARE_METAL_PROVISIONING_DEMO_DURATION_MS
           })()
-        : LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS
+        : serviceId === 'cluster'
+          ? (() => {
+              const instance = getOrEnsureTenantUserInstances(tenant).find(
+                (item) => item.id === instanceId,
+              )
+              return instance
+                ? getClusterProvisioningDemoRemainingMs(instance.createdAt)
+                : CLUSTER_PROVISIONING_DEMO_DURATION_MS
+            })()
+          : LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS
     scheduleProvisioningCompletion(instanceId, delayMs)
+    const instanceName =
+      getOrEnsureTenantUserInstances(tenant).find((item) => item.id === instanceId)?.name ?? null
     const nextNavId = getServicesNavId(serviceId)
+    pendingNavRef.current = nextNavId
     setActiveNavId(nextNavId)
     setTenantActiveNav(tenant, nextNavId)
+    setOpenInstanceId(instanceId)
     setNavContentKey((current) => current + 1)
-    syncWorkspaceNavParam(setSearchParams, nextNavId, { replace: true })
+    const nextParams = new URLSearchParams()
+    nextParams.set('nav', nextNavId)
+    if (instanceName) {
+      nextParams.set(WORKSPACE_INSTANCE_PARAM, instanceName)
+    }
+    navigate(`${pathname}?${nextParams.toString()}`, { replace: true })
   }
 
   const renderWorkspaceContent = () => {

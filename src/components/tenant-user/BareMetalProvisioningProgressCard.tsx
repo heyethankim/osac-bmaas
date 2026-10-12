@@ -18,9 +18,16 @@ import {
   type BareMetalProvisioningStepStatus,
   type BareMetalProvisioningStepView,
 } from '../../tenantUser/bareMetalProvisioning'
+import {
+  CLUSTER_PROVISIONING_LEAF_COUNT,
+  formatClusterProvisioningRemainingLabel,
+  getClusterProvisioningActiveLeafIndex,
+  resolveClusterProvisioningStages,
+} from '../../tenantUser/clusterProvisioning'
+
+export type ProvisioningProgressService = 'baremetal' | 'cluster'
 
 type BareMetalProvisioningProgressCardProps = {
-  instanceName: string
   /**
    * ISO timestamp when provisioning started. The card advances itself from this
    * clock so Wizard remounts cannot stall the stepper.
@@ -33,6 +40,8 @@ type BareMetalProvisioningProgressCardProps = {
   /** Optional controlled index; when omitted, derived from `startedAt`. */
   activeLeafIndex?: number
   remainingLabel?: string
+  /** Bare metal vs cluster provisioning stages. Default bare metal. */
+  service?: ProvisioningProgressService
 }
 
 function stageVariant(
@@ -72,7 +81,7 @@ function stageAriaLabel(stage: BareMetalProvisioningStageView, description?: str
 
 /**
  * Subtext under each stage title.
- * Multi-leaf stages (Network setup) show only the current leaf — it replaces the previous.
+ * Multi-leaf stages show only the current leaf — it replaces the previous.
  */
 function getStageSubtext(stage: BareMetalProvisioningStageView): string | undefined {
   const activeLeaf =
@@ -107,18 +116,20 @@ function getActiveLeaf(stage: BareMetalProvisioningStageView): BareMetalProvisio
 }
 
 export function BareMetalProvisioningProgressCard({
-  instanceName,
   startedAt,
   onStagesComplete,
   overrides,
   className,
   activeLeafIndex: activeLeafIndexProp,
   remainingLabel: remainingLabelProp,
+  service = 'baremetal',
 }: BareMetalProvisioningProgressCardProps) {
   const [nowMs, setNowMs] = useState(() => Date.now())
   const completedRef = useRef(false)
   const onStagesCompleteRef = useRef(onStagesComplete)
   onStagesCompleteRef.current = onStagesComplete
+  const isCluster = service === 'cluster'
+  const leafCount = isCluster ? CLUSTER_PROVISIONING_LEAF_COUNT : BARE_METAL_PROVISIONING_LEAF_COUNT
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -130,11 +141,18 @@ export function BareMetalProvisioningProgressCard({
     }
   }, [startedAt])
 
-  const derivedLeafIndex = getBareMetalProvisioningActiveLeafIndex(startedAt, nowMs)
+  const derivedLeafIndex = isCluster
+    ? getClusterProvisioningActiveLeafIndex(startedAt, nowMs)
+    : getBareMetalProvisioningActiveLeafIndex(startedAt, nowMs)
   const activeLeafIndex = activeLeafIndexProp ?? derivedLeafIndex
   const remainingLabel =
-    remainingLabelProp ?? formatBareMetalProvisioningRemainingLabel(activeLeafIndex)
-  const stages = resolveBareMetalProvisioningStages(activeLeafIndex, overrides)
+    remainingLabelProp ??
+    (isCluster
+      ? formatClusterProvisioningRemainingLabel(activeLeafIndex)
+      : formatBareMetalProvisioningRemainingLabel(activeLeafIndex))
+  const stages = isCluster
+    ? resolveClusterProvisioningStages(activeLeafIndex, overrides)
+    : resolveBareMetalProvisioningStages(activeLeafIndex, overrides)
   const issueLeaf = stages
     .map((stage) => getActiveLeaf(stage))
     .find(
@@ -143,14 +161,18 @@ export function BareMetalProvisioningProgressCard({
         (step.status === 'warning' || step.status === 'failed') &&
         (step.message || step.detail || step.nextStep),
     )
+  const cardTitle = isCluster ? 'Installation progress' : 'Provisioning progress'
+  const stepperAriaLabel = isCluster
+    ? 'Cluster installation stages'
+    : 'Bare metal provisioning stages'
 
   useEffect(() => {
-    if (activeLeafIndex < BARE_METAL_PROVISIONING_LEAF_COUNT || completedRef.current) {
+    if (activeLeafIndex < leafCount || completedRef.current) {
       return
     }
     completedRef.current = true
     onStagesCompleteRef.current?.()
-  }, [activeLeafIndex])
+  }, [activeLeafIndex, leafCount])
 
   return (
     <Card
@@ -165,7 +187,7 @@ export function BareMetalProvisioningProgressCard({
       >
         <FlexItem>
           <Content component="p" className="tenant-user-launch-wizard__boot-log-title">
-            Boot log · {instanceName}
+            {cardTitle}
           </Content>
         </FlexItem>
         {remainingLabel ? (
@@ -178,9 +200,9 @@ export function BareMetalProvisioningProgressCard({
       </Flex>
 
       <ProgressStepper
-        key={`bm-stages-${activeLeafIndex}`}
+        key={`${service}-stages-${activeLeafIndex}`}
         isCenterAligned
-        aria-label="Bare metal provisioning stages"
+        aria-label={stepperAriaLabel}
         className="bare-metal-provisioning-progress__stepper"
       >
         {stages.map((stage) => {
@@ -196,8 +218,8 @@ export function BareMetalProvisioningProgressCard({
           return (
             <ProgressStep
               key={stage.id}
-              id={`bm-provision-stage-${stage.id}`}
-              titleId={`bm-provision-stage-${stage.id}-title`}
+              id={`${service}-provision-stage-${stage.id}`}
+              titleId={`${service}-provision-stage-${stage.id}-title`}
               variant={stageVariant(stage.status)}
               isCurrent={isCurrent}
               description={description}
@@ -234,4 +256,11 @@ export function BareMetalProvisioningProgressCard({
       ) : null}
     </Card>
   )
+}
+
+/** Cluster detail / Services view: same stepper chrome with cluster-specific stages. */
+export function ClusterProvisioningProgressCard(
+  props: Omit<BareMetalProvisioningProgressCardProps, 'service'>,
+) {
+  return <BareMetalProvisioningProgressCard {...props} service="cluster" />
 }

@@ -306,6 +306,9 @@ export function getTenantInstanceActions(
   const isRunning = instance.status === 'running'
   const isStopped = instance.status === 'stopped'
   const isBusy = instance.status === 'provisioning' || instance.status === 'restarting'
+  const isRestarting = instance.status === 'restarting'
+  /** Delete stays available while provisioning so users can cancel a launch in progress. */
+  const canDelete = !isRestarting
   const hasPublicIp = Boolean(resolveVmConfig(instance).publicIp)
 
   if (isCluster) {
@@ -333,7 +336,7 @@ export function getTenantInstanceActions(
       {
         title: 'Delete',
         isDanger: true,
-        isAriaDisabled: isBusy,
+        isAriaDisabled: !canDelete,
         onClick: () => {
           onTerminate(instance)
         },
@@ -387,7 +390,7 @@ export function getTenantInstanceActions(
       {
         title: 'Delete',
         isDanger: true,
-        isAriaDisabled: isBusy,
+        isAriaDisabled: !canDelete,
         onClick: () => {
           onTerminate(instance)
         },
@@ -434,7 +437,7 @@ export function getTenantInstanceActions(
       {
         title: 'Delete',
         isDanger: true,
-        isAriaDisabled: isBusy,
+        isAriaDisabled: !canDelete,
         onClick: () => {
           onTerminate(instance)
         },
@@ -473,7 +476,7 @@ export function getTenantInstanceActions(
     {
       title: 'Terminate instance',
       isDanger: true,
-      isAriaDisabled: isBusy,
+      isAriaDisabled: !canDelete,
       onClick: () => {
         onTerminate(instance)
       },

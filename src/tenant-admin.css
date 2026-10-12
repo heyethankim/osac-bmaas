@@ -3986,6 +3986,11 @@
   margin-block-end: var(--pf-t--global--spacer--lg);
 }
 
+.entity-details-page__bare-metal-provisioning .tenant-user-launch-wizard__boot-log {
+  margin-block-start: 0;
+  background: var(--pf-t--global--background--color--primary--default);
+}
+
 .tenant-user-launch-wizard__footer-label {
   display: inline-flex;
   align-items: center;

@@ -77,7 +77,10 @@ import {
   matchNetworkOptionId,
   resolveLaunchNetworkContext,
 } from '../../tenantUser/launchNetworking'
-import { BareMetalProvisioningProgressCard } from './BareMetalProvisioningProgressCard'
+import {
+  BareMetalProvisioningProgressCard,
+  ClusterProvisioningProgressCard,
+} from './BareMetalProvisioningProgressCard'
 import type { TenantProject } from '../../tenantAdmin/projects'
 import {
   getTenantProjectEnvironmentLabel,
@@ -606,8 +609,8 @@ function ClusterLifecycleActions({
   onViewPassword?: (instance: TenantInstance) => void
 }) {
   const isRunning = instance.status === 'running'
-  const isBusy = instance.status === 'provisioning' || instance.status === 'restarting'
-  const canDelete = !isBusy
+  const isRestarting = instance.status === 'restarting'
+  const canDelete = !isRestarting
   const consoleUrl = getClusterConsoleUrl(instance)
 
   const openConsole = () => {
@@ -654,7 +657,7 @@ function ClusterLifecycleActions({
           Delete
         </Button>
       ) : (
-        <Tooltip content="Delete is unavailable while provisioning">
+        <Tooltip content="Delete is unavailable while restarting">
           <Button variant="secondary" isDanger isAriaDisabled>
             Delete
           </Button>
@@ -680,11 +683,10 @@ function VmLifecycleActions({
   const isRunning = instance.status === 'running'
   const isStopped = instance.status === 'stopped'
   const isRestarting = instance.status === 'restarting'
-  const isBusy = instance.status === 'provisioning' || isRestarting
   const canStart = isStopped
   const canStop = isRunning
   const canRestart = isRunning || isStopped
-  const canDelete = !isBusy
+  const canDelete = !isRestarting
   const consoleUrl = getVmConsoleUrl(instance)
 
   const openConsole = () => {
@@ -777,13 +779,7 @@ function VmLifecycleActions({
           Delete
         </Button>
       ) : (
-        <Tooltip
-          content={
-            isRestarting
-              ? 'Delete is unavailable while restarting'
-              : 'Delete is unavailable while provisioning'
-          }
-        >
+        <Tooltip content="Delete is unavailable while restarting">
           <Button variant="secondary" isDanger isAriaDisabled>
             Delete
           </Button>
@@ -873,7 +869,7 @@ function BareMetalLifecycleActions({
   const canStart = isStopped
   const canStop = isRunning
   const canRestart = isRunning || isStopped
-  const canTerminate = instance.status !== 'provisioning' && instance.status !== 'restarting'
+  const canTerminate = !isRestarting
 
   return (
     <>
@@ -961,13 +957,7 @@ function BareMetalLifecycleActions({
           Delete
         </Button>
       ) : (
-        <Tooltip
-          content={
-            isRestarting
-              ? 'Delete is unavailable while restarting'
-              : 'Delete is unavailable while provisioning'
-          }
-        >
+        <Tooltip content="Delete is unavailable while restarting">
           <Button variant="secondary" isDanger isAriaDisabled>
             Delete
           </Button>
@@ -996,8 +986,7 @@ function DefaultLifecycleActions({
   const isRunning = instance.status === 'running'
   const isRestarting = instance.status === 'restarting'
   const canRestart = isRunning
-  const canTerminate =
-    instance.status !== 'provisioning' && instance.status !== 'restarting'
+  const canTerminate = !isRestarting
 
   return (
     <>
@@ -1036,13 +1025,7 @@ function DefaultLifecycleActions({
           Delete
         </Button>
       ) : (
-        <Tooltip
-          content={
-            isRestarting
-              ? 'Delete is unavailable while restarting'
-              : 'Delete is unavailable while provisioning'
-          }
-        >
+        <Tooltip content="Delete is unavailable while restarting">
           <Button variant="secondary" isDanger isAriaDisabled>
             Delete
           </Button>
@@ -1140,6 +1123,11 @@ function ClusterInstancePageBody({
 
   return (
     <>
+      {isProvisioning ? (
+        <div className="entity-details-page__bare-metal-provisioning">
+          <ClusterProvisioningProgressCard startedAt={instance.createdAt} />
+        </div>
+      ) : null}
       <div className="entity-details-page__columns entity-details-page__columns--with-rail">
         <div className="entity-details-page__main-stack">
           <div className="entity-details-page__columns entity-details-page__columns--2">
@@ -1604,10 +1592,7 @@ function DefaultInstancePageBody({
     <>
       {isBareMetal && instance.status === 'provisioning' ? (
         <div className="entity-details-page__bare-metal-provisioning">
-          <BareMetalProvisioningProgressCard
-            instanceName={formatTenantInstanceName(instance.name)}
-            startedAt={instance.createdAt}
-          />
+          <BareMetalProvisioningProgressCard startedAt={instance.createdAt} />
         </div>
       ) : null}
       <div className="entity-details-page__columns entity-details-page__columns--with-rail">

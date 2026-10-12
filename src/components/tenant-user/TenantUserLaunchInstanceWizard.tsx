@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ArrowLeftIcon } from '@patternfly/react-icons/dist/esm/icons/arrow-left-icon'
 import { ArrowRightIcon } from '@patternfly/react-icons/dist/esm/icons/arrow-right-icon'
-import { CheckIcon } from '@patternfly/react-icons/dist/esm/icons/check-icon'
 import { InfoCircleIcon } from '@patternfly/react-icons/dist/esm/icons/info-circle-icon'
 import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
 import {
   Alert,
-  Card,
   Content,
   DescriptionList,
   DescriptionListDescription,
@@ -30,13 +28,14 @@ import {
   Modal,
   ModalVariant,
   Button,
-  Spinner,
   TextArea,
   TextInput,
   Title,
   Wizard,
+  WizardFooter,
   WizardHeader,
   WizardStep,
+  useWizardContext,
 } from '@patternfly/react-core'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
@@ -95,22 +94,14 @@ import {
   isClusterNodeTopologyStepValid,
   BAREMETAL_LAUNCH_INSTANCE_DEMO,
   CLUSTER_LAUNCH_INSTANCE_DEMO,
-  LAUNCH_INSTANCE_BOOT_LOG_STEP_MS,
-  LAUNCH_INSTANCE_PROVISIONING_SETTLE_MS,
   LAUNCH_INSTANCE_WIZARD_DEMO,
-  PROVISIONING_BOOT_LOG_STEPS,
   VM_LAUNCH_INSTANCE_DEMO,
   parseVmLaunchInstanceTypeOption,
   type LaunchExternalIpPath,
   type LaunchInstanceWizardForm,
   type LaunchInstanceWizardStepId,
   type LaunchNetworkPath,
-  type ProvisioningBootLogStatus,
 } from '../../tenantUser/launchInstanceWizard'
-import {
-  BARE_METAL_PROVISIONING_LEAF_COUNT,
-} from '../../tenantUser/bareMetalProvisioning'
-import { BareMetalProvisioningProgressCard } from './BareMetalProvisioningProgressCard'
 import {
   formatLaunchInstanceNetworkLabel,
   resolveLaunchInstanceNetworking,
@@ -169,7 +160,9 @@ type TenantUserLaunchInstanceWizardProps = {
   onClose: () => void
   onBackToCatalogItem?: () => void
   onProvisioningStarted: (instance: TenantInstance) => void
+  /** After confirm: open the new instance detail (progress continues there). */
   onDismissDuringProvisioning: (instanceId: string, serviceId: CatalogServiceId) => void
+  /** @deprecated Confirm navigates via onDismissDuringProvisioning; kept for call-site compat. */
   onWizardFinished: (instanceId: string, serviceId: CatalogServiceId) => void
   /**
    * When true, networking pickers use menu dropdowns with inline Create modals
@@ -186,21 +179,6 @@ function resolveInitialLaunchProjectId(
     return initialProjectId
   }
   return projects[0]?.id ?? ''
-}
-
-function getBootLogStatus(
-  stepIndex: number,
-  activeIndex: number,
-): ProvisioningBootLogStatus {
-  if (stepIndex < activeIndex) {
-    return 'completed'
-  }
-
-  if (stepIndex === activeIndex) {
-    return 'in-progress'
-  }
-
-  return 'pending'
 }
 
 function getCatalogOptionLabel(name: string, detail: string): string {
@@ -226,9 +204,10 @@ export function TenantUserLaunchInstanceWizard({
   onBackToCatalogItem,
   onProvisioningStarted,
   onDismissDuringProvisioning,
-  onWizardFinished,
+  onWizardFinished: _onWizardFinished,
   canManageNetworkObjects = false,
 }: TenantUserLaunchInstanceWizardProps) {
+  void _onWizardFinished
   const [networkInventoryRevision, setNetworkInventoryRevision] = useState(0)
   const [openNetworkMenuKind, setOpenNetworkMenuKind] =
     useState<LaunchNetworkFieldKind | null>(null)
@@ -425,7 +404,9 @@ export function TenantUserLaunchInstanceWizard({
       includeNetworkingStep,
     ],
   )
-  const syncStepToUrl = presentation === 'page'
+  const [suppressStepUrlSync, setSuppressStepUrlSync] = useState(false)
+  const [isConfirmLoading, setIsConfirmLoading] = useState(false)
+  const syncStepToUrl = presentation === 'page' && !suppressStepUrlSync
   const {
     startIndex: wizardStartIndex,
     onStepChange: syncWizardStepToUrl,
@@ -588,18 +569,21 @@ export function TenantUserLaunchInstanceWizard({
   const [activeStepId, setActiveStepId] = useState<LaunchInstanceWizardStepId>(
     usesGeneralFirstStep ? 'general' : 'configure',
   )
-  const [activeBootLogIndex, setActiveBootLogIndex] = useState(0)
-  const [isProvisioningComplete, setIsProvisioningComplete] = useState(false)
-  const [provisioningStartedAt, setProvisioningStartedAt] = useState<string | null>(null)
-  const provisioningStartedRef = useRef(false)
-  const provisioningInstanceIdRef = useRef<string | null>(null)
-  const provisioningFinishScheduledRef = useRef(false)
-  const isOpenRef = useRef(isOpen)
+  const confirmStartedRef = useRef(false)
+  const confirmNavigateTimeoutRef = useRef<number | null>(null)
   const onProvisioningStartedRef = useRef(onProvisioningStarted)
-  const onWizardFinishedRef = useRef(onWizardFinished)
+  const onGoToProvisioningInstanceRef = useRef(onDismissDuringProvisioning)
 
   onProvisioningStartedRef.current = onProvisioningStarted
-  onWizardFinishedRef.current = onWizardFinished
+  onGoToProvisioningInstanceRef.current = onDismissDuringProvisioning
+
+  useEffect(() => {
+    return () => {
+      if (confirmNavigateTimeoutRef.current !== null) {
+        window.clearTimeout(confirmNavigateTimeoutRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (!syncStepToUrl || !isOpen || !urlStepId) {
@@ -709,24 +693,10 @@ export function TenantUserLaunchInstanceWizard({
     setNetworkCreateKind(null)
     setIsCreateProjectWizardOpen(false)
     setActiveStepId(usesGeneralFirstStep ? 'general' : 'configure')
-    setActiveBootLogIndex(0)
-    setIsProvisioningComplete(false)
-    setProvisioningStartedAt(null)
-    provisioningStartedRef.current = false
-    provisioningInstanceIdRef.current = null
-    provisioningFinishScheduledRef.current = false
+    confirmStartedRef.current = false
   }
 
   const handleClose = () => {
-    const provisioningId = provisioningInstanceIdRef.current
-    // Parent navigates to the matching Services page; do not also close via
-    // catalog URL params or `nav=` stays on Catalog.
-    if (provisioningId) {
-      onDismissDuringProvisioning(provisioningId, catalogItem.serviceId)
-      resetWizard()
-      return
-    }
-
     resetWizard()
     onClose()
   }
@@ -750,20 +720,14 @@ export function TenantUserLaunchInstanceWizard({
   })
 
   const requestClose = () => {
-    if (provisioningInstanceIdRef.current) {
-      handleClose()
-      return
-    }
     showLeaveConfirm()
   }
 
   useEffect(() => {
-    isOpenRef.current = isOpen
-  }, [isOpen])
-
-  useEffect(() => {
     if (!isOpen) {
       resetWizard()
+      setSuppressStepUrlSync(false)
+      setIsConfirmLoading(false)
       return
     }
 
@@ -812,226 +776,181 @@ export function TenantUserLaunchInstanceWizard({
     tenantSlug,
   ])
 
-  useEffect(() => {
-    if (!isOpen || activeStepId !== 'provisioning') {
+  const handleConfirmStartProvisioning = (
+    event?: { preventDefault?: () => void; stopPropagation?: () => void },
+  ) => {
+    // PatternFly footer Next uses type="submit" — block any form submit side effects.
+    event?.preventDefault?.()
+    event?.stopPropagation?.()
+
+    if (confirmStartedRef.current) {
       return
     }
+    confirmStartedRef.current = true
+    // Stop ?step= sync immediately so it cannot rewrite the URL after we navigate away.
+    setSuppressStepUrlSync(true)
+    setIsConfirmLoading(true)
 
-    // Create the instance once. Keep the animation interval separate so React
-    // Strict Mode cleanup does not leave progress stuck after clearing timers.
-    if (!provisioningStartedRef.current) {
-      provisioningStartedRef.current = true
+    const detailSpecRows = catalogDetailSpecRows
+    const vmInstanceTypeParts = isVmCatalogItem
+      ? parseVmLaunchInstanceTypeOption(form.instanceType.trim())
+      : null
+    const vmOsImage = isVmCatalogItem ? resolvedVmOsImage : null
+    const bareMetalLaunchSpecRows = isBareMetalCatalogItem
+      ? resolveBaremetalCatalogCardSpecRows({
+          templateRefId: catalogItem.templateRefId,
+          templateName: catalogItem.templateName,
+          instanceTypeId: form.instanceType || catalogItem.instanceTypeId,
+          instanceTypeLabel:
+            formatBaremetalInstanceTypeLabel(form.instanceType) ?? catalogItem.instanceTypeLabel,
+          diskImageId: form.diskImageId || catalogItem.diskImageId,
+          diskImageLabel:
+            formatCatalogDiskImageLabel(form.diskImageId, catalogItem.diskImageLabel) ??
+            catalogItem.diskImageLabel,
+        })
+      : null
 
-      const detailSpecRows = catalogDetailSpecRows
-      const vmInstanceTypeParts = isVmCatalogItem
-        ? parseVmLaunchInstanceTypeOption(form.instanceType.trim())
-        : null
-      const vmOsImage = isVmCatalogItem ? resolvedVmOsImage : null
-      const bareMetalLaunchSpecRows = isBareMetalCatalogItem
-        ? resolveBaremetalCatalogCardSpecRows({
-            templateRefId: catalogItem.templateRefId,
-            templateName: catalogItem.templateName,
-            instanceTypeId: form.instanceType || catalogItem.instanceTypeId,
-            instanceTypeLabel:
-              formatBaremetalInstanceTypeLabel(form.instanceType) ?? catalogItem.instanceTypeLabel,
-            diskImageId: form.diskImageId || catalogItem.diskImageId,
-            diskImageLabel:
-              formatCatalogDiskImageLabel(form.diskImageId, catalogItem.diskImageLabel) ??
-              catalogItem.diskImageLabel,
-          })
-        : null
-
-      const instance: TenantInstance = {
-        id: generateTenantInstanceId(),
-        name:
-          isClusterCatalogItem || isVmCatalogItem || isBareMetalCatalogItem
-            ? form.instanceName.trim()
-            : formatTenantInstanceName(form.instanceName.trim()),
-        ...(form.description.trim() ? { description: form.description.trim() } : {}),
-        catalogItemDisplayName: catalogItem.displayName,
-        serviceId: catalogItem.serviceId,
-        hardwareProfile: catalogItem.hardwareProfile,
-        osImage: isClusterCatalogItem
-          ? formatClusterPlatformLabel(form.clusterVersionId || form.releaseImage)
-          : isVmCatalogItem
-            ? (vmOsImage ?? catalogItem.osImage)
-            : isBareMetalCatalogItem
-              ? (formatCatalogDiskImageLabel(form.diskImageId, catalogItem.diskImageLabel) ??
-                catalogItem.osImage)
-              : catalogItem.osImage,
-        networkLabel,
-        networking,
-        gpuLabel: isClusterCatalogItem
-          ? (detailSpecRows.find((row) => row.label === 'Node set')?.value ?? catalogItem.gpu)
-          : isVmCatalogItem
-            ? (vmInstanceTypeParts?.size ?? catalogItem.gpu)
-            : isBareMetalCatalogItem
-              ? (bareMetalLaunchSpecRows?.find((row) => row.label === 'GPU')?.value ??
-                catalogItem.gpu)
-              : catalogItem.gpu,
-        specRows: isBareMetalCatalogItem
-          ? (bareMetalLaunchSpecRows ?? catalogItem.specRows)
-          : isServiceAwareCatalogItem
-            ? isVmCatalogItem
-              ? [
-                  {
-                    label: 'Instance type',
-                    value: vmInstanceTypeParts?.instanceType || form.instanceType.trim(),
-                  },
-                  { label: 'Size', value: vmInstanceTypeParts?.size || form.instanceType.trim() },
-                  { label: 'OS image', value: vmOsImage ?? catalogItem.osImage },
-                  { label: 'Container disk image', value: form.containerDiskImage.trim() },
-                  { label: 'Boot disk', value: `${form.bootDiskSizeGiB} GiB` },
-                  { label: 'Image source type', value: form.imageSourceType.trim() },
-                  { label: 'Run strategy', value: form.runStrategy.trim() },
-                  ...(form.cloudInitUserData.trim()
-                    ? [{ label: 'Cloud-init', value: form.cloudInitUserData.trim() }]
-                    : []),
-                ]
-              : [
-                  ...resolveClusterCatalogHighlightRows({
-                    serviceId: 'cluster',
-                    templateRefId: catalogItem.templateRefId,
-                    templateName: catalogItem.templateName,
-                    diskImageId: form.clusterVersionId || catalogItem.diskImageId,
-                    diskImageLabel: formatClusterPlatformLabel(
-                      form.clusterVersionId || form.releaseImage || catalogItem.diskImageLabel,
-                    ),
-                    clusterVersionMode: catalogItem.clusterVersionMode,
-                    nodeSetId: form.nodeSets[0]?.nodeSetId || catalogItem.nodeSetId,
-                    nodeSetLabel: formatClusterNodeSetLabel(
-                      form.nodeSets[0]?.nodeSetId ||
-                        catalogItem.nodeSetLabel ||
-                        catalogItem.nodeSetId,
-                    ),
-                    hostTypeId: form.nodeSets[0]?.hostType || catalogItem.hostTypeId,
-                    hostTypeLabel: formatClusterHostTypeLabel(
-                      form.nodeSets[0]?.hostType ||
-                        catalogItem.hostTypeLabel ||
-                        catalogItem.hostTypeId,
-                    ),
-                    clusterNodeTopologyMode: catalogItem.clusterNodeTopologyMode,
-                    clusterTopology:
-                      catalogItem.clusterTopology ??
-                      form.nodeSets.map((nodeSet, index) => ({
-                        name:
-                          getCatalogClusterNodeSetOption(nodeSet.nodeSetId)
-                            ?.label.toLowerCase()
-                            .replace(/\s+/g, '-') ||
-                          (index === 0 ? 'workers' : `node-set-${index + 1}`),
-                        machineTypeId: resolveClusterMachineTypeIdFromHostType(nodeSet.hostType),
-                        nodeCount: nodeSet.nodeCount,
-                      })),
-                  }),
-                  { label: 'Release image', value: form.releaseImage.trim() },
-                  { label: 'Pod CIDR', value: form.podCidr.trim() },
-                  { label: 'Service CIDR', value: form.serviceCidr.trim() },
-                ]
-            : catalogItem.specRows,
-        clusterConfig: isClusterCatalogItem
-          ? {
-              releaseImage: form.releaseImage.trim(),
-              podCidr: form.podCidr.trim(),
-              serviceCidr: form.serviceCidr.trim(),
-              catalogShortName: 'ocp-small',
-              creator: 'Alex Johnson',
-              upgradeStatus: 'up-to-date',
-              nodeSets: form.nodeSets.map((nodeSet, index) => ({
-                id: nodeSet.id,
-                name: index === 0 ? 'workers' : `node-set-${index + 1}`,
-                hostType: nodeSet.hostType,
-                nodeCount: nodeSet.nodeCount,
-                version: formatClusterPlatformLabel(
-                  form.clusterVersionId || form.releaseImage.trim(),
-                ) || undefined,
-                status: 'pending' as const,
-              })),
-            }
-          : undefined,
-        sshPublicKey:
-          isBareMetalCatalogItem || isVmCatalogItem || isClusterCatalogItem
-            ? form.sshPublicKey.trim()
-            : undefined,
-        vmConfig: isVmCatalogItem
-          ? {
-              instanceType: form.instanceType.trim() || 'small - 1 vCPU, 2 GiB',
-              containerDiskImage:
-                form.containerDiskImage.trim() || 'quay.io/containerdisks/fedora:latest',
-              bootDiskSizeGiB: form.bootDiskSizeGiB,
-              sshPublicKey: form.sshPublicKey.trim(),
-              internalIp: '10.99.1.11',
-              publicIp: null,
-              publicIpFamily: null,
-            }
-          : undefined,
-        projectIds: selectedProject ? [selectedProject.id] : [],
-        projectName: launchScopeLabel,
-        scopeKind: launchScopeKind,
-        status: 'provisioning',
-        createdAt: new Date().toISOString(),
-        provisionedAt: null,
-      }
-
-      provisioningInstanceIdRef.current = instance.id
-      setProvisioningStartedAt(instance.createdAt)
-      onProvisioningStartedRef.current(instance)
-    }
-
-    // Bare metal progress is self-driven by BareMetalProvisioningProgressCard.
-    if (isBareMetalCatalogItem) {
-      return
-    }
-
-    const totalSteps = PROVISIONING_BOOT_LOG_STEPS.length
-    const stepIntervalMs = LAUNCH_INSTANCE_BOOT_LOG_STEP_MS
-    let stepIndex = 0
-    let settleTimeoutId: number | undefined
-    setActiveBootLogIndex(0)
-    setIsProvisioningComplete(false)
-
-    const intervalId = window.setInterval(() => {
-      stepIndex += 1
-      setActiveBootLogIndex(stepIndex)
-
-      if (stepIndex >= totalSteps) {
-        window.clearInterval(intervalId)
-        setIsProvisioningComplete(true)
-
-        settleTimeoutId = window.setTimeout(() => {
-          const instanceId = provisioningInstanceIdRef.current
-          if (isOpenRef.current && instanceId) {
-            onWizardFinishedRef.current(instanceId, catalogItem.serviceId)
-            resetWizard()
+    const instance: TenantInstance = {
+      id: generateTenantInstanceId(),
+      name:
+        isClusterCatalogItem || isVmCatalogItem || isBareMetalCatalogItem
+          ? form.instanceName.trim()
+          : formatTenantInstanceName(form.instanceName.trim()),
+      ...(form.description.trim() ? { description: form.description.trim() } : {}),
+      catalogItemDisplayName: catalogItem.displayName,
+      serviceId: catalogItem.serviceId,
+      hardwareProfile: catalogItem.hardwareProfile,
+      osImage: isClusterCatalogItem
+        ? formatClusterPlatformLabel(form.clusterVersionId || form.releaseImage)
+        : isVmCatalogItem
+          ? (vmOsImage ?? catalogItem.osImage)
+          : isBareMetalCatalogItem
+            ? (formatCatalogDiskImageLabel(form.diskImageId, catalogItem.diskImageLabel) ??
+              catalogItem.osImage)
+            : catalogItem.osImage,
+      networkLabel,
+      networking,
+      gpuLabel: isClusterCatalogItem
+        ? (detailSpecRows.find((row) => row.label === 'Node set')?.value ?? catalogItem.gpu)
+        : isVmCatalogItem
+          ? (vmInstanceTypeParts?.size ?? catalogItem.gpu)
+          : isBareMetalCatalogItem
+            ? (bareMetalLaunchSpecRows?.find((row) => row.label === 'GPU')?.value ??
+              catalogItem.gpu)
+            : catalogItem.gpu,
+      specRows: isBareMetalCatalogItem
+        ? (bareMetalLaunchSpecRows ?? catalogItem.specRows)
+        : isServiceAwareCatalogItem
+          ? isVmCatalogItem
+            ? [
+                {
+                  label: 'Instance type',
+                  value: vmInstanceTypeParts?.instanceType || form.instanceType.trim(),
+                },
+                { label: 'Size', value: vmInstanceTypeParts?.size || form.instanceType.trim() },
+                { label: 'OS image', value: vmOsImage ?? catalogItem.osImage },
+                { label: 'Container disk image', value: form.containerDiskImage.trim() },
+                { label: 'Boot disk', value: `${form.bootDiskSizeGiB} GiB` },
+                { label: 'Image source type', value: form.imageSourceType.trim() },
+                { label: 'Run strategy', value: form.runStrategy.trim() },
+                ...(form.cloudInitUserData.trim()
+                  ? [{ label: 'Cloud-init', value: form.cloudInitUserData.trim() }]
+                  : []),
+              ]
+            : [
+                ...resolveClusterCatalogHighlightRows({
+                  serviceId: 'cluster',
+                  templateRefId: catalogItem.templateRefId,
+                  templateName: catalogItem.templateName,
+                  diskImageId: form.clusterVersionId || catalogItem.diskImageId,
+                  diskImageLabel: formatClusterPlatformLabel(
+                    form.clusterVersionId || form.releaseImage || catalogItem.diskImageLabel,
+                  ),
+                  clusterVersionMode: catalogItem.clusterVersionMode,
+                  nodeSetId: form.nodeSets[0]?.nodeSetId || catalogItem.nodeSetId,
+                  nodeSetLabel: formatClusterNodeSetLabel(
+                    form.nodeSets[0]?.nodeSetId ||
+                      catalogItem.nodeSetLabel ||
+                      catalogItem.nodeSetId,
+                  ),
+                  hostTypeId: form.nodeSets[0]?.hostType || catalogItem.hostTypeId,
+                  hostTypeLabel: formatClusterHostTypeLabel(
+                    form.nodeSets[0]?.hostType ||
+                      catalogItem.hostTypeLabel ||
+                      catalogItem.hostTypeId,
+                  ),
+                  clusterNodeTopologyMode: catalogItem.clusterNodeTopologyMode,
+                  clusterTopology:
+                    catalogItem.clusterTopology ??
+                    form.nodeSets.map((nodeSet, index) => ({
+                      name:
+                        getCatalogClusterNodeSetOption(nodeSet.nodeSetId)
+                          ?.label.toLowerCase()
+                          .replace(/\s+/g, '-') ||
+                        (index === 0 ? 'workers' : `node-set-${index + 1}`),
+                      machineTypeId: resolveClusterMachineTypeIdFromHostType(nodeSet.hostType),
+                      nodeCount: nodeSet.nodeCount,
+                    })),
+                }),
+                { label: 'Release image', value: form.releaseImage.trim() },
+                { label: 'Pod CIDR', value: form.podCidr.trim() },
+                { label: 'Service CIDR', value: form.serviceCidr.trim() },
+              ]
+          : catalogItem.specRows,
+      clusterConfig: isClusterCatalogItem
+        ? {
+            releaseImage: form.releaseImage.trim(),
+            podCidr: form.podCidr.trim(),
+            serviceCidr: form.serviceCidr.trim(),
+            catalogShortName: 'ocp-small',
+            creator: 'Alex Johnson',
+            upgradeStatus: 'up-to-date',
+            nodeSets: form.nodeSets.map((nodeSet, index) => ({
+              id: nodeSet.id,
+              name: index === 0 ? 'workers' : `node-set-${index + 1}`,
+              hostType: nodeSet.hostType,
+              nodeCount: nodeSet.nodeCount,
+              version: formatClusterPlatformLabel(
+                form.clusterVersionId || form.releaseImage.trim(),
+              ) || undefined,
+              status: 'pending' as const,
+            })),
           }
-        }, LAUNCH_INSTANCE_PROVISIONING_SETTLE_MS)
-      }
-    }, stepIntervalMs)
-
-    return () => {
-      window.clearInterval(intervalId)
-      if (settleTimeoutId !== undefined) {
-        window.clearTimeout(settleTimeoutId)
-      }
+        : undefined,
+      sshPublicKey:
+        isBareMetalCatalogItem || isVmCatalogItem || isClusterCatalogItem
+          ? form.sshPublicKey.trim()
+          : undefined,
+      vmConfig: isVmCatalogItem
+        ? {
+            instanceType: form.instanceType.trim() || 'small - 1 vCPU, 2 GiB',
+            containerDiskImage:
+              form.containerDiskImage.trim() || 'quay.io/containerdisks/fedora:latest',
+            bootDiskSizeGiB: form.bootDiskSizeGiB,
+            sshPublicKey: form.sshPublicKey.trim(),
+            internalIp: '10.99.1.11',
+            publicIp: null,
+            publicIpFamily: null,
+          }
+        : undefined,
+      projectIds: selectedProject ? [selectedProject.id] : [],
+      projectName: launchScopeLabel,
+      scopeKind: launchScopeKind,
+      status: 'provisioning',
+      createdAt: new Date().toISOString(),
+      provisionedAt: null,
     }
-    // Intentionally start once when entering provisioning; callbacks via refs.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- provisioning snapshot
-  }, [isOpen, activeStepId])
 
-  const handleBareMetalStagesComplete = () => {
-    if (provisioningFinishScheduledRef.current) {
-      return
+    onProvisioningStartedRef.current(instance)
+
+    // Hold Review with a loading Confirm long enough to feel intentional, then open detail.
+    if (confirmNavigateTimeoutRef.current !== null) {
+      window.clearTimeout(confirmNavigateTimeoutRef.current)
     }
-    provisioningFinishScheduledRef.current = true
-    setIsProvisioningComplete(true)
-    setActiveBootLogIndex(BARE_METAL_PROVISIONING_LEAF_COUNT)
-
-    window.setTimeout(() => {
-      const instanceId = provisioningInstanceIdRef.current
-      if (isOpenRef.current && instanceId) {
-        onWizardFinishedRef.current(instanceId, catalogItem.serviceId)
-        resetWizard()
-      }
-    }, LAUNCH_INSTANCE_PROVISIONING_SETTLE_MS)
+    confirmNavigateTimeoutRef.current = window.setTimeout(() => {
+      confirmNavigateTimeoutRef.current = null
+      onGoToProvisioningInstanceRef.current(instance.id, catalogItem.serviceId)
+    }, LAUNCH_INSTANCE_WIZARD_DEMO.confirmProvisioningTransitionMs)
   }
 
   const updateNetworkSelection = (
@@ -2984,101 +2903,6 @@ export function TenantUserLaunchInstanceWizard({
     )
   }
 
-  const renderProvisioningStep = () => (
-    <div className="tenant-user-launch-wizard__step tenant-user-launch-wizard__step--provisioning">
-      <Content component="h2" className="tenant-user-launch-wizard__step-title">
-        {LAUNCH_INSTANCE_WIZARD_DEMO.provisioningTitle}
-      </Content>
-      <Content component="p" className="tenant-user-launch-wizard__step-lede">
-        {LAUNCH_INSTANCE_WIZARD_DEMO.provisioningLede}
-      </Content>
-
-      <Alert
-        variant="info"
-        isInline
-        title="You can close this wizard anytime"
-        className="tenant-user-launch-wizard__provisioning-alert"
-        customIcon={<InfoCircleIcon />}
-      >
-        <Content component="p">
-          Provisioning will continue in the background—check status under{' '}
-          {isClusterCatalogItem
-            ? 'Clusters'
-            : isVmCatalogItem
-              ? 'Virtual machines'
-              : isBareMetalCatalogItem
-                ? 'Bare metal'
-                : catalogItem.serviceId === 'models'
-                  ? 'Models'
-                  : 'Services'}
-          .
-        </Content>
-      </Alert>
-
-      {isBareMetalCatalogItem && provisioningStartedAt ? (
-        <BareMetalProvisioningProgressCard
-          instanceName={formatTenantInstanceName(form.instanceName.trim())}
-          startedAt={provisioningStartedAt}
-          onStagesComplete={handleBareMetalStagesComplete}
-        />
-      ) : isBareMetalCatalogItem ? (
-        <Card className="tenant-user-launch-wizard__boot-log">
-          <Content component="p" className="tenant-user-launch-wizard__boot-log-remaining">
-            Starting provisioning…
-          </Content>
-        </Card>
-      ) : (
-        <Card className="tenant-user-launch-wizard__boot-log">
-          <Flex
-            alignItems={{ default: 'alignItemsCenter' }}
-            justifyContent={{ default: 'justifyContentSpaceBetween' }}
-            className="tenant-user-launch-wizard__boot-log-header"
-          >
-            <FlexItem>
-              <Content component="p" className="tenant-user-launch-wizard__boot-log-title">
-                Boot log ·{' '}
-                {isVmCatalogItem || isClusterCatalogItem
-                  ? formatTenantInstanceName(form.instanceName.trim())
-                  : form.instanceName.trim()}
-              </Content>
-            </FlexItem>
-            <FlexItem>
-              <Content component="p" className="tenant-user-launch-wizard__boot-log-remaining">
-                {LAUNCH_INSTANCE_WIZARD_DEMO.bootLogRemaining}
-              </Content>
-            </FlexItem>
-          </Flex>
-
-          <ul className="tenant-user-launch-wizard__boot-log-list">
-            {PROVISIONING_BOOT_LOG_STEPS.map((step, index) => {
-              const status = getBootLogStatus(index, activeBootLogIndex)
-
-              return (
-                <li
-                  key={step.id}
-                  className={`tenant-user-launch-wizard__boot-log-item tenant-user-launch-wizard__boot-log-item--${status}`}
-                >
-                  {status === 'completed' ? (
-                    <CheckIcon aria-hidden />
-                  ) : status === 'in-progress' ? (
-                    <Spinner
-                      size="sm"
-                      className="tenant-user-launch-wizard__boot-log-spinner"
-                      aria-label="Step in progress"
-                    />
-                  ) : (
-                    <span className="tenant-user-launch-wizard__boot-log-bullet" aria-hidden />
-                  )}
-                  <span>{step.label}</span>
-                </li>
-              )
-            })}
-          </ul>
-        </Card>
-      )}
-    </div>
-  )
-
   const renderStepContent = (stepId: LaunchInstanceWizardStepId) => {
     if (isClusterCatalogItem) {
       switch (stepId) {
@@ -3099,8 +2923,6 @@ export function TenantUserLaunchInstanceWizard({
           return renderClusterNetworkingStep()
         case 'review':
           return renderReviewStep()
-        case 'provisioning':
-          return renderProvisioningStep()
         default:
           return null
       }
@@ -3116,8 +2938,6 @@ export function TenantUserLaunchInstanceWizard({
           return renderVmNetworkingStep()
         case 'review':
           return renderReviewStep()
-        case 'provisioning':
-          return renderProvisioningStep()
         default:
           return null
       }
@@ -3142,8 +2962,6 @@ export function TenantUserLaunchInstanceWizard({
           return renderBareMetalNetworkingStep()
         case 'review':
           return renderReviewStep()
-        case 'provisioning':
-          return renderProvisioningStep()
         default:
           return null
       }
@@ -3156,133 +2974,115 @@ export function TenantUserLaunchInstanceWizard({
         return renderNetworkingStep()
       case 'review':
         return renderReviewStep()
-      case 'provisioning':
-        return renderProvisioningStep()
       default:
         return null
     }
   }
 
-  const clusterStepFooter = (stepId: LaunchInstanceWizardStepId) => {
-    if (
-      stepId === 'general' ||
-      stepId === 'cluster-version' ||
-      stepId === 'node-topology' ||
-      stepId === 'configure' ||
-      stepId === 'networking' ||
-      stepId === 'review'
-    ) {
-      const isNextDisabled =
-        stepId === 'general'
-          ? !isClusterGeneralStepValid(form) || !isProjectSelectionValid
-          : stepId === 'cluster-version'
-            ? !isClusterVersionStepValid(form)
-            : stepId === 'node-topology' || stepId === 'configure'
-              ? !isClusterNodeTopologyStepValid(form) ||
-                (stepId === 'configure' && !isClusterVersionStepValid(form))
-              : stepId === 'networking' || stepId === 'review'
-                ? !isClusterNetworkingStepValid(form)
-                : false
-
-      return {
-        isNextDisabled,
-        nextButtonText:
-          stepId === 'review' ? LAUNCH_INSTANCE_WIZARD_DEMO.confirmProvisioningLabel : 'Next',
-        backButtonText: 'Back',
-        ...(stepId === 'general' ? { isBackDisabled: true } : {}),
-        ...(stepId === 'review' ? { isCancelHidden: true } : {}),
+  /** Custom footer element so Confirm cannot be swallowed by Wizard goToNextStep/onSave. */
+  const reviewConfirmFooter = (isNextDisabled: boolean) => {
+    function ReviewConfirmFooter() {
+      const { activeStep, goToPrevStep } = useWizardContext()
+      if (!activeStep) {
+        return null
       }
+      return (
+        <WizardFooter
+          activeStep={activeStep}
+          onBack={goToPrevStep}
+          onClose={requestClose}
+          isCancelHidden
+          isBackDisabled={isConfirmLoading}
+          isNextDisabled={isNextDisabled || isConfirmLoading}
+          nextButtonText={
+            isConfirmLoading
+              ? LAUNCH_INSTANCE_WIZARD_DEMO.confirmProvisioningLoadingLabel
+              : LAUNCH_INSTANCE_WIZARD_DEMO.confirmProvisioningLabel
+          }
+          nextButtonProps={{
+            isLoading: isConfirmLoading,
+            spinnerAriaValueText:
+              LAUNCH_INSTANCE_WIZARD_DEMO.confirmProvisioningLoadingLabel,
+          }}
+          onNext={handleConfirmStartProvisioning}
+        />
+      )
     }
+    return <ReviewConfirmFooter />
+  }
+
+  const clusterStepFooter = (stepId: LaunchInstanceWizardStepId) => {
+    const isNextDisabled =
+      stepId === 'general'
+        ? !isClusterGeneralStepValid(form) || !isProjectSelectionValid
+        : stepId === 'cluster-version'
+          ? !isClusterVersionStepValid(form)
+          : stepId === 'node-topology' || stepId === 'configure'
+            ? !isClusterNodeTopologyStepValid(form) ||
+              (stepId === 'configure' && !isClusterVersionStepValid(form))
+            : stepId === 'networking'
+              ? !isClusterNetworkingStepValid(form)
+              : false
 
     return {
-      isCancelHidden: false,
-      cancelButtonText: LAUNCH_INSTANCE_WIZARD_DEMO.closeWhileProvisioningLabel,
-      isBackHidden: true,
-      isNextDisabled: true,
-      nextButtonText: isProvisioningComplete ? 'Complete' : 'Provisioning…',
-      onClose: handleClose,
+      isNextDisabled,
+      nextButtonText: 'Next',
+      backButtonText: 'Back',
+      ...(stepId === 'general' ? { isBackDisabled: true } : {}),
     }
   }
 
   const vmStepFooter = (stepId: LaunchInstanceWizardStepId) => {
-    if (
-      stepId === 'general' ||
-      stepId === 'configure' ||
-      stepId === 'networking' ||
-      stepId === 'review'
-    ) {
-      const isNextDisabled =
-        stepId === 'general'
-          ? !isVmGeneralStepValid(form) || !isProjectSelectionValid
-          : stepId === 'configure'
-            ? !isVmConfigureStepValid(form)
-            : stepId === 'networking' || stepId === 'review'
-              ? !isVmNetworkingStepValid(form)
-              : false
-
-      return {
-        isNextDisabled,
-        nextButtonText:
-          stepId === 'review' ? LAUNCH_INSTANCE_WIZARD_DEMO.confirmProvisioningLabel : 'Next',
-        backButtonText: 'Back',
-        ...(stepId === 'general' ? { isBackDisabled: true } : {}),
-        ...(stepId === 'review' ? { isCancelHidden: true } : {}),
-      }
-    }
+    const isNextDisabled =
+      stepId === 'general'
+        ? !isVmGeneralStepValid(form) || !isProjectSelectionValid
+        : stepId === 'configure'
+          ? !isVmConfigureStepValid(form)
+          : stepId === 'networking'
+            ? !isVmNetworkingStepValid(form)
+            : false
 
     return {
-      isCancelHidden: false,
-      cancelButtonText: LAUNCH_INSTANCE_WIZARD_DEMO.closeWhileProvisioningLabel,
-      isBackHidden: true,
-      isNextDisabled: true,
-      nextButtonText: isProvisioningComplete ? 'Complete' : 'Provisioning…',
-      onClose: handleClose,
+      isNextDisabled,
+      nextButtonText: 'Next',
+      backButtonText: 'Back',
+      ...(stepId === 'general' ? { isBackDisabled: true } : {}),
     }
   }
 
   const bareMetalStepFooter = (stepId: LaunchInstanceWizardStepId) => {
-    if (
-      stepId === 'general' ||
-      stepId === 'hardware' ||
-      stepId === 'os' ||
-      stepId === 'configure' ||
-      stepId === 'networking' ||
-      stepId === 'review'
-    ) {
-      const isNextDisabled =
-        stepId === 'general'
-          ? !isBareMetalGeneralStepValid(form) || !isProjectSelectionValid
-          : stepId === 'hardware'
-            ? !isBareMetalHardwareStepValid(form)
-            : stepId === 'os'
-              ? !isBareMetalOsStepValid(form)
-              : stepId === 'configure'
-                ? !isBareMetalHardwareOsStepValid(form)
-                : stepId === 'networking' || stepId === 'review'
-                  ? !isVmNetworkingStepValid(form)
-                  : false
-
-      return {
-        isNextDisabled,
-        nextButtonText:
-          stepId === 'review' ? LAUNCH_INSTANCE_WIZARD_DEMO.confirmProvisioningLabel : 'Next',
-        backButtonText: 'Back',
-        ...(stepId === 'general' ? { isBackDisabled: true } : {}),
-        ...(stepId === 'review' ? { isCancelHidden: true } : {}),
-      }
-    }
+    const isNextDisabled =
+      stepId === 'general'
+        ? !isBareMetalGeneralStepValid(form) || !isProjectSelectionValid
+        : stepId === 'hardware'
+          ? !isBareMetalHardwareStepValid(form)
+          : stepId === 'os'
+            ? !isBareMetalOsStepValid(form)
+            : stepId === 'configure'
+              ? !isBareMetalHardwareOsStepValid(form)
+              : stepId === 'networking'
+                ? !isVmNetworkingStepValid(form)
+                : false
 
     return {
-      isCancelHidden: false,
-      cancelButtonText: LAUNCH_INSTANCE_WIZARD_DEMO.closeWhileProvisioningLabel,
-      isBackHidden: true,
-      isNextDisabled: true,
-      nextButtonText: isProvisioningComplete ? 'Complete' : 'Provisioning…',
-      onClose: handleClose,
+      isNextDisabled,
+      nextButtonText: 'Next',
+      backButtonText: 'Back',
+      ...(stepId === 'general' ? { isBackDisabled: true } : {}),
     }
   }
 
   const getStepFooter = (stepId: LaunchInstanceWizardStepId) => {
+    if (stepId === 'review') {
+      if (isClusterCatalogItem) {
+        return reviewConfirmFooter(!isClusterNetworkingStepValid(form))
+      }
+      if (isVmCatalogItem || isBareMetalCatalogItem) {
+        return reviewConfirmFooter(!isVmNetworkingStepValid(form))
+      }
+      return reviewConfirmFooter(!isVmNetworkingStepValid(form))
+    }
+
     if (isClusterCatalogItem) {
       return wrapStepFooter(clusterStepFooter(stepId))
     }
@@ -3295,59 +3095,29 @@ export function TenantUserLaunchInstanceWizard({
       return wrapStepFooter(bareMetalStepFooter(stepId))
     }
 
-    if (stepId === 'configure' || stepId === 'networking') {
-      return wrapStepFooter({
-        isNextDisabled:
-          stepId === 'configure'
-            ? !isInstanceNameValid(form.instanceName) ||
-              !form.sshPublicKey.trim() ||
-              !isProjectSelectionValid
-            : !isVmNetworkingStepValid(form),
-        nextButtonText: (
-          <span className="tenant-user-launch-wizard__footer-label">
-            <span>Continue</span>
-            <ArrowRightIcon aria-hidden />
-          </span>
-        ),
-        ...(stepId === 'networking'
-          ? {
-              backButtonText: (
-                <span className="tenant-user-launch-wizard__footer-label">
-                  <ArrowLeftIcon aria-hidden />
-                  <span>Back</span>
-                </span>
-              ),
-            }
-          : {}),
-      })
-    }
-
-    if (stepId === 'review') {
-      return wrapStepFooter({
-        isCancelHidden: true,
-        isNextDisabled: !isVmNetworkingStepValid(form),
-        backButtonText: (
-          <span className="tenant-user-launch-wizard__footer-label">
-            <ArrowLeftIcon aria-hidden />
-            <span>Back</span>
-          </span>
-        ),
-        nextButtonText: (
-          <span className="tenant-user-launch-wizard__footer-label">
-            <span>{LAUNCH_INSTANCE_WIZARD_DEMO.confirmProvisioningLabel}</span>
-            <ArrowRightIcon aria-hidden />
-          </span>
-        ),
-      })
-    }
-
     return wrapStepFooter({
-      isCancelHidden: false,
-      cancelButtonText: LAUNCH_INSTANCE_WIZARD_DEMO.closeWhileProvisioningLabel,
-      isBackHidden: true,
-      isNextDisabled: true,
-      nextButtonText: isProvisioningComplete ? 'Complete' : 'Provisioning…',
-      onClose: handleClose,
+      isNextDisabled:
+        stepId === 'configure'
+          ? !isInstanceNameValid(form.instanceName) ||
+            !form.sshPublicKey.trim() ||
+            !isProjectSelectionValid
+          : !isVmNetworkingStepValid(form),
+      nextButtonText: (
+        <span className="tenant-user-launch-wizard__footer-label">
+          <span>Continue</span>
+          <ArrowRightIcon aria-hidden />
+        </span>
+      ),
+      ...(stepId === 'networking'
+        ? {
+            backButtonText: (
+              <span className="tenant-user-launch-wizard__footer-label">
+                <ArrowLeftIcon aria-hidden />
+                <span>Back</span>
+              </span>
+            ),
+          }
+        : {}),
     })
   }
 
@@ -3370,6 +3140,8 @@ export function TenantUserLaunchInstanceWizard({
       isPlain={isPage}
       startIndex={wizardStartIndex}
       onClose={isPage ? undefined : requestClose}
+      // Last-step Next falls through to onSave when footer onNext is not applied.
+      onSave={handleConfirmStartProvisioning}
       onStepChange={(_event, currentStep) => {
         const stepId = String(currentStep?.id ?? '').replace('launch-instance-step-', '')
         if (
@@ -3380,8 +3152,7 @@ export function TenantUserLaunchInstanceWizard({
           stepId === 'cluster-version' ||
           stepId === 'node-topology' ||
           stepId === 'networking' ||
-          stepId === 'review' ||
-          stepId === 'provisioning'
+          stepId === 'review'
         ) {
           setActiveStepId(stepId)
           syncWizardStepToUrl?.(stepId)

@@ -212,6 +212,9 @@ export function TenantUserInstancesPage({
 }: TenantUserInstancesPageProps) {
   const [searchParams, setSearchParams] = useSearchParams()
   const instanceParam = getWorkspaceInstanceParam(searchParams)
+  const initialOpenMatch =
+    findInstanceByWorkspaceParam(instances, instanceParam) ??
+    (openInstanceId ? (instances.find((instance) => instance.id === openInstanceId) ?? null) : null)
 
   useEffect(() => {
     if (showTenantFilter) {
@@ -242,8 +245,10 @@ export function TenantUserInstancesPage({
   const [searchValue, setSearchValue] = useState('')
   const [powerStateFilter, setPowerStateFilter] = useState<'all' | TenantInstanceStatus>('all')
   const [specFilterSelections, setSpecFilterSelections] = useState<Set<string>>(() => new Set())
-  const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null)
-  const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false)
+  const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(
+    () => initialOpenMatch?.id ?? null,
+  )
+  const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(() => Boolean(initialOpenMatch))
   const [instancePendingTerminate, setInstancePendingTerminate] = useState<TenantInstance | null>(
     null,
   )
@@ -377,13 +382,20 @@ export function TenantUserInstancesPage({
     }
 
     const match = instances.find((instance) => instance.id === openInstanceId) ?? null
-    if (match) {
-      setSelectedInstanceId(match.id)
-      setIsDetailsDrawerOpen(true)
+    if (!match) {
+      // Instance may still be landing in parent state — keep openInstanceId until it appears.
+      return
+    }
+
+    setSelectedInstanceId(match.id)
+    setIsDetailsDrawerOpen(true)
+    // Only write ?instance= when Services nav is already active — never onto Catalog launch URLs.
+    const navId = searchParams.get('nav') ?? ''
+    if (navId.startsWith('services-')) {
       syncWorkspaceInstanceParam(setSearchParams, match.name, { replace: true })
     }
     onOpenInstanceConsumed?.()
-  }, [openInstanceId, instances, onOpenInstanceConsumed, setSearchParams])
+  }, [openInstanceId, instances, onOpenInstanceConsumed, searchParams, setSearchParams])
 
   useEffect(() => {
     const match = findInstanceByWorkspaceParam(instances, instanceParam)
@@ -397,11 +409,12 @@ export function TenantUserInstancesPage({
       return
     }
 
-    if (!instanceParam) {
+    // Avoid clearing detail while a cross-page open is in flight (before ?instance= lands).
+    if (!instanceParam && !openInstanceId) {
       setIsDetailsDrawerOpen(false)
       setSelectedInstanceId(null)
     }
-  }, [instanceParam, instances, lockedServiceId])
+  }, [instanceParam, instances, lockedServiceId, openInstanceId])
 
   useEffect(() => {
     setPowerStateFilter('all')

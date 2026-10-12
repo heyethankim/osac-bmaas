@@ -28,7 +28,6 @@ export type LaunchInstanceWizardStepId =
   | 'node-topology'
   | 'networking'
   | 'review'
-  | 'provisioning'
 
 export type ProvisioningBootLogStatus = 'completed' | 'in-progress' | 'pending'
 
@@ -58,14 +57,9 @@ export const LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
     label: 'Review',
     description: '',
   },
-  {
-    id: 'provisioning',
-    label: 'Provisioning',
-    description: '',
-  },
 ]
 
-/** Bare metal launch flow: General → Networking → Review → Provisioning. */
+/** Bare metal launch flow: General → Networking → Review. */
 export const BAREMETAL_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   id: LaunchInstanceWizardStepId
   label: string
@@ -74,10 +68,9 @@ export const BAREMETAL_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   { id: 'general', label: 'General', description: '' },
   { id: 'networking', label: 'Networking', description: '' },
   { id: 'review', label: 'Review', description: '' },
-  { id: 'provisioning', label: 'Provisioning', description: '' },
 ]
 
-/** Bare metal with editable Hardware & OS: General → Hardware → OS → Networking → Review → Provisioning. */
+/** Bare metal with editable Hardware & OS: General → Hardware → OS → Networking → Review. */
 export const BAREMETAL_HARDWARE_OS_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   id: LaunchInstanceWizardStepId
   label: string
@@ -88,10 +81,9 @@ export const BAREMETAL_HARDWARE_OS_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   { id: 'os', label: 'OS', description: '' },
   { id: 'networking', label: 'Networking', description: '' },
   { id: 'review', label: 'Review', description: '' },
-  { id: 'provisioning', label: 'Provisioning', description: '' },
 ]
 
-/** Cluster launch flow: General → Cluster version → Node topology → Networking → Review → Provisioning. */
+/** Cluster launch flow: General → Cluster version → Node topology → Networking → Review. */
 export const CLUSTER_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   id: LaunchInstanceWizardStepId
   label: string
@@ -102,10 +94,9 @@ export const CLUSTER_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   { id: 'node-topology', label: 'Node topology', description: '' },
   { id: 'networking', label: 'Networking', description: '' },
   { id: 'review', label: 'Review', description: '' },
-  { id: 'provisioning', label: 'Provisioning', description: '' },
 ]
 
-/** VM launch flow: General → Configure → Networking → Review → Provisioning. */
+/** VM launch flow: General → Configure → Networking → Review. */
 export const VM_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   id: LaunchInstanceWizardStepId
   label: string
@@ -115,7 +106,6 @@ export const VM_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   { id: 'configure', label: 'Configure', description: '' },
   { id: 'networking', label: 'Networking', description: '' },
   { id: 'review', label: 'Review', description: '' },
-  { id: 'provisioning', label: 'Provisioning', description: '' },
 ]
 
 export function getLaunchInstanceWizardSteps(options: {
@@ -189,8 +179,11 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   reviewGpu: 'NVIDIA A100 80 GB',
   reviewOsImage: 'RHEL 9.4',
   reviewProvisioningNote:
-    'Provisioning takes 10–20 minutes — live progress tracks setup in your environment.',
+    'Provisioning takes 10–20 minutes — after you confirm, live progress continues on the instance detail page.',
   confirmProvisioningLabel: 'Confirm & start provisioning',
+  /** Pause on Review so Confirm shows loading before the detail page opens. */
+  confirmProvisioningTransitionMs: 1100,
+  confirmProvisioningLoadingLabel: 'Starting provisioning',
   provisioningKicker: 'Provisioning in progress',
   provisioningTitle: 'Booting your instance',
   provisioningLede:

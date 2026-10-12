@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Navigate, useParams, useSearchParams } from 'react-router-dom'
-import { syncWorkspaceCatalogItemParam, syncWorkspaceNavParam } from '../shared/workspaceNavUrl'
+import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import {
+  syncWorkspaceCatalogItemParam,
+  syncWorkspaceNavParam,
+  WORKSPACE_INSTANCE_PARAM,
+} from '../shared/workspaceNavUrl'
 import { TenantShell } from '../components/tenant/TenantShell'
 import {
   DEMO_TENANT_DISPLAY_USER,
@@ -33,6 +37,10 @@ import {
   BARE_METAL_PROVISIONING_DEMO_DURATION_MS,
   getBareMetalProvisioningDemoRemainingMs,
 } from '../tenantUser/bareMetalProvisioning'
+import {
+  CLUSTER_PROVISIONING_DEMO_DURATION_MS,
+  getClusterProvisioningDemoRemainingMs,
+} from '../tenantUser/clusterProvisioning'
 import { LAUNCH_INSTANCE_PROVISIONING_DURATION_MS, LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS } from '../tenantUser/launchInstanceWizard'
 import {
   addTenantUserInstance,
@@ -150,10 +158,14 @@ function readInitialTenantUserNav(
 
 export function TenantUserWorkspacePage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
   const { tenant } = useParams<{ tenant: string }>()
   const tenantSlug =
     tenant && isDemoTenantId(tenant) && tenant === 'northsummit' ? tenant : 'northsummit'
   const isValidTenant = Boolean(tenant && isDemoTenantId(tenant) && tenant === 'northsummit')
+  /** Prevents stale `?nav=` from snapping back during confirm → Services navigation. */
+  const pendingNavRef = useRef<TenantUserNavId | null>(null)
 
   const [previewSession] = useState(() => getProviderViewingAsTenantUser())
   const [activeNavId, setActiveNavId] = useState<TenantUserNavId>(() =>
@@ -230,10 +242,13 @@ export function TenantUserWorkspacePage() {
       if (isStickyDemoProvisioningInstance(instance.id)) {
         continue
       }
+      const serviceId = getTenantInstanceServiceId(instance)
       const delayMs =
-        getTenantInstanceServiceId(instance) === 'baremetal'
+        serviceId === 'baremetal'
           ? getBareMetalProvisioningDemoRemainingMs(instance.createdAt, now)
-          : LAUNCH_INSTANCE_PROVISIONING_DURATION_MS - (now - new Date(instance.createdAt).getTime())
+          : serviceId === 'cluster'
+            ? getClusterProvisioningDemoRemainingMs(instance.createdAt, now)
+            : LAUNCH_INSTANCE_PROVISIONING_DURATION_MS - (now - new Date(instance.createdAt).getTime())
       scheduleProvisioningCompletion(instance.id, delayMs)
     }
 
@@ -256,8 +271,29 @@ export function TenantUserWorkspacePage() {
     setInstances(ensureTenantDemoInstances(tenantSlug))
     setProjects(ensureTenantDemoProjects(tenantSlug))
     setProjectScopeIdState(getProjectScopeId(tenantSlug))
+  }, [isValidTenant, tenantSlug])
+
+  useLayoutEffect(() => {
+    if (!isValidTenant) {
+      return
+    }
 
     const requestedNav = normalizeTenantUserNavParam(searchParams.get('nav'))
+    const pendingNav = pendingNavRef.current
+
+    if (pendingNav) {
+      if (requestedNav === pendingNav) {
+        pendingNavRef.current = null
+        ensureTenantUserPostOnboardingPrototype(tenantSlug, pendingNav)
+        setActiveNavId(pendingNav)
+        setTenantUserActiveNav(tenantSlug, pendingNav)
+        return
+      }
+      // URL has not caught up yet — keep the intentional destination.
+      setActiveNavId(pendingNav)
+      return
+    }
+
     if (requestedNav) {
       ensureTenantUserPostOnboardingPrototype(tenantSlug, requestedNav)
       setActiveNavId(requestedNav)
@@ -303,26 +339,16 @@ export function TenantUserWorkspacePage() {
     setOpenCatalogItemKey(null)
   }, [])
 
-  const handleNavigateToInstances = useCallback(
-    (options?: { serviceId?: CatalogServiceId }) => {
-      const nextNavId = getServicesNavId(options?.serviceId ?? 'baremetal')
-      setActiveNavId(nextNavId)
-      setTenantUserActiveNav(tenantSlug, nextNavId)
-      setNavContentKey((current) => current + 1)
-      // Keep the in-memory Services list (includes the instance still provisioning).
-      // Left-nav `handleNavChange` uses showLanding and would fight Catalog `?action=`.
-      syncWorkspaceNavParam(setSearchParams, nextNavId, { replace: true })
-    },
-    [setSearchParams, tenantSlug],
-  )
-
   const handleProvisioningStarted = useCallback(
     (instance: TenantInstance) => {
       setInstances((current) => addTenantUserInstance(tenantSlug, instance, current))
+      const serviceId = getTenantInstanceServiceId(instance)
       const delayMs =
-        getTenantInstanceServiceId(instance) === 'baremetal'
+        serviceId === 'baremetal'
           ? BARE_METAL_PROVISIONING_DEMO_DURATION_MS
-          : LAUNCH_INSTANCE_PROVISIONING_DURATION_MS
+          : serviceId === 'cluster'
+            ? CLUSTER_PROVISIONING_DEMO_DURATION_MS
+            : LAUNCH_INSTANCE_PROVISIONING_DURATION_MS
       scheduleProvisioningCompletion(instance.id, delayMs)
     },
     [scheduleProvisioningCompletion, tenantSlug],
@@ -337,12 +363,20 @@ export function TenantUserWorkspacePage() {
         }
         return BARE_METAL_PROVISIONING_DEMO_DURATION_MS
       }
+      if (serviceId === 'cluster') {
+        const instance = getTenantUserInstances(tenantSlug).find((item) => item.id === instanceId)
+        if (instance) {
+          return getClusterProvisioningDemoRemainingMs(instance.createdAt)
+        }
+        return CLUSTER_PROVISIONING_DEMO_DURATION_MS
+      }
       return LAUNCH_INSTANCE_SERVICES_PROVISIONING_MS
     },
     [tenantSlug],
   )
 
-  const handleDismissDuringProvisioning = useCallback(
+  /** After confirm: keep provisioning in the background and open the instance detail. */
+  const handleGoToProvisioningInstance = useCallback(
     (instanceId: string, serviceId: CatalogServiceId) => {
       clearProvisioningTimer(instanceId)
       setInstances((current) =>
@@ -360,46 +394,27 @@ export function TenantUserWorkspacePage() {
         instanceId,
         resolvePostWizardProvisioningDelayMs(instanceId, serviceId),
       )
-      handleNavigateToInstances({ serviceId })
-    },
-    [
-      clearProvisioningTimer,
-      handleNavigateToInstances,
-      resolvePostWizardProvisioningDelayMs,
-      scheduleProvisioningCompletion,
-      tenantSlug,
-    ],
-  )
+      const instanceName =
+        getTenantUserInstances(tenantSlug).find((item) => item.id === instanceId)?.name ?? null
+      const nextNavId = getServicesNavId(serviceId)
+      pendingNavRef.current = nextNavId
+      setOpenInstanceId(instanceId)
+      setActiveNavId(nextNavId)
+      setTenantUserActiveNav(tenantSlug, nextNavId)
+      setNavContentKey((current) => current + 1)
 
-  const handleWizardFinished = useCallback(
-    (instanceId: string, serviceId: CatalogServiceId) => {
-      clearProvisioningTimer(instanceId)
-      if (serviceId === 'baremetal') {
-        // Bare-metal stages already finished in the wizard — land on Services as Running.
-        markInstanceRunning(instanceId)
-      } else {
-        setInstances((current) =>
-          updateTenantUserInstance(
-            tenantSlug,
-            instanceId,
-            {
-              status: 'provisioning',
-              provisionedAt: null,
-            },
-            current,
-          ),
-        )
-        scheduleProvisioningCompletion(
-          instanceId,
-          resolvePostWizardProvisioningDelayMs(instanceId, serviceId),
-        )
+      const nextParams = new URLSearchParams()
+      nextParams.set('nav', nextNavId)
+      if (instanceName) {
+        nextParams.set(WORKSPACE_INSTANCE_PARAM, instanceName)
       }
-      handleNavigateToInstances({ serviceId })
+      // Replace the full query so launch-instance action/step cannot linger or race.
+      navigate(`${pathname}?${nextParams.toString()}`, { replace: true })
     },
     [
       clearProvisioningTimer,
-      handleNavigateToInstances,
-      markInstanceRunning,
+      navigate,
+      pathname,
       resolvePostWizardProvisioningDelayMs,
       scheduleProvisioningCompletion,
       tenantSlug,
@@ -540,8 +555,8 @@ export function TenantUserWorkspacePage() {
             onOpenCatalogItemConsumed={handleOpenCatalogItemConsumed}
             existingInstanceNames={instances.map((instance) => instance.name)}
             onProvisioningStarted={handleProvisioningStarted}
-            onDismissDuringProvisioning={handleDismissDuringProvisioning}
-            onWizardFinished={handleWizardFinished}
+            onDismissDuringProvisioning={handleGoToProvisioningInstance}
+            onWizardFinished={handleGoToProvisioningInstance}
           />
         )
     }
