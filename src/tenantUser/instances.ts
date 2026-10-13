@@ -1002,6 +1002,8 @@ export const DEMO_TENANT_BARE_METAL_INSTANCE_ID = 'instance-demo-bm-01'
 export const DEMO_TENANT_BARE_METAL_INSTANCE_ID_02 = 'instance-demo-bm-02'
 export const DEMO_TENANT_BARE_METAL_INSTANCE_ID_03 = 'instance-demo-bm-03'
 export const DEMO_TENANT_BARE_METAL_INSTANCE_ID_04 = 'instance-demo-bm-04'
+export const DEMO_TENANT_BARE_METAL_INSTANCE_ID_08 = 'instance-demo-bm-08'
+export const DEMO_TENANT_BARE_METAL_INSTANCE_ID_09 = 'instance-demo-bm-09'
 
 /** Services detail demo: dense GPU host used in walkthroughs. */
 export const DEMO_MULTI_PROJECT_SHOWCASE_INSTANCE_NAME = 'bm-server-06'
@@ -1020,8 +1022,21 @@ export const DEMO_TENANT_CLUSTER_INSTANCE_ID_04 = 'instance-demo-cluster-04'
 /** Cluster demo row that stays Provisioning on Services for walkthroughs. */
 export const DEMO_TENANT_CLUSTER_PROVISIONING_INSTANCE_ID = DEMO_TENANT_CLUSTER_INSTANCE_ID_03
 
+/** Bare metal happy-path provisioning demo (animates, then becomes running). */
+export const DEMO_TENANT_BARE_METAL_HAPPY_PATH_INSTANCE_ID = DEMO_TENANT_BARE_METAL_INSTANCE_ID_08
+
+/** Bare metal warning demo: sticky at Discovering IP address. */
+export const DEMO_TENANT_BARE_METAL_WARNING_INSTANCE_ID = DEMO_TENANT_BARE_METAL_INSTANCE_ID_09
+
 export function isStickyDemoProvisioningInstance(instanceId: string): boolean {
-  return instanceId === DEMO_TENANT_CLUSTER_PROVISIONING_INSTANCE_ID
+  return (
+    instanceId === DEMO_TENANT_CLUSTER_PROVISIONING_INSTANCE_ID ||
+    instanceId === DEMO_TENANT_BARE_METAL_WARNING_INSTANCE_ID
+  )
+}
+
+export function isBareMetalHappyPathProvisioningDemo(instanceId: string): boolean {
+  return instanceId === DEMO_TENANT_BARE_METAL_HAPPY_PATH_INSTANCE_ID
 }
 
 /** Canonical demo cluster names + conditions for Services cards. */
@@ -1045,6 +1060,8 @@ export const DEMO_TENANT_PROJECT_INSTANCE_IDS = [
   DEMO_TENANT_BARE_METAL_INSTANCE_ID,
   DEMO_TENANT_BARE_METAL_INSTANCE_ID_02,
   DEMO_TENANT_BARE_METAL_INSTANCE_ID_04,
+  DEMO_TENANT_BARE_METAL_INSTANCE_ID_08,
+  DEMO_TENANT_BARE_METAL_INSTANCE_ID_09,
   DEMO_TENANT_CLUSTER_INSTANCE_ID,
   DEMO_TENANT_CLUSTER_INSTANCE_ID_02,
   DEMO_TENANT_CLUSTER_INSTANCE_ID_03,
@@ -1607,6 +1624,37 @@ export function createDemoTenantBareMetalInstance04(organizationName: string): T
     cpu: 'Intel Xeon Silver 4416+ × 2',
     ram: '256 GB DDR5',
     hoursAgo: 8,
+  })
+}
+
+/** Happy-path provisioning walkthrough — animates through all stages, then becomes running. */
+export function createDemoTenantBareMetalInstance08(organizationName: string): TenantInstance {
+  return createDemoTenantBareMetalInstanceVariant(organizationName, {
+    id: DEMO_TENANT_BARE_METAL_HAPPY_PATH_INSTANCE_ID,
+    name: 'bm-server-08',
+    status: 'provisioning',
+    osImage: 'RHEL 9.4',
+    gpuLabel: 'CPU-only',
+    hardwareProfile: 'Dell PowerEdge R750',
+    cpu: 'Intel Xeon Gold 6338 × 2',
+    ram: '512 GB DDR4',
+    hoursAgo: 0,
+  })
+}
+
+/** Warning walkthrough — sticky at Network setup / Discovering IP address. */
+export function createDemoTenantBareMetalInstance09(organizationName: string): TenantInstance {
+  return createDemoTenantBareMetalInstanceVariant(organizationName, {
+    id: DEMO_TENANT_BARE_METAL_WARNING_INSTANCE_ID,
+    name: 'bm-server-09',
+    status: 'provisioning',
+    osImage: 'RHEL 9.4',
+    gpuLabel: 'NVIDIA A100 × 2',
+    hardwareProfile: 'Dell PowerEdge XE9680',
+    cpu: 'Intel Xeon Platinum 8480+ × 2',
+    ram: '1 TB DDR5',
+    hoursAgo: 0,
+    catalogItemDisplayName: 'bare-metal-dense-gpu-node',
   })
 }
 

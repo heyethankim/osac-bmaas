@@ -1,17 +1,22 @@
 import { DEMO_TENANT_LABEL } from '../demoTenant'
+import { BARE_METAL_PROVISIONING_DEMO_DURATION_MS } from './bareMetalProvisioning'
 import {
   createDemoTenantBareMetalInstance,
   createDemoTenantBareMetalInstance02,
   createDemoTenantBareMetalInstance03,
   createDemoTenantBareMetalInstance04,
+  createDemoTenantBareMetalInstance08,
+  createDemoTenantBareMetalInstance09,
   createDemoTenantClusterInstance,
   createDemoTenantClusterInstance02,
   createDemoTenantClusterInstance03,
   createDemoTenantClusterInstance04,
+  DEMO_TENANT_BARE_METAL_HAPPY_PATH_INSTANCE_ID,
   DEMO_TENANT_BARE_METAL_INSTANCE_ID,
   DEMO_TENANT_BARE_METAL_INSTANCE_ID_02,
   DEMO_TENANT_BARE_METAL_INSTANCE_ID_03,
   DEMO_TENANT_BARE_METAL_INSTANCE_ID_04,
+  DEMO_TENANT_BARE_METAL_WARNING_INSTANCE_ID,
   DEMO_TENANT_CLUSTER_INSTANCE_ID,
   DEMO_TENANT_CLUSTER_INSTANCE_ID_02,
   DEMO_TENANT_CLUSTER_INSTANCE_ID_03,
@@ -268,6 +273,8 @@ export function ensureTenantDemoInstances(
     { id: DEMO_TENANT_BARE_METAL_INSTANCE_ID_02, create: createDemoTenantBareMetalInstance02 },
     { id: DEMO_TENANT_BARE_METAL_INSTANCE_ID_03, create: createDemoTenantBareMetalInstance03 },
     { id: DEMO_TENANT_BARE_METAL_INSTANCE_ID_04, create: createDemoTenantBareMetalInstance04 },
+    { id: DEMO_TENANT_BARE_METAL_HAPPY_PATH_INSTANCE_ID, create: createDemoTenantBareMetalInstance08 },
+    { id: DEMO_TENANT_BARE_METAL_WARNING_INSTANCE_ID, create: createDemoTenantBareMetalInstance09 },
     { id: DEMO_TENANT_CLUSTER_INSTANCE_ID, create: createDemoTenantClusterInstance },
     { id: DEMO_TENANT_CLUSTER_INSTANCE_ID_02, create: createDemoTenantClusterInstance02 },
     { id: DEMO_TENANT_CLUSTER_INSTANCE_ID_03, create: createDemoTenantClusterInstance03 },
@@ -321,6 +328,50 @@ export function ensureTenantDemoInstances(
       const synced = syncDemoMultiProjectShowcaseInstance(next[existingIndex]!)
       if (synced) {
         next[existingIndex] = synced
+        changed = true
+      }
+    }
+
+    if (demo.id === DEMO_TENANT_BARE_METAL_WARNING_INSTANCE_ID) {
+      const refreshed = next[existingIndex]!
+      const fresh = demo.create(organizationName)
+      if (
+        refreshed.name !== fresh.name ||
+        refreshed.status !== 'provisioning' ||
+        refreshed.provisionedAt != null
+      ) {
+        next[existingIndex] = {
+          ...fresh,
+          projectIds: refreshed.projectIds,
+          projectName: refreshed.projectName,
+          scopeKind: refreshed.scopeKind,
+          createdAt: refreshed.createdAt,
+          provisionedAt: null,
+          name: fresh.name,
+          status: 'provisioning',
+        }
+        changed = true
+      }
+    }
+
+    if (demo.id === DEMO_TENANT_BARE_METAL_HAPPY_PATH_INSTANCE_ID) {
+      const refreshed = next[existingIndex]!
+      const fresh = demo.create(organizationName)
+      const started = Date.parse(refreshed.createdAt)
+      const ageMs = Number.isNaN(started) ? Number.POSITIVE_INFINITY : Date.now() - started
+      const animationExpired =
+        refreshed.status !== 'provisioning' || ageMs > BARE_METAL_PROVISIONING_DEMO_DURATION_MS
+      if (
+        refreshed.name !== fresh.name ||
+        animationExpired
+      ) {
+        // Re-arm the happy-path animation after it completes or goes stale.
+        next[existingIndex] = {
+          ...fresh,
+          projectIds: refreshed.projectIds,
+          projectName: refreshed.projectName,
+          scopeKind: refreshed.scopeKind,
+        }
         changed = true
       }
     }

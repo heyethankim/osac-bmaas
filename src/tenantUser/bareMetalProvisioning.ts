@@ -28,6 +28,7 @@ export type BareMetalProvisioningStepView = BareMetalProvisioningStepDef & {
   message?: string
   detail?: string
   nextStep?: string
+  actionLabel?: string
 }
 
 export type BareMetalProvisioningStageView = {
@@ -120,9 +121,60 @@ export function getBareMetalProvisioningDemoRemainingMs(
 
 export type BareMetalProvisioningStepOverride = {
   status: Extract<BareMetalProvisioningStepStatus, 'warning' | 'failed'>
+  /** Short status shown inline under the stepper. */
   message?: string
+  /** Explains the issue inside the help popover. */
   detail?: string
+  /** Recovery guidance inside the help popover. */
   nextStep?: string
+  /** Primary action label shown next to the help control. */
+  actionLabel?: string
+}
+
+/** Leaf index for Network setup → Discovering IP address. */
+export function getBareMetalDiscoveringIpLeafIndex(): number {
+  const index = getBareMetalProvisioningLeafSteps().findIndex((step) => step.id === 'discovering-ip')
+  return index >= 0 ? index : 0
+}
+
+/**
+ * Demo / design-share copy for a recoverable IP discovery warning.
+ * Inline link opens a popover: title + detail + Retry.
+ */
+export const BARE_METAL_IP_DISCOVERY_WARNING_OVERRIDE: BareMetalProvisioningStepOverride = {
+  status: 'warning',
+  message: 'Waiting for IP address',
+  detail:
+    'The host is up and attached to the network, but no IP address was discovered in time.',
+  nextStep:
+    'Confirm the subnet has free addresses and DHCP is reachable on this VLAN, then retry. If it still fails, contact your network administrator.',
+  actionLabel: 'Retry IP discovery',
+}
+
+export type BareMetalProvisioningCardPresentation = {
+  activeLeafIndex?: number
+  overrides?: Readonly<Record<string, BareMetalProvisioningStepOverride>>
+  remainingLabel?: string
+}
+
+/** Sticky warning demo instance id (kept here to avoid import cycles with instances). */
+export const BARE_METAL_IP_DISCOVERY_WARNING_DEMO_INSTANCE_ID = 'instance-demo-bm-09'
+
+/** Frozen presentation for sticky demo instances (happy path uses the live clock). */
+export function getBareMetalProvisioningCardPresentation(
+  instanceId: string,
+): BareMetalProvisioningCardPresentation | null {
+  if (instanceId !== BARE_METAL_IP_DISCOVERY_WARNING_DEMO_INSTANCE_ID) {
+    return null
+  }
+
+  return {
+    activeLeafIndex: getBareMetalDiscoveringIpLeafIndex(),
+    overrides: {
+      'discovering-ip': BARE_METAL_IP_DISCOVERY_WARNING_OVERRIDE,
+    },
+    remainingLabel: 'Action needed',
+  }
 }
 
 function deriveStageStatus(
@@ -169,6 +221,7 @@ export function resolveBareMetalProvisioningStages(
           message: override.message,
           detail: override.detail,
           nextStep: override.nextStep,
+          actionLabel: override.actionLabel,
         }
       }
 

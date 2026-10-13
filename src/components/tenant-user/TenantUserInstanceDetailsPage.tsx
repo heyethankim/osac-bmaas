@@ -77,6 +77,7 @@ import {
   matchNetworkOptionId,
   resolveLaunchNetworkContext,
 } from '../../tenantUser/launchNetworking'
+import { getBareMetalProvisioningCardPresentation } from '../../tenantUser/bareMetalProvisioning'
 import {
   BareMetalProvisioningProgressCard,
   ClusterProvisioningProgressCard,
@@ -1592,7 +1593,10 @@ function DefaultInstancePageBody({
     <>
       {isBareMetal && instance.status === 'provisioning' ? (
         <div className="entity-details-page__bare-metal-provisioning">
-          <BareMetalProvisioningProgressCard startedAt={instance.createdAt} />
+          <BareMetalProvisioningProgressCard
+            startedAt={instance.createdAt}
+            {...(getBareMetalProvisioningCardPresentation(instance.id) ?? {})}
+          />
         </div>
       ) : null}
       <div className="entity-details-page__columns entity-details-page__columns--with-rail">

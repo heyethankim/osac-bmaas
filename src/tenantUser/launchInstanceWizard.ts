@@ -146,8 +146,8 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   hardwareProfile: 'Dell PowerEdge R750',
   osImage: 'RHEL 9.4',
   networkingTitle: 'Networking',
-  networkingLede: 'Choose a network and how to attach an external IP.',
-  networkingAdminLede: 'Choose a network and how to attach an external IP.',
+  networkingLede: 'Choose a network and whether to auto-attach an external IP.',
+  networkingAdminLede: 'Choose a network and whether to auto-attach an external IP.',
   networkPathGroupLabel: 'Network placement',
   networkPathDefaultLabel: 'Tenant default',
   networkPathDefaultDescription: 'Network created with your tenant.',
@@ -156,16 +156,16 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   networkSectionTitle: 'Network',
   externalIpSectionTitle: 'External IP',
   externalIpGroupLabel: 'External IP',
-  externalIpPathAutoLabel: 'Auto-attach',
-  externalIpPathAutoDescription: 'Creates an ExternalIP and attachment.',
-  externalIpPathPoolLabel: 'Different pool',
-  externalIpPathPoolDescription: 'Select an external IP pool.',
-  externalIpReviewAuto: 'Auto-attach',
-  externalIpReviewPool: 'Different pool',
+  autoAttachExternalIpLabel: 'Auto-attach external IP',
+  autoAttachExternalIpOnHelper:
+    'Assigns an address from your tenant’s default external IP pool so the instance can be reached outside the private network.',
+  autoAttachExternalIpOffHelper:
+    'No external IP at launch. The instance stays on the private network; you can attach one later from Networking.',
+  externalIpReviewAutoAttached: 'Auto-attached',
+  externalIpReviewNone: 'None',
   networkPathReviewDefault: 'Tenant default',
   networkPathReviewCustom: 'Custom',
   networkPathReviewUnset: 'Not selected',
-  externalIpReviewUnset: 'Not selected',
   createVirtualNetworkLabel: 'Create virtual network',
   createSubnetLabel: 'Create subnet',
   createSecurityGroupLabel: 'Create security group',
@@ -225,8 +225,10 @@ export const CLUSTER_LAUNCH_INSTANCE_DEMO = {
   defaultHostType: 'standard-host',
   defaultNodeCount: 1,
   infrastructureNetworkingTitle: 'Infrastructure networking',
-  infrastructureNetworkingLede: 'Choose a network and how to attach an external IP.',
-  infrastructureNetworkingAdminLede: 'Choose a network and how to attach an external IP.',
+  infrastructureNetworkingLede:
+    'Choose a network and whether to auto-attach an external IP.',
+  infrastructureNetworkingAdminLede:
+    'Choose a network and whether to auto-attach an external IP.',
   clusterNetworkTitle: 'Cluster network',
   clusterNetworkLede: 'Address ranges used inside the cluster for pods and services.',
   podCidr: '10.128.0.0/24',
@@ -319,9 +321,6 @@ export type ClusterNodeSetForm = {
 
 export type LaunchNetworkPath = 'default' | 'custom'
 
-/** Auto-attach from tenant default pool vs explicit pool selection. */
-export type LaunchExternalIpPath = 'auto' | 'pool'
-
 export type LaunchInstanceWizardForm = {
   instanceName: string
   /** Optional free-text description (same pattern as catalog item creation). */
@@ -349,9 +348,9 @@ export type LaunchInstanceWizardForm = {
   virtualNetworkId: string
   subnetId: string
   securityGroupId: string
-  /** Auto-attach vs choose external IP pool. */
-  externalIpPath: LaunchExternalIpPath
-  /** Pool used for auto-attach or when externalIpPath is `pool`. */
+  /** When true, attach an EIP from the tenant default pool at launch. */
+  autoAttachExternalIp: boolean
+  /** Tenant default pool used when auto-attach is on. */
   externalIpPoolId: string
 }
 
@@ -438,7 +437,7 @@ export const DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM: LaunchInstanceWizardForm = {
   virtualNetworkId: '',
   subnetId: '',
   securityGroupId: '',
-  externalIpPath: 'pool',
+  autoAttachExternalIp: true,
   externalIpPoolId: '',
 }
 
@@ -532,7 +531,7 @@ export function createLaunchInstanceWizardForm(options: {
     virtualNetworkId: options.virtualNetworkId,
     subnetId: options.subnetId,
     securityGroupId: options.securityGroupId,
-    externalIpPath: 'pool',
+    autoAttachExternalIp: true,
     externalIpPoolId: options.externalIpPoolId,
   }
 }
@@ -597,11 +596,7 @@ export function isVmNetworkingStepValid(form: LaunchInstanceWizardForm): boolean
     }
   }
 
-  if (form.externalIpPath === 'pool') {
-    return form.externalIpPoolId.trim().length > 0
-  }
-
-  // Auto-attach uses the tenant default external IP pool.
+  // Auto-attach uses the tenant default pool; off means no EIP at launch.
   return true
 }
 

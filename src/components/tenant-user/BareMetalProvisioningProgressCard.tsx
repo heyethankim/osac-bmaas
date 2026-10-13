@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
+  Button,
   Card,
   Content,
   Flex,
   FlexItem,
+  Popover,
   ProgressStep,
   ProgressStepper,
   Spinner,
@@ -42,6 +44,8 @@ type BareMetalProvisioningProgressCardProps = {
   remainingLabel?: string
   /** Bare metal vs cluster provisioning stages. Default bare metal. */
   service?: ProvisioningProgressService
+  /** Primary action for the active warning/error (e.g. retry IP discovery). */
+  onIssueAction?: () => void
 }
 
 function stageVariant(
@@ -79,31 +83,6 @@ function stageAriaLabel(stage: BareMetalProvisioningStageView, description?: str
   return `${stage.label}, pending${detail}`
 }
 
-/**
- * Subtext under each stage title.
- * Multi-leaf stages show only the current leaf — it replaces the previous.
- */
-function getStageSubtext(stage: BareMetalProvisioningStageView): string | undefined {
-  const activeLeaf =
-    stage.steps.find(
-      (step) =>
-        step.status === 'in-progress' ||
-        step.status === 'warning' ||
-        step.status === 'failed',
-    ) ??
-    (stage.status === 'completed'
-      ? stage.steps[stage.steps.length - 1]
-      : undefined) ??
-    stage.steps.find((step) => step.status === 'pending') ??
-    stage.steps[0]
-
-  if (!activeLeaf) {
-    return undefined
-  }
-
-  return activeLeaf.message ?? activeLeaf.label
-}
-
 function getActiveLeaf(stage: BareMetalProvisioningStageView): BareMetalProvisioningStepView | undefined {
   return (
     stage.steps.find(
@@ -115,6 +94,98 @@ function getActiveLeaf(stage: BareMetalProvisioningStageView): BareMetalProvisio
   )
 }
 
+/**
+ * Subtext under each stage title.
+ * Multi-leaf stages show only the current leaf — it replaces the previous.
+ */
+function getStageActiveLeaf(stage: BareMetalProvisioningStageView): BareMetalProvisioningStepView | undefined {
+  return (
+    getActiveLeaf(stage) ??
+    (stage.status === 'completed' ? stage.steps[stage.steps.length - 1] : undefined) ??
+    stage.steps.find((step) => step.status === 'pending') ??
+    stage.steps[0]
+  )
+}
+
+function getStageSubtext(stage: BareMetalProvisioningStageView): string | undefined {
+  const activeLeaf = getStageActiveLeaf(stage)
+  if (!activeLeaf) {
+    return undefined
+  }
+  return activeLeaf.message ?? activeLeaf.label
+}
+
+function hasIssueDetails(leaf: BareMetalProvisioningStepView): boolean {
+  return (
+    (leaf.status === 'warning' || leaf.status === 'failed') &&
+    (leaf.detail != null || leaf.nextStep != null || leaf.actionLabel != null)
+  )
+}
+
+function ProvisioningIssueDescription({
+  issueLeaf,
+  label,
+  onIssueAction,
+}: {
+  issueLeaf: BareMetalProvisioningStepView
+  label: string
+  onIssueAction?: () => void
+}) {
+  const isFailed = issueLeaf.status === 'failed'
+  const title = issueLeaf.message ?? (isFailed ? 'Provisioning failed' : 'Action needed')
+  const [isOpen, setIsOpen] = useState(false)
+
+  return (
+    <Popover
+      aria-label={`${title} details`}
+      position="right"
+      hasAutoWidth
+      maxWidth="22rem"
+      isVisible={isOpen}
+      shouldOpen={(_event, showFunction) => {
+        setIsOpen(true)
+        showFunction?.()
+      }}
+      shouldClose={(_event, hideFunction) => {
+        setIsOpen(false)
+        hideFunction?.()
+      }}
+      alertSeverityVariant={isFailed ? 'danger' : 'warning'}
+      headerContent={title}
+      bodyContent={
+        <div className="bare-metal-provisioning-progress__issue-popover-body">
+          {issueLeaf.detail ? <Content component="p">{issueLeaf.detail}</Content> : null}
+          {issueLeaf.nextStep ? <Content component="p">{issueLeaf.nextStep}</Content> : null}
+        </div>
+      }
+      footerContent={
+        issueLeaf.actionLabel ? (
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              onIssueAction?.()
+              setIsOpen(false)
+            }}
+          >
+            {issueLeaf.actionLabel}
+          </Button>
+        ) : undefined
+      }
+      closeBtnAriaLabel="Close"
+    >
+      <Button
+        variant="link"
+        isInline
+        className="bare-metal-provisioning-progress__issue-link"
+        aria-expanded={isOpen}
+      >
+        {label}
+      </Button>
+    </Popover>
+  )
+}
+
 export function BareMetalProvisioningProgressCard({
   startedAt,
   onStagesComplete,
@@ -123,6 +194,7 @@ export function BareMetalProvisioningProgressCard({
   activeLeafIndex: activeLeafIndexProp,
   remainingLabel: remainingLabelProp,
   service = 'baremetal',
+  onIssueAction,
 }: BareMetalProvisioningProgressCardProps) {
   const [nowMs, setNowMs] = useState(() => Date.now())
   const completedRef = useRef(false)
@@ -153,14 +225,6 @@ export function BareMetalProvisioningProgressCard({
   const stages = isCluster
     ? resolveClusterProvisioningStages(activeLeafIndex, overrides)
     : resolveBareMetalProvisioningStages(activeLeafIndex, overrides)
-  const issueLeaf = stages
-    .map((stage) => getActiveLeaf(stage))
-    .find(
-      (step) =>
-        step &&
-        (step.status === 'warning' || step.status === 'failed') &&
-        (step.message || step.detail || step.nextStep),
-    )
   const cardTitle = isCluster ? 'Installation progress' : 'Provisioning progress'
   const stepperAriaLabel = isCluster
     ? 'Cluster installation stages'
@@ -206,7 +270,20 @@ export function BareMetalProvisioningProgressCard({
         className="bare-metal-provisioning-progress__stepper"
       >
         {stages.map((stage) => {
-          const description = getStageSubtext(stage)
+          const activeLeaf = getStageActiveLeaf(stage)
+          const descriptionText = getStageSubtext(stage)
+          const issueLeaf =
+            activeLeaf && hasIssueDetails(activeLeaf) ? activeLeaf : undefined
+          const description: ReactNode =
+            issueLeaf && descriptionText ? (
+              <ProvisioningIssueDescription
+                issueLeaf={issueLeaf}
+                label={descriptionText}
+                onIssueAction={onIssueAction}
+              />
+            ) : (
+              descriptionText
+            )
           const isCurrent =
             stage.status === 'in-progress' ||
             stage.status === 'warning' ||
@@ -232,28 +309,13 @@ export function BareMetalProvisioningProgressCard({
                   />
                 ) : undefined
               }
-              aria-label={stageAriaLabel(stage, description)}
+              aria-label={stageAriaLabel(stage, descriptionText)}
             >
               {stage.label}
             </ProgressStep>
           )
         })}
       </ProgressStepper>
-
-      {issueLeaf ? (
-        <div className="bare-metal-provisioning-progress__issue">
-          {issueLeaf.detail ? (
-            <Content component="p" className="bare-metal-provisioning-progress__issue-detail">
-              What happened: {issueLeaf.detail}
-            </Content>
-          ) : null}
-          {issueLeaf.nextStep ? (
-            <Content component="p" className="bare-metal-provisioning-progress__issue-detail">
-              Next step: {issueLeaf.nextStep}
-            </Content>
-          ) : null}
-        </div>
-      ) : null}
     </Card>
   )
 }

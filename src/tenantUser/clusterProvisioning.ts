@@ -126,6 +126,7 @@ export function resolveClusterProvisioningStages(
           message: override.message,
           detail: override.detail,
           nextStep: override.nextStep,
+          actionLabel: override.actionLabel,
         }
       }
 

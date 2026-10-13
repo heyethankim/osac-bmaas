@@ -28,6 +28,7 @@ import {
   Modal,
   ModalVariant,
   Button,
+  Switch,
   TextArea,
   TextInput,
   Title,
@@ -97,7 +98,6 @@ import {
   LAUNCH_INSTANCE_WIZARD_DEMO,
   VM_LAUNCH_INSTANCE_DEMO,
   parseVmLaunchInstanceTypeOption,
-  type LaunchExternalIpPath,
   type LaunchInstanceWizardForm,
   type LaunchInstanceWizardStepId,
   type LaunchNetworkPath,
@@ -622,12 +622,9 @@ export function TenantUserLaunchInstanceWizard({
           ? form.subnetId || defaultSubnetId
           : '',
     securityGroupId: form.securityGroupId || defaultSecurityGroupId,
-    externalIpPoolId:
-      form.externalIpPath === 'auto'
-        ? defaultExternalIpPoolId
-        : form.externalIpPath === 'pool'
-          ? form.externalIpPoolId || defaultExternalIpPoolId
-          : '',
+    externalIpPoolId: form.autoAttachExternalIp
+      ? form.externalIpPoolId || defaultExternalIpPoolId
+      : '',
   }
 
   const networkLabel = isClusterCatalogItem
@@ -649,22 +646,6 @@ export function TenantUserLaunchInstanceWizard({
     })
   }
 
-  const selectExternalIpPath = (externalIpPath: LaunchExternalIpPath) => {
-    setForm((current) => {
-      if (externalIpPath === 'auto') {
-        return {
-          ...current,
-          externalIpPath,
-          externalIpPoolId: defaultExternalIpPoolId,
-        }
-      }
-      return {
-        ...current,
-        externalIpPath,
-        externalIpPoolId: current.externalIpPoolId || defaultExternalIpPoolId,
-      }
-    })
-  }
   const assignedNetworkSummary = networkContext.assignedNetworkSummary
 
   const resetWizard = () => {
@@ -1703,54 +1684,6 @@ export function TenantUserLaunchInstanceWizard({
     )
   }
 
-  const renderExternalIpPathSelectCard = (
-    idPrefix: string,
-    path: LaunchExternalIpPath,
-    title: string,
-    description: string,
-  ) => {
-    const isSelected = form.externalIpPath === path
-    const titleId = `${idPrefix}-external-ip-path-${path}-title`
-
-    return (
-      <button
-        key={path}
-        type="button"
-        role="radio"
-        aria-checked={isSelected}
-        aria-labelledby={titleId}
-        className={`provider-setup-template__select-card tenant-user-launch-wizard__network-choice-card${
-          isSelected ? ' provider-setup-template__select-card--selected' : ''
-        }`}
-        onClick={() => selectExternalIpPath(path)}
-      >
-        {isSelected ? (
-          <Label
-            color="grey"
-            isCompact
-            className="provider-setup-template__select-card-selected-badge"
-          >
-            Selected
-          </Label>
-        ) : null}
-        <Title
-          id={titleId}
-          headingLevel="h3"
-          size="md"
-          className="provider-setup-template__select-card-title tenant-user-launch-wizard__network-choice-card-title"
-        >
-          {title}
-        </Title>
-        <Content
-          component="p"
-          className="provider-setup-template__select-card-detail tenant-user-launch-wizard__network-choice-card-detail"
-        >
-          {description}
-        </Content>
-      </button>
-    )
-  }
-
   const renderPlacementNetworkingFields = (
     idPrefix: string,
     options?: {
@@ -1763,8 +1696,7 @@ export function TenantUserLaunchInstanceWizard({
     const networkSectionLede = options?.networkSectionLede
     const isDefaultPath = form.networkPath === 'default'
     const isCustomPath = form.networkPath === 'custom'
-    const isAutoExternalIp = form.externalIpPath === 'auto'
-    const isPoolExternalIp = form.externalIpPath === 'pool'
+    const externalIpSwitchId = `${idPrefix}-auto-attach-external-ip`
 
     return (
       <>
@@ -1815,39 +1747,36 @@ export function TenantUserLaunchInstanceWizard({
         <div className="tenant-user-launch-wizard__network-section">
           <FormGroup
             label={LAUNCH_INSTANCE_WIZARD_DEMO.externalIpSectionTitle}
-            fieldId={`${idPrefix}-external-ip`}
-            isRequired
-            role="radiogroup"
+            fieldId={externalIpSwitchId}
           >
-            <div
-              id={`${idPrefix}-external-ip`}
-              className="provider-setup-template__card-group tenant-user-launch-wizard__network-path-cards"
-              role="presentation"
-            >
-              {renderExternalIpPathSelectCard(
-                idPrefix,
-                'auto',
-                LAUNCH_INSTANCE_WIZARD_DEMO.externalIpPathAutoLabel,
-                LAUNCH_INSTANCE_WIZARD_DEMO.externalIpPathAutoDescription,
-              )}
-              {renderExternalIpPathSelectCard(
-                idPrefix,
-                'pool',
-                LAUNCH_INSTANCE_WIZARD_DEMO.externalIpPathPoolLabel,
-                LAUNCH_INSTANCE_WIZARD_DEMO.externalIpPathPoolDescription,
-              )}
+            <div className="tenant-user-launch-wizard__external-ip-field">
+              <Switch
+                id={externalIpSwitchId}
+                label={LAUNCH_INSTANCE_WIZARD_DEMO.autoAttachExternalIpLabel}
+                aria-label={LAUNCH_INSTANCE_WIZARD_DEMO.autoAttachExternalIpLabel}
+                isChecked={form.autoAttachExternalIp}
+                onChange={(_event, checked) => {
+                  setForm((current) => ({
+                    ...current,
+                    autoAttachExternalIp: checked,
+                    externalIpPoolId: checked
+                      ? current.externalIpPoolId || defaultExternalIpPoolId
+                      : current.externalIpPoolId,
+                  }))
+                }}
+              />
+              <FormHelperText className="tenant-user-launch-wizard__external-ip-helper">
+                <HelperText>
+                  <HelperTextItem>
+                    {form.autoAttachExternalIp
+                      ? LAUNCH_INSTANCE_WIZARD_DEMO.autoAttachExternalIpOnHelper
+                      : LAUNCH_INSTANCE_WIZARD_DEMO.autoAttachExternalIpOffHelper}
+                  </HelperTextItem>
+                </HelperText>
+              </FormHelperText>
             </div>
           </FormGroup>
-          {isAutoExternalIp ? renderAutoExternalIpSummary() : null}
-          {isPoolExternalIp ? (
-            <div className="tenant-user-launch-wizard__network-path-custom-fields">
-              {renderNetworkObjectField(
-                'external-ip-pool',
-                'External IP pool',
-                `${idPrefix}-external-ip-pool`,
-              )}
-            </div>
-          ) : null}
+          {form.autoAttachExternalIp ? renderAutoExternalIpSummary() : null}
         </div>
       </>
     )
@@ -2733,12 +2662,9 @@ export function TenantUserLaunchInstanceWizard({
       networkInventory
         .getSubnetOptions(networkSelections.virtualNetworkId)
         .find((option) => option.id === networkSelections.subnetId)?.name ?? networking.subnet
-    const externalIpPathReviewLabel =
-      form.externalIpPath === 'auto'
-        ? LAUNCH_INSTANCE_WIZARD_DEMO.externalIpReviewAuto
-        : form.externalIpPath === 'pool'
-          ? LAUNCH_INSTANCE_WIZARD_DEMO.externalIpReviewPool
-          : LAUNCH_INSTANCE_WIZARD_DEMO.externalIpReviewUnset
+    const externalIpReviewLabel = form.autoAttachExternalIp
+      ? LAUNCH_INSTANCE_WIZARD_DEMO.externalIpReviewAutoAttached
+      : LAUNCH_INSTANCE_WIZARD_DEMO.externalIpReviewNone
     const externalIpPoolReviewLabel =
       networkInventory
         .getExternalIpPoolOptions()
@@ -2797,11 +2723,8 @@ export function TenantUserLaunchInstanceWizard({
             renderReviewRow('Subnet', subnetLabel),
           ]
         : []),
-      renderReviewRow(
-        'External IP',
-        renderRequiredReviewValue(externalIpPathReviewLabel, form.externalIpPath != null),
-      ),
-      ...(form.externalIpPath
+      renderReviewRow('External IP', externalIpReviewLabel),
+      ...(form.autoAttachExternalIp
         ? [renderReviewRow('External IP pool', externalIpPoolReviewLabel || '—')]
         : []),
     ]

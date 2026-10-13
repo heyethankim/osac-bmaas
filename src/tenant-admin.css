@@ -3609,6 +3609,31 @@
   color: var(--pf-t--global--text--color--subtle);
 }
 
+/* Indent switch helper to align with the label (toggle width + column gap). */
+.tenant-user-launch-wizard__external-ip-field {
+  --pf-v6-c-switch--FontSize: var(--pf-t--global--font--size--sm);
+  --pf-v6-c-switch--ColumnGap: var(--pf-t--global--spacer--sm);
+  --pf-v6-c-switch__toggle-icon--Offset: 0.125rem;
+  --pf-v6-c-switch--LineHeight: var(--pf-t--global--font--line-height--body);
+  --pf-v6-c-switch__toggle--Height: calc(
+    var(--pf-v6-c-switch--FontSize) * var(--pf-v6-c-switch--LineHeight)
+  );
+  --pf-v6-c-switch__toggle--before--Width: calc(
+    var(--pf-v6-c-switch--FontSize) - var(--pf-v6-c-switch__toggle-icon--Offset)
+  );
+  --pf-v6-c-switch__toggle--Width: calc(
+    var(--pf-v6-c-switch__toggle--Height) + var(--pf-v6-c-switch__toggle-icon--Offset) +
+      var(--pf-v6-c-switch__toggle--before--Width)
+  );
+}
+
+.tenant-user-launch-wizard__external-ip-helper {
+  margin-inline-start: calc(
+    var(--pf-v6-c-switch__toggle--Width) + var(--pf-v6-c-switch--ColumnGap)
+  );
+  white-space: nowrap;
+}
+
 .tenant-user-launch-wizard__network-path-cards.provider-setup-template__card-group {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3892,8 +3917,6 @@
 
 .tenant-user-launch-wizard__boot-log-title.pf-v6-c-content--p {
   font-weight: var(--pf-t--global--font--weight--body--bold);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
   font-size: var(--pf-t--global--font--size--body--sm);
 }
 
@@ -3967,19 +3990,22 @@
   --pf-v6-c-spinner--diameter: 0.875rem;
 }
 
-.bare-metal-provisioning-progress__issue {
-  margin-block-start: var(--pf-t--global--spacer--md);
-  padding-block-start: var(--pf-t--global--spacer--sm);
-  border-block-start: 1px solid var(--pf-t--global--border--color--default);
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
+.bare-metal-provisioning-progress__issue-link.pf-v6-c-button {
+  font-size: inherit;
+  white-space: normal;
+  text-align: center;
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
 }
 
-.bare-metal-provisioning-progress__issue-detail.pf-v6-c-content--p {
+.bare-metal-provisioning-progress__issue-popover-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.bare-metal-provisioning-progress__issue-popover-body .pf-v6-c-content--p {
   margin: 0;
-  font-size: var(--pf-t--global--font--size--body--sm);
-  color: var(--pf-t--global--text--color--subtle);
 }
 
 .entity-details-page__bare-metal-provisioning {
