@@ -15,11 +15,7 @@ import {
   type CatalogNetworkResourceOption,
 } from '../../providerAdmin/catalogNetworkPolicy'
 
-export type CatalogNetworkLockField =
-  | 'virtualNetwork'
-  | 'subnet'
-  | 'securityGroup'
-  | 'externalIpPool'
+export type CatalogNetworkLockField = 'virtualNetwork' | 'subnet' | 'securityGroup'
 
 const NETWORK_FIELDS: ReadonlyArray<{
   key: CatalogNetworkLockField
@@ -28,7 +24,6 @@ const NETWORK_FIELDS: ReadonlyArray<{
   { key: 'virtualNetwork', label: 'Virtual network' },
   { key: 'subnet', label: 'Subnet' },
   { key: 'securityGroup', label: 'Security group' },
-  { key: 'externalIpPool', label: 'External IP pools' },
 ]
 
 const SAVED_FLASH_MS = 1500
@@ -59,7 +54,6 @@ type CatalogNetworkingLocksSectionProps = {
   virtualNetworkOptions: readonly CatalogNetworkResourceOption[]
   subnetOptions: readonly CatalogNetworkResourceOption[]
   securityGroupOptions: readonly CatalogNetworkResourceOption[]
-  externalIpPoolOptions: readonly CatalogNetworkResourceOption[]
   /** When virtual network changes, parent should refresh subnet options. */
   onVirtualNetworkChange?: (virtualNetworkId: string, next: CatalogNetworkPolicy) => void
   onChange?: (next: CatalogNetworkPolicy) => void
@@ -69,10 +63,7 @@ function optionsForField(
   key: CatalogNetworkLockField,
   props: Pick<
     CatalogNetworkingLocksSectionProps,
-    | 'virtualNetworkOptions'
-    | 'subnetOptions'
-    | 'securityGroupOptions'
-    | 'externalIpPoolOptions'
+    'virtualNetworkOptions' | 'subnetOptions' | 'securityGroupOptions'
   >,
 ): readonly CatalogNetworkResourceOption[] {
   switch (key) {
@@ -82,8 +73,6 @@ function optionsForField(
       return props.subnetOptions
     case 'securityGroup':
       return props.securityGroupOptions
-    case 'externalIpPool':
-      return props.externalIpPoolOptions
   }
 }
 
@@ -104,7 +93,6 @@ export function CatalogNetworkingLocksSection({
   virtualNetworkOptions,
   subnetOptions,
   securityGroupOptions,
-  externalIpPoolOptions,
   onVirtualNetworkChange,
   onChange,
 }: CatalogNetworkingLocksSectionProps) {
@@ -140,7 +128,6 @@ export function CatalogNetworkingLocksSection({
       virtualNetworkOptions,
       subnetOptions,
       securityGroupOptions,
-      externalIpPoolOptions,
     })
     const nextField = resolveCatalogNetworkPolicyField(options, value, policy[key].locked)
     const next: CatalogNetworkPolicy = {
@@ -212,7 +199,6 @@ export function CatalogNetworkingLocksSection({
             virtualNetworkOptions,
             subnetOptions,
             securityGroupOptions,
-            externalIpPoolOptions,
           })
           const selectDisabled = readOnly || isProviderLocked || field.locked
           const lockDisabled = readOnly || locksReadOnly || isProviderLocked

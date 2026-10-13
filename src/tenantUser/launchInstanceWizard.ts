@@ -158,9 +158,9 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   externalIpGroupLabel: 'External IP',
   autoAttachExternalIpLabel: 'Auto-attach external IP',
   autoAttachExternalIpOnHelper:
-    'Assigns an address from your tenant’s default external IP pool so the instance can be reached outside the private network.',
+    'Attaches a public IP so the instance is reachable outside the private network.',
   autoAttachExternalIpOffHelper:
-    'No external IP at launch. The instance stays on the private network; you can attach one later from Networking.',
+    'No public IP at launch. You can attach one later from the instance.',
   externalIpReviewAutoAttached: 'Auto-attached',
   externalIpReviewNone: 'None',
   networkPathReviewDefault: 'Tenant default',
@@ -348,9 +348,9 @@ export type LaunchInstanceWizardForm = {
   virtualNetworkId: string
   subnetId: string
   securityGroupId: string
-  /** When true, attach an EIP from the tenant default pool at launch. */
+  /** When true, attach an EIP at launch (platform picks an available pool/IP). */
   autoAttachExternalIp: boolean
-  /** Tenant default pool used when auto-attach is on. */
+  /** Optional retained pool id for inventory create flows; not user-selected at launch. */
   externalIpPoolId: string
 }
 
@@ -596,7 +596,7 @@ export function isVmNetworkingStepValid(form: LaunchInstanceWizardForm): boolean
     }
   }
 
-  // Auto-attach uses the tenant default pool; off means no EIP at launch.
+  // Auto-attach lets the platform pick an IP; off means no EIP at launch.
   return true
 }
 

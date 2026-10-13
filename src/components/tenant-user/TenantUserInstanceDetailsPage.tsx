@@ -512,7 +512,6 @@ function InstanceInheritedNetworkingSection({
           virtualNetworkOptions={inventory.getVirtualNetworkOptions()}
           subnetOptions={subnetOptions}
           securityGroupOptions={inventory.getSecurityGroupOptions()}
-          externalIpPoolOptions={inventory.getExternalIpPoolOptions()}
         />
         {conditions && conditions.length > 0 && conditionsAriaLabel ? (
           <div className="entity-details-page__conditions-band">
@@ -587,7 +586,6 @@ function InstanceInheritedNetworkingSection({
         virtualNetworkOptions={inventory.getVirtualNetworkOptions()}
         subnetOptions={subnetOptions}
         securityGroupOptions={inventory.getSecurityGroupOptions()}
-        externalIpPoolOptions={inventory.getExternalIpPoolOptions()}
         onVirtualNetworkChange={handleVirtualNetworkChange}
         onChange={persistFromPolicy}
       />

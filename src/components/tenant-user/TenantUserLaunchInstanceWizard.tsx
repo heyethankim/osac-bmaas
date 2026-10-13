@@ -606,7 +606,6 @@ export function TenantUserLaunchInstanceWizard({
   const defaultVirtualNetworkId = networkContext.policy.virtualNetwork.id
   const defaultSubnetId = networkContext.policy.subnet.id
   const defaultSecurityGroupId = networkContext.policy.securityGroup.id
-  const defaultExternalIpPoolId = networkContext.policy.externalIpPool.id
 
   const networkSelections = {
     virtualNetworkId:
@@ -622,9 +621,8 @@ export function TenantUserLaunchInstanceWizard({
           ? form.subnetId || defaultSubnetId
           : '',
     securityGroupId: form.securityGroupId || defaultSecurityGroupId,
-    externalIpPoolId: form.autoAttachExternalIp
-      ? form.externalIpPoolId || defaultExternalIpPoolId
-      : '',
+    // Auto-attach does not pin a pool — the platform selects an available IP.
+    externalIpPoolId: '',
   }
 
   const networkLabel = isClusterCatalogItem
@@ -1611,31 +1609,6 @@ export function TenantUserLaunchInstanceWizard({
     )
   }
 
-  const renderAutoExternalIpSummary = () => {
-    const poolOption = networkInventory
-      .getExternalIpPoolOptions()
-      .find((option) => option.id === defaultExternalIpPoolId)
-
-    return (
-      <DescriptionList
-        isCompact
-        isHorizontal
-        className="tenant-user-launch-wizard__network-path-summary"
-        aria-label="Auto-attach external IP pool"
-      >
-        <DescriptionListGroup>
-          <DescriptionListTerm>External IP pool</DescriptionListTerm>
-          <DescriptionListDescription>
-            {renderNetworkingSummaryValue(
-              poolOption?.name ?? networkContext.policy.externalIpPool.name,
-              poolOption?.detail,
-            )}
-          </DescriptionListDescription>
-        </DescriptionListGroup>
-      </DescriptionList>
-    )
-  }
-
   const renderNetworkPathSelectCard = (
     idPrefix: string,
     path: LaunchNetworkPath,
@@ -1759,9 +1732,6 @@ export function TenantUserLaunchInstanceWizard({
                   setForm((current) => ({
                     ...current,
                     autoAttachExternalIp: checked,
-                    externalIpPoolId: checked
-                      ? current.externalIpPoolId || defaultExternalIpPoolId
-                      : current.externalIpPoolId,
                   }))
                 }}
               />
@@ -1776,7 +1746,6 @@ export function TenantUserLaunchInstanceWizard({
               </FormHelperText>
             </div>
           </FormGroup>
-          {form.autoAttachExternalIp ? renderAutoExternalIpSummary() : null}
         </div>
       </>
     )
@@ -2665,11 +2634,6 @@ export function TenantUserLaunchInstanceWizard({
     const externalIpReviewLabel = form.autoAttachExternalIp
       ? LAUNCH_INSTANCE_WIZARD_DEMO.externalIpReviewAutoAttached
       : LAUNCH_INSTANCE_WIZARD_DEMO.externalIpReviewNone
-    const externalIpPoolReviewLabel =
-      networkInventory
-        .getExternalIpPoolOptions()
-        .find((option) => option.id === networkSelections.externalIpPoolId)?.name ??
-      networking.externalIpPool
     const networkPathReviewLabel =
       form.networkPath === 'default'
         ? LAUNCH_INSTANCE_WIZARD_DEMO.networkPathReviewDefault
@@ -2724,9 +2688,6 @@ export function TenantUserLaunchInstanceWizard({
           ]
         : []),
       renderReviewRow('External IP', externalIpReviewLabel),
-      ...(form.autoAttachExternalIp
-        ? [renderReviewRow('External IP pool', externalIpPoolReviewLabel || '—')]
-        : []),
     ]
 
     const renderServiceSpecificRows = () => {

@@ -22,9 +22,8 @@ const LEFT_NETWORK_FIELDS = [
 
 const RIGHT_NETWORK_FIELDS = [
   { key: 'securityGroup', label: 'Security group' },
-  { key: 'externalIpPool', label: 'External IP pool' },
 ] as const satisfies ReadonlyArray<{
-  key: keyof Pick<CatalogNetworkPolicy, 'securityGroup' | 'externalIpPool'>
+  key: keyof Pick<CatalogNetworkPolicy, 'securityGroup'>
   label: string
 }>
 
@@ -37,7 +36,6 @@ type CatalogNetworkingSummarySectionProps = {
   virtualNetworkOptions: readonly CatalogNetworkResourceOption[]
   subnetOptions: readonly CatalogNetworkResourceOption[]
   securityGroupOptions: readonly CatalogNetworkResourceOption[]
-  externalIpPoolOptions: readonly CatalogNetworkResourceOption[]
   title?: string
   className?: string
 }
@@ -58,10 +56,7 @@ function optionsForField(
   key: NetworkFieldKey,
   props: Pick<
     CatalogNetworkingSummarySectionProps,
-    | 'virtualNetworkOptions'
-    | 'subnetOptions'
-    | 'securityGroupOptions'
-    | 'externalIpPoolOptions'
+    'virtualNetworkOptions' | 'subnetOptions' | 'securityGroupOptions'
   >,
 ): readonly CatalogNetworkResourceOption[] {
   switch (key) {
@@ -71,8 +66,6 @@ function optionsForField(
       return props.subnetOptions
     case 'securityGroup':
       return props.securityGroupOptions
-    case 'externalIpPool':
-      return props.externalIpPoolOptions
   }
 }
 
@@ -86,10 +79,7 @@ function NetworkingFieldList({
   policy: CatalogNetworkPolicy
   optionProps: Pick<
     CatalogNetworkingSummarySectionProps,
-    | 'virtualNetworkOptions'
-    | 'subnetOptions'
-    | 'securityGroupOptions'
-    | 'externalIpPoolOptions'
+    'virtualNetworkOptions' | 'subnetOptions' | 'securityGroupOptions'
   >
   ariaLabel: string
 }) {
@@ -112,7 +102,6 @@ export function CatalogNetworkingSummarySection({
   virtualNetworkOptions,
   subnetOptions,
   securityGroupOptions,
-  externalIpPoolOptions,
   title = 'Networking',
   className = 'entity-details-page__column entity-details-page__column--span-2',
 }: CatalogNetworkingSummarySectionProps) {
@@ -120,7 +109,6 @@ export function CatalogNetworkingSummarySection({
     virtualNetworkOptions,
     subnetOptions,
     securityGroupOptions,
-    externalIpPoolOptions,
   }
 
   return (
