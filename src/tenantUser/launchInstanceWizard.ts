@@ -151,7 +151,7 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   networkPathGroupLabel: 'Network placement',
   networkPathDefaultLabel: 'Tenant default',
   networkPathDefaultDescription: 'Network created with your tenant.',
-  networkPathCustomLabel: 'Different network',
+  networkPathCustomLabel: 'Custom network',
   networkPathCustomDescription: 'Choose a virtual network and subnet.',
   networkSectionTitle: 'Network',
   externalIpSectionTitle: 'External IP',
@@ -164,7 +164,7 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   externalIpReviewAutoAttached: 'Auto-attached',
   externalIpReviewNone: 'None',
   networkPathReviewDefault: 'Tenant default',
-  networkPathReviewCustom: 'Custom',
+  networkPathReviewCustom: 'Custom network',
   networkPathReviewUnset: 'Not selected',
   createVirtualNetworkLabel: 'Create virtual network',
   createSubnetLabel: 'Create subnet',
@@ -224,7 +224,7 @@ export const CLUSTER_LAUNCH_INSTANCE_DEMO = {
   hostTypeOptions: ['standard-host', 'gpu-host', 'storage-host'] as const,
   defaultHostType: 'standard-host',
   defaultNodeCount: 1,
-  infrastructureNetworkingTitle: 'Infrastructure networking',
+  infrastructureNetworkingTitle: 'Network',
   infrastructureNetworkingLede:
     'Choose a network and whether to auto-attach an external IP.',
   infrastructureNetworkingAdminLede:

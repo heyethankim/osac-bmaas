@@ -2505,11 +2505,12 @@ export function TenantUserLaunchInstanceWizard({
           <Content component="p" className="tenant-user-launch-wizard__network-section-lede">
             {CLUSTER_LAUNCH_INSTANCE_DEMO.clusterNetworkLede}
           </Content>
-          <FormGroup label="Pod CIDR" fieldId="launch-cluster-pod-cidr">
+          <FormGroup label="Pod CIDR" fieldId="launch-cluster-pod-cidr" isRequired>
             <TextInput
               id="launch-cluster-pod-cidr"
               value={form.podCidr}
               onChange={(_event, value) => setForm((current) => ({ ...current, podCidr: value }))}
+              isRequired
             />
             <FormHelperText>
               <HelperText>
@@ -2518,13 +2519,14 @@ export function TenantUserLaunchInstanceWizard({
             </FormHelperText>
           </FormGroup>
 
-          <FormGroup label="Service CIDR" fieldId="launch-cluster-service-cidr">
+          <FormGroup label="Service CIDR" fieldId="launch-cluster-service-cidr" isRequired>
             <TextInput
               id="launch-cluster-service-cidr"
               value={form.serviceCidr}
               onChange={(_event, value) =>
                 setForm((current) => ({ ...current, serviceCidr: value }))
               }
+              isRequired
             />
             <FormHelperText>
               <HelperText>
