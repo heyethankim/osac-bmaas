@@ -158,9 +158,9 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   externalIpGroupLabel: 'External IP',
   autoAttachExternalIpLabel: 'Auto-attach external IP',
   autoAttachExternalIpOnHelper:
-    'Attaches a public IP so the instance is reachable outside the private network.',
+    'Attaches an external IP so the instance is reachable outside the private network.',
   autoAttachExternalIpOffHelper:
-    'No public IP at launch. You can attach one later from the instance.',
+    'No external IP at launch. You can attach one later from the instance.',
   externalIpReviewAutoAttached: 'Auto-attached',
   externalIpReviewNone: 'None',
   networkPathReviewDefault: 'Tenant default',
