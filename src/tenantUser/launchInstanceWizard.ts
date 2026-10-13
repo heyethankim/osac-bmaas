@@ -437,7 +437,7 @@ export const DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM: LaunchInstanceWizardForm = {
   virtualNetworkId: '',
   subnetId: '',
   securityGroupId: '',
-  autoAttachExternalIp: true,
+  autoAttachExternalIp: false,
   externalIpPoolId: '',
 }
 
@@ -531,7 +531,7 @@ export function createLaunchInstanceWizardForm(options: {
     virtualNetworkId: options.virtualNetworkId,
     subnetId: options.subnetId,
     securityGroupId: options.securityGroupId,
-    autoAttachExternalIp: true,
+    autoAttachExternalIp: false,
     externalIpPoolId: options.externalIpPoolId,
   }
 }
