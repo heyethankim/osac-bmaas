@@ -152,7 +152,7 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   networkPathDefaultLabel: 'Tenant default',
   networkPathDefaultDescription: 'Network created with your tenant.',
   networkPathCustomLabel: 'Custom network',
-  networkPathCustomDescription: 'Choose a virtual network and subnet.',
+  networkPathCustomDescription: 'Choose a virtual network, subnet, and security group.',
   networkSectionTitle: 'Network',
   externalIpSectionTitle: 'External IP',
   externalIpGroupLabel: 'External IP',
@@ -229,8 +229,9 @@ export const CLUSTER_LAUNCH_INSTANCE_DEMO = {
     'Choose a network and whether to auto-attach an external IP.',
   infrastructureNetworkingAdminLede:
     'Choose a network and whether to auto-attach an external IP.',
-  clusterNetworkTitle: 'Cluster network',
   clusterNetworkLede: 'Address ranges used inside the cluster for pods and services.',
+  clusterNetworkShowToggle: 'Customize cluster network',
+  clusterNetworkHideToggle: 'Hide cluster network',
   podCidr: '10.128.0.0/24',
   podCidrHelper: 'Use CIDR notation (for example 10.128.0.0/14 or fd01::/48).',
   serviceCidr: '10.1.0.0/24',
@@ -568,11 +569,7 @@ export function isClusterConfigureStepValid(form: LaunchInstanceWizardForm): boo
 }
 
 export function isClusterNetworkingStepValid(form: LaunchInstanceWizardForm): boolean {
-  return (
-    form.podCidr.trim().length > 0 &&
-    form.serviceCidr.trim().length > 0 &&
-    isVmNetworkingStepValid(form)
-  )
+  return isVmNetworkingStepValid(form)
 }
 
 export function isVmGeneralStepValid(form: LaunchInstanceWizardForm): boolean {

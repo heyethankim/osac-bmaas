@@ -14,6 +14,7 @@ import {
   Dropdown,
   DropdownItem,
   DropdownList,
+  ExpandableSection,
   Flex,
   FlexItem,
   Form,
@@ -214,6 +215,7 @@ export function TenantUserLaunchInstanceWizard({
   const [networkCreateKind, setNetworkCreateKind] = useState<LaunchNetworkFieldKind | null>(
     null,
   )
+  const [isClusterNetworkExpanded, setIsClusterNetworkExpanded] = useState(false)
 
   useEffect(() => {
     if (!isOpen) {
@@ -620,7 +622,12 @@ export function TenantUserLaunchInstanceWizard({
         : form.networkPath === 'custom'
           ? form.subnetId || defaultSubnetId
           : '',
-    securityGroupId: form.securityGroupId || defaultSecurityGroupId,
+    securityGroupId:
+      form.networkPath === 'default'
+        ? defaultSecurityGroupId
+        : form.networkPath === 'custom'
+          ? form.securityGroupId || defaultSecurityGroupId
+          : '',
     // Auto-attach does not pin a pool — the platform selects an available IP.
     externalIpPoolId: '',
   }
@@ -638,6 +645,7 @@ export function TenantUserLaunchInstanceWizard({
           networkPath,
           virtualNetworkId: defaultVirtualNetworkId,
           subnetId: defaultSubnetId,
+          securityGroupId: defaultSecurityGroupId,
         }
       }
       return { ...current, networkPath }
@@ -670,6 +678,7 @@ export function TenantUserLaunchInstanceWizard({
     setIsProjectMenuOpen(false)
     setOpenNetworkMenuKind(null)
     setNetworkCreateKind(null)
+    setIsClusterNetworkExpanded(false)
     setIsCreateProjectWizardOpen(false)
     setActiveStepId(usesGeneralFirstStep ? 'general' : 'configure')
     confirmStartedRef.current = false
@@ -1579,6 +1588,9 @@ export function TenantUserLaunchInstanceWizard({
     const subnetOption = networkInventory
       .getSubnetOptions(defaultVirtualNetworkId)
       .find((option) => option.id === defaultSubnetId)
+    const securityGroupOption = networkInventory
+      .getSecurityGroupOptions()
+      .find((option) => option.id === defaultSecurityGroupId)
 
     return (
       <DescriptionList
@@ -1602,6 +1614,15 @@ export function TenantUserLaunchInstanceWizard({
             {renderNetworkingSummaryValue(
               subnetOption?.name ?? networkContext.policy.subnet.name,
               subnetOption?.detail,
+            )}
+          </DescriptionListDescription>
+        </DescriptionListGroup>
+        <DescriptionListGroup>
+          <DescriptionListTerm>Security group</DescriptionListTerm>
+          <DescriptionListDescription>
+            {renderNetworkingSummaryValue(
+              securityGroupOption?.name ?? networkContext.policy.securityGroup.name,
+              securityGroupOption?.detail,
             )}
           </DescriptionListDescription>
         </DescriptionListGroup>
@@ -1713,6 +1734,11 @@ export function TenantUserLaunchInstanceWizard({
                 `${idPrefix}-virtual-network`,
               )}
               {renderNetworkObjectField('subnet', 'Subnet', `${idPrefix}-subnet`)}
+              {renderNetworkObjectField(
+                'security-group',
+                'Security group',
+                `${idPrefix}-security-group`,
+              )}
             </div>
           ) : null}
         </div>
@@ -2499,41 +2525,52 @@ export function TenantUserLaunchInstanceWizard({
         })}
 
         <div className="tenant-user-launch-wizard__network-section">
-          <Content component="h3" className="tenant-user-launch-wizard__network-section-title">
-            {CLUSTER_LAUNCH_INSTANCE_DEMO.clusterNetworkTitle}
-          </Content>
-          <Content component="p" className="tenant-user-launch-wizard__network-section-lede">
-            {CLUSTER_LAUNCH_INSTANCE_DEMO.clusterNetworkLede}
-          </Content>
-          <FormGroup label="Pod CIDR" fieldId="launch-cluster-pod-cidr" isRequired>
-            <TextInput
-              id="launch-cluster-pod-cidr"
-              value={form.podCidr}
-              onChange={(_event, value) => setForm((current) => ({ ...current, podCidr: value }))}
-              isRequired
-            />
-            <FormHelperText>
-              <HelperText>
-                <HelperTextItem>{CLUSTER_LAUNCH_INSTANCE_DEMO.podCidrHelper}</HelperTextItem>
-              </HelperText>
-            </FormHelperText>
-          </FormGroup>
+          <ExpandableSection
+            toggleText={
+              isClusterNetworkExpanded
+                ? CLUSTER_LAUNCH_INSTANCE_DEMO.clusterNetworkHideToggle
+                : CLUSTER_LAUNCH_INSTANCE_DEMO.clusterNetworkShowToggle
+            }
+            onToggle={(_event, expanded) => setIsClusterNetworkExpanded(expanded)}
+            isExpanded={isClusterNetworkExpanded}
+          >
+            <div className="tenant-user-launch-wizard__cluster-network-fields">
+              <Content component="p" className="tenant-user-launch-wizard__network-section-lede">
+                {CLUSTER_LAUNCH_INSTANCE_DEMO.clusterNetworkLede}
+              </Content>
+              <FormGroup label="Pod CIDR" fieldId="launch-cluster-pod-cidr">
+                <TextInput
+                  id="launch-cluster-pod-cidr"
+                  value={form.podCidr}
+                  onChange={(_event, value) =>
+                    setForm((current) => ({ ...current, podCidr: value }))
+                  }
+                />
+                <FormHelperText>
+                  <HelperText>
+                    <HelperTextItem>{CLUSTER_LAUNCH_INSTANCE_DEMO.podCidrHelper}</HelperTextItem>
+                  </HelperText>
+                </FormHelperText>
+              </FormGroup>
 
-          <FormGroup label="Service CIDR" fieldId="launch-cluster-service-cidr" isRequired>
-            <TextInput
-              id="launch-cluster-service-cidr"
-              value={form.serviceCidr}
-              onChange={(_event, value) =>
-                setForm((current) => ({ ...current, serviceCidr: value }))
-              }
-              isRequired
-            />
-            <FormHelperText>
-              <HelperText>
-                <HelperTextItem>{CLUSTER_LAUNCH_INSTANCE_DEMO.serviceCidrHelper}</HelperTextItem>
-              </HelperText>
-            </FormHelperText>
-          </FormGroup>
+              <FormGroup label="Service CIDR" fieldId="launch-cluster-service-cidr">
+                <TextInput
+                  id="launch-cluster-service-cidr"
+                  value={form.serviceCidr}
+                  onChange={(_event, value) =>
+                    setForm((current) => ({ ...current, serviceCidr: value }))
+                  }
+                />
+                <FormHelperText>
+                  <HelperText>
+                    <HelperTextItem>
+                      {CLUSTER_LAUNCH_INSTANCE_DEMO.serviceCidrHelper}
+                    </HelperTextItem>
+                  </HelperText>
+                </FormHelperText>
+              </FormGroup>
+            </div>
+          </ExpandableSection>
         </div>
       </Form>
     </div>
@@ -2633,6 +2670,11 @@ export function TenantUserLaunchInstanceWizard({
       networkInventory
         .getSubnetOptions(networkSelections.virtualNetworkId)
         .find((option) => option.id === networkSelections.subnetId)?.name ?? networking.subnet
+    const securityGroupLabel =
+      networkInventory
+        .getSecurityGroupOptions()
+        .find((option) => option.id === networkSelections.securityGroupId)?.name ??
+      networking.securityGroup
     const externalIpReviewLabel = form.autoAttachExternalIp
       ? LAUNCH_INSTANCE_WIZARD_DEMO.externalIpReviewAutoAttached
       : LAUNCH_INSTANCE_WIZARD_DEMO.externalIpReviewNone
@@ -2687,6 +2729,7 @@ export function TenantUserLaunchInstanceWizard({
         ? [
             renderReviewRow('Virtual network', virtualNetworkLabel),
             renderReviewRow('Subnet', subnetLabel),
+            renderReviewRow('Security group', securityGroupLabel),
           ]
         : []),
       renderReviewRow('External IP', externalIpReviewLabel),
