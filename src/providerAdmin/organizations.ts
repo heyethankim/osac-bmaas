@@ -237,10 +237,10 @@ export function getOrganizationBillingPendingTooltip(
     findM360AccountByTenantName(organization.tenantId, accounts)
 
   if (account?.accountStatus === 'Inactive') {
-    return 'Billing not linked. M360 account is inactive.'
+    return 'M360 account is inactive. Activate it before linking.'
   }
 
-  return 'Finish tenant billing setup to publish.'
+  return 'Billing was deferred at registration. Link an account from tenant details when ready.'
 }
 
 export function getOrganizationBillingAccountDisplay(
@@ -820,10 +820,10 @@ export function resolveIdpManagerPrototypeOrganization(
 export function getOrganizationSetupSignal(organization: RegisteredOrganization): string | null {
   const setupStatus = resolveTenantSetupStatus(organization)
   if (setupStatus === 'incomplete') {
-    return 'Billing pending'
+    return 'Billing not linked'
   }
   if (setupStatus === 'billing_configured') {
-    return 'Billing account not linked'
+    return 'Billing not linked'
   }
 
   if (!organization.identityProviderConnected) {
@@ -1382,8 +1382,8 @@ export function createDemoHarborlineCapitalOrganization(
 }
 
 /**
- * Redwood Mutual — IdP connected, no M360 billing yet.
- * Setup status Incomplete; lifecycle still Pending activation.
+ * Redwood Mutual — registered with billing deferred (Set up later).
+ * IdP connected; no M360 account linked yet.
  */
 export function createDemoRedwoodMutualOrganization(
   options: {

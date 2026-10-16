@@ -8,7 +8,7 @@ type BillingPendingLabelProps = {
 
 export function BillingPendingLabel({
   tooltip = 'Finish tenant billing setup to publish.',
-  label = 'Billing pending',
+  label = 'Billing not linked',
 }: BillingPendingLabelProps) {
   return (
     <Tooltip content={tooltip} position="top">

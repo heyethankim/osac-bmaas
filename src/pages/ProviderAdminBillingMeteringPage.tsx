@@ -6,7 +6,7 @@ export function ProviderAdminBillingMeteringPage() {
       <ProviderAdminWorkspacePageHeader
         kicker="Administration"
         title="Billing & metering"
-        lede="Track usage metering, reconcile against template rate cards, and review estimated billing."
+        lede="Usage metering and reconciliation will land in a later release. MVP billing is M360 account linking and rate visibility at publish and launch."
       />
     </div>
   )

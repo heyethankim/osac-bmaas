@@ -146,6 +146,10 @@ export function BmaasLandingPage() {
       },
     },
     {
+      label: 'Tenant without billing',
+      to: '/provider/workspace?nav=administration-organizations&tenant=org-redwood-mutual',
+    },
+    {
       label: 'External IP Pools',
       to: '/provider/workspace?nav=networking',
     },
@@ -194,10 +198,6 @@ export function BmaasLandingPage() {
             label: 'External IPs',
             to: '/tenant-admin/northsummit/workspace?nav=networking-external-ip-pools',
           },
-        },
-        {
-          label: 'Billing account inactive',
-          to: '/tenant-admin/northsummit/workspace?nav=catalog&scenario=billing-inactive',
         },
       ],
     },

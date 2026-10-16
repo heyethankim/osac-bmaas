@@ -286,7 +286,7 @@ function resolveBillingPricingBlocker(
       status: 'missing',
       reason: 'tenant_billing_incomplete',
       hourlyRate: null,
-      label: 'Billing pending',
+      label: 'Billing not linked',
       tenantName,
     }
   }

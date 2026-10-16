@@ -111,7 +111,8 @@ export function TenantAdminBillingPage({ organization }: TenantAdminBillingPageP
           icon={MoneyBillAltIcon}
         >
           <EmptyStateBody>
-            Ask your provider administrator to complete M360 billing setup for this tenant.
+            Billing is not linked yet. Ask your provider administrator to link an M360 account when
+            ready.
           </EmptyStateBody>
         </EmptyState>
       ) : (

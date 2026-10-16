@@ -1864,7 +1864,8 @@ function removeRegisteredOrganizationsRaw(): void {
 }
 
 /**
- * Seeds North Summit Bank, Harborline Capital, and Redwood Mutual as Tenants page baselines.
+ * Seeds North Summit Bank, Harborline Capital, and Redwood Mutual (billing deferred).
+ * Drops legacy Cedar Ridge if still stored.
  */
 export function ensureProviderDemoOrganizations(): RegisteredOrganization[] {
   try {

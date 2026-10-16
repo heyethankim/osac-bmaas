@@ -133,7 +133,7 @@ function renderOrganizationBillingPendingLabel(organization: RegisteredOrganizat
 
   return (
     <BillingPendingLabel
-      label={inactive ? 'Billing account inactive' : 'Billing pending'}
+      label={inactive ? 'Billing account inactive' : 'Billing not linked'}
       tooltip={getOrganizationBillingPendingTooltip(organization)}
     />
   )
