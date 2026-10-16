@@ -1,5 +1,6 @@
 import type { CatalogSpecRow } from '../catalog/catalogSpecs'
 import {
+  CLUSTER_NODE_SETS_PARENT_LABEL,
   resolveCatalogSpecRows,
   resolveClusterCatalogHighlightRows,
 } from '../catalog/catalogSpecs'
@@ -1421,13 +1422,32 @@ function getClusterInstanceCatalogDraftFields(instance: TenantInstance) {
 }
 
 /**
+ * Services Clusters card/list: pool count plus how many node sets are ready
+ * (e.g. "3 pools · 2 of 3 ready"). Catalog items keep pool/node counts only.
+ */
+export function formatClusterInstanceNodeSetsSummary(instance: TenantInstance): string {
+  const nodeSets = getClusterNodeSetsWithDefaults(instance)
+  const pools = nodeSets.length
+  if (pools === 0) {
+    return '—'
+  }
+  const ready = nodeSets.filter((nodeSet) => nodeSet.status === 'ready').length
+  const poolLabel = pools === 1 ? 'pool' : 'pools'
+  return `${pools} ${poolLabel} · ${ready} of ${pools} ready`
+}
+
+/**
  * Services card/list: Cluster version + Node sets summary (no Locked/Editable —
  * those modes are catalog-only).
  */
 function getClusterInstanceCardSpecRows(instance: TenantInstance): CatalogSpecRow[] {
-  return resolveClusterCatalogHighlightRows(getClusterInstanceCatalogDraftFields(instance), {
+  const rows = resolveClusterCatalogHighlightRows(getClusterInstanceCatalogDraftFields(instance), {
     includeModeBadges: false,
   })
+  const summary = formatClusterInstanceNodeSetsSummary(instance)
+  return rows.map((row) =>
+    row.label === CLUSTER_NODE_SETS_PARENT_LABEL ? { ...row, value: summary } : row,
+  )
 }
 
 /** Instance detail: full node-set list, still without catalog mode badges. */

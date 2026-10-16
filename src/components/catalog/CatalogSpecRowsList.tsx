@@ -138,7 +138,7 @@ function renderSpecRowValue(row: CatalogSpecRow): ReactNode {
   }
   if (isNodeSetsParentLabel(row.label) && row.badge) {
     // Detail nested parent: value was only the mode label — show the chip alone.
-    // Card/list summary: value is "3 pools · 10 nodes" — show value + chip.
+    // Card/list summary: catalog "3 pools · 10 nodes" or instance "3 pools · 2 of 3 ready".
     if (!row.value.trim() || row.value === row.badge.text) {
       return (
         <Label color={row.badge.color} isCompact>
