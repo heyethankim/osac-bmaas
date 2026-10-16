@@ -70,12 +70,16 @@ import {
   CATALOG_SERVICE_FILTER_LABELS,
   CATALOG_SERVICE_LABELS,
   DEFAULT_BLUEPRINT_FORM,
-  formatRateCardSummary,
   parseRateCardFromForm,
   type CatalogServiceId,
   type PublishedTemplatePayload,
   type RateCard,
 } from '../providerSetup/templateDemo'
+import {
+  formatCatalogItemRateSummary,
+  formatCatalogPriceRangeLine,
+  resolveCatalogItemPriceRange,
+} from '../billing/catalogPriceRange'
 import { ProviderSetupPublishCatalogWizard } from './provider-setup/ProviderSetupPublishCatalogWizard'
 
 type ProviderAdminCatalogPageProps = {
@@ -232,15 +236,21 @@ function ScopeCell({ scope }: { scope: ProviderCatalogDraft['scope'] }) {
   )
 }
 
-function ProviderAdminCatalogRateCell({ rateCard }: { rateCard: RateCard }) {
-  const hourly = rateCard.hourlyRate.toFixed(2)
-  const monthly = rateCard.monthlyRate.toLocaleString('en-US', { maximumFractionDigits: 0 })
+function ProviderAdminCatalogRateCell({
+  rateCard,
+  item,
+}: {
+  rateCard: RateCard
+  item: ProviderCatalogDraft
+}) {
+  const range = resolveCatalogItemPriceRange(item)
+  const line = range?.isRange
+    ? formatCatalogPriceRangeLine(range)
+    : `$${rateCard.hourlyRate.toFixed(2)}/hr · $${rateCard.monthlyRate.toLocaleString('en-US', { maximumFractionDigits: 0 })}/mo`
 
   return (
     <Content component="p" className="provider-admin-catalog-items__primary-cell provider-admin-catalog-items__rate-cell">
-      <span className="provider-admin-catalog-items__rate-line">
-        ${hourly}/hr · ${monthly}/mo
-      </span>
+      <span className="provider-admin-catalog-items__rate-line">{line}</span>
       <span className="provider-admin-catalog-items__rate-unit">per instance</span>
     </Content>
   )
@@ -1230,7 +1240,7 @@ export function ProviderAdminCatalogPage({
                   <dl className="provider-admin-catalog-items__card-specs">
                     <div className="provider-admin-catalog-items__card-spec">
                       <dt>Rate</dt>
-                      <dd>{formatRateCardSummary(item.rateCard)}</dd>
+                      <dd>{formatCatalogItemRateSummary(item)}</dd>
                     </div>
                   </dl>
                   <div
@@ -1330,7 +1340,7 @@ export function ProviderAdminCatalogPage({
                     />
                   </Td>
                   <Td dataLabel="Rate" className="provider-admin-catalog-items__col-rate">
-                    <ProviderAdminCatalogRateCell rateCard={item.rateCard} />
+                    <ProviderAdminCatalogRateCell rateCard={item.rateCard} item={item} />
                   </Td>
                   <Td dataLabel="Visibility" className="provider-admin-catalog-items__col-visibility">
                     <ScopeCell scope={item.scope} />

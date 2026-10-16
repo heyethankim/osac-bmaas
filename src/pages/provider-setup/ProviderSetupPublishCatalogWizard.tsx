@@ -152,6 +152,10 @@ import {
   resolveBareMetalComposedRateEstimate,
   resolveClusterTopologyMachineRateEstimate,
 } from '../../billing/m360RateLines'
+import {
+  getCatalogItemPriceRangeHint,
+  resolveCatalogItemPriceRange,
+} from '../../billing/catalogPriceRange'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import { getCatalogItemStatus } from '../../providerSetup/storage'
 
@@ -729,6 +733,42 @@ export function ProviderSetupPublishCatalogWizard({
       DEFAULT_M360_RATE_CARD_ID,
     )
   }, [clusterTopologyRows, isClusterService])
+  const editableCatalogPriceRange = useMemo(() => {
+    if (isBareMetalService) {
+      return resolveCatalogItemPriceRange({
+        serviceId: 'baremetal',
+        instanceTypeId: selectedInstanceTypeId,
+        diskImageId: selectedDiskImageId,
+        hardwareOsMode,
+        osImageMode,
+      })
+    }
+    if (isClusterService) {
+      return resolveCatalogItemPriceRange({
+        serviceId: 'cluster',
+        nodeSetId: selectedNodeSetId,
+        hostTypeId: selectedHostTypeId,
+        clusterNodeTopologyMode,
+        clusterTopology: clusterTopologyRows.map((row) => ({
+          name: row.name,
+          machineTypeId: row.machineTypeId,
+          nodeCount: row.nodeCount,
+        })),
+      })
+    }
+    return null
+  }, [
+    clusterNodeTopologyMode,
+    clusterTopologyRows,
+    hardwareOsMode,
+    isBareMetalService,
+    isClusterService,
+    osImageMode,
+    selectedDiskImageId,
+    selectedHostTypeId,
+    selectedInstanceTypeId,
+    selectedNodeSetId,
+  ])
   const m360RateConfigured = isClusterService
     ? Boolean(resolvedClusterComposedRate)
     : isBareMetalService
@@ -1456,34 +1496,84 @@ export function ProviderSetupPublishCatalogWizard({
       return null
     }
 
+    const showPriceRange = Boolean(editableCatalogPriceRange?.isRange)
+    const priceRangeHint = showPriceRange
+      ? getCatalogItemPriceRangeHint({
+          serviceId: 'baremetal',
+          instanceTypeId: selectedInstanceTypeId,
+          diskImageId: selectedDiskImageId,
+          hardwareOsMode,
+          osImageMode,
+        })
+      : null
+
     return (
       <div className="provider-setup-template__cluster-estimate" aria-live="polite">
         {resolvedBareMetalComposedRate ? (
           <>
             <div className="provider-setup-template__cluster-estimate-header">
               <Content component="p" className="provider-setup-template__cluster-estimate-label">
-                Estimated total
+                {showPriceRange ? 'Estimated range' : 'Estimated total'}
               </Content>
               <div className="provider-setup-template__cluster-estimate-totals">
-                <span className="provider-setup-template__cluster-estimate-hourly">
-                  ${resolvedBareMetalComposedRate.hourlyRate.toFixed(2)}
-                  <span className="provider-setup-template__cluster-estimate-unit">/hr</span>
-                </span>
-                <span className="provider-setup-template__cluster-estimate-monthly">
-                  $
-                  {resolvedBareMetalComposedRate.monthlyRate.toLocaleString('en-US', {
-                    maximumFractionDigits: 0,
-                  })}
-                  /mo
-                </span>
+                {showPriceRange && editableCatalogPriceRange ? (
+                  <>
+                    <span className="provider-setup-template__cluster-estimate-hourly">
+                      ${editableCatalogPriceRange.minHourly.toFixed(2)}–$
+                      {editableCatalogPriceRange.maxHourly.toFixed(2)}
+                      <span className="provider-setup-template__cluster-estimate-unit">/hr</span>
+                    </span>
+                    <span className="provider-setup-template__cluster-estimate-monthly">
+                      $
+                      {editableCatalogPriceRange.minMonthly.toLocaleString('en-US', {
+                        maximumFractionDigits: 0,
+                      })}
+                      –$
+                      {editableCatalogPriceRange.maxMonthly.toLocaleString('en-US', {
+                        maximumFractionDigits: 0,
+                      })}
+                      /mo
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="provider-setup-template__cluster-estimate-hourly">
+                      ${resolvedBareMetalComposedRate.hourlyRate.toFixed(2)}
+                      <span className="provider-setup-template__cluster-estimate-unit">/hr</span>
+                    </span>
+                    <span className="provider-setup-template__cluster-estimate-monthly">
+                      $
+                      {resolvedBareMetalComposedRate.monthlyRate.toLocaleString('en-US', {
+                        maximumFractionDigits: 0,
+                      })}
+                      /mo
+                    </span>
+                  </>
+                )}
               </div>
             </div>
             <DescriptionList
               isCompact
               isHorizontal
               className="provider-setup-template__cluster-estimate-breakdown"
-              aria-label="Estimated rate breakdown"
+              aria-label={
+                showPriceRange
+                  ? 'Default selection rate breakdown'
+                  : 'Estimated rate breakdown'
+              }
             >
+              {showPriceRange ? (
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Default selection</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    ${resolvedBareMetalComposedRate.hourlyRate.toFixed(2)}/hr · $
+                    {resolvedBareMetalComposedRate.monthlyRate.toLocaleString('en-US', {
+                      maximumFractionDigits: 0,
+                    })}
+                    /mo
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              ) : null}
               <DescriptionListGroup>
                 <DescriptionListTerm>Hardware</DescriptionListTerm>
                 <DescriptionListDescription>
@@ -1501,9 +1591,11 @@ export function ProviderSetupPublishCatalogWizard({
             </DescriptionList>
             <Content component="p" className="provider-setup-template__cluster-estimate-meta">
               {getM360RateCardDisplayName(DEFAULT_M360_RATE_CARD_ID)}
-              {osImageMode === 'editable' || hardwareOsMode === 'editable'
-                ? ' · Changes if tenants adjust hardware or OS'
-                : ''}
+              {priceRangeHint
+                ? ` · ${priceRangeHint}`
+                : osImageMode === 'editable' || hardwareOsMode === 'editable'
+                  ? ' · Changes if tenants adjust hardware or OS'
+                  : ''}
             </Content>
           </>
         ) : (
@@ -1526,34 +1618,88 @@ export function ProviderSetupPublishCatalogWizard({
       return null
     }
 
+    const showPriceRange = Boolean(editableCatalogPriceRange?.isRange)
+    const priceRangeHint = showPriceRange
+      ? getCatalogItemPriceRangeHint({
+          serviceId: 'cluster',
+          nodeSetId: selectedNodeSetId,
+          hostTypeId: selectedHostTypeId,
+          clusterNodeTopologyMode,
+          clusterTopology: clusterTopologyRows.map((row) => ({
+            name: row.name,
+            machineTypeId: row.machineTypeId,
+            nodeCount: row.nodeCount,
+          })),
+        })
+      : null
+
     return (
       <div className="provider-setup-template__cluster-estimate" aria-live="polite">
         {resolvedClusterComposedRate ? (
           <>
             <div className="provider-setup-template__cluster-estimate-header">
               <Content component="p" className="provider-setup-template__cluster-estimate-label">
-                Estimated total
+                {showPriceRange ? 'Estimated range' : 'Estimated total'}
               </Content>
               <div className="provider-setup-template__cluster-estimate-totals">
-                <span className="provider-setup-template__cluster-estimate-hourly">
-                  ${resolvedClusterComposedRate.hourlyRate.toFixed(2)}
-                  <span className="provider-setup-template__cluster-estimate-unit">/hr</span>
-                </span>
-                <span className="provider-setup-template__cluster-estimate-monthly">
-                  $
-                  {resolvedClusterComposedRate.monthlyRate.toLocaleString('en-US', {
-                    maximumFractionDigits: 0,
-                  })}
-                  /mo
-                </span>
+                {showPriceRange && editableCatalogPriceRange ? (
+                  <>
+                    <span className="provider-setup-template__cluster-estimate-hourly">
+                      ${editableCatalogPriceRange.minHourly.toFixed(2)}–$
+                      {editableCatalogPriceRange.maxHourly.toFixed(2)}
+                      <span className="provider-setup-template__cluster-estimate-unit">/hr</span>
+                    </span>
+                    <span className="provider-setup-template__cluster-estimate-monthly">
+                      $
+                      {editableCatalogPriceRange.minMonthly.toLocaleString('en-US', {
+                        maximumFractionDigits: 0,
+                      })}
+                      –$
+                      {editableCatalogPriceRange.maxMonthly.toLocaleString('en-US', {
+                        maximumFractionDigits: 0,
+                      })}
+                      /mo
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="provider-setup-template__cluster-estimate-hourly">
+                      ${resolvedClusterComposedRate.hourlyRate.toFixed(2)}
+                      <span className="provider-setup-template__cluster-estimate-unit">/hr</span>
+                    </span>
+                    <span className="provider-setup-template__cluster-estimate-monthly">
+                      $
+                      {resolvedClusterComposedRate.monthlyRate.toLocaleString('en-US', {
+                        maximumFractionDigits: 0,
+                      })}
+                      /mo
+                    </span>
+                  </>
+                )}
               </div>
             </div>
             <DescriptionList
               isCompact
               isHorizontal
               className="provider-setup-template__cluster-estimate-breakdown"
-              aria-label="Estimated rate breakdown"
+              aria-label={
+                showPriceRange
+                  ? 'Default selection rate breakdown'
+                  : 'Estimated rate breakdown'
+              }
             >
+              {showPriceRange ? (
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Default selection</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    ${resolvedClusterComposedRate.hourlyRate.toFixed(2)}/hr · $
+                    {resolvedClusterComposedRate.monthlyRate.toLocaleString('en-US', {
+                      maximumFractionDigits: 0,
+                    })}
+                    /mo
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              ) : null}
               {resolvedClusterComposedRate.lines.map((line) => (
                 <DescriptionListGroup key={`${line.machineTypeId}-${line.nodeCount}`}>
                   <DescriptionListTerm>
@@ -1567,9 +1713,11 @@ export function ProviderSetupPublishCatalogWizard({
             </DescriptionList>
             <Content component="p" className="provider-setup-template__cluster-estimate-meta">
               {getM360RateCardDisplayName(DEFAULT_M360_RATE_CARD_ID)}
-              {clusterNodeTopologyMode === 'editable'
-                ? ' · Changes if tenants adjust topology'
-                : ''}
+              {priceRangeHint
+                ? ` · ${priceRangeHint}`
+                : clusterNodeTopologyMode === 'editable'
+                  ? ' · Changes if tenants adjust topology'
+                  : ''}
             </Content>
           </>
         ) : (

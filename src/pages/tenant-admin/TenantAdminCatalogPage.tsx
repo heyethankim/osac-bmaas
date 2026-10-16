@@ -37,6 +37,7 @@ import { CatalogViewToggle } from '../../components/catalog/CatalogViewToggle'
 import { TenantCatalogItemDetailsPage } from '../../components/tenant-admin/TenantCatalogItemDetailsPage'
 import { ProviderSetupPublishCatalogWizard } from '../provider-setup/ProviderSetupPublishCatalogWizard'
 import { TenantUserLaunchInstanceWizard } from '../../components/tenant-user/TenantUserLaunchInstanceWizard'
+import { formatCatalogItemRateSummary } from '../../billing/catalogPriceRange'
 import { CatalogRateCell } from '../../components/catalog/CatalogRateCell'
 import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
 import { LaunchBillingBlockedModal } from '../../components/billing/LaunchBillingBlockedModal'
@@ -63,7 +64,6 @@ import {
   CATALOG_SERVICE_FILTER_LABELS,
   DEMO_EXISTING_MASTER_TEMPLATES,
   PUBLISH_CATALOG_SUGGESTED_DISPLAY_NAME,
-  formatRateCardSummary,
   type CatalogServiceId,
 } from '../../providerSetup/templateDemo'
 import {
@@ -1138,7 +1138,7 @@ export function TenantAdminCatalogPage({
                     <dl className="tenant-admin-catalog-manager__card-specs">
                       <div className="tenant-admin-catalog-manager__card-spec">
                         <dt>Rate</dt>
-                        <dd>{formatRateCardSummary(item.rateCard)}</dd>
+                        <dd>{formatCatalogItemRateSummary(item)}</dd>
                       </div>
                     </dl>
 
@@ -1229,7 +1229,7 @@ export function TenantAdminCatalogPage({
                         />
                       </Td>
                       <Td dataLabel="Rate" className="tenant-admin-catalog-manager__col-rate">
-                        <CatalogRateCell rateCard={item.rateCard} />
+                        <CatalogRateCell rateCard={item.rateCard} item={item} />
                       </Td>
                       <Td dataLabel="Source" className="tenant-admin-catalog-manager__col-source">
                         <TenantAdminCatalogOriginLine

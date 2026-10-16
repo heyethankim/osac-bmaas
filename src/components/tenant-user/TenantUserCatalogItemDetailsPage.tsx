@@ -24,7 +24,7 @@ import {
 import { formatCatalogFieldPolicyMode } from '../../catalog/catalogPublishConfig'
 import { CatalogClusterVersionValue } from '../catalog/CatalogClusterVersionValue'
 import { CatalogVmDefaultsSections } from '../catalog/CatalogVmDefaultsSections'
-import { formatRateCardSummary } from '../../providerSetup/templateDemo'
+import { formatCatalogItemRateSummary } from '../../billing/catalogPriceRange'
 import type { TenantUserCatalogCard } from '../../tenantUser/catalog'
 import { LAUNCH_INSTANCE_WIZARD_DEMO } from '../../tenantUser/launchInstanceWizard'
 
@@ -154,7 +154,7 @@ export function TenantUserCatalogItemDetailsPage({
             service: catalogItem.service,
             statusLabel: catalogItem.status,
             statusColor: 'green',
-            rateSummary: formatRateCardSummary(catalogItem.rateCard),
+            rateSummary: formatCatalogItemRateSummary(catalogItem),
             scope: catalogItem.scope,
             visibilityLabel:
               catalogItem.scope === 'vip-enterprise' ? 'VIP enterprise' : 'Global public',
@@ -179,7 +179,7 @@ export function TenantUserCatalogItemDetailsPage({
             service: catalogItem.service,
             statusLabel: catalogItem.status,
             statusColor: 'green',
-            rateSummary: formatRateCardSummary(catalogItem.rateCard),
+            rateSummary: formatCatalogItemRateSummary(catalogItem),
             scope: catalogItem.scope,
             visibilityLabel:
               catalogItem.scope === 'vip-enterprise' ? 'VIP enterprise' : 'Global public',
@@ -283,7 +283,7 @@ export function TenantUserCatalogItemDetailsPage({
                 <DescriptionListGroup>
                   <DescriptionListTerm>Rate</DescriptionListTerm>
                   <DescriptionListDescription>
-                    {formatRateCardSummary(catalogItem.rateCard)}
+                    {formatCatalogItemRateSummary(catalogItem)}
                   </DescriptionListDescription>
                 </DescriptionListGroup>
               </DescriptionList>

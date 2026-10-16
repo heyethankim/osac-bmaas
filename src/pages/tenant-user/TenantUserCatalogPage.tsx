@@ -24,6 +24,7 @@ import {
 import { CatalogFilterEmptyState } from '../../components/catalog/CatalogFilterEmptyState'
 import { CatalogFilterResultsSummary } from '../../components/catalog/CatalogFilterResultsSummary'
 import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
+import { formatCatalogItemRateSummary } from '../../billing/catalogPriceRange'
 import { CatalogRateCell } from '../../components/catalog/CatalogRateCell'
 import { CatalogViewToggle } from '../../components/catalog/CatalogViewToggle'
 import {
@@ -39,7 +40,6 @@ import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import { getProviderCatalogItems } from '../../providerSetup/storage'
 import {
   CATALOG_SERVICE_FILTER_LABELS,
-  formatRateCardSummary,
   type CatalogServiceId,
 } from '../../providerSetup/templateDemo'
 import {
@@ -539,7 +539,7 @@ export function TenantUserCatalogPage({
                     <dl className="tenant-user-catalog__card-specs">
                       <div className="tenant-user-catalog__card-spec">
                         <dt>Rate</dt>
-                        <dd>{formatRateCardSummary(item.rateCard)}</dd>
+                        <dd>{formatCatalogItemRateSummary(item)}</dd>
                       </div>
                     </dl>
 
@@ -615,7 +615,7 @@ export function TenantUserCatalogPage({
                       />
                     </Td>
                     <Td dataLabel="Rate" className="tenant-user-catalog__col-rate">
-                      <CatalogRateCell rateCard={item.rateCard} />
+                      <CatalogRateCell rateCard={item.rateCard} item={item} />
                     </Td>
                     <Td dataLabel="Action" className="tenant-user-catalog__col-action">
                       <Button

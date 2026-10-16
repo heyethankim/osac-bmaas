@@ -23,7 +23,7 @@ import {
   resolveClusterCatalogHighlightRows,
   resolveVmCatalogHighlightRows,
 } from '../../catalog/catalogSpecs'
-import { formatRateCardSummary } from '../../providerSetup/templateDemo'
+import { formatCatalogItemRateSummary } from '../../billing/catalogPriceRange'
 import { formatCatalogFieldPolicyMode } from '../../catalog/catalogPublishConfig'
 import { CatalogClusterVersionValue } from '../catalog/CatalogClusterVersionValue'
 import { CatalogVmDefaultsSections } from '../catalog/CatalogVmDefaultsSections'
@@ -189,7 +189,7 @@ export function TenantCatalogItemDetailsPage({
             service: item.service,
             statusLabel: item.status,
             statusColor: item.status === 'Unpublished' ? 'grey' : 'green',
-            rateSummary: formatRateCardSummary(item.rateCard),
+            rateSummary: formatCatalogItemRateSummary(item),
             scope: item.scope,
             visibilityLabel: getTenantAdminCatalogSourceLabel(item),
             createdAtLabel: formatCatalogItemCreatedAt(item.createdAt),
@@ -213,7 +213,7 @@ export function TenantCatalogItemDetailsPage({
             service: item.service,
             statusLabel: item.status,
             statusColor: item.status === 'Unpublished' ? 'grey' : 'green',
-            rateSummary: formatRateCardSummary(item.rateCard),
+            rateSummary: formatCatalogItemRateSummary(item),
             scope: item.scope,
             visibilityLabel: getTenantAdminCatalogSourceLabel(item),
             createdAtLabel: formatCatalogItemCreatedAt(item.createdAt),

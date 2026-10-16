@@ -1,5 +1,9 @@
-import { formatRateCardSummary } from '../../providerSetup/templateDemo'
 import type { RateCard } from '../../providerSetup/templateDemo'
+import {
+  formatCatalogItemRateSummary,
+  resolveCatalogItemPriceRange,
+  type CatalogItemPriceRangeInput,
+} from '../../billing/catalogPriceRange'
 import {
   canPublishCatalogItemToTenants,
   getCatalogItemM360Pricing,
@@ -8,22 +12,23 @@ import {
 import { M360RateStatusLabel } from './M360RateStatusLabel'
 
 type CatalogItemRateDisplayProps = {
-  item: CatalogItemPricingInput & { rateCard: RateCard }
+  item: CatalogItemPricingInput & CatalogItemPriceRangeInput & { rateCard: RateCard }
 }
 
 export function CatalogItemRateDisplay({ item }: CatalogItemRateDisplayProps) {
   const pricing = getCatalogItemM360Pricing(item)
+  const range = resolveCatalogItemPriceRange(item)
 
   if (canPublishCatalogItemToTenants(item)) {
+    if (range?.isRange) {
+      return <>{formatCatalogItemRateSummary(item)}</>
+    }
+
     if (pricing.summary) {
       return <>{pricing.summary}</>
     }
 
-    if (pricing.rateCard) {
-      return <>{formatRateCardSummary(pricing.rateCard)}</>
-    }
-
-    return <>{formatRateCardSummary(item.rateCard)}</>
+    return <>{formatCatalogItemRateSummary(item)}</>
   }
 
   return (

@@ -7420,8 +7420,9 @@ a.provider-admin-network-inventory__related-link:hover {
 .provider-setup-template__cluster-estimate-hourly {
   font-size: var(--pf-t--global--font--size--heading--md);
   font-weight: var(--pf-t--global--font--weight--heading--bold);
-  line-height: 1;
+  line-height: 1.15;
   color: var(--pf-t--global--text--color--regular);
+  font-variant-numeric: tabular-nums;
 }
 
 .provider-setup-template__cluster-estimate-unit {
@@ -7432,6 +7433,7 @@ a.provider-admin-network-inventory__related-link:hover {
 .provider-setup-template__cluster-estimate-monthly {
   color: var(--pf-t--global--text--color--subtle);
   font-size: var(--pf-t--global--font--size--body--sm);
+  font-variant-numeric: tabular-nums;
 }
 
 .provider-setup-template__cluster-estimate-breakdown.pf-v6-c-description-list {

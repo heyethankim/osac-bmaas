@@ -35,9 +35,9 @@ import {
   getProviderRegisteredOrganizations,
 } from '../../providerSetup/storage'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
+import { formatCatalogItemRateSummary } from '../../billing/catalogPriceRange'
 import {
   CATALOG_SERVICE_FILTER_LABELS,
-  formatRateCardSummary,
   type CatalogServiceId,
 } from '../../providerSetup/templateDemo'
 import { formatCatalogItemCreatedAt } from '../../catalog/catalogDetails'
@@ -327,7 +327,7 @@ export function CatalogItemDetailsPage({
                 service: CATALOG_SERVICE_FILTER_LABELS[serviceId],
                 statusLabel: showLive ? 'Live' : showPublishing ? 'Publishing' : 'Unpublished',
                 statusColor: showLive ? 'green' : showPublishing ? 'blue' : 'grey',
-                rateSummary: formatRateCardSummary(catalog.rateCard),
+                rateSummary: formatCatalogItemRateSummary(catalog),
                 scope: catalog.scope,
                 visibilityLabel: scopeLabel,
                 createdAtLabel: formatCatalogItemCreatedAt(catalog.createdAt),
@@ -342,7 +342,7 @@ export function CatalogItemDetailsPage({
                 service: CATALOG_SERVICE_FILTER_LABELS[serviceId],
                 statusLabel: showLive ? 'Live' : showPublishing ? 'Publishing' : 'Unpublished',
                 statusColor: showLive ? 'green' : showPublishing ? 'blue' : 'grey',
-                rateSummary: formatRateCardSummary(catalog.rateCard),
+                rateSummary: formatCatalogItemRateSummary(catalog),
                 scope: catalog.scope,
                 visibilityLabel: scopeLabel,
                 createdAtLabel: formatCatalogItemCreatedAt(catalog.createdAt),
@@ -386,7 +386,7 @@ export function CatalogItemDetailsPage({
                 <DescriptionListGroup>
                   <DescriptionListTerm>Rate</DescriptionListTerm>
                   <DescriptionListDescription>
-                    {formatRateCardSummary(catalog.rateCard)}
+                    {formatCatalogItemRateSummary(catalog)}
                   </DescriptionListDescription>
                 </DescriptionListGroup>
               </DescriptionList>
