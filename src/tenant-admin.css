@@ -3867,6 +3867,10 @@
   font-weight: var(--pf-t--global--font--weight--body--bold);
 }
 
+.tenant-user-launch-wizard__billing-alert {
+  margin-block-end: var(--pf-t--global--spacer--lg);
+}
+
 .tenant-user-launch-wizard__review-alert {
   margin-block: var(--pf-t--global--spacer--md) 0;
 }

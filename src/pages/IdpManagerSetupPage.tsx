@@ -219,7 +219,7 @@ function IdpManagerSetupSession({
               username and password.
             </Alert>
           ) : (
-            <Alert variant="warning" isInline title="OSAC link expired">
+            <Alert variant="warning" isInline title="Setup link expired">
               Ask the provider admin for {gateOrganization?.name ?? 'this tenant'} to create
               a new break-glass account.
             </Alert>
@@ -227,7 +227,7 @@ function IdpManagerSetupSession({
           {gateState === 'invalid' && currentInvites.length > 0 ? (
             <Content component="p" className="idp-manager-setup-page__lede">
               A pending tenant is waiting on IdP setup. Return home and open IdP manager
-              again, or use the OSAC link the provider admin sent.
+              again, or use the setup link the provider admin sent.
             </Content>
           ) : null}
           <div className="idp-manager-setup-page__actions">

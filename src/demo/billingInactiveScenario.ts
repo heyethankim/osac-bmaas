@@ -37,6 +37,12 @@ export function enableNorthSummitBillingInactiveScenario(): void {
   } catch {
     /* private mode / denied storage */
   }
+  // Mutually exclusive with billing-not-linked demo.
+  try {
+    sessionStorage.removeItem('bmaas-demo-scenario-billing-not-linked')
+  } catch {
+    /* private mode / denied storage */
+  }
   setDemoM360AccountLifecycleStatus(NORTH_SUMMIT_M360_ACCOUNT, 'Inactive', 'Draft')
   setTenantUserInstances(NORTH_SUMMIT_TENANT_SLUG, [])
 }

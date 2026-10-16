@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { useHref, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
+import { ExternalLinkAltIcon } from '@patternfly/react-icons/dist/esm/icons/external-link-alt-icon'
 import { InfoCircleIcon } from '@patternfly/react-icons/dist/esm/icons/info-circle-icon'
 import { RedoIcon } from '@patternfly/react-icons/dist/esm/icons/redo-icon'
 import {
@@ -30,7 +31,6 @@ import {
   useWizardContext,
 } from '@patternfly/react-core'
 import { RouterButton } from '../RouterButton'
-import { ExternalLinkButton } from '../shared/ExternalLinkButton'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import {
   BLUESOLACE_ONBOARDING_M360_ACCOUNT_NAME,
@@ -125,7 +125,6 @@ type TenantOnboardingWizardProps = {
 type BillingApiState = 'idle' | 'loading' | 'ready' | 'error'
 type BillingLinkTiming = 'now' | 'later'
 
-const M360_ACCOUNTS_PATH = '/m360/accounts'
 
 const BILLING_LINK_TIMING_OPTIONS: ReadonlyArray<{
   id: BillingLinkTiming
@@ -224,7 +223,6 @@ export function TenantOnboardingWizard({
     const stepIndex = TENANT_ONBOARDING_STEPS.findIndex((step) => step.id === initialStepId)
     return stepIndex >= 0 ? stepIndex + 1 : 1
   })()
-  const m360AccountsHref = useHref(M360_ACCOUNTS_PATH)
   const [form, setForm] = useState<RegisterOrganizationForm>(() =>
     buildTenantOnboardingForm(getProviderRegisteredOrganizations()),
   )
@@ -1058,9 +1056,17 @@ export function TenantOnboardingWizard({
                         </Content>
                       </div>
                       <div className="tenant-onboarding__account-hint-actions">
-                        <ExternalLinkButton href={m360AccountsHref} variant="link">
-                          Open {platformLabel} accounts
-                        </ExternalLinkButton>
+                        <Button
+                          variant="link"
+                          isInline
+                          icon={<ExternalLinkAltIcon aria-hidden />}
+                          iconPosition="end"
+                          onClick={(event) => {
+                            event.preventDefault()
+                          }}
+                        >
+                          Open billing portal
+                        </Button>
                         <Button
                           variant="link"
                           isInline

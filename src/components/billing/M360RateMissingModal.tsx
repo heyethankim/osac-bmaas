@@ -65,7 +65,7 @@ export function M360RateMissingModal({
           {pricing.reason === 'm360_account_inactive' ? (
             <Content component="p">
               The M360 billing account for this tenant is inactive. Activate the account in M360,
-              then finish tenant setup in OSAC.
+              then finish tenant setup here.
             </Content>
           ) : (
             <Content component="p">
@@ -99,7 +99,7 @@ export function M360RateMissingModal({
           card exists in M360.
         </Content>
         <Content component="p">
-          Configure the rate in M360, then refresh pricing in OSAC to unlock publish and tenant
+          Configure the rate in M360, then refresh pricing here to unlock publish and tenant
           provisioning.
         </Content>
       </ModalBody>

@@ -93,7 +93,7 @@ function buildIdpManagerHandoffText(
 ): string {
   const lines: string[] = []
   if (link) {
-    lines.push(`OSAC link: ${link}`)
+    lines.push(`Setup link: ${link}`)
   }
   if (credentials) {
     lines.push(`Username: ${credentials.username}`, `Password: ${credentials.password}`)
@@ -111,7 +111,7 @@ function buildDefaultConnectForm(organization: RegisteredOrganization): ConnectF
   }
 }
 
-/** PatternFly wizard for IdP choice: provider connects, or hands off an OSAC link. */
+/** PatternFly wizard for IdP choice: provider connects, or hands off a setup link. */
 export function SetupIdentityProviderWizard({
   isOpen,
   presentation = 'modal',
@@ -389,7 +389,7 @@ export function SetupIdentityProviderWizard({
         })}
       >
         <Content component="p" className="provider-admin-organizations__wizard-lede">
-          Connect the IdP for {organization.name} yourself, or copy an OSAC link for the IdP
+          Connect the IdP for {organization.name} yourself, or copy a setup link for the IdP
           manager.
         </Content>
         <div
@@ -481,7 +481,7 @@ export function SetupIdentityProviderWizard({
                 component="p"
                 className="provider-setup-template__service-card-description"
               >
-                Copy an OSAC URL and a local login for the IdP manager.
+                Copy a setup URL and a local login for the IdP manager.
               </Content>
             </CardBody>
           </Card>
@@ -607,11 +607,11 @@ export function SetupIdentityProviderWizard({
               <Alert
                 variant={justSent ? 'success' : 'info'}
                 isInline
-                title={justSent ? 'OSAC link ready' : 'Waiting on IdP manager'}
+                title={justSent ? 'Setup link ready' : 'Waiting on IdP manager'}
                 className="provider-admin-organizations__idp-pending-alert"
               >
-                Send the OSAC URL, username, and password to the IdP manager. OSAC does not
-                email them.
+                Send the setup URL, username, and password to the IdP manager. Nothing is emailed
+                automatically.
               </Alert>
             ) : (
               <Alert
@@ -637,16 +637,16 @@ export function SetupIdentityProviderWizard({
               </Button>
               {inviteAbsoluteUrl ? (
                 <FormGroup
-                  label="OSAC link"
+                  label="Setup link"
                   fieldId="idp-invite-link"
                   className="provider-admin-organizations__idp-pending-field"
                 >
                   <ClipboardCopy
                     id="idp-invite-link"
                     isReadOnly
-                    hoverTip="Copy OSAC link"
-                    clickTip="OSAC link copied"
-                    textAriaLabel="OSAC link for IdP manager"
+                    hoverTip="Copy setup link"
+                    clickTip="Setup link copied"
+                    textAriaLabel="Setup link for IdP manager"
                   >
                     {inviteAbsoluteUrl}
                   </ClipboardCopy>

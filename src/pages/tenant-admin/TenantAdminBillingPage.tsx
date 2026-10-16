@@ -7,6 +7,7 @@ import { MoneyBillAltIcon } from '@patternfly/react-icons/dist/esm/icons/money-b
 import { OutlinedBuildingIcon } from '@patternfly/react-icons/dist/esm/icons/outlined-building-icon'
 import {
   Alert,
+  Button,
   Card,
   CardBody,
   CardHeader,
@@ -22,7 +23,6 @@ import {
   Title,
 } from '@patternfly/react-core'
 import {
-  buildM360AccountDetailPath,
   findM360AccountByReference,
   findM360AccountByTenantName,
   formatM360OrganizationHierarchyLabel,
@@ -38,14 +38,11 @@ import {
   listM360RateLineHeadlines,
 } from '../../billing/m360RateLines'
 import { ProviderAdminWorkspacePageHeader } from '../../components/provider-admin/ProviderAdminWorkspacePageHeader'
-import { RouterButton } from '../../components/RouterButton'
 import {
   getOrganizationBillingAccountDisplay,
   isOrganizationBillingPending,
   type RegisteredOrganization,
 } from '../../providerAdmin/organizations'
-
-const M360_ACCOUNTS_PATH = '/m360/accounts'
 
 type TenantAdminBillingPageProps = {
   organization: RegisteredOrganization
@@ -69,9 +66,6 @@ export function TenantAdminBillingPage({ organization }: TenantAdminBillingPageP
   const isPending = isOrganizationBillingPending(organization)
   const accountInactive = account?.accountStatus === 'Inactive'
   const accountDisplay = getOrganizationBillingAccountDisplay(organization)
-  const m360DetailPath = account
-    ? buildM360AccountDetailPath(getM360AccountTenantName(account))
-    : M360_ACCOUNTS_PATH
   const AccountStatusIcon = accountInactive ? ExclamationTriangleIcon : CheckCircleIcon
 
   return (
@@ -79,27 +73,29 @@ export function TenantAdminBillingPage({ organization }: TenantAdminBillingPageP
       <ProviderAdminWorkspacePageHeader
         kicker="Administration"
         title="Billing"
-        lede="Your tenant’s M360 billing account, rate card, and link status. Balances and invoices stay in M360."
+        lede="Billing account link status and rates for this tenant. Balances and invoices stay in the billing platform."
         action={
-          <RouterButton
-            to={m360DetailPath}
+          <Button
             variant="primary"
             icon={<ExternalLinkAltIcon aria-hidden />}
             iconPosition="end"
+            onClick={(event) => {
+              event.preventDefault()
+            }}
           >
-            {account ? 'Open in M360' : 'Open M360 accounts'}
-          </RouterButton>
+            Open billing portal
+          </Button>
         }
       />
 
       <Alert
         variant="info"
         isInline
-        title="Account balances are not shown in OSAC"
+        title="Balances are not shown here"
         className="tenant-admin-billing__alert"
       >
         <Content component="p">
-          OSAC shows M360 account status and linking for this tenant only.
+          Link status and rates only. Open the billing portal for balances and invoices.
         </Content>
       </Alert>
 
@@ -111,8 +107,8 @@ export function TenantAdminBillingPage({ organization }: TenantAdminBillingPageP
           icon={MoneyBillAltIcon}
         >
           <EmptyStateBody>
-            Billing is not linked yet. Ask your provider administrator to link an M360 account when
-            ready.
+            Ask your provider administrator to link a billing account. You can still provision from
+            the catalog meanwhile.
           </EmptyStateBody>
         </EmptyState>
       ) : (
@@ -122,7 +118,7 @@ export function TenantAdminBillingPage({ organization }: TenantAdminBillingPageP
               <div className="tenant-admin-billing__summary">
                 <div className="tenant-admin-billing__summary-main">
                   <span className="tenant-admin-billing__summary-kicker">
-                    Linked M360 billing account
+                    Linked billing account
                   </span>
                   <Title
                     headingLevel="h2"
@@ -193,7 +189,7 @@ export function TenantAdminBillingPage({ organization }: TenantAdminBillingPageP
                 <Content component="p" className="tenant-admin-billing__kpi-hint">
                   {accountInactive
                     ? 'Inactive accounts cannot launch instances'
-                    : 'Lifecycle status from M360'}
+                    : 'Lifecycle status from the billing platform'}
                 </Content>
               </CardBody>
             </Card>
@@ -217,7 +213,7 @@ export function TenantAdminBillingPage({ organization }: TenantAdminBillingPageP
                   {account.approvalStatus}
                 </Title>
                 <Content component="p" className="tenant-admin-billing__kpi-hint">
-                  M360 approval workflow state
+                  Approval status from the billing platform
                 </Content>
               </CardBody>
             </Card>
@@ -243,7 +239,7 @@ export function TenantAdminBillingPage({ organization }: TenantAdminBillingPageP
                 <Content component="p" className="tenant-admin-billing__kpi-hint">
                   {rateCard
                     ? `${rateCard.region} · ${rateLineCount} rate${rateLineCount === 1 ? '' : 's'}`
-                    : 'Attached in M360'}
+                    : 'Attached in the billing platform'}
                 </Content>
               </CardBody>
             </Card>
@@ -283,7 +279,7 @@ export function TenantAdminBillingPage({ organization }: TenantAdminBillingPageP
                     </DescriptionListDescription>
                   </DescriptionListGroup>
                   <DescriptionListGroup>
-                    <DescriptionListTerm>OSAC link</DescriptionListTerm>
+                    <DescriptionListTerm>Linked account</DescriptionListTerm>
                     <DescriptionListDescription>
                       <code>{accountDisplay}</code>
                     </DescriptionListDescription>
@@ -310,7 +306,7 @@ export function TenantAdminBillingPage({ organization }: TenantAdminBillingPageP
                 ) : (
                   <>
                     <Content component="p" className="tenant-admin-billing__rates-lede">
-                      Sample catalog rates from M360. Full pricing stays in M360.
+                      Sample catalog rates. Full pricing stays in the billing platform.
                     </Content>
                     <ul className="tenant-admin-billing__rates-list">
                       {rateHeadlines.map((headline) => (
@@ -319,7 +315,7 @@ export function TenantAdminBillingPage({ organization }: TenantAdminBillingPageP
                     </ul>
                     {rateLineCount > rateHeadlines.length ? (
                       <Content component="p" className="tenant-admin-billing__rates-more">
-                        +{rateLineCount - rateHeadlines.length} more in M360
+                        +{rateLineCount - rateHeadlines.length} more in the billing platform
                       </Content>
                     ) : null}
                   </>

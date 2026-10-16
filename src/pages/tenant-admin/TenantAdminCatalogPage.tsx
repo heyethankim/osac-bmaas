@@ -6,6 +6,7 @@ import {
   CardBody,
   Content,
   Alert,
+  AlertActionLink,
   EmptyState,
   EmptyStateBody,
   Flex,
@@ -55,7 +56,10 @@ import {
   syncWorkspaceCatalogItemParam,
   WORKSPACE_ACTION_LAUNCH_INSTANCE,
 } from '../../shared/workspaceNavUrl'
-import type { RegisteredOrganization } from '../../providerAdmin/organizations'
+import {
+  isOrganizationBillingPending,
+  type RegisteredOrganization,
+} from '../../providerAdmin/organizations'
 import { isOrganizationM360AccountInactive } from '../../billing/m360'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import { getProviderCatalogItems, getProviderSavedTemplate } from '../../providerSetup/storage'
@@ -361,6 +365,8 @@ export function TenantAdminCatalogPage({
   const catalogDisplayOrderRef = useRef<string[] | null>(null)
   const itemParam = getWorkspaceCatalogItemParam(searchParams)
   const billingAccountInactive = isOrganizationM360AccountInactive(organization)
+  const billingAccountNotLinked =
+    !billingAccountInactive && isOrganizationBillingPending(organization)
   const organizationDisplayName =
     organization.displayName?.trim() || organization.name
   const catalogTemplates = useMemo(
@@ -935,6 +941,7 @@ export function TenantAdminCatalogPage({
           onProjectScopeChange={onProjectScopeChange}
           onCreateProject={onCreateProject}
           existingInstanceNames={existingInstanceNames}
+          onNavigateToBilling={onNavigateToBilling}
           onClose={closeLaunchWizard}
           onBackToCatalogItem={() => {
             if (selectedCatalogItem) {
@@ -1001,6 +1008,23 @@ export function TenantAdminCatalogPage({
             <Content component="p">
               {organizationDisplayName} cannot launch instances until its M360 billing account is
               active.
+            </Content>
+          </Alert>
+        ) : billingAccountNotLinked ? (
+          <Alert
+            variant="warning"
+            isInline
+            title="Billing account not linked"
+            className="tenant-admin-catalog-manager__billing-alert"
+            actionLinks={
+              onNavigateToBilling ? (
+                <AlertActionLink onClick={onNavigateToBilling}>Go to Billing</AlertActionLink>
+              ) : undefined
+            }
+          >
+            <Content component="p">
+              You can still provision instances. Link a billing account on the Billing page so usage
+              can be metered and charged.
             </Content>
           </Alert>
         ) : null}

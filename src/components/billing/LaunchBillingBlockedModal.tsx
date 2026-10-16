@@ -33,7 +33,7 @@ export function LaunchBillingBlockedModal({
           <strong>{catalogItemName}</strong> while its M360 billing account is inactive.
         </Content>
         <Content component="p">
-          Activate the billing account in M360, then return to OSAC to launch instances from the
+          Activate the billing account in M360, then return here to launch instances from the
           catalog.
         </Content>
       </ModalBody>

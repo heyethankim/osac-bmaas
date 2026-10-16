@@ -5,6 +5,7 @@ import { InfoCircleIcon } from '@patternfly/react-icons/dist/esm/icons/info-circ
 import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon'
 import {
   Alert,
+  AlertActionLink,
   Content,
   DescriptionList,
   DescriptionListDescription,
@@ -40,7 +41,10 @@ import {
   useWizardContext,
 } from '@patternfly/react-core'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
-import type { RegisteredOrganization } from '../../providerAdmin/organizations'
+import {
+  isOrganizationBillingPending,
+  type RegisteredOrganization,
+} from '../../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import type { CatalogServiceId } from '../../providerSetup/templateDemo'
 import { useWorkspaceWizardStepUrl } from '../../shared/useWorkspaceWizardStepUrl'
@@ -170,6 +174,8 @@ type TenantUserLaunchInstanceWizardProps = {
    * and inventory refresh on focus. Enabled for tenant admin and tenant user launch.
    */
   canManageNetworkObjects?: boolean
+  /** Soft cue when billing is not linked — open Tenant Admin Billing. */
+  onNavigateToBilling?: () => void
 }
 
 function resolveInitialLaunchProjectId(
@@ -207,8 +213,12 @@ export function TenantUserLaunchInstanceWizard({
   onDismissDuringProvisioning,
   onWizardFinished: _onWizardFinished,
   canManageNetworkObjects = false,
+  onNavigateToBilling,
 }: TenantUserLaunchInstanceWizardProps) {
   void _onWizardFinished
+  const billingAccountLinked = !(
+    organization != null && isOrganizationBillingPending(organization)
+  )
   const [networkInventoryRevision, setNetworkInventoryRevision] = useState(0)
   const [openNetworkMenuKind, setOpenNetworkMenuKind] =
     useState<LaunchNetworkFieldKind | null>(null)
@@ -2588,7 +2598,28 @@ export function TenantUserLaunchInstanceWizard({
       <LaunchCostPanel
         hourlyEstimate={hourlyLaunchEstimate}
         projectName={selectedProjectName}
+        billingAccountLinked={billingAccountLinked}
+        onOpenBilling={onNavigateToBilling}
       />
+
+      {!billingAccountLinked ? (
+        <Alert
+          variant="warning"
+          isInline
+          title="Billing account not linked"
+          className="tenant-user-launch-wizard__billing-alert"
+          actionLinks={
+            onNavigateToBilling ? (
+              <AlertActionLink onClick={onNavigateToBilling}>Go to Billing</AlertActionLink>
+            ) : undefined
+          }
+        >
+          <Content component="p">
+            You can continue provisioning. Link a billing account on the Billing page so usage can
+            be metered and charged.
+          </Content>
+        </Alert>
+      ) : null}
 
       <Form autoComplete="off" className="tenant-user-launch-wizard__form">
         {renderProjectField('launch-instance-project')}
@@ -2811,7 +2842,28 @@ export function TenantUserLaunchInstanceWizard({
         <LaunchCostPanel
           hourlyEstimate={hourlyLaunchEstimate}
           projectName={selectedProjectName}
+          billingAccountLinked={billingAccountLinked}
+          onOpenBilling={onNavigateToBilling}
         />
+
+        {!billingAccountLinked ? (
+          <Alert
+            variant="warning"
+            isInline
+            title="Billing account not linked"
+            className="tenant-user-launch-wizard__billing-alert"
+            actionLinks={
+              onNavigateToBilling ? (
+                <AlertActionLink onClick={onNavigateToBilling}>Go to Billing</AlertActionLink>
+              ) : undefined
+            }
+          >
+            <Content component="p">
+              You can launch this instance now. Link a billing account on the Billing page so usage
+              can be metered and charged.
+            </Content>
+          </Alert>
+        ) : null}
 
         <DescriptionList isCompact className="tenant-user-launch-wizard__review-list">
           {reviewRows}

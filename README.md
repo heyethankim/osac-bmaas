@@ -1,4 +1,4 @@
-# OSAC BMaaS Prototype
+# BMaaS Prototype
 
 PatternFly React prototype for Bare Metal-as-a-Service flows:
 

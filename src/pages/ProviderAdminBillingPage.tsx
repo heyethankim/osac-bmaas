@@ -31,12 +31,9 @@ import {
 } from '../billing/m360Accounts'
 import { M360BillingAccountLink } from '../components/billing/M360BillingAccountLink'
 import { ProviderAdminWorkspacePageHeader } from '../components/provider-admin/ProviderAdminWorkspacePageHeader'
-import { RouterButton } from '../components/RouterButton'
 import type { RegisteredOrganization } from '../providerAdmin/organizations'
 import { getProviderRegisteredOrganizations } from '../providerSetup/storage'
 import { buildProviderOrganizationWorkspacePath } from '../shared/workspaceNavUrl'
-
-const M360_ACCOUNTS_PATH = '/m360/accounts'
 
 function findOrganizationForM360Account(
   account: M360BillingAccount,
@@ -90,22 +87,24 @@ export function ProviderAdminBillingPage() {
       <ProviderAdminWorkspacePageHeader
         kicker="Administration"
         title="Billing"
-        lede="Account status comes from M360. Linked tenants are M360 accounts with an External ID set for OSAC."
+        lede="Account status comes from M360. Linked tenants are M360 accounts with an External ID set for this platform."
         action={
-          <RouterButton
-            to={M360_ACCOUNTS_PATH}
+          <Button
             variant="primary"
             icon={<ExternalLinkAltIcon aria-hidden />}
             iconPosition="end"
+            onClick={(event) => {
+              event.preventDefault()
+            }}
           >
-            Open M360 accounts
-          </RouterButton>
+            Open billing portal
+          </Button>
         }
       />
 
-      <Alert variant="info" isInline title="Account balances are not shown in OSAC">
+      <Alert variant="info" isInline title="Account balances are not shown here">
         <Content component="p">
-          OSAC uses M360 for account status and tenant linking only.
+          Account status and tenant linking only. Balances stay in M360.
         </Content>
       </Alert>
 
@@ -131,7 +130,7 @@ export function ProviderAdminBillingPage() {
           <CardHeader>
             <CardTitle>
               <UsersIcon className="provider-admin-billing__kpi-icon" aria-hidden />
-              Linked OSAC tenants
+              Linked tenants
             </CardTitle>
           </CardHeader>
           <CardBody>
@@ -139,7 +138,7 @@ export function ProviderAdminBillingPage() {
               {linkedCount}
             </Title>
             <Content component="p" className="provider-admin-billing__kpi-hint">
-              M360 accounts with an External ID linked to OSAC
+              M360 accounts with an External ID linked to this platform
             </Content>
           </CardBody>
         </Card>
@@ -147,7 +146,7 @@ export function ProviderAdminBillingPage() {
 
       <Card className="provider-admin-billing__table-card">
         <CardHeader>
-          <CardTitle>Linked OSAC tenants</CardTitle>
+          <CardTitle>Linked tenants</CardTitle>
         </CardHeader>
         <CardBody>
           <Toolbar className="provider-admin-billing__table-toolbar">
@@ -172,12 +171,12 @@ export function ProviderAdminBillingPage() {
 
           {linkedAccounts.length === 0 ? (
             <Content component="p" className="provider-admin-billing__empty">
-              No M360 accounts have an External ID linked to OSAC yet. Link an account during
-              tenant onboarding, or open M360 accounts to manage linking.
+              No M360 accounts have an External ID linked yet. Link an account during tenant
+              onboarding, or open M360 accounts to manage linking.
             </Content>
           ) : (
             <Table
-              aria-label="Linked OSAC tenants"
+              aria-label="Linked tenants"
               className="provider-admin-billing__table catalog-data-table"
             >
               <Thead>

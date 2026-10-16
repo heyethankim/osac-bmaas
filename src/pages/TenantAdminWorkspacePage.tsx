@@ -50,6 +50,10 @@ import {
   syncNorthSummitBillingInactiveScenarioFromSearch,
 } from '../demo/billingInactiveScenario'
 import {
+  applyBillingNotLinkedDemoOverlay,
+  syncNorthSummitBillingNotLinkedScenarioFromSearch,
+} from '../demo/billingNotLinkedScenario'
+import {
   addTenantUserInstance,
   ensureTenantDemoInstances,
   getOrEnsureTenantUserInstances,
@@ -150,6 +154,7 @@ function ensureTenantAdminPostOnboardingPrototype(
   ensureProviderDemoOrganizations()
   activateProviderRegisteredOrganizationBySlug(tenant)
   if (searchParams) {
+    syncNorthSummitBillingNotLinkedScenarioFromSearch(searchParams)
     syncNorthSummitBillingInactiveScenarioFromSearch(searchParams)
   }
 }
@@ -164,6 +169,7 @@ function readInitialTenantAdminNav(
     return requestedNav
   }
 
+  syncNorthSummitBillingNotLinkedScenarioFromSearch(searchParams)
   syncNorthSummitBillingInactiveScenarioFromSearch(searchParams)
   return getTenantActiveNav(tenant)
 }
@@ -180,7 +186,9 @@ export function TenantAdminWorkspacePage() {
   /** Prevents stale `?nav=catalog` from snapping back during launch → Services navigation. */
   const pendingNavRef = useRef<TenantAdminNavId | null>(null)
 
-  const [organization, setOrganization] = useState(() => getWorkspaceOrganization(tenant))
+  const [organization, setOrganization] = useState(() =>
+    applyBillingNotLinkedDemoOverlay(getWorkspaceOrganization(tenant)),
+  )
   const [activeNavId, setActiveNavId] = useState<TenantAdminNavId>(() =>
     isValidTenant ? readInitialTenantAdminNav(tenant, searchParams) : 'overview',
   )
@@ -215,7 +223,9 @@ export function TenantAdminWorkspacePage() {
     setTenantOnboardingComplete(tenant)
     ensureProviderDemoOrganizations()
     activateProviderRegisteredOrganizationBySlug(tenant)
-    const workspaceOrganization = getWorkspaceOrganization(tenant)
+    const workspaceOrganization = applyBillingNotLinkedDemoOverlay(
+      getWorkspaceOrganization(tenant),
+    )
     setOrganization(workspaceOrganization)
     setInstances(
       shouldHideDemoServicesInstances(tenant)
@@ -231,7 +241,9 @@ export function TenantAdminWorkspacePage() {
       return
     }
 
+    syncNorthSummitBillingNotLinkedScenarioFromSearch(searchParams)
     syncNorthSummitBillingInactiveScenarioFromSearch(searchParams)
+    setOrganization(applyBillingNotLinkedDemoOverlay(getWorkspaceOrganization(tenant)))
 
     const requestedNav = normalizeTenantAdminNavParam(searchParams.get('nav'))
     const pendingNav = pendingNavRef.current

@@ -159,7 +159,7 @@ export function ProviderSetupConnectStep({
           <FormHelperText>
             <HelperText>
               <HelperTextItem>
-                Network address where the OSAC Balance Operator API is listening
+                Network address where the Balance Operator API is listening
               </HelperTextItem>
             </HelperText>
           </FormHelperText>

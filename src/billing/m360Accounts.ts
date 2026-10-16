@@ -5,11 +5,11 @@ export type M360AccountLifecycleStatus = 'Active' | 'Inactive' | null
 export type M360ApprovalStatus = 'Draft' | 'Approved'
 
 export type M360BillingAccount = {
-  /** Primary identifier used by OSAC onboarding and lookups. */
+  /** Primary identifier used by onboarding and lookups. */
   accountId: string
   /** M360 account number column; `null` renders as NA. */
   accountNumber: string | null
-  /** OSAC-style tenant name for this billing account. */
+  /** Platform-style tenant name for this billing account. */
   accountName: string | null
   /** Role of this account under its M360 organization (e.g. Production). */
   accountLabel: string | null
@@ -19,14 +19,14 @@ export type M360BillingAccount = {
   organizationCode: string
   /**
    * Rate card attached to this account in M360.
-   * OSAC auto-detects this on link — it is not selected or created in OSAC.
+   * Auto-detected on link — not selected or created in this console.
    */
   rateCardId: string
   accountStatus: M360AccountLifecycleStatus
   approvalStatus: M360ApprovalStatus
-  /** OSAC tenant name when this M360 account is already associated. */
+  /** Tenant name when this M360 account is already associated. */
   externalId: string | null
-  /** OSAC tenant slug linked to this account, if any. */
+  /** Tenant slug linked to this account, if any. */
   linkedTenantSlug: string | null
 }
 
@@ -266,7 +266,7 @@ export function getM360AccountLinkConflictMessage(
   account: M360BillingAccount,
 ): string {
   const linkedTenant = account.externalId?.trim() || account.linkedTenantSlug
-  return `This M360 billing account is already linked to another OSAC tenant (${linkedTenant}).`
+  return `This M360 billing account is already linked to another tenant (${linkedTenant}).`
 }
 
 function isOnboardingEligibleAccount(account: M360BillingAccount): boolean {
@@ -349,7 +349,7 @@ export function findM360RateCard(rateCardId: string): M360RateCard | null {
   return DEMO_M360_RATE_CARDS.find((card) => card.id === normalized) ?? null
 }
 
-/** Rate card M360 already attaches to this billing account (read-only in OSAC). */
+/** Rate card M360 already attaches to this billing account (read-only in this console). */
 export function resolveM360AccountRateCard(
   account: M360BillingAccount | null | undefined,
 ): M360RateCard | null {

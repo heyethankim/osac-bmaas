@@ -345,7 +345,7 @@ export function RegisterOrganizationWizard({
             <Content component="p" className="provider-admin-organizations__wizard-lede">
               {isEditMode
                 ? 'Update the tenant and its M360 account mapping.'
-                : 'Create the tenant in OSAC and map it to an existing M360 account. Invoicing, payment methods, and rate cards stay in M360.'}
+                : 'Create the tenant and map it to an existing M360 account. Invoicing, payment methods, and rate cards stay in M360.'}
             </Content>
             <Form autoComplete="off" className="provider-admin-organizations__wizard-form">
               <FormGroup label="Tenant name" fieldId="register-org-name" isRequired>

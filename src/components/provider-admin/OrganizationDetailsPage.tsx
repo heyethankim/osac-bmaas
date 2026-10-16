@@ -463,7 +463,7 @@ export function OrganizationDetailsPage({
                   </DescriptionListDescription>
                 </DescriptionListGroup>
                 <DescriptionListGroup>
-                  <DescriptionListTerm>OSAC URL</DescriptionListTerm>
+                  <DescriptionListTerm>Login URL</DescriptionListTerm>
                   <DescriptionListDescription>
                     <span className="provider-admin-organizations__osac-url">
                       <code>{getOrganizationOsacLoginPath(organization.slug)}</code>

@@ -146,10 +146,6 @@ export function BmaasLandingPage() {
       },
     },
     {
-      label: 'Tenant without billing',
-      to: '/provider/workspace?nav=administration-organizations&tenant=org-redwood-mutual',
-    },
-    {
       label: 'External IP Pools',
       to: '/provider/workspace?nav=networking',
     },
@@ -168,7 +164,7 @@ export function BmaasLandingPage() {
     {
       id: 'bmaas-landing-role-provider-title',
       title: 'Provider Admin',
-      description: 'Manage platform services, tenants, and global policies for the OSAC environment.',
+      description: 'Manage platform services, tenants, and global policies for the environment.',
       icon: <CrownIcon />,
       actions: <SingleEnterActions to="/provider" ariaLabel="Enter Provider Admin demo" />,
       prototypeLinks: providerPrototypeLinks,
@@ -198,6 +194,10 @@ export function BmaasLandingPage() {
             label: 'External IPs',
             to: '/tenant-admin/northsummit/workspace?nav=networking-external-ip-pools',
           },
+        },
+        {
+          label: 'Billing account not linked',
+          to: '/tenant-admin/northsummit/workspace?nav=catalog&scenario=billing-not-linked',
         },
       ],
     },
@@ -250,7 +250,7 @@ export function BmaasLandingPage() {
           >
             <Brand src={redHatHatLogoUrl} alt="Red Hat" heights={{ default: '52px' }} />
             <Title headingLevel="h1" size="4xl">
-              Red Hat OSAC Prototypes 0.3
+              Red Hat BMaaS Prototypes 0.3
             </Title>
             <Content component="p">Select a role to access the customized interface.</Content>
           </Flex>
@@ -300,7 +300,7 @@ export function BmaasLandingPage() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              OSAC Delivery Overview
+              Delivery Overview
             </Button>
             <div className="bmaas-role-landing__credits">
               <Content component="p">

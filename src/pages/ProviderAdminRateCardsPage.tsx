@@ -106,7 +106,7 @@ export function ProviderAdminRateCardsPage() {
       />
 
       <Alert variant="info" isInline title="Synced from M360">
-        Edit rates in M360 — OSAC is read-only.
+        Edit rates in M360 — rates here are read-only.
       </Alert>
 
       <Card className="provider-admin-billing__table-card">
