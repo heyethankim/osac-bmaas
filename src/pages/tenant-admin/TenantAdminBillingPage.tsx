@@ -100,12 +100,13 @@ export function TenantAdminBillingPage({ organization }: TenantAdminBillingPageP
       </Alert>
 
       {isPending || !account ? (
-        <EmptyState
-          className="tenant-admin-billing__empty-state"
-          titleText="Billing not linked yet"
-          headingLevel="h2"
-          icon={RhStandardMoneyIcon}
-        >
+        <EmptyState className="tenant-admin-billing__empty-state">
+          <span className="tenant-admin-billing__empty-icon" aria-hidden>
+            <RhStandardMoneyIcon />
+          </span>
+          <Title headingLevel="h2" size="lg">
+            Billing not linked yet
+          </Title>
           <EmptyStateBody>
             Ask your provider administrator to link a billing account. You can still provision from
             the catalog meanwhile.

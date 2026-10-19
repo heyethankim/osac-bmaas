@@ -516,16 +516,27 @@
   margin-block-end: 0;
 }
 
+/* Same empty-state pattern as Models / services (tenant-user-instances__empty). */
 .tenant-admin-billing__empty-state {
   margin-block-start: var(--pf-t--global--spacer--xl);
-  /* Same subtle gray as Models / services empty-state icons. */
-  --pf-v6-c-empty-state__icon--Color: var(--pf-t--global--icon--color--subtle);
-  /* Slightly larger box so the RH standard money glyph matches Models’ visual weight. */
-  --pf-v6-c-empty-state__icon--FontSize: 4rem;
+  padding: var(--pf-t--global--spacer--2xl);
+  border: 1px dashed var(--pf-t--global--border--color--default);
+  border-radius: var(--pf-t--global--border--radius--medium);
 }
 
-.tenant-admin-billing__empty-state .pf-v6-c-empty-state__icon,
-.tenant-admin-billing__empty-state .pf-v6-c-empty-state__icon svg {
+.tenant-admin-billing__empty-icon {
+  display: inline-flex;
+  color: var(--pf-t--global--icon--color--subtle);
+}
+
+.tenant-admin-billing__empty-icon svg {
+  width: 3.375rem;
+  height: 3.375rem;
+}
+
+/* RhStandard* icons ship with .pf-v6-icon-rh-standard → brand accent (red).
+   Match Models / services empty icons (subtle gray) instead. */
+.tenant-admin-billing__empty-icon .pf-v6-icon-rh-standard {
   color: var(--pf-t--global--icon--color--subtle);
   fill: currentColor;
 }
@@ -588,6 +599,11 @@
 .tenant-admin-billing__kpi-icon {
   margin-inline-end: var(--pf-t--global--spacer--sm);
   color: var(--pf-t--global--icon--color--regular);
+}
+
+.tenant-admin-billing__kpi-icon.pf-v6-icon-rh-standard {
+  color: var(--pf-t--global--icon--color--regular);
+  fill: currentColor;
 }
 
 .tenant-admin-billing__kpi-icon--danger {
