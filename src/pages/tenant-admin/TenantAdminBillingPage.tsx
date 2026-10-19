@@ -3,8 +3,8 @@ import { CheckCircleIcon } from '@patternfly/react-icons/dist/esm/icons/check-ci
 import { ClipboardCheckIcon } from '@patternfly/react-icons/dist/esm/icons/clipboard-check-icon'
 import { ExclamationTriangleIcon } from '@patternfly/react-icons/dist/esm/icons/exclamation-triangle-icon'
 import { ExternalLinkAltIcon } from '@patternfly/react-icons/dist/esm/icons/external-link-alt-icon'
-import { MoneyBillAltIcon } from '@patternfly/react-icons/dist/esm/icons/money-bill-alt-icon'
 import { OutlinedBuildingIcon } from '@patternfly/react-icons/dist/esm/icons/outlined-building-icon'
+import { RhStandardMoneyIcon } from '@patternfly/react-icons/dist/esm/icons/rh-standard-money-icon'
 import {
   Alert,
   Button,
@@ -104,7 +104,7 @@ export function TenantAdminBillingPage({ organization }: TenantAdminBillingPageP
           className="tenant-admin-billing__empty-state"
           titleText="Billing not linked yet"
           headingLevel="h2"
-          icon={MoneyBillAltIcon}
+          icon={RhStandardMoneyIcon}
         >
           <EmptyStateBody>
             Ask your provider administrator to link a billing account. You can still provision from
@@ -221,7 +221,7 @@ export function TenantAdminBillingPage({ organization }: TenantAdminBillingPageP
             <Card isFullHeight className="tenant-admin-billing__kpi-card">
               <CardHeader>
                 <CardTitle>
-                  <MoneyBillAltIcon
+                  <RhStandardMoneyIcon
                     className="tenant-admin-billing__kpi-icon"
                     aria-hidden
                   />

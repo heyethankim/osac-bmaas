@@ -518,6 +518,16 @@
 
 .tenant-admin-billing__empty-state {
   margin-block-start: var(--pf-t--global--spacer--xl);
+  /* Same subtle gray as Models / services empty-state icons. */
+  --pf-v6-c-empty-state__icon--Color: var(--pf-t--global--icon--color--subtle);
+  /* Slightly larger box so the RH standard money glyph matches Models’ visual weight. */
+  --pf-v6-c-empty-state__icon--FontSize: 4rem;
+}
+
+.tenant-admin-billing__empty-state .pf-v6-c-empty-state__icon,
+.tenant-admin-billing__empty-state .pf-v6-c-empty-state__icon svg {
+  color: var(--pf-t--global--icon--color--subtle);
+  fill: currentColor;
 }
 
 .tenant-admin-billing__layout {
