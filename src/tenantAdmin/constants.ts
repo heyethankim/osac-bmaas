@@ -56,7 +56,7 @@ export const TENANT_ADMIN_ADMINISTRATION_NAV_ITEMS: ReadonlyArray<{
 }> = [
   { id: 'administration-roles', label: 'Roles' },
   { id: 'administration-billing', label: 'Billing' },
-  { id: 'administration-identity-provider', label: 'Identity provider' },
+  { id: 'administration-identity-provider', label: 'Identity providers' },
 ]
 
 export const TENANT_ADMIN_NAV_ITEMS: TenantAdminNavItem[] = [
