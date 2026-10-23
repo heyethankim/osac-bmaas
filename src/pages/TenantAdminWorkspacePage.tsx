@@ -210,6 +210,7 @@ export function TenantAdminWorkspacePage() {
   const [openSecurityGroupId, setOpenSecurityGroupId] = useState<string | null>(null)
   const [openCatalogItemKey, setOpenCatalogItemKey] = useState<string | null>(null)
   const [openInstanceId, setOpenInstanceId] = useState<string | null>(null)
+  const [openSecretId, setOpenSecretId] = useState<string | null>(null)
   const [openProjectId, setOpenProjectId] = useState<string | null>(null)
   const [navContentKey, setNavContentKey] = useState(0)
   const provisioningTimersRef = useRef<Map<string, number>>(new Map())
@@ -420,6 +421,10 @@ export function TenantAdminWorkspacePage() {
               handleNavChange('catalog')
               syncWorkspaceCatalogItemParam(setSearchParams, catalogItemDisplayName)
             }}
+            onNavigateToSecret={(secretId) => {
+              setOpenSecretId(secretId)
+              handleNavChange('secrets')
+            }}
             openInstanceId={openInstanceId}
             onOpenInstanceConsumed={() => setOpenInstanceId(null)}
             onNavigateToProject={(project) => {
@@ -519,7 +524,13 @@ export function TenantAdminWorkspacePage() {
           />
         )
       case 'secrets':
-        return <TenantSecretsPage tenantSlug={tenant} />
+        return (
+          <TenantSecretsPage
+            tenantSlug={tenant}
+            openSecretId={openSecretId}
+            onOpenSecretConsumed={() => setOpenSecretId(null)}
+          />
+        )
       case 'overview':
       default:
         return <TenantAdminOverviewPage />

@@ -185,6 +185,7 @@ export function TenantUserWorkspacePage() {
   const [openSecurityGroupId, setOpenSecurityGroupId] = useState<string | null>(null)
   const [openCatalogItemKey, setOpenCatalogItemKey] = useState<string | null>(null)
   const [openInstanceId, setOpenInstanceId] = useState<string | null>(null)
+  const [openSecretId, setOpenSecretId] = useState<string | null>(null)
   const [openProjectId, setOpenProjectId] = useState<string | null>(null)
   const [navContentKey, setNavContentKey] = useState(0)
   const provisioningTimersRef = useRef<Map<string, number>>(new Map())
@@ -335,6 +336,14 @@ export function TenantUserWorkspacePage() {
     [handleNavChange, setSearchParams],
   )
 
+  const handleNavigateToSecret = useCallback(
+    (secretId: string) => {
+      setOpenSecretId(secretId)
+      handleNavChange('secrets')
+    },
+    [handleNavChange],
+  )
+
   const handleOpenCatalogItemConsumed = useCallback(() => {
     setOpenCatalogItemKey(null)
   }, [])
@@ -473,6 +482,7 @@ export function TenantUserWorkspacePage() {
             organization={organization}
             lockedServiceId={lockedServiceId ?? 'baremetal'}
             onNavigateToCatalogItem={handleNavigateToCatalogItem}
+            onNavigateToSecret={handleNavigateToSecret}
             openInstanceId={openInstanceId}
             onOpenInstanceConsumed={() => setOpenInstanceId(null)}
             onNavigateToProject={(project) => {
@@ -534,7 +544,13 @@ export function TenantUserWorkspacePage() {
           />
         )
       case 'secrets':
-        return <TenantSecretsPage tenantSlug={tenantSlug} />
+        return (
+          <TenantSecretsPage
+            tenantSlug={tenantSlug}
+            openSecretId={openSecretId}
+            onOpenSecretConsumed={() => setOpenSecretId(null)}
+          />
+        )
       case 'activity-log':
         return <TenantUserActivityLogPage />
       case 'catalog':

@@ -59,6 +59,9 @@ type TenantSecretsPageProps = {
   tenantSlug: string
   scope?: SecretVaultScope
   readOnly?: boolean
+  /** Opens this secret's detail page when navigating from another workspace view. */
+  openSecretId?: string | null
+  onOpenSecretConsumed?: () => void
 }
 
 function resolveSecretsCopy(scope: SecretVaultScope) {
@@ -94,6 +97,8 @@ export function TenantSecretsPage({
   tenantSlug,
   scope = 'tenant',
   readOnly = false,
+  openSecretId = null,
+  onOpenSecretConsumed,
 }: TenantSecretsPageProps) {
   const [searchParams, setSearchParams] = useSearchParams()
   const copy = resolveSecretsCopy(scope)
@@ -129,6 +134,25 @@ export function TenantSecretsPage({
 
     setIsCreating(false)
   }, [readOnly, searchParams])
+
+  useEffect(() => {
+    if (!openSecretId) {
+      return
+    }
+
+    const ensured = ensureSecrets(scope, tenantSlug)
+    setSecrets(ensured)
+    const match = ensured.find((secret) => secret.id === openSecretId) ?? null
+    if (!match) {
+      onOpenSecretConsumed?.()
+      return
+    }
+
+    setIsCreating(false)
+    setEditingSecret(null)
+    setSelectedSecretId(match.id)
+    onOpenSecretConsumed?.()
+  }, [openSecretId, onOpenSecretConsumed, scope, tenantSlug])
 
   const openCreateSecret = () => {
     if (readOnly) {

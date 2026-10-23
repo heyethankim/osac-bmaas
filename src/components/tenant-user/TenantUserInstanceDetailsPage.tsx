@@ -81,9 +81,9 @@ import {
   BareMetalProvisioningProgressCard,
   ClusterProvisioningProgressCard,
 } from './BareMetalProvisioningProgressCard'
+import { ClusterUpgradeHistoryModal } from './ClusterUpgradeHistoryModal'
 import { ClusterUpgradeProgressCard } from './ClusterUpgradeProgressCard'
 import {
-  formatClusterUpgradeHistoryWhen,
   getClusterUpgradeHistory,
   getClusterUpgradeStatusColor,
   getClusterUpgradeStatusLabel,
@@ -93,6 +93,7 @@ import {
   getTenantProjectEnvironmentLabel,
   getTenantProjectMemberCountLabel,
 } from '../../tenantAdmin/projects'
+import { findSshPublicKeySecretForValue } from '../../tenant/secrets'
 
 type TenantUserInstanceDetailsPageProps = {
   instance: TenantInstance
@@ -112,6 +113,8 @@ type TenantUserInstanceDetailsPageProps = {
   onNavigateToProject?: (project: TenantProject) => void
   /** Opens the matching catalog item detail page in Catalog. */
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
+  /** Opens the matching SSH public key secret in Secrets. */
+  onNavigateToSecret?: (secretId: string) => void
   /** Opens the cluster demo password modal. */
   onViewPassword?: (instance: TenantInstance) => void
   /** Opens the full-page cluster upgrade wizard. */
@@ -141,6 +144,36 @@ function CatalogItemDisplayLink({
       onClick={() => onNavigate(displayName)}
     >
       {displayName}
+    </Button>
+  )
+}
+
+function SshPublicKeySecretLink({
+  tenantSlug,
+  sshPublicKey,
+  onNavigateToSecret,
+}: {
+  tenantSlug: string
+  sshPublicKey: string
+  onNavigateToSecret?: (secretId: string) => void
+}) {
+  const secret = findSshPublicKeySecretForValue(tenantSlug, sshPublicKey)
+  if (!secret) {
+    return <>—</>
+  }
+
+  if (!onNavigateToSecret) {
+    return <>{secret.name}</>
+  }
+
+  return (
+    <Button
+      variant="link"
+      isInline
+      className="provider-admin-catalog-items__inline-link"
+      onClick={() => onNavigateToSecret(secret.id)}
+    >
+      {secret.name}
     </Button>
   )
 }
@@ -612,17 +645,14 @@ function ClusterLifecycleActions({
   instance,
   onRequestTerminate,
   onViewPassword,
-  onRequestUpgrade,
 }: {
   instance: TenantInstance
   onRequestTerminate: (instance: TenantInstance) => void
   onViewPassword?: (instance: TenantInstance) => void
-  onRequestUpgrade?: (instance: TenantInstance) => void
 }) {
   const isRunning = instance.status === 'running'
   const isRestarting = instance.status === 'restarting'
   const upgradeStatus = getClusterUpgradeStatus(instance)
-  const canUpgrade = isRunning && upgradeStatus === 'upgrade-available'
   const isUpgrading = upgradeStatus === 'upgrading'
   const canDelete = !isRestarting && !isUpgrading
   const consoleUrl = getClusterConsoleUrl(instance)
@@ -644,11 +674,6 @@ function ClusterLifecycleActions({
           </Button>
         </Tooltip>
       )}
-      {canUpgrade ? (
-        <Button variant="secondary" onClick={() => onRequestUpgrade?.(instance)}>
-          Upgrade
-        </Button>
-      ) : null}
       {isRunning ? (
         <Button variant="secondary" onClick={() => downloadClusterKubeconfig(instance)}>
           Download kubeconfig
@@ -1097,6 +1122,7 @@ function ClusterInstancePageBody({
   onUpdateNetworking,
   onNavigateToProject,
   onNavigateToCatalogItem,
+  onNavigateToSecret,
   onRequestUpgrade,
   onCompleteUpgrade,
   instanceNetworkingVariant,
@@ -1111,6 +1137,7 @@ function ClusterInstancePageBody({
   ) => void
   onNavigateToProject?: (project: TenantProject) => void
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
+  onNavigateToSecret?: (secretId: string) => void
   onRequestUpgrade?: (instance: TenantInstance) => void
   onCompleteUpgrade?: (instanceId: string) => void
   instanceNetworkingVariant?: 'interactive' | 'summary'
@@ -1126,6 +1153,7 @@ function ClusterInstancePageBody({
   const upgradeHistory = getClusterUpgradeHistory(instance)
   const isUpgrading = upgradeStatus === 'upgrading'
   const upgradeStartedAt = clusterConfig.upgradeStartedAt
+  const [isUpgradeHistoryOpen, setIsUpgradeHistoryOpen] = useState(false)
 
   return (
     <>
@@ -1241,177 +1269,146 @@ function ClusterInstancePageBody({
             conditionsAriaLabel="Cluster conditions"
             networkingVariant={instanceNetworkingVariant}
           />
-
-          <div className="entity-details-page__column">
-            <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
-              Upgrade history
-            </Title>
-            {upgradeHistory.length === 0 ? (
-              <Content component="p" className="entity-details-page__upgrade-history-empty">
-                No upgrades yet.
-              </Content>
-            ) : (
-              <ul className="entity-details-page__upgrade-history" aria-label="Upgrade history">
-                {upgradeHistory.map((entry) => (
-                  <li key={entry.id} className="entity-details-page__upgrade-history-item">
-                    <div className="entity-details-page__upgrade-history-item-header">
-                      <span className="entity-details-page__upgrade-history-versions">
-                        {getClusterVersionShortLabel(entry.fromVersion)} →{' '}
-                        {getClusterVersionShortLabel(entry.toVersion)}
-                      </span>
-                      <Label
-                        color={
-                          entry.result === 'succeeded'
-                            ? 'green'
-                            : entry.result === 'failed'
-                              ? 'red'
-                              : 'blue'
-                        }
-                        isCompact
-                      >
-                        {entry.result === 'succeeded'
-                          ? 'Succeeded'
-                          : entry.result === 'failed'
-                            ? 'Failed'
-                            : 'In progress'}
-                      </Label>
-                    </div>
-                    <Content component="p" className="entity-details-page__upgrade-history-meta">
-                      {formatClusterUpgradeHistoryWhen(entry.completedAt ?? entry.startedAt)}
-                      {' · '}
-                      {entry.initiatedBy}
-                    </Content>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
         </div>
 
         <div className="entity-details-page__rail-stack">
           <div className="entity-details-page__column entity-details-page__column--config">
+            <div className="entity-details-page__column-block">
+              <div className="entity-details-page__section-header entity-details-page__section-header--config">
+                <Title
+                  headingLevel="h2"
+                  size="md"
+                  className="entity-details-page__section-title entity-details-page__section-title--config"
+                >
+                  Cluster version
+                </Title>
+                {upgradeHistory.length > 0 ? (
+                  <Button
+                    variant="link"
+                    isInline
+                    className="entity-details-page__upgrade-history-link"
+                    onClick={() => setIsUpgradeHistoryOpen(true)}
+                  >
+                    Upgrade history
+                  </Button>
+                ) : null}
+              </div>
+              <DescriptionList
+                isCompact
+                className="entity-details-page__dl"
+                aria-label="Cluster version"
+              >
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Current</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    <span className="entity-details-page__version-row">
+                      <CatalogClusterVersionValue>
+                        {getClusterPlatformLabel(instance)}
+                      </CatalogClusterVersionValue>
+                      <Label color={getClusterUpgradeStatusColor(upgradeStatus)} isCompact>
+                        {getClusterUpgradeStatusLabel(upgradeStatus)}
+                      </Label>
+                    </span>
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                {desiredVersion && upgradeStatus !== 'up-to-date' ? (
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Desired</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      <span className="entity-details-page__version-row">
+                        <CatalogClusterVersionValue>{desiredVersion}</CatalogClusterVersionValue>
+                        {upgradeStatus === 'upgrade-available' ? (
+                          <Button
+                            variant="link"
+                            isInline
+                            className="entity-details-page__upgrade-cluster-link"
+                            onClick={() => onRequestUpgrade?.(instance)}
+                          >
+                            Upgrade cluster
+                          </Button>
+                        ) : null}
+                      </span>
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                ) : null}
+              </DescriptionList>
+            </div>
+
+            <div className="entity-details-page__column-block">
+              <div className="entity-details-page__section-header entity-details-page__section-header--config">
+                <Title
+                  headingLevel="h2"
+                  size="md"
+                  className="entity-details-page__section-title entity-details-page__section-title--config"
+                >
+                  Node sets
+                </Title>
+                <Button
+                  variant="link"
+                  isInline
+                  icon={<PlusCircleIcon />}
+                  className="entity-details-page__add-node-set"
+                >
+                  Add node set
+                </Button>
+              </div>
+              <ul className="entity-details-page__node-set-list" aria-label="Cluster node sets">
+                {nodeSets.map((nodeSet) => {
+                  const status = nodeSet.status ?? 'ready'
+                  return (
+                    <li key={nodeSet.id} className="entity-details-page__node-set-item">
+                      <div className="entity-details-page__node-set-item-header">
+                        <span className="entity-details-page__node-set-name">
+                          {nodeSet.name ?? nodeSet.id}
+                        </span>
+                        <Label color={getNodeSetStatusColor(status)} isCompact>
+                          {getNodeSetStatusLabel(status)}
+                        </Label>
+                      </div>
+                      <Content component="p" className="entity-details-page__node-set-meta">
+                        {nodeSet.hostType} · {nodeSet.nodeCount}{' '}
+                        {nodeSet.nodeCount === 1 ? 'node' : 'nodes'} ·{' '}
+                        {getClusterVersionShortLabel(nodeSet.version ?? '')}
+                      </Content>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+
             <div className="entity-details-page__column-block">
               <Title
                 headingLevel="h2"
                 size="md"
                 className="entity-details-page__section-title entity-details-page__section-title--config"
               >
-                Cluster version
+                Additional settings
               </Title>
-            <DescriptionList
-              isCompact
-              className="entity-details-page__dl"
-              aria-label="Cluster version"
-            >
-              <DescriptionListGroup>
-                <DescriptionListTerm>Current</DescriptionListTerm>
-                <DescriptionListDescription>
-                  <span className="entity-details-page__version-row">
-                    <CatalogClusterVersionValue>
-                      {getClusterPlatformLabel(instance)}
-                    </CatalogClusterVersionValue>
-                    <Label color={getClusterUpgradeStatusColor(upgradeStatus)} isCompact>
-                      {getClusterUpgradeStatusLabel(upgradeStatus)}
-                    </Label>
-                  </span>
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-              {desiredVersion && upgradeStatus !== 'up-to-date' ? (
+              <DescriptionList
+                isCompact
+                className="entity-details-page__dl"
+                aria-label="Cluster additional settings"
+              >
                 <DescriptionListGroup>
-                  <DescriptionListTerm>Desired</DescriptionListTerm>
+                  <DescriptionListTerm>SSH public key</DescriptionListTerm>
                   <DescriptionListDescription>
-                    <span className="entity-details-page__version-row">
-                      <CatalogClusterVersionValue>{desiredVersion}</CatalogClusterVersionValue>
-                      {upgradeStatus === 'upgrade-available' ? (
-                        <Button
-                          variant="link"
-                          isInline
-                          className="entity-details-page__upgrade-cluster-link"
-                          onClick={() => onRequestUpgrade?.(instance)}
-                        >
-                          Upgrade cluster
-                        </Button>
-                      ) : null}
-                    </span>
+                    <SshPublicKeySecretLink
+                      tenantSlug={tenantSlug}
+                      sshPublicKey={resolveBareMetalSshPublicKey(instance)}
+                      onNavigateToSecret={onNavigateToSecret}
+                    />
                   </DescriptionListDescription>
                 </DescriptionListGroup>
-              ) : null}
-            </DescriptionList>
-          </div>
-
-          <div className="entity-details-page__column-block">
-            <div className="entity-details-page__section-header entity-details-page__section-header--config">
-              <Title
-                headingLevel="h2"
-                size="md"
-                className="entity-details-page__section-title entity-details-page__section-title--config"
-              >
-                Node sets
-              </Title>
-              <Button
-                variant="link"
-                isInline
-                icon={<PlusCircleIcon />}
-                className="entity-details-page__add-node-set"
-              >
-                Add node set
-              </Button>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Pod CIDR</DescriptionListTerm>
+                  <DescriptionListDescription>{clusterConfig.podCidr}</DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Service CIDR</DescriptionListTerm>
+                  <DescriptionListDescription>{clusterConfig.serviceCidr}</DescriptionListDescription>
+                </DescriptionListGroup>
+              </DescriptionList>
             </div>
-            <ul className="entity-details-page__node-set-list" aria-label="Cluster node sets">
-              {nodeSets.map((nodeSet) => {
-                const status = nodeSet.status ?? 'ready'
-                return (
-                  <li key={nodeSet.id} className="entity-details-page__node-set-item">
-                    <div className="entity-details-page__node-set-item-header">
-                      <span className="entity-details-page__node-set-name">
-                        {nodeSet.name ?? nodeSet.id}
-                      </span>
-                      <Label color={getNodeSetStatusColor(status)} isCompact>
-                        {getNodeSetStatusLabel(status)}
-                      </Label>
-                    </div>
-                    <Content component="p" className="entity-details-page__node-set-meta">
-                      {nodeSet.hostType} · {nodeSet.nodeCount}{' '}
-                      {nodeSet.nodeCount === 1 ? 'node' : 'nodes'} ·{' '}
-                      {getClusterVersionShortLabel(nodeSet.version ?? '')}
-                    </Content>
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-
-          <div className="entity-details-page__column-block">
-            <Title
-              headingLevel="h2"
-              size="md"
-              className="entity-details-page__section-title entity-details-page__section-title--config"
-            >
-              Settings
-            </Title>
-            <DescriptionList
-              isCompact
-              className="entity-details-page__dl"
-              aria-label="Cluster settings"
-            >
-              <DescriptionListGroup>
-                <DescriptionListTerm>Pod CIDR</DescriptionListTerm>
-                <DescriptionListDescription>{clusterConfig.podCidr}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Service CIDR</DescriptionListTerm>
-                <DescriptionListDescription>{clusterConfig.serviceCidr}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>SSH public key</DescriptionListTerm>
-                <DescriptionListDescription>
-                  <code className="tenant-user-instances__ssh-key">
-                    {resolveBareMetalSshPublicKey(instance)}
-                  </code>
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-            </DescriptionList>
-          </div>
           </div>
 
           <div className="entity-details-page__column entity-details-page__column--config">
@@ -1423,6 +1420,12 @@ function ClusterInstancePageBody({
           </div>
         </div>
       </div>
+
+      <ClusterUpgradeHistoryModal
+        isOpen={isUpgradeHistoryOpen}
+        history={upgradeHistory}
+        onClose={() => setIsUpgradeHistoryOpen(false)}
+      />
     </>
   )
 }
@@ -1435,6 +1438,7 @@ function VmInstancePageBody({
   onUpdateNetworking,
   onNavigateToProject,
   onNavigateToCatalogItem,
+  onNavigateToSecret,
   instanceNetworkingVariant,
 }: {
   instance: TenantInstance
@@ -1448,6 +1452,7 @@ function VmInstancePageBody({
   ) => void
   onNavigateToProject?: (project: TenantProject) => void
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
+  onNavigateToSecret?: (secretId: string) => void
   instanceNetworkingVariant?: 'interactive' | 'summary'
 }) {
   const isBusy = instance.status === 'provisioning' || instance.status === 'restarting'
@@ -1601,7 +1606,11 @@ function VmInstancePageBody({
               <DescriptionListTerm>SSH public key</DescriptionListTerm>
               <DescriptionListDescription>
                 {vmConfig.sshPublicKey.trim() ? (
-                  <code className="tenant-user-instances__ssh-key">{vmConfig.sshPublicKey}</code>
+                  <SshPublicKeySecretLink
+                    tenantSlug={tenantSlug}
+                    sshPublicKey={vmConfig.sshPublicKey}
+                    onNavigateToSecret={onNavigateToSecret}
+                  />
                 ) : (
                   '—'
                 )}
@@ -1629,6 +1638,7 @@ function DefaultInstancePageBody({
   onUpdateNetworking,
   onNavigateToProject,
   onNavigateToCatalogItem,
+  onNavigateToSecret,
   instanceNetworkingVariant,
 }: {
   instance: TenantInstance
@@ -1641,6 +1651,7 @@ function DefaultInstancePageBody({
   ) => void
   onNavigateToProject?: (project: TenantProject) => void
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
+  onNavigateToSecret?: (secretId: string) => void
   instanceNetworkingVariant?: 'interactive' | 'summary'
 }) {
   const isBareMetal = getTenantInstanceServiceId(instance) === 'baremetal'
@@ -1851,9 +1862,11 @@ function DefaultInstancePageBody({
                 <DescriptionListGroup>
                   <DescriptionListTerm>SSH public key</DescriptionListTerm>
                   <DescriptionListDescription>
-                    <code className="tenant-user-instances__ssh-key">
-                      {resolveBareMetalSshPublicKey(instance)}
-                    </code>
+                    <SshPublicKeySecretLink
+                      tenantSlug={tenantSlug}
+                      sshPublicKey={resolveBareMetalSshPublicKey(instance)}
+                      onNavigateToSecret={onNavigateToSecret}
+                    />
                   </DescriptionListDescription>
                 </DescriptionListGroup>
               ) : null}
@@ -1949,6 +1962,7 @@ export function TenantUserInstanceDetailsPage({
   onUpdateNetworking,
   onNavigateToProject,
   onNavigateToCatalogItem,
+  onNavigateToSecret,
   onViewPassword,
   onRequestUpgrade,
   onCompleteUpgrade,
@@ -1972,7 +1986,6 @@ export function TenantUserInstanceDetailsPage({
       instance={instance}
       onRequestTerminate={onRequestTerminate}
       onViewPassword={onViewPassword}
-      onRequestUpgrade={onRequestUpgrade}
     />
   ) : isVm ? (
     <VmLifecycleActions
@@ -2016,6 +2029,7 @@ export function TenantUserInstanceDetailsPage({
           onUpdateNetworking={onUpdateNetworking}
           onNavigateToProject={onNavigateToProject}
           onNavigateToCatalogItem={onNavigateToCatalogItem}
+          onNavigateToSecret={onNavigateToSecret}
           onRequestUpgrade={onRequestUpgrade}
           onCompleteUpgrade={onCompleteUpgrade}
           instanceNetworkingVariant={instanceNetworkingVariant}
@@ -2029,6 +2043,7 @@ export function TenantUserInstanceDetailsPage({
           onUpdateNetworking={onUpdateNetworking}
           onNavigateToProject={onNavigateToProject}
           onNavigateToCatalogItem={onNavigateToCatalogItem}
+          onNavigateToSecret={onNavigateToSecret}
           instanceNetworkingVariant={instanceNetworkingVariant}
         />
       ) : (
@@ -2039,6 +2054,7 @@ export function TenantUserInstanceDetailsPage({
           onUpdateNetworking={onUpdateNetworking}
           onNavigateToProject={onNavigateToProject}
           onNavigateToCatalogItem={onNavigateToCatalogItem}
+          onNavigateToSecret={onNavigateToSecret}
           instanceNetworkingVariant={instanceNetworkingVariant}
         />
       )}

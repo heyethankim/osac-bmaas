@@ -1795,6 +1795,26 @@ function createDemoTenantClusterInstanceVariant(
 }
 
 export function createDemoTenantClusterInstance(organizationName: string): TenantInstance {
+  const historyEntry = (
+    id: string,
+    toVersion: string,
+    fromVersion: string,
+    daysAgo: number,
+    durationMinutes: number,
+  ): TenantClusterUpgradeHistoryEntry => {
+    const completedAt = new Date(Date.now() - 1000 * 60 * 60 * 24 * daysAgo)
+    const startedAt = new Date(completedAt.getTime() - 1000 * 60 * durationMinutes)
+    return {
+      id,
+      startedAt: startedAt.toISOString(),
+      completedAt: completedAt.toISOString(),
+      fromVersion,
+      toVersion,
+      initiatedBy: 'Alex Johnson',
+      result: 'succeeded',
+    }
+  }
+
   return createDemoTenantClusterInstanceVariant(organizationName, {
     id: DEMO_TENANT_CLUSTER_INSTANCE_ID,
     name: 'ocp-cluster-01',
@@ -1805,6 +1825,29 @@ export function createDemoTenantClusterInstance(organizationName: string): Tenan
     hoursAgo: 18,
     desiredVersion: 'OpenShift 4.20',
     upgradeStatus: 'upgrade-available',
+    upgradeHistory: [
+      historyEntry(
+        'upgrade-ocp-cluster-01-4-18-to-4-19',
+        'OpenShift 4.19.10',
+        'OpenShift 4.18.22',
+        12,
+        27,
+      ),
+      historyEntry(
+        'upgrade-ocp-cluster-01-4-17-to-4-18',
+        'OpenShift 4.18.22',
+        'OpenShift 4.17.28',
+        45,
+        34,
+      ),
+      historyEntry(
+        'upgrade-ocp-cluster-01-4-16-to-4-17',
+        'OpenShift 4.17.28',
+        'OpenShift 4.16.40',
+        90,
+        41,
+      ),
+    ],
     nodeSets: [
       {
         id: 'node-set-cp',

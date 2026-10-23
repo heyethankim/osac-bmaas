@@ -565,6 +565,29 @@ export function getDefaultLaunchSecretSelections(tenantSlug: string): {
   }
 }
 
+/** Resolve the Secrets vault entry that supplies an instance SSH public key. */
+export function findSshPublicKeySecretForValue(
+  tenantSlug: string,
+  sshPublicKey: string | undefined | null,
+): TenantSecret | null {
+  const secrets = ensureTenantDemoSecrets(tenantSlug)
+  const sshSecrets = filterTenantSecretsForLaunch(secrets, 'ssh-public-key')
+  const key = sshPublicKey?.trim() ?? ''
+
+  if (key) {
+    const match = sshSecrets.find((secret) => resolveSshPublicKeySecretValue(secret) === key)
+    if (match) {
+      return match
+    }
+  }
+
+  return (
+    secrets.find((secret) => secret.id === DEMO_TENANT_CLUSTER_SSH_SECRET_ID) ??
+    sshSecrets[0] ??
+    null
+  )
+}
+
 export function formatSecretDetailValue(fieldId: string, value: string, reveal = false): string {
   if (!value.trim()) {
     return '—'

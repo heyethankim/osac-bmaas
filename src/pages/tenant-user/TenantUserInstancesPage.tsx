@@ -129,6 +129,8 @@ type TenantUserInstancesPageProps = {
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
   /** Opens the matching project detail page in Projects. */
   onNavigateToProject?: (project: TenantProject) => void
+  /** Opens the matching secret detail page in Secrets. */
+  onNavigateToSecret?: (secretId: string) => void
   /** Opens the Projects page to create a new project. */
   onNavigateToCreateProject?: () => void
   /** Opens this instance's detail page when navigating from another workspace view. */
@@ -211,6 +213,7 @@ export function TenantUserInstancesPage({
   lockedServiceId,
   onNavigateToCatalogItem,
   onNavigateToProject,
+  onNavigateToSecret,
   onNavigateToCreateProject,
   openInstanceId = null,
   onOpenInstanceConsumed,
@@ -942,6 +945,7 @@ export function TenantUserInstancesPage({
           onUpdateNetworking={handleUpdateNetworking}
           onNavigateToCatalogItem={onNavigateToCatalogItem}
           onNavigateToProject={onNavigateToProject}
+          onNavigateToSecret={onNavigateToSecret}
           onViewPassword={(instance) => {
             setInstancePendingPassword(instance)
           }}

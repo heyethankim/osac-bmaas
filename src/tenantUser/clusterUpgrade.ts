@@ -140,6 +140,20 @@ export function getClusterUpgradeHistory(
   return resolveClusterConfig(instance).upgradeHistory ?? []
 }
 
+export function getClusterUpgradeHistoryStateLabel(
+  result: TenantClusterUpgradeHistoryEntry['result'],
+): string {
+  switch (result) {
+    case 'succeeded':
+      return 'Completed'
+    case 'failed':
+      return 'Failed'
+    case 'in-progress':
+    default:
+      return 'In progress'
+  }
+}
+
 export function applyClusterUpgradeStart(
   instance: TenantInstance,
   targetVersionLabel: string,

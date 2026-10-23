@@ -16,6 +16,7 @@ import {
   DropdownItem,
   DropdownList,
   ExpandableSection,
+  ExpandableSectionToggle,
   Flex,
   FlexItem,
   Form,
@@ -26,6 +27,9 @@ import {
   HelperText,
   HelperTextItem,
   Label,
+  List,
+  ListComponent,
+  ListItem,
   MenuToggle,
   Modal,
   ModalVariant,
@@ -64,7 +68,7 @@ import {
   getCatalogClusterHostTypeOptions,
   getCatalogClusterNodeSetOptions,
   getCatalogClusterVersionLifecycleMeta,
-  getCatalogClusterVersionModeLabel,
+  getCatalogClusterVersionOption,
   getCatalogClusterVersionOptions,
   getCatalogDiskImageOptions,
   getCatalogHardwareOsModeLabel,
@@ -418,6 +422,9 @@ export function TenantUserLaunchInstanceWizard({
   )
   const [suppressStepUrlSync, setSuppressStepUrlSync] = useState(false)
   const [isConfirmLoading, setIsConfirmLoading] = useState(false)
+  const [expandedClusterVersionIds, setExpandedClusterVersionIds] = useState<Set<string>>(
+    () => new Set(),
+  )
   const syncStepToUrl = presentation === 'page' && !suppressStepUrlSync
   const {
     startIndex: wizardStartIndex,
@@ -452,9 +459,6 @@ export function TenantUserLaunchInstanceWizard({
     'fc430-worker'
   const clusterNodeSetOptions = useMemo(() => getCatalogClusterNodeSetOptions(), [])
   const clusterHostTypeOptions = useMemo(() => getCatalogClusterHostTypeOptions(), [])
-  const clusterVersionModeLabel = getCatalogClusterVersionModeLabel(
-    resolveCatalogClusterVersionMode(catalogItem.clusterVersionMode),
-  )
   const bareMetalHardwareModeLabel = getCatalogHardwareOsModeLabel(
     resolveCatalogHardwareOsMode(catalogItem.hardwareOsMode),
   )
@@ -2110,9 +2114,27 @@ export function TenantUserLaunchInstanceWizard({
   }
 
   const renderClusterVersionStep = () => {
-    const selectedVersionLabel = formatClusterPlatformLabel(
-      form.clusterVersionId || catalogClusterVersion || form.releaseImage,
-    )
+    const lockedVersionId =
+      getCatalogClusterVersionOption(
+        form.clusterVersionId || catalogClusterVersion || form.releaseImage,
+      )?.id ?? ''
+    const selectedVersionId = isClusterVersionEditable
+      ? form.clusterVersionId || latestClusterVersionId
+      : lockedVersionId || form.clusterVersionId || latestClusterVersionId
+    const releaseImage =
+      form.releaseImage.trim() ||
+      getReleaseImageForClusterVersion(form.clusterVersionId || catalogClusterVersion)
+
+    const selectVersion = (optionId: string) => {
+      if (!isClusterVersionEditable) {
+        return
+      }
+      setForm((current) => ({
+        ...current,
+        clusterVersionId: optionId,
+        releaseImage: getReleaseImageForClusterVersion(optionId),
+      }))
+    }
 
     return (
       <div className="tenant-user-launch-wizard__step">
@@ -2122,52 +2144,140 @@ export function TenantUserLaunchInstanceWizard({
             fieldId="launch-cluster-version"
             isRequired={isClusterVersionEditable}
           >
-            {isClusterVersionEditable ? (
-              <FormSelect
-                id="launch-cluster-version"
-                value={form.clusterVersionId || latestClusterVersionId}
-                onChange={(_event, value) => {
-                  setForm((current) => ({
-                    ...current,
-                    clusterVersionId: value,
-                    releaseImage: getReleaseImageForClusterVersion(value),
-                  }))
-                }}
-                aria-label="Cluster version"
-              >
-                {clusterVersionOptions.map((option) => {
-                  const lifecycleMeta = getCatalogClusterVersionLifecycleMeta(option.lifecycle)
-                  const isLatest = option.id === latestClusterVersionId
-                  return (
-                    <FormSelectOption
-                      key={option.id}
-                      value={option.id}
-                      label={`${option.label}${isLatest ? ' (Latest)' : ''} · ${lifecycleMeta.text}`}
-                    />
-                  )
-                })}
-              </FormSelect>
-            ) : (
-              <TextInput
-                id="launch-cluster-version"
-                value={selectedVersionLabel}
-                isDisabled
-                aria-label="Cluster version"
-              />
-            )}
-            <FormHelperText>
-              <HelperText>
-                <HelperTextItem>
-                  {isClusterVersionEditable
-                    ? `Editable on this catalog item (${clusterVersionModeLabel}). Release image: `
-                    : `Locked by the catalog item (${clusterVersionModeLabel}). Release image: `}
-                  {form.releaseImage.trim() ||
-                    getReleaseImageForClusterVersion(
-                      form.clusterVersionId || catalogClusterVersion,
-                    )}
-                </HelperTextItem>
-              </HelperText>
-            </FormHelperText>
+            <Content component="p" className="tenant-user-launch-wizard__step-lede">
+              {isClusterVersionEditable
+                ? `Release image: ${releaseImage}`
+                : `Locked by the catalog item. Release image: ${releaseImage}`}
+            </Content>
+            <div
+              id="launch-cluster-version"
+              className="provider-setup-template__card-group provider-setup-template__card-group--disk-images"
+              role="radiogroup"
+              aria-label="Cluster version"
+              aria-readonly={!isClusterVersionEditable || undefined}
+            >
+              {clusterVersionOptions.map((option) => {
+                const isSelected = option.id === selectedVersionId
+                const isLatest = option.id === latestClusterVersionId
+                const lifecycleMeta = getCatalogClusterVersionLifecycleMeta(option.lifecycle)
+                const isFeaturesExpanded = expandedClusterVersionIds.has(option.id)
+                const featuresToggleId = `launch-cluster-version-features-toggle-${option.id}`
+                const featuresContentId = `launch-cluster-version-features-${option.id}`
+
+                return (
+                  <div
+                    key={option.id}
+                    role="radio"
+                    tabIndex={isClusterVersionEditable || isSelected ? 0 : -1}
+                    aria-checked={isSelected}
+                    aria-disabled={!isClusterVersionEditable || undefined}
+                    aria-label={isLatest ? `${option.label}, latest` : option.label}
+                    className={`provider-setup-template__select-card provider-setup-template__select-card--disk-image provider-setup-template__select-card--cluster-version${
+                      isSelected ? ' provider-setup-template__select-card--selected' : ''
+                    }${
+                      !isClusterVersionEditable && !isSelected
+                        ? ' provider-setup-template__select-card--disabled'
+                        : ''
+                    }`}
+                    onClick={() => selectVersion(option.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        selectVersion(option.id)
+                      }
+                    }}
+                  >
+                    {isSelected ? (
+                      <Label
+                        color="grey"
+                        isCompact
+                        className="provider-setup-template__select-card-selected-badge"
+                      >
+                        Selected
+                      </Label>
+                    ) : null}
+                    <div className="provider-setup-template__cluster-version-header">
+                      <div
+                        className="provider-setup-template__cluster-version-toggle-wrap"
+                        onClick={(event) => event.stopPropagation()}
+                        onKeyDown={(event) => event.stopPropagation()}
+                      >
+                        <ExpandableSectionToggle
+                          isDetached
+                          isExpanded={isFeaturesExpanded}
+                          toggleId={featuresToggleId}
+                          contentId={featuresContentId}
+                          toggleAriaLabel={
+                            isFeaturesExpanded
+                              ? `Hide features for ${option.label}`
+                              : `Show features for ${option.label}`
+                          }
+                          className="provider-setup-template__cluster-version-expand"
+                          onToggle={(nextExpanded) => {
+                            setExpandedClusterVersionIds((current) => {
+                              const next = new Set(current)
+                              if (nextExpanded) {
+                                next.add(option.id)
+                              } else {
+                                next.delete(option.id)
+                              }
+                              return next
+                            })
+                          }}
+                        />
+                      </div>
+                      <div className="provider-setup-template__cluster-version-meta">
+                        <div className="provider-setup-template__select-card-title-row">
+                          <Title
+                            headingLevel="h3"
+                            size="md"
+                            className="provider-setup-template__select-card-title"
+                          >
+                            {option.label}
+                          </Title>
+                          {isLatest ? (
+                            <Label color="blue" isCompact>
+                              Latest
+                            </Label>
+                          ) : null}
+                          <Label color={lifecycleMeta.color} isCompact>
+                            {lifecycleMeta.text}
+                          </Label>
+                        </div>
+                        <Content
+                          component="p"
+                          className="provider-setup-template__select-card-detail"
+                        >
+                          {option.detail}
+                        </Content>
+                      </div>
+                    </div>
+                    <div
+                      className="provider-setup-template__select-card-features"
+                      onClick={(event) => event.stopPropagation()}
+                      onKeyDown={(event) => event.stopPropagation()}
+                    >
+                      <ExpandableSection
+                        isDetached
+                        isExpanded={isFeaturesExpanded}
+                        isIndented
+                        toggleId={featuresToggleId}
+                        contentId={featuresContentId}
+                      >
+                        <List
+                          component={ListComponent.ul}
+                          className="provider-setup-template__cluster-version-feature-list"
+                        >
+                          {option.features.map((feature) => (
+                            <ListItem key={feature}>{feature}</ListItem>
+                          ))}
+                        </List>
+                      </ExpandableSection>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </FormGroup>
         </Form>
       </div>

@@ -2873,45 +2873,27 @@
   gap: var(--pf-t--global--spacer--xs);
 }
 
-.entity-details-page__upgrade-history {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--pf-t--global--spacer--sm);
-}
-
 .entity-details-page__upgrade-history-empty {
   margin: 0;
   color: var(--pf-t--global--text--color--subtle);
 }
 
-.entity-details-page__upgrade-history-item {
-  padding-block: var(--pf-t--global--spacer--sm);
-  border-block-end: 1px solid var(--pf-t--global--border--color--default);
+.entity-details-page__upgrade-history-table.pf-v6-c-table {
+  --pf-v6-c-table--BackgroundColor: transparent;
 }
 
-.entity-details-page__upgrade-history-item:last-child {
-  border-block-end: 0;
+.entity-details-page__upgrade-history-table .entity-details-page__upgrade-history-version {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
 }
 
-.entity-details-page__upgrade-history-item-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--pf-t--global--spacer--sm);
+.entity-details-page__upgrade-history-notes-link.pf-v6-c-button {
+  white-space: nowrap;
 }
 
-.entity-details-page__upgrade-history-versions {
-  font-weight: var(--pf-t--global--font--weight--body--bold);
-}
-
-.entity-details-page__upgrade-history-meta {
-  margin: var(--pf-t--global--spacer--xs) 0 0;
-  color: var(--pf-t--global--text--color--subtle);
-  font-size: var(--pf-t--global--font--size--body--sm);
+.entity-details-page__upgrade-history-link.pf-v6-c-button {
+  flex: 0 0 auto;
 }
 
 .entity-details-page__cluster-upgrade-status {
