@@ -48,6 +48,7 @@ import {
   describeCatalogServiceFilter,
 } from '../../catalog/catalogFilterSummary'
 import { getCatalogViewMode, setCatalogViewMode, type CatalogViewMode } from '../../catalog/viewMode'
+import { useCatalogCardGridMasonry } from '../../catalog/useCatalogCardGridMasonry'
 import {
   findCatalogItemByWorkspaceParam,
   getWorkspaceActionParam,
@@ -521,6 +522,13 @@ export function TenantAdminCatalogPage({
 
     setCreatingCardHeightPx(Math.round(referenceCard.getBoundingClientRect().height))
   }, [creatingCatalogItemId, filteredItems, viewMode])
+
+  const catalogMasonryLayoutKey = useMemo(
+    () =>
+      `${viewMode}:${filteredItems.map((item) => item.id).join(',')}:${creatingCatalogItemId ?? ''}:${creatingCardHeightPx ?? ''}`,
+    [viewMode, filteredItems, creatingCatalogItemId, creatingCardHeightPx],
+  )
+  useCatalogCardGridMasonry(catalogCardGridRef, viewMode === 'grid', catalogMasonryLayoutKey)
 
   const catalogServiceIds = useMemo(
     () => orderedCatalogItems.map((item) => item.serviceId),
@@ -1087,7 +1095,7 @@ export function TenantAdminCatalogPage({
             />
           <div
             ref={catalogCardGridRef}
-            className="catalog-card-grid catalog-card-grid--stable tenant-admin-catalog-manager__catalog-list"
+            className="catalog-card-grid tenant-admin-catalog-manager__catalog-list"
           >
             {filteredItems.map((item) => {
               const catalogItemActions = buildCatalogItemActions(item)

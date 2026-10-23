@@ -35,6 +35,7 @@ import { TenantUserCatalogItemDetailsPage } from '../../components/tenant-user/T
 import { TenantUserLaunchInstanceWizard } from '../../components/tenant-user/TenantUserLaunchInstanceWizard'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
 import { getCatalogViewMode, setCatalogViewMode, type CatalogViewMode } from '../../catalog/viewMode'
+import { useCatalogCardGridMasonry } from '../../catalog/useCatalogCardGridMasonry'
 import type { RegisteredOrganization } from '../../providerAdmin/organizations'
 import type { ProviderCatalogDraft } from '../../providerSetup/storage'
 import { getProviderCatalogItems } from '../../providerSetup/storage'
@@ -184,6 +185,7 @@ export function TenantUserCatalogPage({
     () => new Set(initialServiceFilters.length > 0 ? initialServiceFilters : ['baremetal']),
   )
   const knownServiceFiltersRef = useRef(new Set(initialServiceFilters))
+  const catalogCardGridRef = useRef<HTMLDivElement | null>(null)
   const itemParam = getWorkspaceCatalogItemParam(searchParams)
 
   useEffect(() => {
@@ -312,6 +314,12 @@ export function TenantUserCatalogPage({
       )
     })
   }, [catalogItems, selectedFilters, searchValue])
+
+  const catalogMasonryLayoutKey = useMemo(
+    () => `${viewMode}:${filteredItems.map((item) => item.catalogItemId).join(',')}`,
+    [viewMode, filteredItems],
+  )
+  useCatalogCardGridMasonry(catalogCardGridRef, viewMode === 'grid', catalogMasonryLayoutKey)
 
   const handleViewModeChange = (nextViewMode: CatalogViewMode) => {
     setViewMode(nextViewMode)
@@ -494,7 +502,10 @@ export function TenantUserCatalogPage({
               filterParts={filterDescriptionParts}
               onClearFilters={clearAllFilters}
             />
-          <div className="catalog-card-grid tenant-user-catalog__grid">
+          <div
+            ref={catalogCardGridRef}
+            className="catalog-card-grid tenant-user-catalog__grid"
+          >
             {filteredItems.map((item) => {
               const catalogItemActions = getCatalogItemActions(
                 () => openDetails(item),

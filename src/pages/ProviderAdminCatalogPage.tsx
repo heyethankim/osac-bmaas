@@ -43,6 +43,7 @@ import { resolveCatalogCardSpecRows } from '../catalog/catalogSpecs'
 import { CatalogSpecRowsList } from '../components/catalog/CatalogSpecRowsList'
 import { findCatalogLinkedTemplate } from '../catalog/hardwareSpecs'
 import { getCatalogViewMode, setCatalogViewMode, type CatalogViewMode } from '../catalog/viewMode'
+import { useCatalogCardGridMasonry } from '../catalog/useCatalogCardGridMasonry'
 import {
   WORKSPACE_ACTION_CREATE_CATALOG_ITEM,
   findCatalogItemByWorkspaceParam,
@@ -539,6 +540,13 @@ export function ProviderAdminCatalogPage({
 
     setCreatingCardHeightPx(Math.round(referenceCard.getBoundingClientRect().height))
   }, [creatingCatalogItemId, filteredCatalogItems, viewMode])
+
+  const catalogMasonryLayoutKey = useMemo(
+    () =>
+      `${viewMode}:${filteredCatalogItems.map((item) => item.catalogItemId).join(',')}:${creatingCatalogItemId ?? ''}:${creatingCardHeightPx ?? ''}`,
+    [viewMode, filteredCatalogItems, creatingCatalogItemId, creatingCardHeightPx],
+  )
+  useCatalogCardGridMasonry(catalogCardGridRef, viewMode === 'grid', catalogMasonryLayoutKey)
 
   const linkedTemplate = useMemo(() => getTemplateRowData(), [])
   const availableTemplates = useMemo(() => {
@@ -1152,7 +1160,7 @@ export function ProviderAdminCatalogPage({
           />
         <div
           ref={catalogCardGridRef}
-          className="catalog-card-grid catalog-card-grid--stable provider-admin-catalog-items__card-grid"
+          className="catalog-card-grid provider-admin-catalog-items__card-grid"
         >
           {filteredCatalogItems.map((item) => {
             const serviceId = getDraftServiceId(item)

@@ -192,6 +192,14 @@
   }
 }
 
+/*
+ * Chromium/WebKit polyfill (see useCatalogCardGridMasonry): small auto-rows +
+ * per-card grid-row-end spans pack into the shortest column.
+ */
+.catalog-card-grid.catalog-card-grid--masonry-polyfill {
+  grid-auto-rows: 4px;
+}
+
 .catalog-card-grid > .pf-v6-c-card {
   width: 100%;
   max-width: var(--catalog-card-width);
