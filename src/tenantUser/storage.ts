@@ -383,6 +383,19 @@ export function ensureTenantDemoInstances(
 
     const refreshed = next[existingIndex]!
     const fresh = demo.create(organizationName)
+    const localHistoryLength = refreshed.clusterConfig?.upgradeHistory?.length ?? 0
+    const freshHistoryLength = fresh.clusterConfig?.upgradeHistory?.length ?? 0
+    const preserveUserUpgradeState =
+      refreshed.clusterConfig?.upgradeStatus === 'upgrading' ||
+      Boolean(refreshed.clusterConfig?.upgradeStartedAt) ||
+      localHistoryLength > freshHistoryLength
+
+    if (preserveUserUpgradeState) {
+      continue
+    }
+
+    const needsHistorySeed =
+      localHistoryLength === 0 && freshHistoryLength > 0
     const needsClusterConfigRefresh =
       demo.id === DEMO_TENANT_CLUSTER_INSTANCE_ID &&
       (refreshed.clusterConfig?.upgradeStatus !== fresh.clusterConfig?.upgradeStatus ||
@@ -399,7 +412,8 @@ export function ensureTenantDemoInstances(
     if (
       refreshed.name !== clusterState.name ||
       refreshed.status !== clusterState.status ||
-      needsClusterConfigRefresh
+      needsClusterConfigRefresh ||
+      needsHistorySeed
     ) {
       next[existingIndex] = {
         ...fresh,

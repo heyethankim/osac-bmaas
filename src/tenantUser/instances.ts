@@ -68,6 +68,18 @@ export type TenantClusterNodeSet = {
 
 export type TenantClusterUpgradeStatus = 'up-to-date' | 'upgrade-available' | 'upgrading'
 
+export type TenantClusterUpgradeHistoryResult = 'succeeded' | 'failed' | 'in-progress'
+
+export type TenantClusterUpgradeHistoryEntry = {
+  id: string
+  startedAt: string
+  completedAt?: string
+  fromVersion: string
+  toVersion: string
+  initiatedBy: string
+  result: TenantClusterUpgradeHistoryResult
+}
+
 export type TenantClusterConfig = {
   releaseImage: string
   podCidr: string
@@ -80,6 +92,10 @@ export type TenantClusterConfig = {
   /** Desired control-plane version when an upgrade is available or in progress. */
   desiredVersion?: string
   upgradeStatus?: TenantClusterUpgradeStatus
+  /** Wall-clock start for the in-progress upgrade stepper. */
+  upgradeStartedAt?: string
+  /** Newest-first completed (and optional in-flight) upgrades. */
+  upgradeHistory?: TenantClusterUpgradeHistoryEntry[]
 }
 
 /** NIC identity discovered on a specific allocated machine (not the instance type). */
@@ -1690,6 +1706,7 @@ function createDemoTenantClusterInstanceVariant(
     hoursAgo: number
     desiredVersion?: string
     upgradeStatus?: TenantClusterUpgradeStatus
+    upgradeHistory?: TenantClusterUpgradeHistoryEntry[]
     nodeSets?: TenantClusterNodeSet[]
     projectName?: string
     scopeKind?: TenantInstanceScopeKind
@@ -1758,6 +1775,7 @@ function createDemoTenantClusterInstanceVariant(
       creator: 'Alex Johnson',
       desiredVersion: options.desiredVersion,
       upgradeStatus: options.upgradeStatus,
+      upgradeHistory: options.upgradeHistory,
       nodeSets,
       nodes:
         options.status === 'provisioning'
@@ -1809,8 +1827,8 @@ export function createDemoTenantClusterInstance(organizationName: string): Tenan
         name: 'gpu-workers',
         hostType: 'gpu-host',
         nodeCount: 2,
-        version: '4.18',
-        status: 'behind',
+        version: '4.19',
+        status: 'ready',
       },
     ],
   })
@@ -1841,6 +1859,8 @@ export function createDemoTenantClusterInstance03(organizationName: string): Ten
 }
 
 export function createDemoTenantClusterInstance04(organizationName: string): TenantInstance {
+  const completedAt = new Date(Date.now() - 1000 * 60 * 60 * 30).toISOString()
+  const startedAt = new Date(Date.now() - 1000 * 60 * 60 * 31).toISOString()
   return createDemoTenantClusterInstanceVariant(organizationName, {
     id: DEMO_TENANT_CLUSTER_INSTANCE_ID_04,
     name: 'ocp-cluster-04',
@@ -1850,6 +1870,17 @@ export function createDemoTenantClusterInstance04(organizationName: string): Ten
     nodeCount: 3,
     hoursAgo: 8,
     upgradeStatus: 'up-to-date',
+    upgradeHistory: [
+      {
+        id: 'upgrade-ocp-cluster-04-4-20-to-4-21',
+        startedAt,
+        completedAt,
+        fromVersion: 'OpenShift 4.20',
+        toVersion: 'OpenShift 4.21',
+        initiatedBy: 'Alex Johnson',
+        result: 'succeeded',
+      },
+    ],
     nodeSets: [
       {
         id: 'node-set-cp',

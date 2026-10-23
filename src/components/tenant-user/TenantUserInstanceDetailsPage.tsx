@@ -65,7 +65,6 @@ import {
   resolveVmConfig,
   type TenantClusterNodeInventory,
   type TenantClusterNodeSetStatus,
-  type TenantClusterUpgradeStatus,
   type TenantInstance,
   type TenantInstanceCondition,
   type TenantInstanceNetworking,
@@ -82,6 +81,13 @@ import {
   BareMetalProvisioningProgressCard,
   ClusterProvisioningProgressCard,
 } from './BareMetalProvisioningProgressCard'
+import { ClusterUpgradeProgressCard } from './ClusterUpgradeProgressCard'
+import {
+  formatClusterUpgradeHistoryWhen,
+  getClusterUpgradeHistory,
+  getClusterUpgradeStatusColor,
+  getClusterUpgradeStatusLabel,
+} from '../../tenantUser/clusterUpgrade'
 import type { TenantProject } from '../../tenantAdmin/projects'
 import {
   getTenantProjectEnvironmentLabel,
@@ -108,6 +114,10 @@ type TenantUserInstanceDetailsPageProps = {
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
   /** Opens the cluster demo password modal. */
   onViewPassword?: (instance: TenantInstance) => void
+  /** Opens the full-page cluster upgrade wizard. */
+  onRequestUpgrade?: (instance: TenantInstance) => void
+  /** Called when the in-page upgrade progress stepper finishes. */
+  onCompleteUpgrade?: (instanceId: string) => void
   /** Provider admin Services detail shows assigned objects only; tenant views keep lock controls. */
   instanceNetworkingVariant?: 'interactive' | 'summary'
 }
@@ -602,14 +612,19 @@ function ClusterLifecycleActions({
   instance,
   onRequestTerminate,
   onViewPassword,
+  onRequestUpgrade,
 }: {
   instance: TenantInstance
   onRequestTerminate: (instance: TenantInstance) => void
   onViewPassword?: (instance: TenantInstance) => void
+  onRequestUpgrade?: (instance: TenantInstance) => void
 }) {
   const isRunning = instance.status === 'running'
   const isRestarting = instance.status === 'restarting'
-  const canDelete = !isRestarting
+  const upgradeStatus = getClusterUpgradeStatus(instance)
+  const canUpgrade = isRunning && upgradeStatus === 'upgrade-available'
+  const isUpgrading = upgradeStatus === 'upgrading'
+  const canDelete = !isRestarting && !isUpgrading
   const consoleUrl = getClusterConsoleUrl(instance)
 
   const openConsole = () => {
@@ -629,6 +644,11 @@ function ClusterLifecycleActions({
           </Button>
         </Tooltip>
       )}
+      {canUpgrade ? (
+        <Button variant="secondary" onClick={() => onRequestUpgrade?.(instance)}>
+          Upgrade
+        </Button>
+      ) : null}
       {isRunning ? (
         <Button variant="secondary" onClick={() => downloadClusterKubeconfig(instance)}>
           Download kubeconfig
@@ -656,7 +676,13 @@ function ClusterLifecycleActions({
           Delete
         </Button>
       ) : (
-        <Tooltip content="Delete is unavailable while restarting">
+        <Tooltip
+          content={
+            isUpgrading
+              ? 'Delete is unavailable while upgrading'
+              : 'Delete is unavailable while restarting'
+          }
+        >
           <Button variant="secondary" isDanger isAriaDisabled>
             Delete
           </Button>
@@ -1034,32 +1060,6 @@ function DefaultLifecycleActions({
   )
 }
 
-function getClusterUpgradeStatusLabel(status: TenantClusterUpgradeStatus): string {
-  switch (status) {
-    case 'upgrade-available':
-      return 'Upgrade available'
-    case 'upgrading':
-      return 'Upgrading'
-    case 'up-to-date':
-    default:
-      return 'Up to date'
-  }
-}
-
-function getClusterUpgradeStatusColor(
-  status: TenantClusterUpgradeStatus,
-): 'green' | 'blue' | 'orange' | 'grey' {
-  switch (status) {
-    case 'upgrade-available':
-      return 'orange'
-    case 'upgrading':
-      return 'blue'
-    case 'up-to-date':
-    default:
-      return 'green'
-  }
-}
-
 function getNodeSetStatusLabel(status: TenantClusterNodeSetStatus): string {
   switch (status) {
     case 'updating':
@@ -1097,6 +1097,8 @@ function ClusterInstancePageBody({
   onUpdateNetworking,
   onNavigateToProject,
   onNavigateToCatalogItem,
+  onRequestUpgrade,
+  onCompleteUpgrade,
   instanceNetworkingVariant,
 }: {
   instance: TenantInstance
@@ -1109,6 +1111,8 @@ function ClusterInstancePageBody({
   ) => void
   onNavigateToProject?: (project: TenantProject) => void
   onNavigateToCatalogItem?: (catalogItemDisplayName: string) => void
+  onRequestUpgrade?: (instance: TenantInstance) => void
+  onCompleteUpgrade?: (instanceId: string) => void
   instanceNetworkingVariant?: 'interactive' | 'summary'
 }) {
   const clusterConfig = resolveClusterConfig(instance)
@@ -1119,12 +1123,23 @@ function ClusterInstancePageBody({
   const upgradeStatus = getClusterUpgradeStatus(instance)
   const desiredVersion = getClusterDesiredVersionLabel(instance)
   const nodeSets = getClusterNodeSetsWithDefaults(instance)
+  const upgradeHistory = getClusterUpgradeHistory(instance)
+  const isUpgrading = upgradeStatus === 'upgrading'
+  const upgradeStartedAt = clusterConfig.upgradeStartedAt
 
   return (
     <>
       {isProvisioning ? (
         <div className="entity-details-page__bare-metal-provisioning">
           <ClusterProvisioningProgressCard startedAt={instance.createdAt} />
+        </div>
+      ) : null}
+      {isUpgrading && upgradeStartedAt ? (
+        <div className="entity-details-page__cluster-upgrade-status">
+          <ClusterUpgradeProgressCard
+            startedAt={upgradeStartedAt}
+            onStagesComplete={() => onCompleteUpgrade?.(instance.id)}
+          />
         </div>
       ) : null}
       <div className="entity-details-page__columns entity-details-page__columns--with-rail">
@@ -1226,6 +1241,51 @@ function ClusterInstancePageBody({
             conditionsAriaLabel="Cluster conditions"
             networkingVariant={instanceNetworkingVariant}
           />
+
+          <div className="entity-details-page__column">
+            <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
+              Upgrade history
+            </Title>
+            {upgradeHistory.length === 0 ? (
+              <Content component="p" className="entity-details-page__upgrade-history-empty">
+                No upgrades yet.
+              </Content>
+            ) : (
+              <ul className="entity-details-page__upgrade-history" aria-label="Upgrade history">
+                {upgradeHistory.map((entry) => (
+                  <li key={entry.id} className="entity-details-page__upgrade-history-item">
+                    <div className="entity-details-page__upgrade-history-item-header">
+                      <span className="entity-details-page__upgrade-history-versions">
+                        {getClusterVersionShortLabel(entry.fromVersion)} →{' '}
+                        {getClusterVersionShortLabel(entry.toVersion)}
+                      </span>
+                      <Label
+                        color={
+                          entry.result === 'succeeded'
+                            ? 'green'
+                            : entry.result === 'failed'
+                              ? 'red'
+                              : 'blue'
+                        }
+                        isCompact
+                      >
+                        {entry.result === 'succeeded'
+                          ? 'Succeeded'
+                          : entry.result === 'failed'
+                            ? 'Failed'
+                            : 'In progress'}
+                      </Label>
+                    </div>
+                    <Content component="p" className="entity-details-page__upgrade-history-meta">
+                      {formatClusterUpgradeHistoryWhen(entry.completedAt ?? entry.startedAt)}
+                      {' · '}
+                      {entry.initiatedBy}
+                    </Content>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
 
         <div className="entity-details-page__rail-stack">
@@ -1267,6 +1327,7 @@ function ClusterInstancePageBody({
                           variant="link"
                           isInline
                           className="entity-details-page__upgrade-cluster-link"
+                          onClick={() => onRequestUpgrade?.(instance)}
                         >
                           Upgrade cluster
                         </Button>
@@ -1889,6 +1950,8 @@ export function TenantUserInstanceDetailsPage({
   onNavigateToProject,
   onNavigateToCatalogItem,
   onViewPassword,
+  onRequestUpgrade,
+  onCompleteUpgrade,
   instanceNetworkingVariant = 'summary',
 }: TenantUserInstanceDetailsPageProps) {
   const serviceId = getTenantInstanceServiceId(instance)
@@ -1909,6 +1972,7 @@ export function TenantUserInstanceDetailsPage({
       instance={instance}
       onRequestTerminate={onRequestTerminate}
       onViewPassword={onViewPassword}
+      onRequestUpgrade={onRequestUpgrade}
     />
   ) : isVm ? (
     <VmLifecycleActions
@@ -1952,6 +2016,8 @@ export function TenantUserInstanceDetailsPage({
           onUpdateNetworking={onUpdateNetworking}
           onNavigateToProject={onNavigateToProject}
           onNavigateToCatalogItem={onNavigateToCatalogItem}
+          onRequestUpgrade={onRequestUpgrade}
+          onCompleteUpgrade={onCompleteUpgrade}
           instanceNetworkingVariant={instanceNetworkingVariant}
         />
       ) : isVm ? (

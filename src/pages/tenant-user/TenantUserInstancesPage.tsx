@@ -35,7 +35,14 @@ import { CatalogFilterResultsSummary } from '../../components/catalog/CatalogFil
 import { ViewModeToggle } from '../../components/catalog/CatalogViewToggle'
 import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
 import { TenantUserInstanceDetailsPage, BareMetalConnectSshModal } from '../../components/tenant-user/TenantUserInstanceDetailsPage'
+import { ClusterUpgradeWizard } from '../../components/tenant-user/ClusterUpgradeWizard'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
+import {
+  applyClusterUpgradeComplete,
+  applyClusterUpgradeStart,
+  getClusterUpgradeStatusColor,
+  getClusterUpgradeStatusLabel,
+} from '../../tenantUser/clusterUpgrade'
 import {
   createCatalogServiceFilterSet,
   describeCatalogServiceFilter,
@@ -57,6 +64,7 @@ import {
   getClusterNodeSetTypeLabel,
   getClusterPlatformLabel,
   getClusterStatusLabel,
+  getClusterUpgradeStatus,
   getTenantInstanceActions,
   getTenantInstanceCardSpecRows,
   getTenantInstanceGpuLabel,
@@ -249,6 +257,7 @@ export function TenantUserInstancesPage({
     () => initialOpenMatch?.id ?? null,
   )
   const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(() => Boolean(initialOpenMatch))
+  const [upgradeInstanceId, setUpgradeInstanceId] = useState<string | null>(null)
   const [instancePendingTerminate, setInstancePendingTerminate] = useState<TenantInstance | null>(
     null,
   )
@@ -343,6 +352,35 @@ export function TenantUserInstancesPage({
 
       return patchProviderServiceInstance(current, instanceId, patch, tenantSlug)
     })
+  }
+
+  const upgradeInstance =
+    upgradeInstanceId == null
+      ? null
+      : (instances.find((entry) => entry.id === upgradeInstanceId) ?? null)
+
+  const handleRequestUpgrade = (instance: TenantInstance) => {
+    setUpgradeInstanceId(instance.id)
+  }
+
+  const handleStartUpgrade = (targetVersionLabel: string) => {
+    if (!upgradeInstance) {
+      return
+    }
+    const next = applyClusterUpgradeStart(upgradeInstance, targetVersionLabel)
+    patchStoredInstance(next.id, next)
+    setUpgradeInstanceId(null)
+    setSelectedInstanceId(next.id)
+    setIsDetailsDrawerOpen(true)
+  }
+
+  const handleCompleteUpgrade = (instanceId: string) => {
+    const current = instances.find((entry) => entry.id === instanceId)
+    if (!current) {
+      return
+    }
+    const next = applyClusterUpgradeComplete(current)
+    patchStoredInstance(next.id, next)
   }
 
   const removeStoredInstance = (instanceId: string) => {
@@ -907,8 +945,19 @@ export function TenantUserInstancesPage({
           onViewPassword={(instance) => {
             setInstancePendingPassword(instance)
           }}
+          onRequestUpgrade={handleRequestUpgrade}
+          onCompleteUpgrade={handleCompleteUpgrade}
           instanceNetworkingVariant={instanceNetworkingVariant}
         />
+
+        {upgradeInstance ? (
+          <ClusterUpgradeWizard
+            isOpen
+            instance={upgradeInstance}
+            onClose={() => setUpgradeInstanceId(null)}
+            onStartUpgrade={handleStartUpgrade}
+          />
+        ) : null}
 
         <Modal
           variant={ModalVariant.small}
@@ -1176,6 +1225,11 @@ export function TenantUserInstancesPage({
               {filteredInstances.map((instance) => {
                 const serviceId = getTenantInstanceServiceId(instance)
                 const cardSpecRows = getTenantInstanceCardSpecRows(instance)
+                const clusterUpgradeStatus =
+                  serviceId === 'cluster' ? getClusterUpgradeStatus(instance) : null
+                const showClusterUpgradeBadge =
+                  clusterUpgradeStatus === 'upgrade-available' ||
+                  clusterUpgradeStatus === 'upgrading'
 
                 return (
                 <Card key={instance.id} isCompact={false} className="tenant-user-instances__card">
@@ -1186,6 +1240,24 @@ export function TenantUserInstancesPage({
                       </span>
                       <div className="tenant-user-instances__card-header-actions">
                         <InstanceStatusLabel status={instance.status} />
+                        {showClusterUpgradeBadge && clusterUpgradeStatus ? (
+                          <Label
+                            color={getClusterUpgradeStatusColor(clusterUpgradeStatus)}
+                            isCompact
+                            icon={
+                              clusterUpgradeStatus === 'upgrading' ? (
+                                <Spinner
+                                  isInline
+                                  diameter="0.625rem"
+                                  aria-hidden
+                                  className="tenant-user-instances__status-spinner"
+                                />
+                              ) : undefined
+                            }
+                          >
+                            {getClusterUpgradeStatusLabel(clusterUpgradeStatus)}
+                          </Label>
+                        ) : null}
                         <ActionsColumn items={getInstanceKebabActions(instance)} />
                       </div>
                     </div>
@@ -1276,6 +1348,13 @@ export function TenantUserInstancesPage({
                   {filteredInstances.map((instance) => {
                     // Match grid cards: Cluster version + nested Node sets (not full launch dump).
                     const tableSpecRows = getTenantInstanceCardSpecRows(instance)
+                    const clusterUpgradeStatus =
+                      getTenantInstanceServiceId(instance) === 'cluster'
+                        ? getClusterUpgradeStatus(instance)
+                        : null
+                    const showClusterUpgradeBadge =
+                      clusterUpgradeStatus === 'upgrade-available' ||
+                      clusterUpgradeStatus === 'upgrading'
 
                     return (
                     <Tr key={instance.id}>
@@ -1290,7 +1369,27 @@ export function TenantUserInstancesPage({
                       </Button>
                     </Td>
                     <Td dataLabel="Status">
-                      <InstanceStatusLabel status={instance.status} />
+                      <span className="tenant-user-instances__status-cell">
+                        <InstanceStatusLabel status={instance.status} />
+                        {showClusterUpgradeBadge && clusterUpgradeStatus ? (
+                          <Label
+                            color={getClusterUpgradeStatusColor(clusterUpgradeStatus)}
+                            isCompact
+                            icon={
+                              clusterUpgradeStatus === 'upgrading' ? (
+                                <Spinner
+                                  isInline
+                                  diameter="0.625rem"
+                                  aria-hidden
+                                  className="tenant-user-instances__status-spinner"
+                                />
+                              ) : undefined
+                            }
+                          >
+                            {getClusterUpgradeStatusLabel(clusterUpgradeStatus)}
+                          </Label>
+                        ) : null}
+                      </span>
                     </Td>
                       <Td dataLabel="Project">{getTenantInstanceProjectLabel(instance, projects)}</Td>
                       <Td dataLabel="Configuration">

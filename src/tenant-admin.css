@@ -2866,6 +2866,129 @@
   margin-inline-start: auto;
 }
 
+.tenant-user-instances__status-cell {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--xs);
+}
+
+.entity-details-page__upgrade-history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.entity-details-page__upgrade-history-empty {
+  margin: 0;
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.entity-details-page__upgrade-history-item {
+  padding-block: var(--pf-t--global--spacer--sm);
+  border-block-end: 1px solid var(--pf-t--global--border--color--default);
+}
+
+.entity-details-page__upgrade-history-item:last-child {
+  border-block-end: 0;
+}
+
+.entity-details-page__upgrade-history-item-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.entity-details-page__upgrade-history-versions {
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+}
+
+.entity-details-page__upgrade-history-meta {
+  margin: var(--pf-t--global--spacer--xs) 0 0;
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.entity-details-page__cluster-upgrade-status {
+  margin-block-end: var(--pf-t--global--spacer--lg);
+}
+
+.entity-details-page__cluster-upgrade-status .tenant-user-launch-wizard__boot-log {
+  margin-block-start: 0;
+  background: var(--pf-t--global--background--color--primary--default);
+}
+
+.cluster-upgrade-modal__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+}
+
+.cluster-upgrade-modal__lede {
+  margin: 0;
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+/* Cancel the form gap so Current version sits flush under the lede. */
+.cluster-upgrade-modal__form .cluster-upgrade-modal__lede + .cluster-upgrade-modal__current-version {
+  margin-block-start: calc(-1 * var(--pf-t--global--spacer--md));
+}
+
+.cluster-upgrade-modal__current-version.pf-v6-c-form__group {
+  row-gap: var(--pf-t--global--spacer--xs);
+}
+
+.cluster-upgrade-modal__target-offer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--sm);
+  margin-block-start: var(--pf-t--global--spacer--sm);
+  padding: var(--pf-t--global--spacer--md);
+  border: 1px solid var(--pf-t--global--border--color--default);
+  border-radius: var(--pf-t--global--border--radius--small);
+  background-color: var(--pf-t--global--background--color--secondary--default);
+}
+
+.cluster-upgrade-modal__target-offer-eyebrow {
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--default);
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+}
+
+.cluster-upgrade-modal__target-features {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--xs);
+  margin: 0;
+  padding: 0 0 0 var(--pf-t--global--spacer--md);
+  list-style: none;
+}
+
+.cluster-upgrade-modal__target-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--pf-t--global--spacer--sm);
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--default);
+  line-height: var(--pf-t--global--font--line-height--body);
+}
+
+.cluster-upgrade-modal__target-feature-icon {
+  flex: 0 0 auto;
+  margin-block-start: 0.3rem;
+  color: var(--pf-t--global--icon--color--status--success--default);
+  font-size: 0.875rem;
+}
+
+.cluster-upgrade-modal__warning {
+  margin-block-start: 0;
+}
+
 .tenant-user-instances__card-title-block {
   display: flex;
   flex-direction: column;
@@ -4012,6 +4135,10 @@
 .bare-metal-provisioning-progress__stepper.pf-v6-c-progress-stepper.pf-m-center {
   --pf-v6-c-progress-stepper--GridTemplateColumns: repeat(4, minmax(0, 1fr));
   width: 100%;
+}
+
+.cluster-upgrade-progress__stepper.bare-metal-provisioning-progress__stepper.pf-v6-c-progress-stepper.pf-m-center {
+  --pf-v6-c-progress-stepper--GridTemplateColumns: repeat(3, minmax(0, 1fr));
 }
 
 .bare-metal-provisioning-progress__stepper .pf-v6-c-progress-stepper__step-title,
