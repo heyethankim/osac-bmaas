@@ -18,6 +18,7 @@ import {
   Tooltip,
 } from '@patternfly/react-core'
 import { PlusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/plus-circle-icon'
+import { EntityDetailsActionsDropdown } from '../shared/EntityDetailsActionsDropdown'
 import { EntityDetailsPageShell } from '../shared/EntityDetailsPageShell'
 import { CatalogClusterVersionValue } from '../catalog/CatalogClusterVersionValue'
 import { CatalogDiskImageValue } from '../catalog/CatalogDiskImageValue'
@@ -674,45 +675,30 @@ function ClusterLifecycleActions({
           </Button>
         </Tooltip>
       )}
-      {isRunning ? (
-        <Button variant="secondary" onClick={() => downloadClusterKubeconfig(instance)}>
-          Download kubeconfig
-        </Button>
-      ) : (
-        <Tooltip content="Kubeconfig is available when the cluster is ready">
-          <Button variant="secondary" isAriaDisabled>
-            Download kubeconfig
-          </Button>
-        </Tooltip>
-      )}
-      {isRunning ? (
-        <Button variant="secondary" onClick={() => onViewPassword?.(instance)}>
-          View password
-        </Button>
-      ) : (
-        <Tooltip content="Password is available when the cluster is ready">
-          <Button variant="secondary" isAriaDisabled>
-            View password
-          </Button>
-        </Tooltip>
-      )}
-      {canDelete ? (
-        <Button variant="secondary" isDanger onClick={() => onRequestTerminate(instance)}>
-          Delete
-        </Button>
-      ) : (
-        <Tooltip
-          content={
-            isUpgrading
-              ? 'Delete is unavailable while upgrading'
-              : 'Delete is unavailable while restarting'
-          }
-        >
-          <Button variant="secondary" isDanger isAriaDisabled>
-            Delete
-          </Button>
-        </Tooltip>
-      )}
+      <EntityDetailsActionsDropdown
+        additionalItems={[
+          {
+            label: 'Download kubeconfig',
+            onClick: () => downloadClusterKubeconfig(instance),
+            disabled: !isRunning,
+            disabledReason: 'Kubeconfig is available when the cluster is ready',
+          },
+          {
+            label: 'View password',
+            onClick: () => onViewPassword?.(instance),
+            disabled: !isRunning,
+            disabledReason: 'Password is available when the cluster is ready',
+          },
+        ]}
+        onRemove={() => onRequestTerminate(instance)}
+        removeLabel="Delete"
+        removeDisabled={!canDelete}
+        removeDisabledReason={
+          isUpgrading
+            ? 'Delete is unavailable while upgrading'
+            : 'Delete is unavailable while restarting'
+        }
+      />
     </>
   )
 }
@@ -756,85 +742,42 @@ function VmLifecycleActions({
           </Button>
         </Tooltip>
       )}
-      {canStart ? (
-        <Button variant="secondary" onClick={() => onStart?.(instance.id)}>
-          Start
-        </Button>
-      ) : (
-        <Tooltip
-          content={
-            isRunning
+      <EntityDetailsActionsDropdown
+        additionalItems={[
+          {
+            label: 'Start',
+            onClick: () => onStart?.(instance.id),
+            disabled: !canStart,
+            disabledReason: isRunning
               ? 'Instance is already running'
               : isRestarting
                 ? 'Start is unavailable while restarting'
-                : 'Start is available when the instance is stopped'
-          }
-        >
-          <Button variant="secondary" isAriaDisabled>
-            Start
-          </Button>
-        </Tooltip>
-      )}
-      {canStop ? (
-        <Button variant="secondary" onClick={() => onStop?.(instance.id)}>
-          Stop
-        </Button>
-      ) : (
-        <Tooltip
-          content={
-            isStopped
+                : 'Start is available when the instance is stopped',
+          },
+          {
+            label: 'Stop',
+            onClick: () => onStop?.(instance.id),
+            disabled: !canStop,
+            disabledReason: isStopped
               ? 'Instance is already stopped'
               : isRestarting
                 ? 'Stop is unavailable while restarting'
-                : 'Stop is available when the instance is running'
-          }
-        >
-          <Button variant="secondary" isAriaDisabled>
-            Stop
-          </Button>
-        </Tooltip>
-      )}
-      {canRestart ? (
-        <Button variant="secondary" onClick={() => onRestart(instance.id)}>
-          Restart
-        </Button>
-      ) : (
-        <Tooltip
-          content={
-            isRestarting
+                : 'Stop is available when the instance is running',
+          },
+          {
+            label: isRestarting ? 'Restarting…' : 'Restart',
+            onClick: () => onRestart(instance.id),
+            disabled: !canRestart,
+            disabledReason: isRestarting
               ? 'Restart is already in progress'
-              : 'Restart is available when the instance is running or stopped'
-          }
-        >
-          <Button
-            variant="secondary"
-            isAriaDisabled
-            icon={
-              isRestarting ? (
-                <Spinner
-                  isInline
-                  diameter="0.875rem"
-                  aria-hidden
-                  className="tenant-user-instances__status-spinner"
-                />
-              ) : undefined
-            }
-          >
-            {isRestarting ? 'Restarting…' : 'Restart'}
-          </Button>
-        </Tooltip>
-      )}
-      {canDelete ? (
-        <Button variant="secondary" isDanger onClick={() => onRequestTerminate(instance)}>
-          Delete
-        </Button>
-      ) : (
-        <Tooltip content="Delete is unavailable while restarting">
-          <Button variant="secondary" isDanger isAriaDisabled>
-            Delete
-          </Button>
-        </Tooltip>
-      )}
+              : 'Restart is available when the instance is running or stopped',
+          },
+        ]}
+        onRemove={() => onRequestTerminate(instance)}
+        removeLabel="Delete"
+        removeDisabled={!canDelete}
+        removeDisabledReason="Delete is unavailable while restarting"
+      />
     </>
   )
 }
@@ -934,85 +877,42 @@ function BareMetalLifecycleActions({
           </Button>
         </Tooltip>
       )}
-      {canStart ? (
-        <Button variant="secondary" onClick={() => onStart?.(instance.id)}>
-          Start
-        </Button>
-      ) : (
-        <Tooltip
-          content={
-            isRunning
+      <EntityDetailsActionsDropdown
+        additionalItems={[
+          {
+            label: 'Start',
+            onClick: () => onStart?.(instance.id),
+            disabled: !canStart,
+            disabledReason: isRunning
               ? 'Instance is already running'
               : isRestarting
                 ? 'Start is unavailable while restarting'
-                : 'Start is available when the instance is stopped'
-          }
-        >
-          <Button variant="secondary" isAriaDisabled>
-            Start
-          </Button>
-        </Tooltip>
-      )}
-      {canRestart ? (
-        <Button variant="secondary" onClick={() => onRestart(instance.id)}>
-          Restart
-        </Button>
-      ) : (
-        <Tooltip
-          content={
-            isRestarting
+                : 'Start is available when the instance is stopped',
+          },
+          {
+            label: isRestarting ? 'Restarting…' : 'Restart',
+            onClick: () => onRestart(instance.id),
+            disabled: !canRestart,
+            disabledReason: isRestarting
               ? 'Restart is already in progress'
-              : 'Restart is available when the instance is running or stopped'
-          }
-        >
-          <Button
-            variant="secondary"
-            isAriaDisabled
-            icon={
-              isRestarting ? (
-                <Spinner
-                  isInline
-                  diameter="0.875rem"
-                  aria-hidden
-                  className="tenant-user-instances__status-spinner"
-                />
-              ) : undefined
-            }
-          >
-            {isRestarting ? 'Restarting…' : 'Restart'}
-          </Button>
-        </Tooltip>
-      )}
-      {canStop ? (
-        <Button variant="secondary" onClick={() => onStop?.(instance.id)}>
-          Stop
-        </Button>
-      ) : (
-        <Tooltip
-          content={
-            isStopped
+              : 'Restart is available when the instance is running or stopped',
+          },
+          {
+            label: 'Stop',
+            onClick: () => onStop?.(instance.id),
+            disabled: !canStop,
+            disabledReason: isStopped
               ? 'Instance is already stopped'
               : isRestarting
                 ? 'Stop is unavailable while restarting'
-                : 'Stop is available when the instance is running'
-          }
-        >
-          <Button variant="secondary" isAriaDisabled>
-            Stop
-          </Button>
-        </Tooltip>
-      )}
-      {canTerminate ? (
-        <Button variant="secondary" isDanger onClick={() => onRequestTerminate(instance)}>
-          Delete
-        </Button>
-      ) : (
-        <Tooltip content="Delete is unavailable while restarting">
-          <Button variant="secondary" isDanger isAriaDisabled>
-            Delete
-          </Button>
-        </Tooltip>
-      )}
+                : 'Stop is available when the instance is running',
+          },
+        ]}
+        onRemove={() => onRequestTerminate(instance)}
+        removeLabel="Delete"
+        removeDisabled={!canTerminate}
+        removeDisabledReason="Delete is unavailable while restarting"
+      />
       <BareMetalConnectSshModal
         instance={instance}
         isOpen={isSshModalOpen}
@@ -1039,49 +939,22 @@ function DefaultLifecycleActions({
   const canTerminate = !isRestarting
 
   return (
-    <>
-      {canRestart ? (
-        <Button variant="secondary" onClick={() => onRestart(instance.id)}>
-          Restart
-        </Button>
-      ) : (
-        <Tooltip
-          content={
-            isRestarting
-              ? 'Restart is already in progress'
-              : 'Restart is available when the instance is running'
-          }
-        >
-          <Button
-            variant="secondary"
-            isAriaDisabled
-            icon={
-              isRestarting ? (
-                <Spinner
-                  isInline
-                  diameter="0.875rem"
-                  aria-hidden
-                  className="tenant-user-instances__status-spinner"
-                />
-              ) : undefined
-            }
-          >
-            {isRestarting ? 'Restarting…' : 'Restart'}
-          </Button>
-        </Tooltip>
-      )}
-      {canTerminate ? (
-        <Button variant="secondary" isDanger onClick={() => onRequestTerminate(instance)}>
-          Delete
-        </Button>
-      ) : (
-        <Tooltip content="Delete is unavailable while restarting">
-          <Button variant="secondary" isDanger isAriaDisabled>
-            Delete
-          </Button>
-        </Tooltip>
-      )}
-    </>
+    <EntityDetailsActionsDropdown
+      additionalItems={[
+        {
+          label: isRestarting ? 'Restarting…' : 'Restart',
+          onClick: () => onRestart(instance.id),
+          disabled: !canRestart,
+          disabledReason: isRestarting
+            ? 'Restart is already in progress'
+            : 'Restart is available when the instance is running',
+        },
+      ]}
+      onRemove={() => onRequestTerminate(instance)}
+      removeLabel="Delete"
+      removeDisabled={!canTerminate}
+      removeDisabledReason="Delete is unavailable while restarting"
+    />
   )
 }
 
