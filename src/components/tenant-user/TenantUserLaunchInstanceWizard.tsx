@@ -971,6 +971,17 @@ export function TenantUserLaunchInstanceWizard({
             releaseImage: form.releaseImage.trim(),
             podCidr: form.podCidr.trim(),
             serviceCidr: form.serviceCidr.trim(),
+            addonOperatorIds: [
+              ...templateAddonSelections
+                .filter(
+                  (selection) =>
+                    !isAddonOperatorsEditable ||
+                    selection.mode === 'mandatory' ||
+                    !deselectedOptionalTemplateOperatorIds.includes(selection.operatorId),
+                )
+                .map((selection) => selection.operatorId),
+              ...(isAddonOperatorsEditable ? form.userAddonOperatorIds : []),
+            ].filter((operatorId, index, all) => all.indexOf(operatorId) === index),
             catalogShortName: 'ocp-small',
             creator: 'Alex Johnson',
             upgradeStatus: 'up-to-date',

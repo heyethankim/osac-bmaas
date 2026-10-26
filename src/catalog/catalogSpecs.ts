@@ -1,6 +1,10 @@
 import type { ProviderCatalogDraft } from '../providerSetup/storage'
 import type { CatalogServiceId } from '../providerSetup/templateDemo'
 import {
+  getAddonOperatorShortName,
+  type ClusterAddonOperatorSelection,
+} from './clusterAddonOperators'
+import {
   CATALOG_INSTANCE_TYPE_OPTIONS,
   formatClusterPlatformLabel,
   formatClusterTopologyNodeSetValue,
@@ -324,6 +328,7 @@ function buildClusterCatalogSpecRows(
     | 'hostTypeLabel'
     | 'clusterNodeTopologyMode'
     | 'clusterTopology'
+    | 'addonOperators'
   >,
   options?: ClusterCatalogSpecOptions,
 ): CatalogSpecRow[] {
@@ -351,6 +356,16 @@ function buildClusterCatalogSpecRows(
     rows.push(...CLUSTER_NODE_SETS_DETAIL_ROWS)
   }
 
+  const addonOperators = (item.addonOperators ?? []) as ReadonlyArray<ClusterAddonOperatorSelection>
+  if (addonOperators.length > 0) {
+    rows.push({
+      label: 'Add-on operators',
+      value: addonOperators
+        .map((selection) => getAddonOperatorShortName(selection.operatorId))
+        .join(', '),
+    })
+  }
+
   return rows
 }
 
@@ -371,6 +386,7 @@ export function resolveClusterCatalogHighlightRows(
     | 'hostTypeLabel'
     | 'clusterNodeTopologyMode'
     | 'clusterTopology'
+    | 'addonOperators'
   >,
   options?: ClusterCatalogSpecOptions,
 ): CatalogSpecRow[] {

@@ -1,5 +1,11 @@
 import type { CatalogSpecRow } from '../catalog/catalogSpecs'
 import {
+  DEMO_CLUSTER_TEMPLATE_ADDON_OPERATORS,
+  getAddonOperatorShortName,
+  getLaunchAddonOperatorById,
+  type ClusterAddonOperatorDefinition,
+} from '../catalog/clusterAddonOperators'
+import {
   CLUSTER_NODE_SETS_PARENT_LABEL,
   resolveCatalogSpecRows,
   resolveClusterCatalogHighlightRows,
@@ -87,6 +93,8 @@ export type TenantClusterConfig = {
   nodeSets: TenantClusterNodeSet[]
   /** Per-node inventory once machines are allocated. */
   nodes?: TenantClusterNodeInventory[]
+  /** Operator ids installed with this cluster (catalog + user selections at launch). */
+  addonOperatorIds?: string[]
   catalogShortName?: string
   creator?: string
   /** Desired control-plane version when an upgrade is available or in progress. */
@@ -766,6 +774,37 @@ export function getClusterWorkerNodeCount(instance: TenantInstance): number {
   return nodeSets.reduce((total, nodeSet) => total + nodeSet.nodeCount, 0)
 }
 
+
+function resolveClusterAddonOperatorIds(instance: TenantInstance): string[] {
+  const fromInstance = resolveClusterConfig(instance).addonOperatorIds ?? []
+  if (fromInstance.length > 0) {
+    return fromInstance
+  }
+  const fromCatalog = findCatalogDraftForInstance(instance)?.addonOperators ?? []
+  if (fromCatalog.length > 0) {
+    return fromCatalog.map((entry) => entry.operatorId)
+  }
+  return DEMO_CLUSTER_TEMPLATE_ADDON_OPERATORS.map((entry) => entry.operatorId)
+}
+
+/** Short labels for operators installed on a cluster instance. */
+export function getClusterAddonOperatorLabels(
+  instance: TenantInstance,
+): string[] {
+  return resolveClusterAddonOperatorIds(instance).map((operatorId) =>
+    getAddonOperatorShortName(operatorId),
+  )
+}
+
+/** Full operator definitions installed on a cluster instance. */
+export function getClusterInstalledAddonOperators(
+  instance: TenantInstance,
+): ClusterAddonOperatorDefinition[] {
+  return resolveClusterAddonOperatorIds(instance)
+    .map((operatorId) => getLaunchAddonOperatorById(operatorId))
+    .filter((operator): operator is ClusterAddonOperatorDefinition => Boolean(operator))
+}
+
 export function resolveClusterConfig(instance: TenantInstance): TenantClusterConfig {
   if (instance.clusterConfig) {
     return instance.clusterConfig
@@ -1434,6 +1473,7 @@ function getClusterInstanceCatalogDraftFields(instance: TenantInstance) {
     hostTypeLabel: catalog?.hostTypeLabel,
     clusterNodeTopologyMode: catalog?.clusterNodeTopologyMode ?? ('locked' as const),
     clusterTopology: resolveInstanceClusterTopology(instance),
+    addonOperators: catalog?.addonOperators,
   }
 }
 
@@ -1771,6 +1811,9 @@ function createDemoTenantClusterInstanceVariant(
       releaseImage: getReleaseImageForClusterVersion(options.platform),
       podCidr: '10.128.0.0/14',
       serviceCidr: '172.30.0.0/16',
+      addonOperatorIds: DEMO_CLUSTER_TEMPLATE_ADDON_OPERATORS.map(
+        (entry) => entry.operatorId,
+      ),
       catalogShortName: options.hostType === 'gpu-host' ? 'ocp-gpu' : 'ocp-small',
       creator: 'Alex Johnson',
       desiredVersion: options.desiredVersion,

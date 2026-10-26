@@ -25,6 +25,7 @@ import { CatalogDiskImageValue } from '../catalog/CatalogDiskImageValue'
 import { CatalogNetworkingLocksSection } from '../catalog/CatalogNetworkingLocksSection'
 import { CatalogNetworkingSummarySection } from '../catalog/CatalogNetworkingSummarySection'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
+import { getClusterAddonOperatorResolvedVersion } from '../../catalog/clusterAddonOperators'
 import {
   getCatalogNetworkOptionLabel,
   type CatalogNetworkPolicy,
@@ -60,6 +61,7 @@ import {
   getTenantInstanceCardSpecRows,
   resolveBareMetalInventory,
   resolveBareMetalSshPublicKey,
+  getClusterInstalledAddonOperators,
   resolveClusterConfig,
   resolveClusterNodeInventories,
   resolveTenantInstanceNetworking,
@@ -1024,6 +1026,10 @@ function ClusterInstancePageBody({
   const desiredVersion = getClusterDesiredVersionLabel(instance)
   const nodeSets = getClusterNodeSetsWithDefaults(instance)
   const upgradeHistory = getClusterUpgradeHistory(instance)
+  const installedAddonOperators = getClusterInstalledAddonOperators(instance)
+  const clusterVersionForAddons =
+    clusterConfig.releaseImage || getClusterPlatformLabel(instance)
+  const clusterConditions = getClusterInstanceConditions(instance)
   const isUpgrading = upgradeStatus === 'upgrading'
   const upgradeStartedAt = clusterConfig.upgradeStartedAt
   const [isUpgradeHistoryOpen, setIsUpgradeHistoryOpen] = useState(false)
@@ -1138,10 +1144,95 @@ function ClusterInstancePageBody({
             instance={instance}
             tenantSlug={tenantSlug}
             onUpdateNetworking={onUpdateNetworking}
-            conditions={getClusterInstanceConditions(instance)}
-            conditionsAriaLabel="Cluster conditions"
             networkingVariant={instanceNetworkingVariant}
           />
+
+          <div className="entity-details-page__column entity-details-page__column--span-2">
+            <Title headingLevel="h2" size="lg" className="entity-details-page__section-title">
+              Add-on operators
+            </Title>
+            {installedAddonOperators.length > 0 ? (
+              <ul
+                className="entity-details-page__addon-operator-list"
+                aria-label="Installed add-on operators"
+              >
+                {installedAddonOperators.map((operator) => {
+                  const requirementNote = operator.requirementNote.trim()
+                  const dependencyNote = operator.dependencyNote.trim()
+                  const includeNote =
+                    dependencyNote && dependencyNote.toLowerCase() !== 'none'
+                      ? `Includes ${dependencyNote.replace(/\s*\(Auto-bundled\)\s*$/i, '')}`
+                      : null
+                  return (
+                    <li key={operator.id} className="entity-details-page__addon-operator-item">
+                      <div className="entity-details-page__addon-operator-item-main">
+                        <span className="entity-details-page__addon-operator-logo-wrap">
+                          <img
+                            className="entity-details-page__addon-operator-logo"
+                            src={operator.logoSrc}
+                            alt=""
+                          />
+                        </span>
+                        <div className="entity-details-page__addon-operator-copy">
+                          <div className="entity-details-page__addon-operator-heading">
+                            <span className="entity-details-page__addon-operator-name">
+                              {operator.name}
+                            </span>
+                            <Label color="green" isCompact>
+                              Installed
+                            </Label>
+                          </div>
+                          <Content
+                            component="p"
+                            className="entity-details-page__addon-operator-version"
+                          >
+                            Version:{' '}
+                            {getClusterAddonOperatorResolvedVersion(
+                              operator,
+                              clusterVersionForAddons,
+                            )}
+                          </Content>
+                          <Content
+                            component="p"
+                            className="entity-details-page__addon-operator-description"
+                          >
+                            {operator.description}
+                          </Content>
+                          {requirementNote || includeNote ? (
+                            <div className="entity-details-page__addon-operator-notes">
+                              {requirementNote ? (
+                                <Label color="grey" isCompact>
+                                  {requirementNote}
+                                </Label>
+                              ) : null}
+                              {includeNote ? (
+                                <Label color="purple" isCompact>
+                                  {includeNote}
+                                </Label>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            ) : (
+              <Content component="p" className="entity-details-page__addon-operator-empty">
+                None
+              </Content>
+            )}
+          </div>
+
+          {clusterConditions.length > 0 ? (
+            <div className="entity-details-page__conditions-band entity-details-page__column entity-details-page__column--span-2">
+              <InstanceConditionsSection
+                conditions={clusterConditions}
+                ariaLabel="Cluster conditions"
+              />
+            </div>
+          ) : null}
         </div>
 
         <div className="entity-details-page__rail-stack">

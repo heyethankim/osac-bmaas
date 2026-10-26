@@ -48,11 +48,15 @@ function isNodeSetsParentLabel(label: string): boolean {
 function partitionClusterConfigurationRows(rows: CatalogSpecRow[]) {
   const clusterVersion = rows.find((row) => row.label === 'Cluster version') ?? null
   const nodeSets = rows.find((row) => isNodeSetsParentLabel(row.label)) ?? null
+  const addonOperators = rows.find((row) => row.label === 'Add-on operators') ?? null
   const nodeSetChildren = rows.filter(
-    (row) => row.label !== 'Cluster version' && !isNodeSetsParentLabel(row.label),
+    (row) =>
+      row.label !== 'Cluster version' &&
+      !isNodeSetsParentLabel(row.label) &&
+      row.label !== 'Add-on operators',
   )
 
-  return { clusterVersion, nodeSets, nodeSetChildren }
+  return { clusterVersion, nodeSets, nodeSetChildren, addonOperators }
 }
 
 function renderConfigurationRowValue(
@@ -102,9 +106,8 @@ export function ClusterCatalogItemDetailsBody({
     variant === 'entity'
       ? 'tenant-admin-catalog-manager__scope-icon'
       : 'provider-admin-catalog__scope-icon'
-  const { clusterVersion, nodeSets, nodeSetChildren } = partitionClusterConfigurationRows(
-    content.configurationRows,
-  )
+  const { clusterVersion, nodeSets, nodeSetChildren, addonOperators } =
+    partitionClusterConfigurationRows(content.configurationRows)
 
   return (
     <div className={`${prefix}__columns`}>
@@ -228,6 +231,14 @@ export function ClusterCatalogItemDetailsBody({
                   </DescriptionListGroup>
                 ))
               )}
+              {addonOperators ? (
+                <DescriptionListGroup>
+                  <DescriptionListTerm>{addonOperators.label}</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {addonOperators.value}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              ) : null}
             </DescriptionList>
           </>
         ) : null}
