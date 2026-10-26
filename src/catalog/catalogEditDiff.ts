@@ -11,12 +11,14 @@ import {
   getCatalogClusterVersionOptions,
   getCatalogDiskImageOptions,
   getCatalogInstanceTypeOptions,
+  getCatalogAddonOperatorsModeLabel,
   getCatalogClusterNodeTopologyModeLabel,
   getProvisioningTemplatePresentation,
   getCatalogHardwareOsModeLabel,
   getCatalogOsImageModeLabel,
   resolveCatalogClusterTopology,
   serializeCatalogClusterTopology,
+  type CatalogAddonOperatorsMode,
   type CatalogClusterNodeTopologyMode,
   type CatalogClusterTopologyNodeSet,
   type CatalogClusterVersionMode,
@@ -56,6 +58,7 @@ export type CatalogEditSnapshot = {
   hostType: SnapshotValue
   clusterTopology: SnapshotValue
   clusterNodeTopologyMode: SnapshotValue
+  addonOperatorsMode: SnapshotValue
   fieldPolicies: SnapshotValue
   visibility: SnapshotValue
   isClusterService: boolean
@@ -278,6 +281,7 @@ export function buildCatalogEditSnapshotFromCatalog(
   const clusterTopology = resolveCatalogClusterTopology(catalog.clusterTopology)
   const clusterVersionMode = catalog.clusterVersionMode ?? 'locked'
   const clusterNodeTopologyMode = catalog.clusterNodeTopologyMode ?? 'locked'
+  const addonOperatorsMode = catalog.addonOperatorsMode ?? 'locked'
   const hardwareOsMode = catalog.hardwareOsMode ?? 'locked'
   const osImageMode = catalog.osImageMode ?? hardwareOsMode
 
@@ -334,6 +338,10 @@ export function buildCatalogEditSnapshotFromCatalog(
         ? getCatalogClusterNodeTopologyModeLabel(clusterNodeTopologyMode)
         : '—',
     ),
+    addonOperatorsMode: snapshotValue(
+      addonOperatorsMode,
+      isClusterService ? getCatalogAddonOperatorsModeLabel(addonOperatorsMode) : '—',
+    ),
     fieldPolicies: snapshotValue(
       serializeFieldPolicies(fieldPolicies),
       formatFieldPoliciesSummary(fieldPolicies),
@@ -361,6 +369,7 @@ export type CatalogEditWizardState = {
   hostTypeId: string
   clusterTopology: CatalogClusterTopologyNodeSet[]
   clusterNodeTopologyMode: CatalogClusterNodeTopologyMode
+  addonOperatorsMode: CatalogAddonOperatorsMode
   fieldPolicies: CatalogFieldPolicy[]
   publishScope: PublishCatalogScope
   enterpriseTenantIds: string[]
@@ -426,6 +435,12 @@ export function buildCatalogEditSnapshotFromWizardState(
         ? getCatalogClusterNodeTopologyModeLabel(state.clusterNodeTopologyMode)
         : '—',
     ),
+    addonOperatorsMode: snapshotValue(
+      state.addonOperatorsMode,
+      isClusterService
+        ? getCatalogAddonOperatorsModeLabel(state.addonOperatorsMode)
+        : '—',
+    ),
     fieldPolicies: snapshotValue(
       serializeFieldPolicies(state.fieldPolicies),
       formatFieldPoliciesSummary(state.fieldPolicies),
@@ -486,6 +501,12 @@ const CHANGE_FIELD_CONFIG: ReadonlyArray<{
     id: 'clusterNodeTopologyMode',
     stepId: 'node-topology',
     label: 'Node topology access',
+    isApplicable: (snapshot) => snapshot.isClusterService,
+  },
+  {
+    id: 'addonOperatorsMode',
+    stepId: 'addon-operators',
+    label: 'Add-on operators access',
     isApplicable: (snapshot) => snapshot.isClusterService,
   },
   { id: 'fieldPolicies', stepId: 'field-policies', label: 'Lock fields' },
@@ -574,6 +595,7 @@ export function getEmptyCatalogEditSnapshot(): CatalogEditSnapshot {
     hostType: EMPTY_SNAPSHOT_VALUE,
     clusterTopology: EMPTY_SNAPSHOT_VALUE,
     clusterNodeTopologyMode: EMPTY_SNAPSHOT_VALUE,
+    addonOperatorsMode: EMPTY_SNAPSHOT_VALUE,
     fieldPolicies: EMPTY_SNAPSHOT_VALUE,
     visibility: EMPTY_SNAPSHOT_VALUE,
   }

@@ -52,7 +52,16 @@ import { CatalogPublishScopeIcon } from '../../components/provider-admin/Catalog
 import { CatalogEditChangesSummary } from '../../components/provider-admin/CatalogEditChangesSummary'
 import { CatalogEditPreviousValue } from '../../components/provider-admin/CatalogEditPreviousValue'
 import { CatalogWizardPageShell } from '../../components/catalog/CatalogWizardPageShell'
+import { ClusterAddonOperatorsStep } from '../../components/catalog/ClusterAddonOperatorsStep'
 import { ClusterMachineTypeSelect } from '../../components/catalog/ClusterMachineTypeSelect'
+import {
+  createDefaultClusterAddonOperatorSelections,
+  formatClusterAddonOperatorsSummary,
+  getClusterAddonOperatorById,
+  isClusterAddonOperatorCompatibleWithVersion,
+  type ClusterAddonOperatorCategory,
+  type ClusterAddonOperatorSelection,
+} from '../../catalog/clusterAddonOperators'
 import {
   formatVipEnterpriseVisibilityLabel,
   getCatalogEnterpriseTenantIds,
@@ -77,6 +86,7 @@ import {
   formatCustomInstanceTypeLabel,
   getCatalogClusterMachineTypeOption,
   getCatalogClusterMachineTypeOptions,
+  getCatalogAddonOperatorsModeLabel,
   getCatalogClusterNodeTopologyModeLabel,
   getCatalogClusterVersionLifecycleMeta,
   getCatalogClusterVersionModeLabel,
@@ -95,11 +105,13 @@ import {
   MAX_CLUSTER_TOPOLOGY_NODE_SETS,
   MIN_CLUSTER_NODE_COUNT,
   pickPrimaryClusterTopologyRowIndex,
+  resolveCatalogAddonOperatorsMode,
   resolveCatalogClusterTopology,
   resolveCatalogClusterVersionMode,
   resolveCatalogHardwareOsMode,
   resolveCatalogOsImageMode,
   resolveCatalogClusterNodeTopologyMode,
+  type CatalogAddonOperatorsMode,
   type CatalogClusterNodeTopologyMode,
   type CatalogClusterTopologyNodeSet,
   type CatalogClusterVersionMode,
@@ -539,6 +551,14 @@ export function ProviderSetupPublishCatalogWizard({
     primaryMachineType?.hostTypeId ?? DEFAULT_CLUSTER_HOST_TYPE_ID
   const [clusterNodeTopologyMode, setClusterNodeTopologyMode] =
     useState<CatalogClusterNodeTopologyMode>('locked')
+  const [addonOperatorsMode, setAddonOperatorsMode] =
+    useState<CatalogAddonOperatorsMode>('locked')
+  const [addonOperatorSelections, setAddonOperatorSelections] = useState<
+    ClusterAddonOperatorSelection[]
+  >(() => createDefaultClusterAddonOperatorSelections())
+  const [addonOperatorFilterQuery, setAddonOperatorFilterQuery] = useState('')
+  const [addonOperatorCategory, setAddonOperatorCategory] =
+    useState<ClusterAddonOperatorCategory>('All Categories')
   const [fieldPolicies, setFieldPolicies] = useState<CatalogFieldPolicy[]>([])
   const [expandedClusterVersionIds, setExpandedClusterVersionIds] = useState<ReadonlySet<string>>(
     () => new Set(),
@@ -643,6 +663,7 @@ export function ProviderSetupPublishCatalogWizard({
           nodeCount: row.nodeCount,
         })),
         clusterNodeTopologyMode,
+        addonOperatorsMode,
         fieldPolicies,
         publishScope,
         enterpriseTenantIds,
@@ -651,6 +672,7 @@ export function ProviderSetupPublishCatalogWizard({
       organizations,
     )
   }, [
+    addonOperatorsMode,
     clusterNodeTopologyMode,
     clusterTopologyRows,
     clusterVersionMode,
@@ -875,6 +897,9 @@ export function ProviderSetupPublishCatalogWizard({
         if (step.id === 'node-topology' && !isClusterService) {
           return false
         }
+        if (step.id === 'addon-operators' && !isClusterService) {
+          return false
+        }
         if (step.id === 'field-policies' && !hasLockableParameters) {
           return false
         }
@@ -957,6 +982,10 @@ export function ProviderSetupPublishCatalogWizard({
     setOsImageMode('locked')
     setClusterTopologyRows(createDefaultPublishClusterTopologyRows())
     setClusterNodeTopologyMode('locked')
+    setAddonOperatorsMode('locked')
+    setAddonOperatorSelections(createDefaultClusterAddonOperatorSelections())
+    setAddonOperatorFilterQuery('')
+    setAddonOperatorCategory('All Categories')
     setFieldPolicies([])
     setExpandedClusterVersionIds(new Set())
     setDisplayName('')
@@ -1092,6 +1121,17 @@ export function ProviderSetupPublishCatalogWizard({
     )
     setClusterTopologyRows(createPublishClusterTopologyRowsFromCatalog(catalog.clusterTopology))
     setClusterNodeTopologyMode(catalog.clusterNodeTopologyMode ?? 'locked')
+    setAddonOperatorsMode(resolveCatalogAddonOperatorsMode(catalog.addonOperatorsMode))
+    setAddonOperatorSelections(
+      (catalog.addonOperators ?? [])
+        .filter((entry) => Boolean(getClusterAddonOperatorById(entry.operatorId)))
+        .map((entry) => ({
+          operatorId: entry.operatorId,
+          mode: entry.mode === 'mandatory' ? 'mandatory' : 'optional-default',
+        })),
+    )
+    setAddonOperatorFilterQuery('')
+    setAddonOperatorCategory('All Categories')
     setFieldPolicies(catalog.fieldPolicies ?? [])
     setExpandedClusterVersionIds(new Set())
   }
@@ -1211,6 +1251,10 @@ export function ProviderSetupPublishCatalogWizard({
       setOsImageMode('locked')
       setClusterTopologyRows(createDefaultPublishClusterTopologyRows())
       setClusterNodeTopologyMode('locked')
+      setAddonOperatorsMode('locked')
+      setAddonOperatorSelections(createDefaultClusterAddonOperatorSelections())
+      setAddonOperatorFilterQuery('')
+      setAddonOperatorCategory('All Categories')
       setFieldPolicies([])
       return
     }
@@ -1242,7 +1286,27 @@ export function ProviderSetupPublishCatalogWizard({
     setOsImageMode('locked')
     setClusterTopologyRows(createDefaultPublishClusterTopologyRows())
     setClusterNodeTopologyMode('locked')
+    setAddonOperatorsMode('locked')
+    setAddonOperatorSelections(createDefaultClusterAddonOperatorSelections())
+    setAddonOperatorFilterQuery('')
+    setAddonOperatorCategory('All Categories')
   }, [isEditMode, selectedServiceId])
+
+  useEffect(() => {
+    if (!isClusterService) {
+      return
+    }
+    setAddonOperatorSelections((current) => {
+      const next = current.filter((selection) => {
+        const operator = getClusterAddonOperatorById(selection.operatorId)
+        return (
+          operator &&
+          isClusterAddonOperatorCompatibleWithVersion(operator, selectedDiskImageId)
+        )
+      })
+      return next.length === current.length ? current : next
+    })
+  }, [isClusterService, selectedDiskImageId])
 
   useEffect(() => {
     if (!isClusterService) {
@@ -1410,6 +1474,16 @@ export function ProviderSetupPublishCatalogWizard({
               machineTypeId: row.machineTypeId,
               nodeCount: row.nodeCount,
             })),
+            addonOperatorsMode: resolveCatalogAddonOperatorsMode(addonOperatorsMode),
+            ...(addonOperatorSelections.length > 0
+              ? {
+                  addonOperators: addonOperatorSelections.map((selection) => ({
+                    operatorId: selection.operatorId,
+                    mode:
+                      addonOperatorsMode === 'locked' ? 'mandatory' : selection.mode,
+                  })),
+                }
+              : {}),
           }
         : isBareMetalService
           ? {
@@ -2381,104 +2455,13 @@ export function ProviderSetupPublishCatalogWizard({
             <Content component="p" className="provider-setup-template__publish-step-lede">
               Define default node sets, machine types, and node counts for this offering.
             </Content>
-            <FormGroup
-              label="Tenant access to node topology"
+            <TenantAccessModeCards
               fieldId="publish-catalog-cluster-node-topology-mode"
-              className="provider-setup-template__publish-subsection"
-            >
-              <CatalogEditPreviousValue previous={editPrevious('clusterNodeTopologyMode')} />
-              <div
-                id="publish-catalog-cluster-node-topology-mode"
-                className="provider-setup-template__cluster-version-mode-options"
-                role="radiogroup"
-                aria-label="Tenant access to node topology"
-              >
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={clusterNodeTopologyMode === 'locked'}
-                  className={`provider-setup-template__cluster-version-mode-card${
-                    clusterNodeTopologyMode === 'locked'
-                      ? ' provider-setup-template__cluster-version-mode-card--selected'
-                      : ''
-                  }`}
-                  onClick={() => setClusterNodeTopologyMode('locked')}
-                >
-                  {clusterNodeTopologyMode === 'locked' ? (
-                    <Label
-                      color="grey"
-                      isCompact
-                      className="provider-setup-template__select-card-selected-badge"
-                    >
-                      Selected
-                    </Label>
-                  ) : null}
-                  <span
-                    className="provider-setup-template__cluster-version-mode-icon"
-                    aria-hidden
-                  >
-                    <LockIcon />
-                  </span>
-                  <span className="provider-setup-template__cluster-version-mode-copy">
-                    <Title
-                      headingLevel="h3"
-                      size="md"
-                      className="provider-setup-template__select-card-title"
-                    >
-                      Locked
-                    </Title>
-                    <Content
-                      component="p"
-                      className="provider-setup-template__select-card-detail"
-                    >
-                      Fixed at launch
-                    </Content>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={clusterNodeTopologyMode === 'editable'}
-                  className={`provider-setup-template__cluster-version-mode-card${
-                    clusterNodeTopologyMode === 'editable'
-                      ? ' provider-setup-template__cluster-version-mode-card--selected'
-                      : ''
-                  }`}
-                  onClick={() => setClusterNodeTopologyMode('editable')}
-                >
-                  {clusterNodeTopologyMode === 'editable' ? (
-                    <Label
-                      color="grey"
-                      isCompact
-                      className="provider-setup-template__select-card-selected-badge"
-                    >
-                      Selected
-                    </Label>
-                  ) : null}
-                  <span
-                    className="provider-setup-template__cluster-version-mode-icon"
-                    aria-hidden
-                  >
-                    <UnlockIcon />
-                  </span>
-                  <span className="provider-setup-template__cluster-version-mode-copy">
-                    <Title
-                      headingLevel="h3"
-                      size="md"
-                      className="provider-setup-template__select-card-title"
-                    >
-                      Editable
-                    </Title>
-                    <Content
-                      component="p"
-                      className="provider-setup-template__select-card-detail"
-                    >
-                      Changeable at launch
-                    </Content>
-                  </span>
-                </button>
-              </div>
-            </FormGroup>
+              label="Tenant access to node topology"
+              value={clusterNodeTopologyMode}
+              onChange={setClusterNodeTopologyMode}
+              previous={editPrevious('clusterNodeTopologyMode')}
+            />
 
             <FormGroup
               label={
@@ -2567,6 +2550,49 @@ export function ProviderSetupPublishCatalogWizard({
             </FormGroup>
 
             {renderClusterEstimatePanel()}
+          </div>
+        )
+      case 'addon-operators':
+        return (
+          <div className="provider-setup-template__publish-hardware-step">
+            <Content component="p" className="provider-setup-template__publish-step-lede">
+              {addonOperatorsMode === 'editable'
+                ? 'Select one or more operators to pre-install. Tenants can change these operators at provisioning.'
+                : 'Select one or more operators to pre-install. Tenants cannot change these operators at provisioning.'}
+            </Content>
+            <TenantAccessModeCards
+              fieldId="publish-catalog-addon-operators-mode"
+              label="Tenant access to add-on operators"
+              value={addonOperatorsMode}
+              onChange={(mode) => {
+                setAddonOperatorsMode(mode)
+                if (mode === 'locked') {
+                  setAddonOperatorSelections((current) =>
+                    current.map((selection) => ({
+                      ...selection,
+                      mode: 'mandatory',
+                    })),
+                  )
+                }
+              }}
+              previous={editPrevious('addonOperatorsMode')}
+            />
+            <FormGroup
+              label={addonOperatorsMode === 'editable' ? 'Default operators' : 'Operators'}
+              fieldId="publish-catalog-addon-operators"
+              className="provider-setup-template__publish-subsection"
+            >
+              <ClusterAddonOperatorsStep
+                clusterVersionId={selectedDiskImageId}
+                accessMode={addonOperatorsMode}
+                selections={addonOperatorSelections}
+                onSelectionsChange={setAddonOperatorSelections}
+                filterQuery={addonOperatorFilterQuery}
+                onFilterQueryChange={setAddonOperatorFilterQuery}
+                category={addonOperatorCategory}
+                onCategoryChange={setAddonOperatorCategory}
+              />
+            </FormGroup>
           </div>
         )
       case 'field-policies':
@@ -2979,6 +3005,27 @@ export function ProviderSetupPublishCatalogWizard({
                   ))}
                 </>
               ) : null}
+              {includesPublishStep('addon-operators') ? (
+                <>
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Tenant access to add-on operators</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      <Label
+                        color={addonOperatorsMode === 'editable' ? 'purple' : 'grey'}
+                        isCompact
+                      >
+                        {getCatalogAddonOperatorsModeLabel(addonOperatorsMode)}
+                      </Label>
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Add-on operators</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      {formatClusterAddonOperatorsSummary(addonOperatorSelections)}
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                </>
+              ) : null}
               {includesPublishStep('field-policies') ? (
                 <DescriptionListGroup>
                   <DescriptionListTerm>Lock fields</DescriptionListTerm>
@@ -3118,6 +3165,10 @@ export function ProviderSetupPublishCatalogWizard({
               row.nodeCount < MIN_CLUSTER_NODE_COUNT,
           ),
       })
+    }
+
+    if (stepId === 'addon-operators') {
+      return withLeaveConfirm({ isNextDisabled: false })
     }
 
     if (stepId === 'field-policies') {

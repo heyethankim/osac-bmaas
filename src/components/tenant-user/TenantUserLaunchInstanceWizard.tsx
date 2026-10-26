@@ -46,6 +46,15 @@ import {
 } from '@patternfly/react-core'
 import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon'
 import {
+  buildClusterLaunchAddonHeaderCard,
+  ClusterLaunchAddonOperatorsStep,
+} from './ClusterLaunchAddonOperatorsStep'
+import {
+  getAddonOperatorShortName,
+  resolveTemplateAddonOperatorSelections,
+  type ClusterAddonOperatorCategory,
+} from '../../catalog/clusterAddonOperators'
+import {
   isOrganizationBillingPending,
   type RegisteredOrganization,
 } from '../../providerAdmin/organizations'
@@ -70,6 +79,7 @@ import {
   getCatalogClusterVersionLifecycleMeta,
   getCatalogClusterVersionOption,
   getCatalogClusterVersionOptions,
+  resolveCatalogAddonOperatorsMode,
   getCatalogDiskImageOptions,
   getCatalogHardwareOsModeLabel,
   getCatalogInstanceTypeOptions,
@@ -520,10 +530,35 @@ export function TenantUserLaunchInstanceWizard({
       }
     }
 
+    if (isClusterCatalogItem && catalogDetailSpecRows.length > 0) {
+      const baseRows = catalogDetailSpecRows
+        .filter((row) => row.label !== 'Size')
+        .slice(0, 4)
+        .map((row) => ({
+          label: row.label,
+          value: row.value,
+          detail: undefined as string | undefined,
+        }))
+      const addonCard = buildClusterLaunchAddonHeaderCard(catalogItem.addonOperators)
+      return [
+        ...baseRows,
+        {
+          label: addonCard.label,
+          value: addonCard.value,
+          detail: addonCard.detail || undefined,
+        },
+      ]
+    }
+
     if (catalogDetailSpecRows.length > 0) {
       return catalogDetailSpecRows
         .filter((row) => row.label !== 'Size')
         .slice(0, 4)
+        .map((row) => ({
+          label: row.label,
+          value: row.value,
+          detail: undefined as string | undefined,
+        }))
     }
 
     return [
@@ -531,9 +566,12 @@ export function TenantUserLaunchInstanceWizard({
       { label: 'RAM', value: catalogItem.ram },
       { label: 'GPU', value: catalogItem.gpu },
       { label: 'OS image', value: catalogItem.osImage },
-    ].filter((row) => row.value.trim().length > 0 && row.value !== '—')
+    ]
+      .filter((row) => row.value.trim().length > 0 && row.value !== '—')
+      .map((row) => ({ ...row, detail: undefined as string | undefined }))
   }, [
     isBareMetalCatalogItem,
+    isClusterCatalogItem,
     catalogItem.templateRefId,
     catalogItem.templateName,
     catalogItem.instanceTypeId,
@@ -542,6 +580,7 @@ export function TenantUserLaunchInstanceWizard({
     catalogItem.diskImageLabel,
     catalogItem.hardwareOsMode,
     catalogItem.osImageMode,
+    catalogItem.addonOperators,
     catalogItem.cpu,
     catalogItem.ram,
     catalogItem.gpu,
@@ -585,6 +624,34 @@ export function TenantUserLaunchInstanceWizard({
   const [activeStepId, setActiveStepId] = useState<LaunchInstanceWizardStepId>(
     usesGeneralFirstStep ? 'general' : 'configure',
   )
+  const [deselectedOptionalTemplateOperatorIds, setDeselectedOptionalTemplateOperatorIds] =
+    useState<string[]>([])
+  const [addonOperatorFilterQuery, setAddonOperatorFilterQuery] = useState('')
+  const [addonOperatorCategory, setAddonOperatorCategory] =
+    useState<ClusterAddonOperatorCategory>('All Categories')
+  const templateAddonSelections = useMemo(
+    () =>
+      resolveTemplateAddonOperatorSelections(catalogItem.addonOperators, {
+        fallbackToDemo: !catalogItem.addonOperators?.length,
+      }),
+    [catalogItem.addonOperators],
+  )
+  const addonOperatorsMode = resolveCatalogAddonOperatorsMode(
+    catalogItem.addonOperatorsMode,
+  )
+  const isAddonOperatorsEditable = addonOperatorsMode === 'editable'
+
+  useEffect(() => {
+    if (isAddonOperatorsEditable) {
+      return
+    }
+    setDeselectedOptionalTemplateOperatorIds([])
+    setForm((current) =>
+      current.userAddonOperatorIds.length === 0
+        ? current
+        : { ...current, userAddonOperatorIds: [] },
+    )
+  }, [isAddonOperatorsEditable])
   const confirmStartedRef = useRef(false)
   const confirmNavigateTimeoutRef = useRef<number | null>(null)
   const onProvisioningStartedRef = useRef(onProvisioningStarted)
@@ -1333,7 +1400,7 @@ export function TenantUserLaunchInstanceWizard({
         {gridSummaryRows.length > 0 || includeAssignedNetwork ? (
           <div
             className={`tenant-user-launch-wizard__preconfigured-grid${
-              includeAssignedNetwork
+              includeAssignedNetwork || gridSummaryRows.length >= 5
                 ? ' tenant-user-launch-wizard__preconfigured-grid--with-network'
                 : ''
             }`}
@@ -1346,6 +1413,14 @@ export function TenantUserLaunchInstanceWizard({
                 <Content component="p" className="tenant-user-launch-wizard__preconfigured-value">
                   {row.value}
                 </Content>
+                {'detail' in row && row.detail ? (
+                  <Content
+                    component="p"
+                    className="tenant-user-launch-wizard__preconfigured-detail"
+                  >
+                    {row.detail}
+                  </Content>
+                ) : null}
               </div>
             ))}
             {includeAssignedNetwork ? (
@@ -2912,6 +2987,20 @@ export function TenantUserLaunchInstanceWizard({
       }
 
       if (isClusterCatalogItem) {
+        const templateOperatorNames = templateAddonSelections
+          .filter(
+            (selection) =>
+              !isAddonOperatorsEditable ||
+              selection.mode === 'mandatory' ||
+              !deselectedOptionalTemplateOperatorIds.includes(selection.operatorId),
+          )
+          .map((selection) => getAddonOperatorShortName(selection.operatorId))
+        const userOperatorNames = isAddonOperatorsEditable
+          ? form.userAddonOperatorIds.map((operatorId) =>
+              getAddonOperatorShortName(operatorId),
+            )
+          : []
+
         return [
           renderReviewRow(
             'Cluster version',
@@ -2929,6 +3018,22 @@ export function TenantUserLaunchInstanceWizard({
           ...renderPlacementNetworkingRows(),
           renderReviewRow('Pod CIDR', form.podCidr.trim() || '—'),
           renderReviewRow('Service CIDR', form.serviceCidr.trim() || '—'),
+          renderReviewRow(
+            'Included operators',
+            templateOperatorNames.length > 0 ? templateOperatorNames.join(', ') : 'None',
+          ),
+          ...(isAddonOperatorsEditable
+            ? [
+                renderReviewRow(
+                  'Additional operators',
+                  userOperatorNames.length > 0 ? userOperatorNames.join(', ') : 'None',
+                ),
+              ]
+            : []),
+          renderReviewRow(
+            'Add-on operators note',
+            'Operators will be deployed and verified during cluster initialization.',
+          ),
         ]
       }
 
@@ -2945,10 +3050,6 @@ export function TenantUserLaunchInstanceWizard({
 
     return (
       <div className="tenant-user-launch-wizard__step">
-        <Content component="h2" className="tenant-user-launch-wizard__step-title">
-          {LAUNCH_INSTANCE_WIZARD_DEMO.reviewTitle}
-        </Content>
-
         <LaunchCostPanel
           hourlyEstimate={hourlyLaunchEstimate}
           projectName={selectedProjectName}
@@ -3012,6 +3113,26 @@ export function TenantUserLaunchInstanceWizard({
           )
         case 'networking':
           return renderClusterNetworkingStep()
+        case 'addon-operators':
+          return (
+            <ClusterLaunchAddonOperatorsStep
+              clusterVersionId={
+                form.clusterVersionId || catalogClusterVersion || latestClusterVersionId
+              }
+              accessMode={addonOperatorsMode}
+              templateSelections={templateAddonSelections}
+              deselectedOptionalTemplateIds={deselectedOptionalTemplateOperatorIds}
+              onDeselectedOptionalTemplateIdsChange={setDeselectedOptionalTemplateOperatorIds}
+              userAddonOperatorIds={form.userAddonOperatorIds}
+              onUserAddonOperatorIdsChange={(next) =>
+                setForm((current) => ({ ...current, userAddonOperatorIds: next }))
+              }
+              filterQuery={addonOperatorFilterQuery}
+              onFilterQueryChange={setAddonOperatorFilterQuery}
+              category={addonOperatorCategory}
+              onCategoryChange={setAddonOperatorCategory}
+            />
+          )
         case 'review':
           return renderReviewStep()
         default:
@@ -3113,7 +3234,9 @@ export function TenantUserLaunchInstanceWizard({
               (stepId === 'configure' && !isClusterVersionStepValid(form))
             : stepId === 'networking'
               ? !isClusterNetworkingStepValid(form)
-              : false
+              : stepId === 'addon-operators'
+                ? false
+                : false
 
     return {
       isNextDisabled,
@@ -3243,6 +3366,7 @@ export function TenantUserLaunchInstanceWizard({
           stepId === 'cluster-version' ||
           stepId === 'node-topology' ||
           stepId === 'networking' ||
+          stepId === 'addon-operators' ||
           stepId === 'review'
         ) {
           setActiveStepId(stepId)

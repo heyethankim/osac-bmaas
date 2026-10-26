@@ -124,6 +124,8 @@ export function toProviderCatalogDraftFromTenantCatalogItem(
     hostTypeLabel: config.hostTypeLabel,
     clusterNodeTopologyMode: config.clusterNodeTopologyMode,
     clusterTopology: config.clusterTopology,
+    addonOperators: config.addonOperators,
+    addonOperatorsMode: config.addonOperatorsMode,
     fieldPolicies: config.fieldPolicies,
     status: item.status === 'Unpublished' ? 'unpublished' : 'live',
   }

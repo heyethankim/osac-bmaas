@@ -67,6 +67,11 @@ export type TenantUserCatalogCard = {
     machineTypeId: string
     nodeCount: number
   }>
+  addonOperators?: Array<{
+    operatorId: string
+    mode: 'mandatory' | 'optional-default'
+  }>
+  addonOperatorsMode?: 'locked' | 'editable'
   fieldPolicies?: CatalogFieldPolicy[]
   rateCard: RateCard
   scope: PublishCatalogScope
@@ -223,6 +228,8 @@ export function getTenantUserCatalogCardFromDraft(
     hostTypeLabel: catalog.hostTypeLabel,
     clusterNodeTopologyMode: catalog.clusterNodeTopologyMode,
     clusterTopology: catalog.clusterTopology,
+    addonOperators: catalog.addonOperators,
+    addonOperatorsMode: catalog.addonOperatorsMode,
     fieldPolicies: catalog.fieldPolicies,
     rateCard,
     scope: catalog.scope,

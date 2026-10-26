@@ -27,6 +27,7 @@ export type LaunchInstanceWizardStepId =
   | 'cluster-version'
   | 'node-topology'
   | 'networking'
+  | 'addon-operators'
   | 'review'
 
 export type ProvisioningBootLogStatus = 'completed' | 'in-progress' | 'pending'
@@ -83,7 +84,7 @@ export const BAREMETAL_HARDWARE_OS_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   { id: 'review', label: 'Review', description: '' },
 ]
 
-/** Cluster launch flow: General → Cluster version → Node topology → Networking → Review. */
+/** Cluster launch flow: General → Cluster version → Node topology → Networking → Add-on operators → Review. */
 export const CLUSTER_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   id: LaunchInstanceWizardStepId
   label: string
@@ -93,6 +94,7 @@ export const CLUSTER_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   { id: 'cluster-version', label: 'Cluster version', description: '' },
   { id: 'node-topology', label: 'Node topology', description: '' },
   { id: 'networking', label: 'Networking', description: '' },
+  { id: 'addon-operators', label: 'Add-on operators', description: '' },
   { id: 'review', label: 'Review', description: '' },
 ]
 
@@ -353,6 +355,11 @@ export type LaunchInstanceWizardForm = {
   autoAttachExternalIp: boolean
   /** Optional retained pool id for inventory create flows; not user-selected at launch. */
   externalIpPoolId: string
+  /**
+   * Extra operators the tenant adds beyond the catalog template set.
+   * Template-mandatory operators are tracked separately from the catalog item.
+   */
+  userAddonOperatorIds: string[]
 }
 
 export const LAUNCH_INSTANCE_NAME_PREFIX_BY_SERVICE: Record<CatalogServiceId, string> = {
@@ -440,6 +447,7 @@ export const DEFAULT_LAUNCH_INSTANCE_WIZARD_FORM: LaunchInstanceWizardForm = {
   securityGroupId: '',
   autoAttachExternalIp: false,
   externalIpPoolId: '',
+  userAddonOperatorIds: [],
 }
 
 export function createLaunchInstanceWizardForm(options: {
@@ -534,6 +542,7 @@ export function createLaunchInstanceWizardForm(options: {
     securityGroupId: options.securityGroupId,
     autoAttachExternalIp: false,
     externalIpPoolId: options.externalIpPoolId,
+    userAddonOperatorIds: [],
   }
 }
 

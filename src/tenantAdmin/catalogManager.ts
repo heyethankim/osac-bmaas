@@ -66,6 +66,11 @@ export type TenantCatalogGovernanceItem = {
     machineTypeId: string
     nodeCount: number
   }>
+  addonOperators?: Array<{
+    operatorId: string
+    mode: 'mandatory' | 'optional-default'
+  }>
+  addonOperatorsMode?: 'locked' | 'editable'
   fieldPolicies?: CatalogFieldPolicy[]
   /** Card/table configuration rows (service-aware). */
   specRows: CatalogSpecRow[]
@@ -196,6 +201,8 @@ function mapProviderCatalogToGovernanceItem(
     hostTypeLabel: draft.hostTypeLabel,
     clusterNodeTopologyMode: draft.clusterNodeTopologyMode,
     clusterTopology: draft.clusterTopology,
+    addonOperators: draft.addonOperators,
+    addonOperatorsMode: draft.addonOperatorsMode,
     fieldPolicies: draft.fieldPolicies,
     specRows,
     categoryLabel: specRows.map((row) => row.value).join(' · '),

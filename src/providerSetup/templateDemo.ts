@@ -351,6 +351,7 @@ export const PUBLISH_CATALOG_STEPS = [
   { id: 'hardware', label: 'Hardware' },
   { id: 'os', label: 'OS' },
   { id: 'node-topology', label: 'Node topology' },
+  { id: 'addon-operators', label: 'Add-on operators' },
   { id: 'field-policies', label: 'Lock fields' },
   { id: 'publish-scope', label: 'Visibility' },
   { id: 'review', label: 'Review' },
@@ -409,6 +410,20 @@ export type PublishedTemplatePayload = {
     machineTypeId: string
     nodeCount: number
   }>
+  /**
+   * Cluster as a Service only. Pre-installed operators attached to the catalog item.
+   * `mandatory` cannot be removed by tenants at order time; `optional-default` can
+   * (only when addonOperatorsMode is editable).
+   */
+  addonOperators?: Array<{
+    operatorId: string
+    mode: 'mandatory' | 'optional-default'
+  }>
+  /**
+   * Cluster as a Service only. When `editable`, tenants may add operators at launch.
+   * Defaults to locked when omitted.
+   */
+  addonOperatorsMode?: 'locked' | 'editable'
   /** Locked vs exposed field policies for launch. */
   fieldPolicies?: CatalogFieldPolicy[]
 }

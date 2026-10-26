@@ -305,6 +305,13 @@ export type ProviderCatalogDraft = {
     machineTypeId: string
     nodeCount: number
   }>
+  /** Cluster add-on operators attached at publish time. */
+  addonOperators?: Array<{
+    operatorId: string
+    mode: 'mandatory' | 'optional-default'
+  }>
+  /** Cluster add-on operators: locked (default) or editable at provisioning. */
+  addonOperatorsMode?: 'locked' | 'editable'
   /** Locked vs exposed field policies for launch. */
   fieldPolicies?: CatalogFieldPolicy[]
 }
@@ -694,6 +701,14 @@ export function duplicateProviderCatalogItem(catalogItemId: string): ProviderCat
           clusterTopology: source.clusterTopology.map((row) => ({ ...row })),
         }
       : {}),
+    ...(source.addonOperators?.length
+      ? {
+          addonOperators: source.addonOperators.map((entry) => ({ ...entry })),
+        }
+      : {}),
+    ...(source.addonOperatorsMode
+      ? { addonOperatorsMode: source.addonOperatorsMode }
+      : {}),
     ...(source.fieldPolicies?.length
       ? { fieldPolicies: source.fieldPolicies.map((policy) => ({ ...policy })) }
       : {}),
@@ -855,6 +870,14 @@ export function updateProviderCatalogItemFromPayload(
           clusterTopology: payload.clusterTopology.map((row) => ({ ...row })),
         }
       : {}),
+    ...(payload.addonOperators?.length
+      ? {
+          addonOperators: payload.addonOperators.map((entry) => ({ ...entry })),
+        }
+      : {}),
+    ...(payload.addonOperatorsMode
+      ? { addonOperatorsMode: payload.addonOperatorsMode }
+      : {}),
     ...(payload.fieldPolicies?.length ? { fieldPolicies: payload.fieldPolicies } : {}),
   }
 
@@ -957,6 +980,8 @@ export function patchProviderCatalogItem(
       | 'hostTypeLabel'
       | 'clusterNodeTopologyMode'
       | 'clusterTopology'
+      | 'addonOperators'
+      | 'addonOperatorsMode'
       | 'hardwareOsMode'
       | 'osImageMode'
       | 'rateCard'

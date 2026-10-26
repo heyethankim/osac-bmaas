@@ -218,6 +218,22 @@ export function resolveCatalogClusterNodeTopologyMode(
   return mode === 'editable' ? 'editable' : 'locked'
 }
 
+/**
+ * Whether tenants can change add-on operators when provisioning.
+ * Defaults to locked when omitted (legacy catalog items).
+ */
+export type CatalogAddonOperatorsMode = 'locked' | 'editable'
+
+export function getCatalogAddonOperatorsModeLabel(mode: CatalogAddonOperatorsMode): string {
+  return mode === 'editable' ? 'Editable' : 'Locked'
+}
+
+export function resolveCatalogAddonOperatorsMode(
+  mode: CatalogAddonOperatorsMode | undefined | null,
+): CatalogAddonOperatorsMode {
+  return mode === 'editable' ? 'editable' : 'locked'
+}
+
 /** Default worker node set advertised on a Cluster catalog item. */
 export type CatalogClusterNodeSetOption = {
   id: string

@@ -165,6 +165,8 @@ function toLaunchCatalogDraft(
     hostTypeLabel: item.hostTypeLabel,
     clusterNodeTopologyMode: item.clusterNodeTopologyMode,
     clusterTopology: item.clusterTopology,
+    addonOperators: item.addonOperators,
+    addonOperatorsMode: item.addonOperatorsMode,
     fieldPolicies: item.fieldPolicies,
     status: item.status === 'Unpublished' ? 'unpublished' : 'live',
   }
