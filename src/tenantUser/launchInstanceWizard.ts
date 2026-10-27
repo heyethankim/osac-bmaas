@@ -117,9 +117,23 @@ export function getLaunchInstanceWizardSteps(options: {
   bareMetalOsEditable?: boolean
   /** @deprecated Prefer bareMetalHardwareEditable / bareMetalOsEditable. */
   bareMetalHardwareOsEditable?: boolean
+  clusterVersionModeLabel?: string
+  clusterNodeTopologyModeLabel?: string
+  addonOperatorsModeLabel?: string
 }) {
   if (options.serviceId === 'cluster') {
-    return CLUSTER_LAUNCH_INSTANCE_WIZARD_STEPS
+    return CLUSTER_LAUNCH_INSTANCE_WIZARD_STEPS.map((step) => {
+      if (step.id === 'cluster-version' && options.clusterVersionModeLabel) {
+        return { ...step, description: options.clusterVersionModeLabel }
+      }
+      if (step.id === 'node-topology' && options.clusterNodeTopologyModeLabel) {
+        return { ...step, description: options.clusterNodeTopologyModeLabel }
+      }
+      if (step.id === 'addon-operators' && options.addonOperatorsModeLabel) {
+        return { ...step, description: options.addonOperatorsModeLabel }
+      }
+      return step
+    })
   }
 
   if (options.serviceId === 'virtual-machine') {
@@ -238,6 +252,10 @@ export const CLUSTER_LAUNCH_INSTANCE_DEMO = {
   podCidrHelper: 'Use CIDR notation (for example 10.128.0.0/14 or fd01::/48).',
   serviceCidr: '10.1.0.0/24',
   serviceCidrHelper: 'Use CIDR notation (for example 172.30.0.0/16 or fd02::/112).',
+  nodeTopologyLede:
+    'Choose node sets and host types for worker capacity on this cluster.',
+  nodeTopologyLockedLede:
+    'Node sets and host types are locked by the catalog item.',
   addNodeSetLabel: 'Add node set',
   removeNodeSetLabel: 'Remove',
 } as const

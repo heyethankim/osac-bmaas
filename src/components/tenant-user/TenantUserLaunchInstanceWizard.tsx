@@ -79,12 +79,15 @@ import {
   getCatalogClusterVersionLifecycleMeta,
   getCatalogClusterVersionOption,
   getCatalogClusterVersionOptions,
+  getCatalogAddonOperatorsModeLabel,
   resolveCatalogAddonOperatorsMode,
   getCatalogDiskImageOptions,
   getCatalogHardwareOsModeLabel,
   getCatalogInstanceTypeOptions,
   getCatalogOsImageModeLabel,
   getCatalogClusterNodeSetOption,
+  getCatalogClusterNodeTopologyModeLabel,
+  getCatalogClusterVersionModeLabel,
   getLatestCatalogClusterVersionId,
   getReleaseImageForClusterVersion,
   resolveCatalogClusterNodeTopologyMode,
@@ -415,6 +418,10 @@ export function TenantUserLaunchInstanceWizard({
   const clusterInfrastructureNetworkingLede = canManageNetworkObjects
     ? CLUSTER_LAUNCH_INSTANCE_DEMO.infrastructureNetworkingAdminLede
     : CLUSTER_LAUNCH_INSTANCE_DEMO.infrastructureNetworkingLede
+  const addonOperatorsMode = resolveCatalogAddonOperatorsMode(
+    catalogDraft?.addonOperatorsMode ?? catalogItem.addonOperatorsMode,
+  )
+  const isAddonOperatorsEditable = addonOperatorsMode === 'editable'
   const wizardSteps = useMemo(
     () =>
       getLaunchInstanceWizardSteps({
@@ -422,12 +429,29 @@ export function TenantUserLaunchInstanceWizard({
         serviceId: catalogItem.serviceId,
         bareMetalHardwareEditable: isBareMetalHardwareEditable,
         bareMetalOsEditable: isBareMetalOsEditable,
+        clusterVersionModeLabel: isClusterCatalogItem
+          ? getCatalogClusterVersionModeLabel(
+              resolveCatalogClusterVersionMode(catalogItem.clusterVersionMode),
+            )
+          : undefined,
+        clusterNodeTopologyModeLabel: isClusterCatalogItem
+          ? getCatalogClusterNodeTopologyModeLabel(
+              resolveCatalogClusterNodeTopologyMode(catalogItem.clusterNodeTopologyMode),
+            )
+          : undefined,
+        addonOperatorsModeLabel: isClusterCatalogItem
+          ? getCatalogAddonOperatorsModeLabel(addonOperatorsMode)
+          : undefined,
       }),
     [
       catalogItem.serviceId,
+      catalogItem.clusterVersionMode,
+      catalogItem.clusterNodeTopologyMode,
+      isClusterCatalogItem,
       isBareMetalHardwareEditable,
       isBareMetalOsEditable,
       includeNetworkingStep,
+      addonOperatorsMode,
     ],
   )
   const [suppressStepUrlSync, setSuppressStepUrlSync] = useState(false)
@@ -539,7 +563,9 @@ export function TenantUserLaunchInstanceWizard({
           value: row.value,
           detail: undefined as string | undefined,
         }))
-      const addonCard = buildClusterLaunchAddonHeaderCard(catalogItem.addonOperators)
+      const addonCard = buildClusterLaunchAddonHeaderCard(
+        catalogDraft?.addonOperators ?? catalogItem.addonOperators,
+      )
       return [
         ...baseRows,
         {
@@ -631,15 +657,15 @@ export function TenantUserLaunchInstanceWizard({
     useState<ClusterAddonOperatorCategory>('All Categories')
   const templateAddonSelections = useMemo(
     () =>
-      resolveTemplateAddonOperatorSelections(catalogItem.addonOperators, {
-        fallbackToDemo: !catalogItem.addonOperators?.length,
-      }),
-    [catalogItem.addonOperators],
+      resolveTemplateAddonOperatorSelections(
+        catalogDraft?.addonOperators ?? catalogItem.addonOperators,
+        {
+          fallbackToDemo: !(catalogDraft?.addonOperators ?? catalogItem.addonOperators)
+            ?.length,
+        },
+      ),
+    [catalogDraft?.addonOperators, catalogItem.addonOperators],
   )
-  const addonOperatorsMode = resolveCatalogAddonOperatorsMode(
-    catalogItem.addonOperatorsMode,
-  )
-  const isAddonOperatorsEditable = addonOperatorsMode === 'editable'
 
   useEffect(() => {
     if (isAddonOperatorsEditable) {
@@ -2474,6 +2500,11 @@ export function TenantUserLaunchInstanceWizard({
 
   const renderClusterNodeTopologyStep = () => (
     <div className="tenant-user-launch-wizard__step provider-setup-template__publish-hardware-step">
+      <Content component="p" className="tenant-user-launch-wizard__step-lede">
+        {isClusterNodeTopologyEditable
+          ? CLUSTER_LAUNCH_INSTANCE_DEMO.nodeTopologyLede
+          : CLUSTER_LAUNCH_INSTANCE_DEMO.nodeTopologyLockedLede}
+      </Content>
       <div className="tenant-user-launch-wizard__node-sets" role="list">
         {form.nodeSets.map((nodeSet, index) => {
           const selectedNodeSetId = nodeSet.nodeSetId.trim() || catalogDefaultNodeSetId
@@ -2490,29 +2521,31 @@ export function TenantUserLaunchInstanceWizard({
               className="tenant-user-launch-wizard__node-set"
               role="listitem"
             >
-              <Flex
-                justifyContent={{ default: 'justifyContentSpaceBetween' }}
-                alignItems={{ default: 'alignItemsCenter' }}
-                className="tenant-user-launch-wizard__node-set-header"
-              >
-                <FlexItem>
-                  <Content component="p" className="tenant-user-launch-wizard__node-set-heading">
-                    {form.nodeSets.length > 1 ? `Node set ${index + 1}` : 'Node set'}
-                  </Content>
-                </FlexItem>
-                {isClusterNodeTopologyEditable && form.nodeSets.length > 1 ? (
+              {form.nodeSets.length > 1 ? (
+                <Flex
+                  justifyContent={{ default: 'justifyContentSpaceBetween' }}
+                  alignItems={{ default: 'alignItemsCenter' }}
+                  className="tenant-user-launch-wizard__node-set-header"
+                >
                   <FlexItem>
-                    <Button
-                      variant="link"
-                      isDanger
-                      isInline
-                      onClick={() => removeClusterNodeSet(nodeSet.id)}
-                    >
-                      {CLUSTER_LAUNCH_INSTANCE_DEMO.removeNodeSetLabel}
-                    </Button>
+                    <Content component="p" className="tenant-user-launch-wizard__node-set-heading">
+                      {`Node set ${index + 1}`}
+                    </Content>
                   </FlexItem>
-                ) : null}
-              </Flex>
+                  {isClusterNodeTopologyEditable ? (
+                    <FlexItem>
+                      <Button
+                        variant="link"
+                        isDanger
+                        isInline
+                        onClick={() => removeClusterNodeSet(nodeSet.id)}
+                      >
+                        {CLUSTER_LAUNCH_INSTANCE_DEMO.removeNodeSetLabel}
+                      </Button>
+                    </FlexItem>
+                  ) : null}
+                </Flex>
+              ) : null}
 
               <FormGroup
                 label="Node set"

@@ -28,14 +28,14 @@ Fifth card: **Add-on operators** — e.g. `2 Pre-configured` with short names `(
 
 ### Add-on operators step
 
-1. **Included by Template** — operators from the catalog item.
+1. **Included operators** — operators from the catalog item.
 2. **Additional Available Operators** — only when catalog access is **Editable**. Searchable catalog of optional operators (Service Mesh, ACM, KServe, and any catalog operators not already bundled).
 
 ### Interaction & validation
 
 | Rule | Behavior |
 | --- | --- |
-| **Catalog Locked** | All template operators behave as locked (disabled checkbox + padlock). No Additional Available section. |
+| **Catalog Locked** | All included operators behave as locked (disabled checkbox + padlock). **Additional Available Operators** is hidden — tenants cannot add extras. |
 | **Locked operator protection** | Mandatory template operators use a disabled checkbox plus padlock + tooltip: *Included by catalog template. Cannot be deselected.* Badge: **Locked by Catalog Item** (or **Required Dependency** when auto-bundled for another template operator). |
 | **Optional Default** | Only when catalog access is Editable. Tenants may unselect. |
 | **Dynamic dependency tree** | Selecting an optional operator (e.g. KServe) auto-checks dependencies (e.g. Service Mesh), indents them, and labels **Auto-included dependency**. |

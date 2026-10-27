@@ -209,7 +209,7 @@ function createClusterNodeSetsCatalogDraft(): ProviderCatalogDraft {
     hostTypeLabel: formatClusterHostTypeLabel(DEFAULT_CLUSTER_HOST_TYPE_ID),
     clusterNodeTopologyMode: 'editable',
     clusterTopology: DEFAULT_CLUSTER_TOPOLOGY_NODE_SETS.map((row) => ({ ...row })),
-    addonOperatorsMode: 'editable',
+    addonOperatorsMode: 'locked',
     addonOperators: [
       { operatorId: 'nvidia-gpu-operator', mode: 'mandatory' },
       { operatorId: 'node-feature-discovery', mode: 'mandatory' },
@@ -578,6 +578,8 @@ function syncClusterCatalogVersionLabels(): void {
       item.catalogItemId === CLUSTER_NODE_SETS_CATALOG_ITEM_ID ||
       item.catalogItemId === LEGACY_CLUSTER_NODE_SETS_CATALOG_ITEM_ID
     if (isDemoNodeSetsOffering) {
+      // Demo cluster offering: add-ons stay locked so launch cannot add extras.
+      // Publish with Editable on a different catalog item to demo additional operators.
       const patch: {
         addonOperators?: Array<{
           operatorId: string
@@ -590,8 +592,8 @@ function syncClusterCatalogVersionLabels(): void {
           ...entry,
         }))
       }
-      if (!item.addonOperatorsMode) {
-        patch.addonOperatorsMode = 'editable'
+      if (item.addonOperatorsMode !== 'locked') {
+        patch.addonOperatorsMode = 'locked'
       }
       if (Object.keys(patch).length > 0) {
         patchProviderCatalogItem(item.catalogItemId, patch)

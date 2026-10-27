@@ -4392,7 +4392,7 @@
 
 .tenant-user-launch-wizard__addon-operators-section-title.pf-v6-c-content--h3 {
   margin: 0;
-  font-size: var(--pf-t--global--font--size--body--lg);
+  font-size: var(--pf-t--global--font--size--body--default);
   font-weight: var(--pf-t--global--font--weight--heading--bold);
 }
 

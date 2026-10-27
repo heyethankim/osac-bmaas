@@ -8,6 +8,7 @@ import {
   CATALOG_INSTANCE_TYPE_OPTIONS,
   formatClusterPlatformLabel,
   formatClusterTopologyNodeSetValue,
+  getCatalogAddonOperatorsModeLabel,
   getCatalogClusterNodeTopologyModeLabel,
   getCatalogClusterVersionModeLabel,
   normalizeCatalogDiskImageDisplayLabel,
@@ -15,11 +16,13 @@ import {
   getCatalogHardwareOsModeLabel,
   getCatalogOsImageModeLabel,
   resolveBaremetalInstanceTypeHardware,
+  resolveCatalogAddonOperatorsMode,
   resolveCatalogClusterNodeTopologyMode,
   resolveCatalogClusterTopology,
   resolveCatalogClusterVersionMode,
   resolveCatalogHardwareOsMode,
   resolveCatalogOsImageMode,
+  type CatalogAddonOperatorsMode,
   type CatalogClusterNodeTopologyMode,
   type CatalogClusterTopologyNodeSet,
   type CatalogClusterVersionMode,
@@ -230,6 +233,16 @@ function getClusterNodeTopologyModeBadge(
   }
 }
 
+function getAddonOperatorsModeBadge(
+  mode: CatalogAddonOperatorsMode | undefined | null,
+): CatalogSpecRow['badge'] {
+  const resolved = resolveCatalogAddonOperatorsMode(mode)
+  return {
+    text: getCatalogAddonOperatorsModeLabel(resolved),
+    color: resolved === 'editable' ? 'purple' : 'grey',
+  }
+}
+
 function getHardwareOsModeBadge(
   mode: CatalogHardwareOsMode | undefined | null,
 ): CatalogSpecRow['badge'] {
@@ -329,6 +342,7 @@ function buildClusterCatalogSpecRows(
     | 'clusterNodeTopologyMode'
     | 'clusterTopology'
     | 'addonOperators'
+    | 'addonOperatorsMode'
   >,
   options?: ClusterCatalogSpecOptions,
 ): CatalogSpecRow[] {
@@ -363,6 +377,9 @@ function buildClusterCatalogSpecRows(
       value: addonOperators
         .map((selection) => getAddonOperatorShortName(selection.operatorId))
         .join(', '),
+      badge: includeModeBadges
+        ? getAddonOperatorsModeBadge(item.addonOperatorsMode)
+        : undefined,
     })
   }
 
@@ -387,6 +404,7 @@ export function resolveClusterCatalogHighlightRows(
     | 'clusterNodeTopologyMode'
     | 'clusterTopology'
     | 'addonOperators'
+    | 'addonOperatorsMode'
   >,
   options?: ClusterCatalogSpecOptions,
 ): CatalogSpecRow[] {

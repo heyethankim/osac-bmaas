@@ -105,7 +105,7 @@ export function ClusterLaunchAddonOperatorsStep({
           id="launch-addon-operators-template-heading"
           className="tenant-user-launch-wizard__addon-operators-section-title"
         >
-          Included with catalog item
+          Included operators
         </Content>
         <ul
           ref={templateListRef}
