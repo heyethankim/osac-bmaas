@@ -18,6 +18,8 @@ const TOP_LEVEL_SPEC_LABELS = new Set([
   'Instance type',
   'Size',
   CLUSTER_NODE_SETS_PARENT_LABEL,
+  'Add-on operators',
+  'Add-ons',
   'Tenant access to node topology',
   'Network attachments',
   'Boot disk',
