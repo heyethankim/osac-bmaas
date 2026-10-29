@@ -109,8 +109,11 @@ import {
 import { ProjectScopeSwitcher } from '../../components/shared/ProjectScopeSwitcher'
 import { PillFilterSelect } from '../../components/shared/PillFilterSelect'
 import {
+  WORKSPACE_ACTION_UPGRADE_CLUSTER,
   findInstanceByWorkspaceParam,
+  getWorkspaceActionParam,
   getWorkspaceInstanceParam,
+  syncWorkspaceActionParam,
   syncWorkspaceInstanceParam,
 } from '../../shared/workspaceNavUrl'
 
@@ -223,9 +226,14 @@ export function TenantUserInstancesPage({
 }: TenantUserInstancesPageProps) {
   const [searchParams, setSearchParams] = useSearchParams()
   const instanceParam = getWorkspaceInstanceParam(searchParams)
+  const actionParam = getWorkspaceActionParam(searchParams)
   const initialOpenMatch =
     findInstanceByWorkspaceParam(instances, instanceParam) ??
     (openInstanceId ? (instances.find((instance) => instance.id === openInstanceId) ?? null) : null)
+  const initialUpgradeMatch =
+    actionParam === WORKSPACE_ACTION_UPGRADE_CLUSTER
+      ? findInstanceByWorkspaceParam(instances, instanceParam)
+      : null
 
   useEffect(() => {
     if (showTenantFilter) {
@@ -260,7 +268,9 @@ export function TenantUserInstancesPage({
     () => initialOpenMatch?.id ?? null,
   )
   const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(() => Boolean(initialOpenMatch))
-  const [upgradeInstanceId, setUpgradeInstanceId] = useState<string | null>(null)
+  const [upgradeInstanceId, setUpgradeInstanceId] = useState<string | null>(
+    () => initialUpgradeMatch?.id ?? null,
+  )
   const [instancePendingTerminate, setInstancePendingTerminate] = useState<TenantInstance | null>(
     null,
   )
@@ -362,8 +372,22 @@ export function TenantUserInstancesPage({
       ? null
       : (instances.find((entry) => entry.id === upgradeInstanceId) ?? null)
 
+  const closeUpgradeWizard = () => {
+    // Clear URL first; the actionParam effect closes local upgrade state.
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_UPGRADE_CLUSTER) {
+      syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    } else {
+      setUpgradeInstanceId(null)
+    }
+  }
+
   const handleRequestUpgrade = (instance: TenantInstance) => {
-    setUpgradeInstanceId(instance.id)
+    // Drive open via URL so browser back/forward stays consistent (no local/URL race).
+    setSelectedInstanceId(instance.id)
+    setIsDetailsDrawerOpen(true)
+    syncWorkspaceActionParam(setSearchParams, WORKSPACE_ACTION_UPGRADE_CLUSTER, {
+      instance: instance.name,
+    })
   }
 
   const handleStartUpgrade = (targetVersionLabel: string) => {
@@ -372,9 +396,11 @@ export function TenantUserInstancesPage({
     }
     const next = applyClusterUpgradeStart(upgradeInstance, targetVersionLabel)
     patchStoredInstance(next.id, next)
-    setUpgradeInstanceId(null)
     setSelectedInstanceId(next.id)
     setIsDetailsDrawerOpen(true)
+    // Drop action (closes modal via effect) but keep instance detail in the URL.
+    syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    syncWorkspaceInstanceParam(setSearchParams, next.name, { replace: true })
   }
 
   const handleCompleteUpgrade = (instanceId: string) => {
@@ -456,6 +482,28 @@ export function TenantUserInstancesPage({
       setSelectedInstanceId(null)
     }
   }, [instanceParam, instances, lockedServiceId, openInstanceId])
+
+  useEffect(() => {
+    if (actionParam !== WORKSPACE_ACTION_UPGRADE_CLUSTER) {
+      setUpgradeInstanceId((current) => (current === null ? current : null))
+      return
+    }
+
+    const match = findInstanceByWorkspaceParam(instances, instanceParam)
+    if (!match || getTenantInstanceServiceId(match) !== 'cluster') {
+      setUpgradeInstanceId((current) => (current === null ? current : null))
+      return
+    }
+
+    if (lockedServiceId && lockedServiceId !== 'cluster') {
+      setUpgradeInstanceId((current) => (current === null ? current : null))
+      return
+    }
+
+    setSelectedInstanceId(match.id)
+    setIsDetailsDrawerOpen(true)
+    setUpgradeInstanceId(match.id)
+  }, [actionParam, instanceParam, instances, lockedServiceId])
 
   useEffect(() => {
     setPowerStateFilter('all')
@@ -724,6 +772,12 @@ export function TenantUserInstancesPage({
 
   const closeDetails = () => {
     setIsDetailsDrawerOpen(false)
+    // Clear upgrade action before instance so the modal closes with the detail page.
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_UPGRADE_CLUSTER) {
+      syncWorkspaceActionParam(setSearchParams, null, { replace: true })
+    } else {
+      setUpgradeInstanceId(null)
+    }
     syncWorkspaceInstanceParam(setSearchParams, null)
   }
 
@@ -958,7 +1012,7 @@ export function TenantUserInstancesPage({
           <ClusterUpgradeWizard
             isOpen
             instance={upgradeInstance}
-            onClose={() => setUpgradeInstanceId(null)}
+            onClose={closeUpgradeWizard}
             onStartUpgrade={handleStartUpgrade}
           />
         ) : null}

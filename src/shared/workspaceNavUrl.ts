@@ -10,6 +10,9 @@ export const WORKSPACE_INSTANCE_PARAM = 'instance'
 /** Query key for an open tenant detail page on Administration → Tenants. */
 export const WORKSPACE_ORGANIZATION_PARAM = 'tenant'
 
+/** Query key for an open project detail page on Projects. */
+export const WORKSPACE_PROJECT_PARAM = 'project'
+
 /** Query key for a workspace create/register wizard flow. */
 export const WORKSPACE_ACTION_PARAM = 'action'
 
@@ -24,6 +27,7 @@ export const WORKSPACE_ACTION_REGISTER_TENANT = 'register-tenant'
 export const WORKSPACE_ACTION_CREATE_EXTERNAL_IP_POOL = 'create-external-ip-pool'
 export const WORKSPACE_ACTION_CREATE_SECRET = 'create-secret'
 export const WORKSPACE_ACTION_LAUNCH_INSTANCE = 'launch-instance'
+export const WORKSPACE_ACTION_UPGRADE_CLUSTER = 'upgrade-cluster'
 export const WORKSPACE_ACTION_CREATE_PROJECT = 'create-project'
 export const WORKSPACE_ACTION_ADD_TENANT_ADMINISTRATOR = 'add-tenant-administrator'
 export const WORKSPACE_ACTION_CREATE_VIRTUAL_NETWORK = 'create-virtual-network'
@@ -34,12 +38,16 @@ export const WORKSPACE_ACTION_ATTACH_NAT_GATEWAY = 'attach-nat-gateway'
 export const WORKSPACE_ACTION_SETUP_IDENTITY_PROVIDER = 'setup-identity-provider'
 export const WORKSPACE_ACTION_CONNECT_IDENTITY_PROVIDER = 'connect-identity-provider'
 
+/** Single-step id for the cluster upgrade modal (`?step=target-version`). */
+export const WORKSPACE_STEP_UPGRADE_CLUSTER_TARGET = 'target-version'
+
 export type WorkspaceAction =
   | typeof WORKSPACE_ACTION_CREATE_CATALOG_ITEM
   | typeof WORKSPACE_ACTION_REGISTER_TENANT
   | typeof WORKSPACE_ACTION_CREATE_EXTERNAL_IP_POOL
   | typeof WORKSPACE_ACTION_CREATE_SECRET
   | typeof WORKSPACE_ACTION_LAUNCH_INSTANCE
+  | typeof WORKSPACE_ACTION_UPGRADE_CLUSTER
   | typeof WORKSPACE_ACTION_CREATE_PROJECT
   | typeof WORKSPACE_ACTION_ADD_TENANT_ADMINISTRATOR
   | typeof WORKSPACE_ACTION_CREATE_VIRTUAL_NETWORK
@@ -56,6 +64,7 @@ const WORKSPACE_ACTIONS = new Set<WorkspaceAction>([
   WORKSPACE_ACTION_CREATE_EXTERNAL_IP_POOL,
   WORKSPACE_ACTION_CREATE_SECRET,
   WORKSPACE_ACTION_LAUNCH_INSTANCE,
+  WORKSPACE_ACTION_UPGRADE_CLUSTER,
   WORKSPACE_ACTION_CREATE_PROJECT,
   WORKSPACE_ACTION_ADD_TENANT_ADMINISTRATOR,
   WORKSPACE_ACTION_CREATE_VIRTUAL_NETWORK,
@@ -92,6 +101,8 @@ export function getWorkspaceActionNavs(action: WorkspaceAction): readonly string
     case WORKSPACE_ACTION_CREATE_CATALOG_ITEM:
     case WORKSPACE_ACTION_LAUNCH_INSTANCE:
       return ['catalog']
+    case WORKSPACE_ACTION_UPGRADE_CLUSTER:
+      return ['services-clusters']
     case WORKSPACE_ACTION_REGISTER_TENANT:
     case WORKSPACE_ACTION_SETUP_IDENTITY_PROVIDER:
       return ['administration-organizations']
@@ -134,6 +145,11 @@ export function getWorkspaceCatalogItemParam(searchParams: URLSearchParams): str
 
 export function getWorkspaceOrganizationParam(searchParams: URLSearchParams): string | null {
   const value = searchParams.get(WORKSPACE_ORGANIZATION_PARAM)?.trim()
+  return value || null
+}
+
+export function getWorkspaceProjectParam(searchParams: URLSearchParams): string | null {
+  const value = searchParams.get(WORKSPACE_PROJECT_PARAM)?.trim()
   return value || null
 }
 
@@ -237,10 +253,64 @@ export function buildProviderCreateSecretPath(): string {
   return `/provider/workspace?${params.toString()}`
 }
 
+export function buildProviderCreateCatalogItemStepPath(
+  serviceId: CatalogServiceId,
+  stepId: string,
+): string {
+  const params = new URLSearchParams({
+    nav: 'catalog',
+    [WORKSPACE_ACTION_PARAM]: WORKSPACE_ACTION_CREATE_CATALOG_ITEM,
+    [WORKSPACE_SERVICE_PARAM]: serviceId,
+    [WORKSPACE_STEP_PARAM]: stepId,
+  })
+
+  return `/provider/workspace?${params.toString()}`
+}
+
+export function buildTenantWorkspaceProjectPath(
+  role: 'tenant-admin' | 'tenant-user',
+  tenantSlug: string,
+  projectKey: string,
+): string {
+  const params = new URLSearchParams({
+    nav: 'projects-teams',
+    [WORKSPACE_PROJECT_PARAM]: projectKey.trim(),
+  })
+
+  return `/${role}/${tenantSlug}/workspace?${params.toString()}`
+}
+
+export function buildTenantUserLaunchInstancePath(
+  tenantSlug: string,
+  catalogItemKey: string,
+): string {
+  const params = new URLSearchParams({
+    nav: 'catalog',
+    [WORKSPACE_ACTION_PARAM]: WORKSPACE_ACTION_LAUNCH_INSTANCE,
+    [WORKSPACE_CATALOG_ITEM_PARAM]: catalogItemKey.trim(),
+  })
+
+  return `/tenant-user/${tenantSlug}/workspace?${params.toString()}`
+}
+
+export function buildTenantUserUpgradeClusterPath(
+  tenantSlug: string,
+  instanceKey: string,
+): string {
+  const params = new URLSearchParams({
+    nav: 'services-clusters',
+    [WORKSPACE_INSTANCE_PARAM]: instanceKey.trim(),
+    [WORKSPACE_ACTION_PARAM]: WORKSPACE_ACTION_UPGRADE_CLUSTER,
+    [WORKSPACE_STEP_PARAM]: WORKSPACE_STEP_UPGRADE_CLUSTER_TARGET,
+  })
+
+  return `/tenant-user/${tenantSlug}/workspace?${params.toString()}`
+}
+
 /**
  * Keep `?nav=` in sync with the active workspace page so every view is URL-addressable.
- * Clears `?item=` when leaving Catalog, `?instance=` when leaving Services, or whenever
- * `showLanding` is set (left-nav clicks).
+ * Clears `?item=` when leaving Catalog, `?instance=` when leaving Services, `?project=` when
+ * leaving Projects, or whenever `showLanding` is set (left-nav clicks).
  */
 export function syncWorkspaceNavParam(
   setSearchParams: SetURLSearchParams,
@@ -248,17 +318,20 @@ export function syncWorkspaceNavParam(
   options?: SyncWorkspaceNavOptions,
 ): void {
   const showLanding = options?.showLanding === true
-  const { showLanding: _showLanding, ...navigateOptions } = options ?? {}
+  const navigateOptions: NavigateOptions = { ...(options ?? {}) }
+  delete (navigateOptions as SyncWorkspaceNavOptions).showLanding
 
   setSearchParams((current) => {
     const navMatches = current.get('nav') === navId
     const hasItem = current.has(WORKSPACE_CATALOG_ITEM_PARAM)
     const hasInstance = current.has(WORKSPACE_INSTANCE_PARAM)
     const hasTenant = current.has(WORKSPACE_ORGANIZATION_PARAM)
+    const hasProject = current.has(WORKSPACE_PROJECT_PARAM)
     const action = getWorkspaceActionParam(current)
     const shouldClearItem = showLanding || navId !== 'catalog'
     const shouldClearInstance = showLanding || !isServicesWorkspaceNav(navId)
     const shouldClearTenant = showLanding || navId !== 'administration-organizations'
+    const shouldClearProject = showLanding || navId !== 'projects-teams'
     const shouldClearAction =
       showLanding || (action !== null && !isWorkspaceActionAllowedOnNav(action, navId))
     const hasAction = Boolean(action)
@@ -272,6 +345,7 @@ export function syncWorkspaceNavParam(
       !(shouldClearItem && hasItem) &&
       !(shouldClearInstance && hasInstance) &&
       !(shouldClearTenant && hasTenant) &&
+      !(shouldClearProject && hasProject) &&
       !(shouldClearAction && hasAction) &&
       !(shouldClearService && hasService) &&
       !(shouldClearStep && hasStep)
@@ -289,6 +363,9 @@ export function syncWorkspaceNavParam(
     }
     if (shouldClearTenant) {
       next.delete(WORKSPACE_ORGANIZATION_PARAM)
+    }
+    if (shouldClearProject) {
+      next.delete(WORKSPACE_PROJECT_PARAM)
     }
     if (shouldClearAction) {
       next.delete(WORKSPACE_ACTION_PARAM)
@@ -343,10 +420,16 @@ export function syncWorkspaceCatalogItemParam(
 export function syncWorkspaceActionParam(
   setSearchParams: SetURLSearchParams,
   action: WorkspaceAction | null,
-  options?: NavigateOptions & { catalogItem?: string | null },
+  options?: NavigateOptions & {
+    catalogItem?: string | null
+    instance?: string | null
+  },
 ): void {
   const catalogItem = options?.catalogItem
-  const { catalogItem: _catalogItem, ...navigateOptions } = options ?? {}
+  const instance = options?.instance
+  const navigateOptions: NavigateOptions = { ...(options ?? {}) }
+  delete (navigateOptions as { catalogItem?: string | null }).catalogItem
+  delete (navigateOptions as { instance?: string | null }).instance
 
   setSearchParams((current) => {
     const currentAction = getWorkspaceActionParam(current)
@@ -381,7 +464,12 @@ export function syncWorkspaceActionParam(
       (action !== WORKSPACE_ACTION_LAUNCH_INSTANCE ||
         (catalogItem === undefined
           ? current.has(WORKSPACE_CATALOG_ITEM_PARAM)
-          : current.get(WORKSPACE_CATALOG_ITEM_PARAM) === catalogItem))
+          : current.get(WORKSPACE_CATALOG_ITEM_PARAM) === catalogItem)) &&
+      (action !== WORKSPACE_ACTION_UPGRADE_CLUSTER ||
+        ((instance === undefined
+          ? current.has(WORKSPACE_INSTANCE_PARAM)
+          : current.get(WORKSPACE_INSTANCE_PARAM) === instance) &&
+          getWorkspaceStepParam(current) === WORKSPACE_STEP_UPGRADE_CLUSTER_TARGET))
     ) {
       if (
         action === WORKSPACE_ACTION_CREATE_CATALOG_ITEM &&
@@ -410,6 +498,14 @@ export function syncWorkspaceActionParam(
       if (typeof catalogItem === 'string' && catalogItem.trim()) {
         next.set(WORKSPACE_CATALOG_ITEM_PARAM, catalogItem.trim())
       }
+    } else if (action === WORKSPACE_ACTION_UPGRADE_CLUSTER) {
+      next.delete(WORKSPACE_SERVICE_PARAM)
+      next.delete(WORKSPACE_CATALOG_ITEM_PARAM)
+      next.delete(WORKSPACE_PROJECT_PARAM)
+      next.set(WORKSPACE_STEP_PARAM, WORKSPACE_STEP_UPGRADE_CLUSTER_TARGET)
+      if (typeof instance === 'string' && instance.trim()) {
+        next.set(WORKSPACE_INSTANCE_PARAM, instance.trim())
+      }
     } else {
       next.delete(WORKSPACE_SERVICE_PARAM)
       next.delete(WORKSPACE_CATALOG_ITEM_PARAM)
@@ -435,6 +531,7 @@ export function syncWorkspaceActionParam(
       next.delete(WORKSPACE_CATALOG_ITEM_PARAM)
       next.delete(WORKSPACE_ORGANIZATION_PARAM)
       next.delete(WORKSPACE_INSTANCE_PARAM)
+      next.delete(WORKSPACE_PROJECT_PARAM)
     }
 
     if (
@@ -445,6 +542,7 @@ export function syncWorkspaceActionParam(
     ) {
       next.delete(WORKSPACE_CATALOG_ITEM_PARAM)
       next.delete(WORKSPACE_INSTANCE_PARAM)
+      next.delete(WORKSPACE_PROJECT_PARAM)
     }
 
     return next
@@ -573,6 +671,43 @@ export function syncWorkspaceOrganizationParam(
   }, options)
 }
 
+/** Open or close a project detail page via `?project=` on Projects. */
+export function syncWorkspaceProjectParam(
+  setSearchParams: SetURLSearchParams,
+  project: string | null,
+  options?: NavigateOptions,
+): void {
+  setSearchParams((current) => {
+    const currentProject = current.get(WORKSPACE_PROJECT_PARAM)
+    if (!project) {
+      if (!currentProject) {
+        return current
+      }
+      const next = new URLSearchParams(current)
+      next.delete(WORKSPACE_PROJECT_PARAM)
+      return next
+    }
+
+    if (
+      current.get('nav') === 'projects-teams' &&
+      currentProject === project &&
+      !getWorkspaceActionParam(current)
+    ) {
+      return current
+    }
+
+    const next = new URLSearchParams(current)
+    next.set('nav', 'projects-teams')
+    next.set(WORKSPACE_PROJECT_PARAM, project)
+    next.delete(WORKSPACE_ACTION_PARAM)
+    next.delete(WORKSPACE_STEP_PARAM)
+    next.delete(WORKSPACE_SERVICE_PARAM)
+    next.delete(WORKSPACE_CATALOG_ITEM_PARAM)
+    next.delete(WORKSPACE_INSTANCE_PARAM)
+    return next
+  }, options)
+}
+
 export function findInstanceByWorkspaceParam<
   T extends { id: string; name: string },
 >(instances: readonly T[], instanceParam: string | null | undefined): T | null {
@@ -609,6 +744,26 @@ export function findCatalogItemByWorkspaceParam<
     items.find((item) => item.catalogItemId?.toLowerCase() === key) ??
     items.find((item) => item.displayName.toLowerCase() === key) ??
     items.find((item) => item.displayName.toLowerCase().includes(key)) ??
+    null
+  )
+}
+
+export function findProjectByWorkspaceParam<
+  T extends { id: string; name: string },
+>(projects: readonly T[], projectParam: string | null | undefined): T | null {
+  if (!projectParam) {
+    return null
+  }
+
+  const key = projectParam.trim().toLowerCase()
+  if (!key) {
+    return null
+  }
+
+  return (
+    projects.find((project) => project.id.toLowerCase() === key) ??
+    projects.find((project) => project.name.toLowerCase() === key) ??
+    projects.find((project) => project.name.toLowerCase().includes(key)) ??
     null
   )
 }

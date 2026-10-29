@@ -72,8 +72,11 @@ import { buildTenantUserProjectTreeRows, getProjectMembershipForEmail, isTenantU
 import { getProjectTopologyVisibleIds } from '../../tenantAdmin/projectTopology'
 import {
   WORKSPACE_ACTION_CREATE_PROJECT,
+  findProjectByWorkspaceParam,
   getWorkspaceActionParam,
+  getWorkspaceProjectParam,
   syncWorkspaceActionParam,
+  syncWorkspaceProjectParam,
 } from '../../shared/workspaceNavUrl'
 
 type TenantAdminProjectsTeamsPageProps = {
@@ -107,14 +110,19 @@ export function TenantAdminProjectsTeamsPage({
   lede,
 }: TenantAdminProjectsTeamsPageProps) {
   const [searchParams, setSearchParams] = useSearchParams()
+  const projectParam = getWorkspaceProjectParam(searchParams)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<TenantProject | null>(null)
   const [nestedCreateParent, setNestedCreateParent] = useState<TenantProject | null>(null)
   const [returnToProjectAfterWizard, setReturnToProjectAfterWizard] = useState<TenantProject | null>(
     null,
   )
-  const [selectedProject, setSelectedProject] = useState<TenantProject | null>(null)
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const [selectedProject, setSelectedProject] = useState<TenantProject | null>(() =>
+    findProjectByWorkspaceParam(projects, projectParam),
+  )
+  const [isDetailsOpen, setIsDetailsOpen] = useState(() =>
+    Boolean(findProjectByWorkspaceParam(projects, projectParam)),
+  )
   const [projectPendingDelete, setProjectPendingDelete] = useState<TenantProject | null>(null)
   const [promptAddMembersProjectId, setPromptAddMembersProjectId] = useState<string | null>(null)
   const [searchValue, setSearchValue] = useState('')
@@ -299,9 +307,29 @@ export function TenantAdminProjectsTeamsPage({
     if (match) {
       setSelectedProject(match)
       setIsDetailsOpen(true)
+      syncWorkspaceProjectParam(setSearchParams, match.name, { replace: true })
     }
     onOpenProjectConsumed?.()
-  }, [openProjectId, projects, onOpenProjectConsumed])
+  }, [openProjectId, projects, onOpenProjectConsumed, setSearchParams])
+
+  useEffect(() => {
+    // Create-project owns the URL while open; don't fight it by clearing project details.
+    if (getWorkspaceActionParam(searchParams) === WORKSPACE_ACTION_CREATE_PROJECT) {
+      return
+    }
+
+    const match = findProjectByWorkspaceParam(projects, projectParam)
+    if (match) {
+      setSelectedProject((current) => (current?.id === match.id ? current : match))
+      setIsDetailsOpen(true)
+      return
+    }
+
+    if (!projectParam && !openProjectId) {
+      setIsDetailsOpen(false)
+      setSelectedProject((current) => (current === null ? current : null))
+    }
+  }, [projectParam, projects, openProjectId, searchParams])
 
   useEffect(() => {
     if (!selectedProject) {
@@ -312,13 +340,14 @@ export function TenantAdminProjectsTeamsPage({
     if (!next) {
       setSelectedProject(null)
       setIsDetailsOpen(false)
+      syncWorkspaceProjectParam(setSearchParams, null, { replace: true })
       return
     }
 
     if (next !== selectedProject) {
       setSelectedProject(next)
     }
-  }, [projects, selectedProject])
+  }, [projects, selectedProject, setSearchParams])
 
   useEffect(() => {
     if (!sidebarProject) {
@@ -344,11 +373,13 @@ export function TenantAdminProjectsTeamsPage({
 
     setSelectedProject(project)
     setIsDetailsOpen(true)
+    syncWorkspaceProjectParam(setSearchParams, project.name)
   }
 
   const closeDetails = () => {
     setIsDetailsOpen(false)
     setPromptAddMembersProjectId(null)
+    syncWorkspaceProjectParam(setSearchParams, null)
   }
 
   const closeCreateWizard = () => {
@@ -367,6 +398,7 @@ export function TenantAdminProjectsTeamsPage({
       } else {
         setSelectedProject(latest)
         setIsDetailsOpen(true)
+        syncWorkspaceProjectParam(setSearchParams, latest.name, { replace: true })
       }
       setReturnToProjectAfterWizard(null)
     }
@@ -515,6 +547,7 @@ export function TenantAdminProjectsTeamsPage({
     if (selectedProject?.id === projectId) {
       setSelectedProject(null)
       setIsDetailsOpen(false)
+      syncWorkspaceProjectParam(setSearchParams, null, { replace: true })
     }
     if (sidebarProject?.id === projectId) {
       setSidebarProject(null)
