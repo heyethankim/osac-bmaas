@@ -922,16 +922,25 @@ export function TenantUserInstancesPage({
       return
     }
 
-    const currentConfig = resolveVmConfig(instancePendingPublicIp)
     const publicIp = createDemoPublicIp(publicIpFamily, instancePendingPublicIp.id)
     const instanceId = instancePendingPublicIp.id
-    patchStoredInstance(instanceId, {
-      vmConfig: {
-        ...currentConfig,
+    const serviceId = getTenantInstanceServiceId(instancePendingPublicIp)
+
+    if (serviceId === 'virtual-machine') {
+      const currentConfig = resolveVmConfig(instancePendingPublicIp)
+      patchStoredInstance(instanceId, {
+        vmConfig: {
+          ...currentConfig,
+          publicIp,
+          publicIpFamily,
+        },
+      })
+    } else {
+      patchStoredInstance(instanceId, {
         publicIp,
         publicIpFamily,
-      },
-    })
+      })
+    }
     closeAttachPublicIp()
   }
 
@@ -1064,11 +1073,21 @@ export function TenantUserInstancesPage({
           isOpen={instancePendingPublicIp !== null}
           onClose={closeAttachPublicIp}
           aria-labelledby="attach-public-ip-title"
+          aria-describedby="attach-public-ip-description"
         >
           <ModalHeader title="Attach external IP" labelId="attach-public-ip-title" />
           <ModalBody>
+            <Content component="p" id="attach-public-ip-description">
+              Choose an IP family. The platform allocates an address from the project pool.
+            </Content>
             <Form>
-              <FormGroup label="IP family" fieldId="attach-public-ip-family" isRequired>
+              <FormGroup
+                label="IP family"
+                fieldId="attach-public-ip-family"
+                role="radiogroup"
+                isStack
+                isRequired
+              >
                 <Radio
                   id="attach-public-ip-ipv4"
                   name="attach-public-ip-family"
@@ -1521,11 +1540,21 @@ export function TenantUserInstancesPage({
         isOpen={instancePendingPublicIp !== null}
         onClose={closeAttachPublicIp}
         aria-labelledby="attach-public-ip-title"
+        aria-describedby="attach-public-ip-description"
       >
         <ModalHeader title="Attach external IP" labelId="attach-public-ip-title" />
         <ModalBody>
+          <Content component="p" id="attach-public-ip-description">
+            Choose an IP family. The platform allocates an address from the project pool.
+          </Content>
           <Form>
-            <FormGroup label="IP family" fieldId="attach-public-ip-family" isRequired>
+            <FormGroup
+              label="IP family"
+              fieldId="attach-public-ip-family"
+              role="radiogroup"
+              isStack
+              isRequired
+            >
               <Radio
                 id="attach-public-ip-ipv4"
                 name="attach-public-ip-family"

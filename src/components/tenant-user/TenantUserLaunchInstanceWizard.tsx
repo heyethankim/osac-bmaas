@@ -131,7 +131,12 @@ import {
   type LaunchNetworkFieldView,
 } from '../../tenantUser/launchNetworking'
 import { resolveNetworkInventoryScope } from '../../shared/networkInventoryScope'
-import { formatTenantInstanceName, generateTenantInstanceId, type TenantInstance } from '../../tenantUser/instances'
+import {
+  createDemoPublicIp,
+  formatTenantInstanceName,
+  generateTenantInstanceId,
+  type TenantInstance,
+} from '../../tenantUser/instances'
 import type { TenantUserScopeKind } from '../../tenantUser/scope'
 import { KubernetesResourceNameField } from '../shared/KubernetesResourceNameHelper'
 import { ProjectTreeDropdownItems } from '../shared/ProjectTreeDropdownItems'
@@ -905,8 +910,14 @@ export function TenantUserLaunchInstanceWizard({
         })
       : null
 
+    const instanceId = generateTenantInstanceId()
+    const autoAttachedPublicIp = form.autoAttachExternalIp
+      ? createDemoPublicIp('IPv4', instanceId)
+      : null
+    const autoAttachedPublicIpFamily = form.autoAttachExternalIp ? ('IPv4' as const) : null
+
     const instance: TenantInstance = {
-      id: generateTenantInstanceId(),
+      id: instanceId,
       name:
         isClusterCatalogItem || isVmCatalogItem || isBareMetalCatalogItem
           ? form.instanceName.trim()
@@ -933,6 +944,12 @@ export function TenantUserLaunchInstanceWizard({
             ? (bareMetalLaunchSpecRows?.find((row) => row.label === 'GPU')?.value ??
               catalogItem.gpu)
             : catalogItem.gpu,
+      ...(isBareMetalCatalogItem
+        ? {
+            publicIp: autoAttachedPublicIp,
+            publicIpFamily: autoAttachedPublicIpFamily,
+          }
+        : {}),
       specRows: isBareMetalCatalogItem
         ? (bareMetalLaunchSpecRows ?? catalogItem.specRows)
         : isServiceAwareCatalogItem
@@ -1035,8 +1052,8 @@ export function TenantUserLaunchInstanceWizard({
             bootDiskSizeGiB: form.bootDiskSizeGiB,
             sshPublicKey: form.sshPublicKey.trim(),
             internalIp: '10.99.1.11',
-            publicIp: null,
-            publicIpFamily: null,
+            publicIp: autoAttachedPublicIp,
+            publicIpFamily: autoAttachedPublicIpFamily,
           }
         : undefined,
       projectIds: selectedProject ? [selectedProject.id] : [],

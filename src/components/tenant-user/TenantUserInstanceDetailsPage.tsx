@@ -64,6 +64,7 @@ import {
   getClusterInstalledAddonOperators,
   resolveClusterConfig,
   resolveClusterNodeInventories,
+  resolveInstancePublicIp,
   resolveTenantInstanceNetworking,
   resolveVmConfig,
   type TenantClusterNodeInventory,
@@ -810,30 +811,34 @@ export function BareMetalConnectSshModal({
       <ModalHeader title="Connect via SSH" labelId="bare-metal-ssh-modal-title" />
       <ModalBody>
         <Content component="p">
-          Use the SSH public key from launch to connect to this host when it is running.
+          {host
+            ? 'Use the SSH public key from launch to connect to this host when it is running.'
+            : 'Attach an external IP on this instance before connecting over SSH.'}
         </Content>
-        <DescriptionList isCompact className="entity-details-page__dl" aria-label="SSH connection">
-          <DescriptionListGroup>
-            <DescriptionListTerm>Host</DescriptionListTerm>
-            <DescriptionListDescription>
-              <code>{host}</code>
-            </DescriptionListDescription>
-          </DescriptionListGroup>
-          <DescriptionListGroup>
-            <DescriptionListTerm>Command</DescriptionListTerm>
-            <DescriptionListDescription>
-              <ClipboardCopy
-                isReadOnly
-                isCode
-                hoverTip="Copy SSH command"
-                clickTip="SSH command copied"
-                textAriaLabel="SSH connect command"
-              >
-                {command}
-              </ClipboardCopy>
-            </DescriptionListDescription>
-          </DescriptionListGroup>
-        </DescriptionList>
+        {host && command ? (
+          <DescriptionList isCompact className="entity-details-page__dl" aria-label="SSH connection">
+            <DescriptionListGroup>
+              <DescriptionListTerm>Host</DescriptionListTerm>
+              <DescriptionListDescription>
+                <code>{host}</code>
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Command</DescriptionListTerm>
+              <DescriptionListDescription>
+                <ClipboardCopy
+                  isReadOnly
+                  isCode
+                  hoverTip="Copy SSH command"
+                  clickTip="SSH command copied"
+                  textAriaLabel="SSH connect command"
+                >
+                  {command}
+                </ClipboardCopy>
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+          </DescriptionList>
+        ) : null}
       </ModalBody>
       <ModalFooter>
         <Button variant="secondary" onClick={onClose}>
@@ -850,30 +855,42 @@ function BareMetalLifecycleActions({
   onRestart,
   onStart,
   onStop,
+  onAttachPublicIp,
 }: {
   instance: TenantInstance
   onRequestTerminate: (instance: TenantInstance) => void
   onRestart: (instanceId: string) => void
   onStart?: (instanceId: string) => void
   onStop?: (instanceId: string) => void
+  onAttachPublicIp?: (instance: TenantInstance) => void
 }) {
   const [isSshModalOpen, setIsSshModalOpen] = useState(false)
   const isRunning = instance.status === 'running'
   const isStopped = instance.status === 'stopped'
   const isRestarting = instance.status === 'restarting'
+  const hasPublicIp = Boolean(resolveInstancePublicIp(instance))
   const canStart = isStopped
   const canStop = isRunning
   const canRestart = isRunning || isStopped
   const canTerminate = !isRestarting
+  const canAttachPublicIp =
+    Boolean(onAttachPublicIp) && !hasPublicIp && !isRestarting
+  const sshHost = getBareMetalSshHost(instance)
 
   return (
     <>
-      {isRunning ? (
+      {isRunning && sshHost ? (
         <Button variant="primary" onClick={() => setIsSshModalOpen(true)}>
           Connect via SSH
         </Button>
       ) : (
-        <Tooltip content="SSH is available when the instance is running">
+        <Tooltip
+          content={
+            !sshHost
+              ? 'Attach an external IP before connecting over SSH'
+              : 'SSH is available when the instance is running'
+          }
+        >
           <Button variant="primary" isAriaDisabled>
             Connect via SSH
           </Button>
@@ -908,6 +925,16 @@ function BareMetalLifecycleActions({
               : isRestarting
                 ? 'Stop is unavailable while restarting'
                 : 'Stop is available when the instance is running',
+          },
+          {
+            label: 'Attach external IP',
+            onClick: () => onAttachPublicIp?.(instance),
+            disabled: !canAttachPublicIp,
+            disabledReason: hasPublicIp
+              ? 'An external IP is already attached'
+              : isRestarting
+                ? 'Attach is unavailable while restarting'
+                : 'Attach is unavailable',
           },
         ]}
         onRemove={() => onRequestTerminate(instance)}
@@ -1599,6 +1626,7 @@ function DefaultInstancePageBody({
   instance,
   tenantSlug,
   projects,
+  onAttachPublicIp,
   onUpdateNetworking,
   onNavigateToProject,
   onNavigateToCatalogItem,
@@ -1608,6 +1636,7 @@ function DefaultInstancePageBody({
   instance: TenantInstance
   tenantSlug: string
   projects: readonly TenantProject[]
+  onAttachPublicIp?: (instance: TenantInstance) => void
   onUpdateNetworking?: (
     instanceId: string,
     networking: TenantInstanceNetworking,
@@ -1619,6 +1648,12 @@ function DefaultInstancePageBody({
   instanceNetworkingVariant?: 'interactive' | 'summary'
 }) {
   const isBareMetal = getTenantInstanceServiceId(instance) === 'baremetal'
+  const hasPublicIp = Boolean(resolveInstancePublicIp(instance))
+  // Allow attach while provisioning so Off → detail demos can attach immediately.
+  const canAttachPublicIp =
+    Boolean(onAttachPublicIp) && !hasPublicIp && instance.status !== 'restarting'
+  const sshHost = isBareMetal ? getBareMetalSshHost(instance) : null
+  const sshCommand = isBareMetal ? getBareMetalSshCommand(instance) : null
   const specRows = getTenantInstanceSpecRows(instance)
   const bareMetalConditions = isBareMetal ? getBareMetalInstanceConditions(instance) : []
   const bareMetalInventory = isBareMetal ? resolveBareMetalInventory(instance) : null
@@ -1702,23 +1737,40 @@ function DefaultInstancePageBody({
                   aria-label="Bare metal access"
                 >
                   <DescriptionListGroup>
-                    <DescriptionListTerm>Host</DescriptionListTerm>
+                    <DescriptionListTerm>External IP</DescriptionListTerm>
                     <DescriptionListDescription>
-                      <code>{getBareMetalSshHost(instance)}</code>
+                      {sshHost ? (
+                        <code>{sshHost}</code>
+                      ) : canAttachPublicIp ? (
+                        <Button
+                          variant="link"
+                          isInline
+                          className="provider-admin-catalog-items__inline-link"
+                          onClick={() => onAttachPublicIp?.(instance)}
+                        >
+                          Attach external IP
+                        </Button>
+                      ) : (
+                        '—'
+                      )}
                     </DescriptionListDescription>
                   </DescriptionListGroup>
                   <DescriptionListGroup>
                     <DescriptionListTerm>SSH command</DescriptionListTerm>
                     <DescriptionListDescription>
-                      <ClipboardCopy
-                        isReadOnly
-                        isCode
-                        hoverTip="Copy SSH command"
-                        clickTip="SSH command copied"
-                        textAriaLabel="SSH connect command"
-                      >
-                        {getBareMetalSshCommand(instance)}
-                      </ClipboardCopy>
+                      {sshCommand ? (
+                        <ClipboardCopy
+                          isReadOnly
+                          isCode
+                          hoverTip="Copy SSH command"
+                          clickTip="SSH command copied"
+                          textAriaLabel="SSH connect command"
+                        >
+                          {sshCommand}
+                        </ClipboardCopy>
+                      ) : (
+                        'Available after an external IP is attached.'
+                      )}
                     </DescriptionListDescription>
                   </DescriptionListGroup>
                   <DescriptionListGroup>
@@ -1966,6 +2018,7 @@ export function TenantUserInstanceDetailsPage({
       onRestart={onRestart}
       onStart={onStart}
       onStop={onStop}
+      onAttachPublicIp={onAttachPublicIp}
     />
   ) : (
     <DefaultLifecycleActions
@@ -2015,6 +2068,7 @@ export function TenantUserInstanceDetailsPage({
           instance={instance}
           tenantSlug={tenantSlug}
           projects={projects}
+          onAttachPublicIp={onAttachPublicIp}
           onUpdateNetworking={onUpdateNetworking}
           onNavigateToProject={onNavigateToProject}
           onNavigateToCatalogItem={onNavigateToCatalogItem}

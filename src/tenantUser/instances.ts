@@ -164,6 +164,12 @@ export type TenantInstance = {
   /** SSH public key captured at launch (bare metal, VM, and cluster). */
   sshPublicKey?: string
   /**
+   * Attached external IP for bare metal (VMs store this on `vmConfig.publicIp`).
+   * `null` = none attached; omit on legacy seed data that should keep demo SSH host fallback.
+   */
+  publicIp?: string | null
+  publicIpFamily?: 'IPv4' | 'IPv6' | null
+  /**
    * Projects this service belongs to (multi-project). Empty = organization-scoped.
    * Prefer this over `projectName` / `scopeKind` for membership checks.
    */
@@ -334,7 +340,7 @@ export function getTenantInstanceActions(
   const isRestarting = instance.status === 'restarting'
   /** Delete stays available while provisioning so users can cancel a launch in progress. */
   const canDelete = !isRestarting
-  const hasPublicIp = Boolean(resolveVmConfig(instance).publicIp)
+  const hasPublicIp = Boolean(resolveInstancePublicIp(instance))
 
   if (isCluster) {
     return [
@@ -410,6 +416,13 @@ export function getTenantInstanceActions(
         isAriaDisabled: !isRunning && !isStopped,
         onClick: () => {
           onRestart?.(instance.id)
+        },
+      },
+      {
+        title: 'Attach external IP',
+        isAriaDisabled: isRestarting || hasPublicIp,
+        onClick: () => {
+          vmActions?.onAttachPublicIp?.(instance)
         },
       },
       {
@@ -736,6 +749,23 @@ export function createDemoPublicIp(family: 'IPv4' | 'IPv6', instanceId: string):
   return `203.0.113.${octet}`
 }
 
+/** External IP for VM (`vmConfig`) or bare metal (`publicIp`). */
+export function resolveInstancePublicIp(instance: TenantInstance): string | null {
+  if (getTenantInstanceServiceId(instance) === 'virtual-machine') {
+    return resolveVmConfig(instance).publicIp
+  }
+  return instance.publicIp ?? null
+}
+
+export function resolveInstancePublicIpFamily(
+  instance: TenantInstance,
+): 'IPv4' | 'IPv6' | null {
+  if (getTenantInstanceServiceId(instance) === 'virtual-machine') {
+    return resolveVmConfig(instance).publicIpFamily ?? null
+  }
+  return instance.publicIpFamily ?? null
+}
+
 /** DNS label used in demo cluster API/console URLs. */
 export function getClusterDnsName(instance: TenantInstance): string {
   return instance.name.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-') || 'cluster'
@@ -754,14 +784,25 @@ export function getVmConsoleUrl(instance: TenantInstance): string {
   return `https://console-vm.${getClusterDnsName(instance)}.mock.osac.dev`
 }
 
-/** Demo management IP used for SSH after bare metal provision. */
-export function getBareMetalSshHost(instance: TenantInstance): string {
+/**
+ * Demo management IP used for SSH after bare metal provision.
+ * Prefers an attached external IP; falls back to a stable demo host when unset
+ * (legacy seed instances without an explicit `publicIp: null`).
+ */
+export function getBareMetalSshHost(instance: TenantInstance): string | null {
+  if (instance.publicIp === null) {
+    return null
+  }
+  if (instance.publicIp) {
+    return instance.publicIp
+  }
   return createDemoPublicIp('IPv4', instance.id)
 }
 
 /** SSH connect command for a provisioned bare metal instance (RHEL cloud-user). */
-export function getBareMetalSshCommand(instance: TenantInstance): string {
-  return `ssh cloud-user@${getBareMetalSshHost(instance)}`
+export function getBareMetalSshCommand(instance: TenantInstance): string | null {
+  const host = getBareMetalSshHost(instance)
+  return host ? `ssh cloud-user@${host}` : null
 }
 
 /** Demo BMC serial-over-LAN console URL for a bare metal instance. */
@@ -1633,6 +1674,13 @@ function createDemoTenantBareMetalInstanceVariant(
         ? undefined
         : { networkInterfaces: createDemoNetworkInterfaces(options.id, 2) },
     sshPublicKey: DEFAULT_BARE_METAL_SSH_PUBLIC_KEY,
+    // Seeded running hosts already have an external IP for SSH demos.
+    ...(options.status === 'provisioning'
+      ? { publicIp: null as string | null, publicIpFamily: null as 'IPv4' | 'IPv6' | null }
+      : {
+          publicIp: createDemoPublicIp('IPv4', options.id),
+          publicIpFamily: 'IPv4' as 'IPv4' | 'IPv6',
+        }),
     ...resolveDemoInstanceProjectFields({
       id: options.id,
       projectName: options.projectName,
