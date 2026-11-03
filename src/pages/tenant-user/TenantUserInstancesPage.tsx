@@ -1106,11 +1106,11 @@ export function TenantUserInstancesPage({
             </Form>
           </ModalBody>
           <ModalFooter>
-            <Button variant="link" onClick={closeAttachPublicIp}>
-              Cancel
-            </Button>
             <Button variant="primary" onClick={handleConfirmAttachPublicIp}>
               Attach
+            </Button>
+            <Button variant="link" onClick={closeAttachPublicIp}>
+              Cancel
             </Button>
           </ModalFooter>
         </Modal>
@@ -1573,11 +1573,11 @@ export function TenantUserInstancesPage({
           </Form>
         </ModalBody>
         <ModalFooter>
-          <Button variant="link" onClick={closeAttachPublicIp}>
-            Cancel
-          </Button>
           <Button variant="primary" onClick={handleConfirmAttachPublicIp}>
             Attach
+          </Button>
+          <Button variant="link" onClick={closeAttachPublicIp}>
+            Cancel
           </Button>
         </ModalFooter>
       </Modal>
