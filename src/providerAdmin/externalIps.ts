@@ -51,6 +51,33 @@ export const DEFAULT_NORTHSUMMIT_EXTERNAL_IPS: ExternalIp[] = [
     poolName: 'northsummit-public-edge',
     attachedTo: 'Bare metal · bm-server-04',
   },
+  {
+    id: 'eip-northsummit-available-01',
+    address: '198.51.100.14',
+    family: 'IPv4',
+    status: 'Available',
+    poolId: 'eipool-northsummit-reserved',
+    poolName: 'edge-public-a',
+    attachedTo: 'Unassigned',
+  },
+  {
+    id: 'eip-northsummit-available-02',
+    address: '203.0.113.40',
+    family: 'IPv4',
+    status: 'Available',
+    poolId: 'eipool-northsummit-edge',
+    poolName: 'northsummit-public-edge',
+    attachedTo: 'Unassigned',
+  },
+  {
+    id: 'eip-northsummit-available-03',
+    address: '203.0.113.41',
+    family: 'IPv4',
+    status: 'Available',
+    poolId: 'eipool-northsummit-edge',
+    poolName: 'northsummit-public-edge',
+    attachedTo: 'Unassigned',
+  },
 ]
 
 const DEMO_EXTERNAL_IPS: ExternalIp[] = [

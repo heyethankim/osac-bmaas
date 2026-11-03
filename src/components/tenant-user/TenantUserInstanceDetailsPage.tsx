@@ -109,6 +109,7 @@ type TenantUserInstanceDetailsPageProps = {
   onStart?: (instanceId: string) => void
   onStop?: (instanceId: string) => void
   onAttachPublicIp?: (instance: TenantInstance) => void
+  onDetachPublicIp?: (instance: TenantInstance) => void
   onUpdateNetworking?: (
     instanceId: string,
     networking: TenantInstanceNetworking,
@@ -856,6 +857,7 @@ function BareMetalLifecycleActions({
   onStart,
   onStop,
   onAttachPublicIp,
+  onDetachPublicIp,
 }: {
   instance: TenantInstance
   onRequestTerminate: (instance: TenantInstance) => void
@@ -863,6 +865,7 @@ function BareMetalLifecycleActions({
   onStart?: (instanceId: string) => void
   onStop?: (instanceId: string) => void
   onAttachPublicIp?: (instance: TenantInstance) => void
+  onDetachPublicIp?: (instance: TenantInstance) => void
 }) {
   const [isSshModalOpen, setIsSshModalOpen] = useState(false)
   const isRunning = instance.status === 'running'
@@ -875,6 +878,8 @@ function BareMetalLifecycleActions({
   const canTerminate = !isRestarting
   const canAttachPublicIp =
     Boolean(onAttachPublicIp) && !hasPublicIp && !isRestarting
+  const canDetachPublicIp =
+    Boolean(onDetachPublicIp) && hasPublicIp && !isRestarting
   const sshHost = getBareMetalSshHost(instance)
 
   return (
@@ -927,13 +932,14 @@ function BareMetalLifecycleActions({
                 : 'Stop is available when the instance is running',
           },
           {
-            label: 'Attach external IP',
-            onClick: () => onAttachPublicIp?.(instance),
-            disabled: !canAttachPublicIp,
-            disabledReason: hasPublicIp
-              ? 'An external IP is already attached'
-              : isRestarting
-                ? 'Attach is unavailable while restarting'
+            label: hasPublicIp ? 'Detach external IP' : 'Attach external IP',
+            onClick: () =>
+              hasPublicIp ? onDetachPublicIp?.(instance) : onAttachPublicIp?.(instance),
+            disabled: hasPublicIp ? !canDetachPublicIp : !canAttachPublicIp,
+            disabledReason: isRestarting
+              ? `${hasPublicIp ? 'Detach' : 'Attach'} is unavailable while restarting`
+              : hasPublicIp
+                ? 'Detach is unavailable'
                 : 'Attach is unavailable',
           },
         ]}
@@ -1426,6 +1432,7 @@ function VmInstancePageBody({
   tenantSlug,
   projects,
   onAttachPublicIp,
+  onDetachPublicIp,
   onUpdateNetworking,
   onNavigateToProject,
   onNavigateToCatalogItem,
@@ -1436,6 +1443,7 @@ function VmInstancePageBody({
   tenantSlug: string
   projects: readonly TenantProject[]
   onAttachPublicIp?: (instance: TenantInstance) => void
+  onDetachPublicIp?: (instance: TenantInstance) => void
   onUpdateNetworking?: (
     instanceId: string,
     networking: TenantInstanceNetworking,
@@ -1449,7 +1457,8 @@ function VmInstancePageBody({
   const isBusy = instance.status === 'provisioning' || instance.status === 'restarting'
   const vmConfig = resolveVmConfig(instance)
   const hasPublicIp = Boolean(vmConfig.publicIp)
-  const canAttachPublicIp = !isBusy && !hasPublicIp
+  const canAttachPublicIp = Boolean(onAttachPublicIp) && !isBusy && !hasPublicIp
+  const canDetachPublicIp = Boolean(onDetachPublicIp) && !isBusy && hasPublicIp
   const conditions = getVmInstanceConditions(instance)
   const vmHighlightRows = getTenantInstanceCardSpecRows(instance)
   const vmInstanceType =
@@ -1574,7 +1583,19 @@ function VmInstancePageBody({
               <DescriptionListTerm>External IP</DescriptionListTerm>
               <DescriptionListDescription>
                 {hasPublicIp ? (
-                  vmConfig.publicIp
+                  <span className="attach-external-ip-modal__attached-value">
+                    <code>{vmConfig.publicIp}</code>
+                    {canDetachPublicIp ? (
+                      <Button
+                        variant="link"
+                        isInline
+                        className="provider-admin-catalog-items__inline-link"
+                        onClick={() => onDetachPublicIp?.(instance)}
+                      >
+                        Detach
+                      </Button>
+                    ) : null}
+                  </span>
                 ) : canAttachPublicIp ? (
                   <Button
                     variant="link"
@@ -1627,6 +1648,7 @@ function DefaultInstancePageBody({
   tenantSlug,
   projects,
   onAttachPublicIp,
+  onDetachPublicIp,
   onUpdateNetworking,
   onNavigateToProject,
   onNavigateToCatalogItem,
@@ -1637,6 +1659,7 @@ function DefaultInstancePageBody({
   tenantSlug: string
   projects: readonly TenantProject[]
   onAttachPublicIp?: (instance: TenantInstance) => void
+  onDetachPublicIp?: (instance: TenantInstance) => void
   onUpdateNetworking?: (
     instanceId: string,
     networking: TenantInstanceNetworking,
@@ -1652,6 +1675,8 @@ function DefaultInstancePageBody({
   // Allow attach while provisioning so Off → detail demos can attach immediately.
   const canAttachPublicIp =
     Boolean(onAttachPublicIp) && !hasPublicIp && instance.status !== 'restarting'
+  const canDetachPublicIp =
+    Boolean(onDetachPublicIp) && hasPublicIp && instance.status !== 'restarting'
   const sshHost = isBareMetal ? getBareMetalSshHost(instance) : null
   const sshCommand = isBareMetal ? getBareMetalSshCommand(instance) : null
   const specRows = getTenantInstanceSpecRows(instance)
@@ -1740,7 +1765,19 @@ function DefaultInstancePageBody({
                     <DescriptionListTerm>External IP</DescriptionListTerm>
                     <DescriptionListDescription>
                       {sshHost ? (
-                        <code>{sshHost}</code>
+                        <span className="attach-external-ip-modal__attached-value">
+                          <code>{sshHost}</code>
+                          {canDetachPublicIp ? (
+                            <Button
+                              variant="link"
+                              isInline
+                              className="provider-admin-catalog-items__inline-link"
+                              onClick={() => onDetachPublicIp?.(instance)}
+                            >
+                              Detach
+                            </Button>
+                          ) : null}
+                        </span>
                       ) : canAttachPublicIp ? (
                         <Button
                           variant="link"
@@ -1975,6 +2012,7 @@ export function TenantUserInstanceDetailsPage({
   onStart,
   onStop,
   onAttachPublicIp,
+  onDetachPublicIp,
   onUpdateNetworking,
   onNavigateToProject,
   onNavigateToCatalogItem,
@@ -2019,6 +2057,7 @@ export function TenantUserInstanceDetailsPage({
       onStart={onStart}
       onStop={onStop}
       onAttachPublicIp={onAttachPublicIp}
+      onDetachPublicIp={onDetachPublicIp}
     />
   ) : (
     <DefaultLifecycleActions
@@ -2057,6 +2096,7 @@ export function TenantUserInstanceDetailsPage({
           tenantSlug={tenantSlug}
           projects={projects}
           onAttachPublicIp={onAttachPublicIp}
+          onDetachPublicIp={onDetachPublicIp}
           onUpdateNetworking={onUpdateNetworking}
           onNavigateToProject={onNavigateToProject}
           onNavigateToCatalogItem={onNavigateToCatalogItem}
@@ -2069,6 +2109,7 @@ export function TenantUserInstanceDetailsPage({
           tenantSlug={tenantSlug}
           projects={projects}
           onAttachPublicIp={onAttachPublicIp}
+          onDetachPublicIp={onDetachPublicIp}
           onUpdateNetworking={onUpdateNetworking}
           onNavigateToProject={onNavigateToProject}
           onNavigateToCatalogItem={onNavigateToCatalogItem}

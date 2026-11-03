@@ -389,8 +389,11 @@ function syncDefaultTenantExternalIps(slug: string, items: ExternalIp[]): Extern
     return items
   }
 
+  const storedById = new Map(items.map((item) => [item.id, item]))
+  // Prefer persisted status/attachment for seed IPs (e.g. after Attach external IP).
+  const mergedDefaults = defaults.map((item) => storedById.get(item.id) ?? item)
   const userCreated = items.filter((item) => !isNorthsummitDemoExternalIp(item))
-  const merged = [...defaults, ...userCreated]
+  const merged = [...mergedDefaults, ...userCreated]
 
   const unchanged =
     merged.length === items.length &&

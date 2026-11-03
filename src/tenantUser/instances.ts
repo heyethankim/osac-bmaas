@@ -319,6 +319,7 @@ export function getTenantInstanceActions(
   },
   vmActions?: {
     onAttachPublicIp?: (instance: TenantInstance) => void
+    onDetachPublicIp?: (instance: TenantInstance) => void
   },
   bareMetalActions?: {
     onConnectSsh?: (instance: TenantInstance) => void
@@ -419,10 +420,14 @@ export function getTenantInstanceActions(
         },
       },
       {
-        title: 'Attach external IP',
-        isAriaDisabled: isRestarting || hasPublicIp,
+        title: hasPublicIp ? 'Detach external IP' : 'Attach external IP',
+        isAriaDisabled: isRestarting || (hasPublicIp ? !vmActions?.onDetachPublicIp : !vmActions?.onAttachPublicIp),
         onClick: () => {
-          vmActions?.onAttachPublicIp?.(instance)
+          if (hasPublicIp) {
+            vmActions?.onDetachPublicIp?.(instance)
+          } else {
+            vmActions?.onAttachPublicIp?.(instance)
+          }
         },
       },
       {
@@ -466,10 +471,15 @@ export function getTenantInstanceActions(
         },
       },
       {
-        title: 'Attach external IP',
-        isAriaDisabled: isBusy || hasPublicIp,
+        title: hasPublicIp ? 'Detach external IP' : 'Attach external IP',
+        isAriaDisabled:
+          isBusy || (hasPublicIp ? !vmActions?.onDetachPublicIp : !vmActions?.onAttachPublicIp),
         onClick: () => {
-          vmActions?.onAttachPublicIp?.(instance)
+          if (hasPublicIp) {
+            vmActions?.onDetachPublicIp?.(instance)
+          } else {
+            vmActions?.onAttachPublicIp?.(instance)
+          }
         },
       },
       {

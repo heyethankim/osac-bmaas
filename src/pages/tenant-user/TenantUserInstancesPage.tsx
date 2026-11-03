@@ -11,15 +11,12 @@ import {
   EmptyStateBody,
   Flex,
   FlexItem,
-  Form,
-  FormGroup,
   Label,
   Modal,
   ModalBody,
   ModalFooter,
   ModalHeader,
   ModalVariant,
-  Radio,
   SearchInput,
   Spinner,
   Title,
@@ -34,6 +31,8 @@ import { CatalogFilterEmptyState } from '../../components/catalog/CatalogFilterE
 import { CatalogFilterResultsSummary } from '../../components/catalog/CatalogFilterResultsSummary'
 import { ViewModeToggle } from '../../components/catalog/CatalogViewToggle'
 import { CatalogSpecRowsList } from '../../components/catalog/CatalogSpecRowsList'
+import { AttachExternalIpModal } from '../../components/tenant-user/AttachExternalIpModal'
+import { DetachExternalIpModal } from '../../components/tenant-user/DetachExternalIpModal'
 import { TenantUserInstanceDetailsPage, BareMetalConnectSshModal } from '../../components/tenant-user/TenantUserInstanceDetailsPage'
 import { ClusterUpgradeWizard } from '../../components/tenant-user/ClusterUpgradeWizard'
 import { getCatalogServiceIcon } from '../../catalog/serviceIcons'
@@ -55,7 +54,6 @@ import {
 } from '../../catalog/viewMode'
 import { CATALOG_SERVICE_FILTER_LABELS, type CatalogServiceId } from '../../providerSetup/templateDemo'
 import {
-  createDemoPublicIp,
   downloadClusterKubeconfig,
   formatTenantInstanceCreatedAt,
   formatTenantInstanceName,
@@ -73,12 +71,17 @@ import {
   getTenantInstanceSpecRows,
   getTenantInstanceStatusLabel,
   instanceBelongsToProject,
+  resolveInstancePublicIp,
   resolveVmConfig,
   TENANT_INSTANCE_RESTART_DURATION_MS,
   type TenantInstance,
   type TenantInstanceNetworking,
   type TenantInstanceStatus,
 } from '../../tenantUser/instances'
+import {
+  getTenantExternalIps,
+  setTenantExternalIps,
+} from '../../tenantAdmin/networkInventoryStorage'
 import {
   buildInstanceSpecFilterGroups,
   describeInstanceSpecFilterSelections,
@@ -281,7 +284,8 @@ export function TenantUserInstancesPage({
   const [instancePendingPublicIp, setInstancePendingPublicIp] = useState<TenantInstance | null>(
     null,
   )
-  const [publicIpFamily, setPublicIpFamily] = useState<'IPv4' | 'IPv6'>('IPv4')
+  const [instancePendingDetachPublicIp, setInstancePendingDetachPublicIp] =
+    useState<TenantInstance | null>(null)
   const [isProvisioningNoticeDismissed, setIsProvisioningNoticeDismissed] = useState(false)
   const restartTimersRef = useRef<Map<string, number>>(new Map())
 
@@ -887,8 +891,10 @@ export function TenantUserInstancesPage({
       },
       {
         onAttachPublicIp: (target) => {
-          setPublicIpFamily('IPv4')
           setInstancePendingPublicIp(target)
+        },
+        onDetachPublicIp: (target) => {
+          setInstancePendingDetachPublicIp(target)
         },
       },
       {
@@ -914,34 +920,67 @@ export function TenantUserInstancesPage({
 
   const closeAttachPublicIp = () => {
     setInstancePendingPublicIp(null)
-    setPublicIpFamily('IPv4')
   }
 
-  const handleConfirmAttachPublicIp = () => {
-    if (!instancePendingPublicIp) {
-      return
-    }
+  const closeDetachPublicIp = () => {
+    setInstancePendingDetachPublicIp(null)
+  }
 
-    const publicIp = createDemoPublicIp(publicIpFamily, instancePendingPublicIp.id)
-    const instanceId = instancePendingPublicIp.id
-    const serviceId = getTenantInstanceServiceId(instancePendingPublicIp)
+  const handleConfirmAttachPublicIp = (
+    target: TenantInstance,
+    ip: { address: string; family: 'IPv4' | 'IPv6' },
+  ) => {
+    const instanceId = target.id
+    const serviceId = getTenantInstanceServiceId(target)
 
     if (serviceId === 'virtual-machine') {
-      const currentConfig = resolveVmConfig(instancePendingPublicIp)
+      const currentConfig = resolveVmConfig(target)
       patchStoredInstance(instanceId, {
         vmConfig: {
           ...currentConfig,
-          publicIp,
-          publicIpFamily,
+          publicIp: ip.address,
+          publicIpFamily: ip.family,
         },
       })
     } else {
       patchStoredInstance(instanceId, {
-        publicIp,
-        publicIpFamily,
+        publicIp: ip.address,
+        publicIpFamily: ip.family,
       })
     }
     closeAttachPublicIp()
+  }
+
+  const handleConfirmDetachPublicIp = (target: TenantInstance) => {
+    const instanceId = target.id
+    const serviceId = getTenantInstanceServiceId(target)
+    const publicIp = resolveInstancePublicIp(target)
+
+    if (publicIp) {
+      const nextIps = getTenantExternalIps(scopeTenantSlug).map((ip) =>
+        ip.address === publicIp
+          ? { ...ip, status: 'Available' as const, attachedTo: 'Unassigned' }
+          : ip,
+      )
+      setTenantExternalIps(scopeTenantSlug, nextIps)
+    }
+
+    if (serviceId === 'virtual-machine') {
+      const currentConfig = resolveVmConfig(target)
+      patchStoredInstance(instanceId, {
+        vmConfig: {
+          ...currentConfig,
+          publicIp: null,
+          publicIpFamily: null,
+        },
+      })
+    } else {
+      patchStoredInstance(instanceId, {
+        publicIp: null,
+        publicIpFamily: null,
+      })
+    }
+    closeDetachPublicIp()
   }
 
   const handleViewModeChange = (nextViewMode: ViewMode) => {
@@ -1002,8 +1041,10 @@ export function TenantUserInstancesPage({
           onStart={handleStartInstance}
           onStop={handleStopInstance}
           onAttachPublicIp={(instance) => {
-            setPublicIpFamily('IPv4')
             setInstancePendingPublicIp(instance)
+          }}
+          onDetachPublicIp={(instance) => {
+            setInstancePendingDetachPublicIp(instance)
           }}
           onUpdateNetworking={handleUpdateNetworking}
           onNavigateToCatalogItem={onNavigateToCatalogItem}
@@ -1068,52 +1109,20 @@ export function TenantUserInstancesPage({
           </ModalFooter>
         </Modal>
 
-        <Modal
-          variant={ModalVariant.small}
+        <AttachExternalIpModal
           isOpen={instancePendingPublicIp !== null}
+          instance={instancePendingPublicIp}
+          tenantSlug={scopeTenantSlug}
           onClose={closeAttachPublicIp}
-          aria-labelledby="attach-public-ip-title"
-          aria-describedby="attach-public-ip-description"
-        >
-          <ModalHeader title="Attach external IP" labelId="attach-public-ip-title" />
-          <ModalBody>
-            <Content component="p" id="attach-public-ip-description">
-              Choose an IP family. The platform allocates an address from the project pool.
-            </Content>
-            <Form>
-              <FormGroup
-                label="IP family"
-                fieldId="attach-public-ip-family"
-                role="radiogroup"
-                isStack
-                isRequired
-              >
-                <Radio
-                  id="attach-public-ip-ipv4"
-                  name="attach-public-ip-family"
-                  label="IPv4"
-                  isChecked={publicIpFamily === 'IPv4'}
-                  onChange={() => setPublicIpFamily('IPv4')}
-                />
-                <Radio
-                  id="attach-public-ip-ipv6"
-                  name="attach-public-ip-family"
-                  label="IPv6"
-                  isChecked={publicIpFamily === 'IPv6'}
-                  onChange={() => setPublicIpFamily('IPv6')}
-                />
-              </FormGroup>
-            </Form>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="primary" onClick={handleConfirmAttachPublicIp}>
-              Attach
-            </Button>
-            <Button variant="link" onClick={closeAttachPublicIp}>
-              Cancel
-            </Button>
-          </ModalFooter>
-        </Modal>
+          onAttach={handleConfirmAttachPublicIp}
+        />
+
+        <DetachExternalIpModal
+          isOpen={instancePendingDetachPublicIp !== null}
+          instance={instancePendingDetachPublicIp}
+          onClose={closeDetachPublicIp}
+          onConfirm={handleConfirmDetachPublicIp}
+        />
 
         <Modal
           variant={ModalVariant.small}
@@ -1535,52 +1544,20 @@ export function TenantUserInstancesPage({
         </ModalFooter>
       </Modal>
 
-      <Modal
-        variant={ModalVariant.small}
+      <AttachExternalIpModal
         isOpen={instancePendingPublicIp !== null}
+        instance={instancePendingPublicIp}
+        tenantSlug={scopeTenantSlug}
         onClose={closeAttachPublicIp}
-        aria-labelledby="attach-public-ip-title"
-        aria-describedby="attach-public-ip-description"
-      >
-        <ModalHeader title="Attach external IP" labelId="attach-public-ip-title" />
-        <ModalBody>
-          <Content component="p" id="attach-public-ip-description">
-            Choose an IP family. The platform allocates an address from the project pool.
-          </Content>
-          <Form>
-            <FormGroup
-              label="IP family"
-              fieldId="attach-public-ip-family"
-              role="radiogroup"
-              isStack
-              isRequired
-            >
-              <Radio
-                id="attach-public-ip-ipv4"
-                name="attach-public-ip-family"
-                label="IPv4"
-                isChecked={publicIpFamily === 'IPv4'}
-                onChange={() => setPublicIpFamily('IPv4')}
-              />
-              <Radio
-                id="attach-public-ip-ipv6"
-                name="attach-public-ip-family"
-                label="IPv6"
-                isChecked={publicIpFamily === 'IPv6'}
-                onChange={() => setPublicIpFamily('IPv6')}
-              />
-            </FormGroup>
-          </Form>
-        </ModalBody>
-        <ModalFooter>
-          <Button variant="primary" onClick={handleConfirmAttachPublicIp}>
-            Attach
-          </Button>
-          <Button variant="link" onClick={closeAttachPublicIp}>
-            Cancel
-          </Button>
-        </ModalFooter>
-      </Modal>
+        onAttach={handleConfirmAttachPublicIp}
+      />
+
+      <DetachExternalIpModal
+        isOpen={instancePendingDetachPublicIp !== null}
+        instance={instancePendingDetachPublicIp}
+        onClose={closeDetachPublicIp}
+        onConfirm={handleConfirmDetachPublicIp}
+      />
 
       <Modal
         variant={ModalVariant.small}
