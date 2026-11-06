@@ -464,6 +464,7 @@ export function ProviderAdminOrganizationsPage({
         billingAccountId: organization.billingAccountId,
         billingAccountName: organization.billingAccountName,
         billingAccountLinked: organization.billingAccountLinked,
+        externalBillingId: organization.externalBillingId,
         tenantSetupStatus: organization.tenantSetupStatus,
       })
     } else {
@@ -860,12 +861,19 @@ export function ProviderAdminOrganizationsPage({
                           </dd>
                         </div>
                         <div className="provider-admin-catalog-items__spec-row">
-                          <dt className="provider-admin-catalog-items__spec-label">Billing</dt>
+                          <dt className="provider-admin-catalog-items__spec-label">
+                            Billing account
+                          </dt>
                           <dd className="provider-admin-catalog-items__spec-value">
                             {isOrganizationBillingPending(org) ? (
                               renderOrganizationBillingPendingLabel(org)
                             ) : (
-                              getOrganizationBillingAccountDisplay(org)
+                              <span className="provider-admin-organizations__card-billing">
+                                <span>{getOrganizationBillingAccountDisplay(org)}</span>
+                                {org.externalBillingId?.trim() ? (
+                                  <span>{org.externalBillingId.trim()}</span>
+                                ) : null}
+                              </span>
                             )}
                           </dd>
                         </div>
@@ -928,6 +936,7 @@ export function ProviderAdminOrganizationsPage({
                 <Th>Status</Th>
                 <Th>Primary domain</Th>
                 <Th>Billing account</Th>
+                <Th>External billing ID</Th>
                 <Th>Registered</Th>
                 <Th screenReaderText="Actions" />
               </Tr>
@@ -944,7 +953,7 @@ export function ProviderAdminOrganizationsPage({
                       key={org.id}
                       itemId={org.id}
                       label="Registering tenant…"
-                      colSpan={6}
+                      colSpan={7}
                       className="provider-admin-organizations__row--registering catalog-resource-creating-row"
                     />
                   )
@@ -1025,6 +1034,13 @@ export function ProviderAdminOrganizationsPage({
                             <code>{getOrganizationBillingAccountDisplay(org)}</code>
                           </Content>
                         </>
+                      )}
+                    </Td>
+                    <Td modifier="wrap" dataLabel="External billing ID">
+                      {org.externalBillingId?.trim() ? (
+                        <code>{org.externalBillingId.trim()}</code>
+                      ) : (
+                        '—'
                       )}
                     </Td>
                     <Td modifier="wrap" dataLabel="Registered">

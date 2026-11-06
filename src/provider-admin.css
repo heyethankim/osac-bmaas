@@ -5832,6 +5832,13 @@ a.provider-admin-network-inventory__related-link:hover {
   flex: 0 0 auto;
 }
 
+.provider-admin-organizations__card-billing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--xs);
+  min-width: 0;
+}
+
 .provider-admin-organizations__card .provider-admin-catalog-items__specs-list {
   border-block-end: none;
   padding-block-end: 0;
@@ -6576,6 +6583,13 @@ a.provider-admin-network-inventory__related-link:hover {
 
 .provider-admin-organizations__card-specs {
   flex: 0 0 auto;
+}
+
+.provider-admin-organizations__card-billing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--xs);
+  min-width: 0;
 }
 
 .provider-admin-organizations__card .provider-admin-catalog-items__specs-list {

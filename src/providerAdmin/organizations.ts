@@ -1181,6 +1181,7 @@ export function createDemoBlueSolaceOnboardingOrganization(): RegisteredOrganiza
     m360RateCardName: 'Enterprise — US',
     billingAccountId: 'bluesolace-financial-group',
     billingAccountName: DEMO_BLUESOLACE_BILLING_ACCOUNT_NAME,
+    externalBillingId: 'TELUS-BA-78421',
     tenantSetupStatus: 'billing_configured',
     billingAccountLinked: false,
     logoSrc: getDemoBluesolaceCompanyLogoSrc(),
@@ -1247,6 +1248,7 @@ export function createDemoNorthSummitBankOrganization(
     tenantSetupStatus: 'ready',
     billingAccountId: 'north-summit-bank',
     billingAccountName: DEMO_NORTH_SUMMIT_BANK_BILLING_ACCOUNT_NAME,
+    externalBillingId: 'NSB-ENT-22014',
     logoSrc: getDemoNorthSummitBankCompanyLogoSrc(),
     logoFileName: DEMO_NORTH_SUMMIT_BANK_COMPANY_LOGO_FILE_NAME,
     catalogItemId: options.catalogItemId ?? null,
@@ -1333,6 +1335,7 @@ export function createDemoHarborlineCapitalOrganization(
     tenantSetupStatus: 'ready',
     billingAccountId: 'harborline-capital',
     billingAccountName: 'harborline-capital-enterprise-billing',
+    externalBillingId: 'HLC-ENT-55108',
     logoSrc: getDemoHarborlineCapitalCompanyLogoSrc(),
     logoFileName: DEMO_HARBORLINE_CAPITAL_COMPANY_LOGO_FILE_NAME,
     catalogItemId: options.catalogItemId ?? null,
@@ -1987,7 +1990,8 @@ export function organizationMatchesSearch(
       domain.toLowerCase().includes(normalizedQuery),
     ) ||
     organization.billingAccountName.toLowerCase().includes(normalizedQuery) ||
-    organization.billingAccountId.toLowerCase().includes(normalizedQuery)
+    organization.billingAccountId.toLowerCase().includes(normalizedQuery) ||
+    (organization.externalBillingId?.toLowerCase().includes(normalizedQuery) ?? false)
   )
 }
 
