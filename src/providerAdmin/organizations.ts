@@ -82,6 +82,11 @@ export type RegisteredOrganization = {
   tenantSetupStatus?: TenantSetupStatus
   billingAccountId: string
   billingAccountName: string
+  /**
+   * Optional opaque external billing identifier (Provider Admin only).
+   * Not validated against M360 or other billing systems.
+   */
+  externalBillingId?: string
   /** Tenant company mark (data URL or public path). Shown on tenant login and workspace. */
   logoSrc: string | null
   logoFileName: string | null
@@ -1097,6 +1102,13 @@ export const REGISTER_ORGANIZATION_STEPS = [
 
 export type RegisterOrganizationStepId = (typeof REGISTER_ORGANIZATION_STEPS)[number]['id']
 
+/** Max length for the optional Provider Admin external billing ID field. */
+export const EXTERNAL_BILLING_ID_MAX_LENGTH = 256
+
+export function normalizeExternalBillingId(value: string): string {
+  return value.slice(0, EXTERNAL_BILLING_ID_MAX_LENGTH)
+}
+
 export type RegisterOrganizationForm = {
   organizationName: string
   displayName: string
@@ -1105,6 +1117,7 @@ export type RegisterOrganizationForm = {
   m360AccountId: string
   billingAccountId: string
   billingAccountName: string
+  externalBillingId: string
   externalIpPoolId: string
   maxInstances: string
   logoSrc: string
@@ -1142,6 +1155,7 @@ export const DEFAULT_REGISTER_ORGANIZATION_FORM: RegisterOrganizationForm = {
   m360AccountId: 'bluesolace-financial-group',
   billingAccountId: 'bluesolace-financial-group',
   billingAccountName: DEMO_BLUESOLACE_BILLING_ACCOUNT_NAME,
+  externalBillingId: 'TELUS-BA-78421',
   externalIpPoolId: 'eipool-northsummit-edge',
   maxInstances: '20',
   logoSrc: getDemoBluesolaceCompanyLogoSrc(),
@@ -1768,6 +1782,7 @@ export function formFromRegisteredOrganization(
     m360AccountId,
     billingAccountId: m360AccountId,
     billingAccountName: organization.billingAccountName,
+    externalBillingId: organization.externalBillingId?.trim() || '',
     externalIpPoolId: organization.externalIpPoolId ?? '',
     maxInstances: String(organization.maxInstances),
     logoSrc: normalizeDemoCompanyLogoSrc(organization.logoSrc) ?? '',

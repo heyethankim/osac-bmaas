@@ -480,6 +480,16 @@ export function OrganizationDetailsPage({
                   </DescriptionListDescription>
                 </DescriptionListGroup>
                 <DescriptionListGroup>
+                  <DescriptionListTerm>External billing ID</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {organization.externalBillingId?.trim() ? (
+                      <code>{organization.externalBillingId.trim()}</code>
+                    ) : (
+                      '—'
+                    )}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+                <DescriptionListGroup>
                   <DescriptionListTerm>Registered</DescriptionListTerm>
                   <DescriptionListDescription>
                     {formatRegisteredAt(organization.createdAt)}

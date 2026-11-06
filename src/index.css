@@ -271,6 +271,13 @@ select.pf-v6-c-form-control {
   margin-block-start: var(--pf-t--global--spacer--sm);
 }
 
+.tenant-onboarding__optional-billing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+  margin-block-start: var(--pf-t--global--spacer--xl);
+}
+
 .tenant-onboarding__timing-later-alert {
   margin-block-start: var(--pf-t--global--spacer--md);
 }

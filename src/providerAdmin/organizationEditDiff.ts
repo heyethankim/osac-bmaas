@@ -19,6 +19,7 @@ type OrganizationEditSnapshot = {
   additionalDomains: EditSnapshotValue
   logo: EditSnapshotValue
   m360AccountId: EditSnapshotValue
+  externalBillingId: EditSnapshotValue
 }
 
 function formatAdditionalDomains(domains: string[], primaryDomain: string): string {
@@ -41,6 +42,7 @@ export function buildOrganizationEditSnapshot(
   const primaryDomain = normalizePrimaryDomain(form.primaryDomain)
   const additionalDomains = normalizeAdditionalDomains(form.additionalDomains, primaryDomain)
   const m360AccountId = (options?.m360AccountId ?? form.m360AccountId).trim()
+  const externalBillingId = form.externalBillingId.trim()
 
   return {
     organizationName: editSnapshotValue(form.organizationName, form.organizationName.trim() || '—'),
@@ -55,6 +57,7 @@ export function buildOrganizationEditSnapshot(
       formatLogo(form.logoSrc, form.logoFileName),
     ),
     m360AccountId: editSnapshotValue(m360AccountId, m360AccountId || '—'),
+    externalBillingId: editSnapshotValue(externalBillingId, externalBillingId || '—'),
   }
 }
 
@@ -70,6 +73,7 @@ export function buildOrganizationEditSnapshotFromOrganization(
     m360AccountId: organization.m360AccountId?.trim() || organization.billingAccountId.trim(),
     billingAccountId: organization.billingAccountId,
     billingAccountName: organization.billingAccountName,
+    externalBillingId: organization.externalBillingId?.trim() || '',
     externalIpPoolId: organization.externalIpPoolId ?? '',
     maxInstances: String(organization.maxInstances),
     logoSrc: organization.logoSrc?.trim() || '',
@@ -90,6 +94,7 @@ export function getOrganizationEditChanges(
     { id: 'additionalDomains', stepId: 'general', label: 'Additional email domains' },
     { id: 'logo', stepId: 'general', label: 'Company logo' },
     { id: 'm360AccountId', stepId: 'billing_account', label: 'M360 billing account' },
+    { id: 'externalBillingId', stepId: 'billing_account', label: 'External billing ID' },
   ])
 }
 
