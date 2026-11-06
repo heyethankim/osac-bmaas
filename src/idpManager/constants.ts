@@ -20,13 +20,13 @@ export const IDP_MANAGER_IDENTITY_PROVIDER_COPY = {
 
 export const IDP_MANAGER_ROLES_COPY = {
   title: 'Roles',
-  lede: 'Assign tenant administrator, reader, and user roles for this tenant.',
+  lede: 'Assign tenant administrator, reader, and user roles to people for this tenant.',
   addAdministratorLabel: 'Assign role',
   assignFirstLabel: 'Assign first role',
-  wizardTitle: 'Assign roles',
+  wizardTitle: 'Assign role',
   wizardSubmitLabel: 'Assign role',
   emptyTitle: 'No roles assigned',
-  emptyBody: 'Assign a tenant administrator, reader, or user for this tenant.',
+  emptyBody: 'Assign a tenant administrator, reader, or user to a person.',
 } as const
 
 export function isIdpManagerNavId(value: string | null): value is IdpManagerNavId {

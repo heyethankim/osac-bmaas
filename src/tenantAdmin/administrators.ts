@@ -14,13 +14,18 @@ export type TenantAdministrator = {
 
 export const TENANT_ADMINISTRATORS_DEMO = {
   title: 'Roles',
-  lede: 'Manage who has tenant admin access to catalog, networking, and projects for your tenant.',
-  addAdministratorLabel: 'Add tenant administrator',
+  lede: 'Assign tenant roles to people who sign in to this tenant.',
+  addAdministratorLabel: 'Assign role',
   roleLabel: 'Tenant administrator',
-  emptyTitle: 'No administrators match your filters',
+  emptyTitle: 'No role assignments match your filters',
   emptyBody: 'Try a different role, status, or search term, or clear filters.',
   emptyOnlyPrimaryBody:
-    'You are the only tenant administrator. Add colleagues who should help manage this tenant.',
+    'No roles assigned yet. Assign a role to a person who should access this tenant.',
+  assignFirstLabel: 'Assign first role',
+  wizardTitle: 'Assign role',
+  wizardSubmitLabel: 'Assign role',
+  emptyTitleUnfiltered: 'No roles assigned',
+  emptyBodyUnfiltered: 'Assign a tenant administrator, reader, or user to a person.',
 } as const
 
 export const ASSIGNABLE_TENANT_ROLES = [

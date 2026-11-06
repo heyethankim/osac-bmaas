@@ -50,7 +50,6 @@ function buildInitialForm(
   organization: RegisteredOrganization,
   showRoleCatalog: boolean,
 ): AddTenantAdministratorForm {
-  // Demo prefills so the wizard is ready to review/submit.
   const prefill = buildDemoAssignRoleForm(organization)
   if (showRoleCatalog) {
     return prefill

@@ -15,9 +15,11 @@ import { TenantAdminOverviewPage } from './tenant-admin/TenantAdminOverviewPage'
 import { TenantAdminAdministratorsPage } from './tenant-admin/TenantAdminAdministratorsPage'
 import { TenantAdminBillingPage } from './tenant-admin/TenantAdminBillingPage'
 import { TenantAdminProjectsTeamsPage } from './tenant-admin/TenantAdminProjectsTeamsPage'
+import { TenantAdminServiceAccountsPage } from './tenant-admin/TenantAdminServiceAccountsPage'
 import { IdpManagerIdentityProviderPage } from './idp-manager/IdpManagerIdentityProviderPage'
 import { TenantSecretsPage } from './tenant/TenantSecretsPage'
 import { TenantUserInstancesPage } from './tenant-user/TenantUserInstancesPage'
+import { TENANT_ADMINISTRATORS_DEMO } from '../tenantAdmin/administrators'
 import {
   TENANT_ADMIN_NAV_ITEMS,
   isServicesNavId,
@@ -88,6 +90,7 @@ function isTenantAdminNavId(value: string | null): value is TenantAdminNavId {
     value === 'services-virtual-machines' ||
     value === 'projects-teams' ||
     value === 'administration-roles' ||
+    value === 'administration-service-accounts' ||
     value === 'administration-billing' ||
     value === 'administration-identity-provider' ||
     value === 'networking-virtual-networks' ||
@@ -483,8 +486,17 @@ export function TenantAdminWorkspacePage() {
           <TenantAdminAdministratorsPage
             organization={organization}
             onOrganizationChange={setOrganization}
+            showRoleCatalog
+            addAdministratorLabel={TENANT_ADMINISTRATORS_DEMO.addAdministratorLabel}
+            wizardTitle={TENANT_ADMINISTRATORS_DEMO.wizardTitle}
+            wizardSubmitLabel={TENANT_ADMINISTRATORS_DEMO.wizardSubmitLabel}
+            emptyUnfilteredTitle={TENANT_ADMINISTRATORS_DEMO.emptyTitleUnfiltered}
+            emptyUnfilteredBody={TENANT_ADMINISTRATORS_DEMO.emptyBodyUnfiltered}
+            emptyFirstActionLabel={TENANT_ADMINISTRATORS_DEMO.assignFirstLabel}
           />
         )
+      case 'administration-service-accounts':
+        return <TenantAdminServiceAccountsPage tenantSlug={tenant} />
       case 'administration-billing':
         return <TenantAdminBillingPage organization={organization} />
       case 'administration-identity-provider':

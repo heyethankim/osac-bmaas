@@ -196,6 +196,10 @@ export function BmaasLandingPage() {
           },
         },
         {
+          label: 'Service accounts',
+          to: '/tenant-admin/northsummit/workspace?nav=administration-service-accounts',
+        },
+        {
           label: 'Billing account not linked',
           to: '/tenant-admin/northsummit/workspace?nav=catalog&scenario=billing-not-linked',
         },

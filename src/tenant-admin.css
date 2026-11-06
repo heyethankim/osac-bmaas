@@ -336,6 +336,102 @@
   gap: var(--pf-t--global--spacer--sm);
 }
 
+.tenant-admin-service-accounts__wizard-lede.pf-v6-c-content--p {
+  margin-block: 0 var(--pf-t--global--spacer--lg);
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.tenant-admin-service-accounts__wizard-form .pf-v6-c-form__group:last-child {
+  margin-block-end: 0;
+}
+
+.tenant-admin-service-accounts__wizard-footer-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.tenant-admin-service-accounts__credentials {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+}
+
+.tenant-admin-service-accounts__credentials-lede.pf-v6-c-content--p {
+  margin: 0;
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.tenant-admin-service-accounts__edit-form .pf-v6-c-form__group:last-child {
+  margin-block-end: 0;
+}
+
+.tenant-admin-service-accounts__field-help.pf-v6-c-content--p,
+.tenant-admin-service-accounts__section-help.pf-v6-c-content--p,
+.tenant-admin-service-accounts__bind-role-help.pf-v6-c-content--p,
+.tenant-admin-service-accounts__empty-section.pf-v6-c-content--p {
+  margin: 0;
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.tenant-admin-service-accounts__section-help.pf-v6-c-content--p {
+  margin-block-end: var(--pf-t--global--spacer--md);
+}
+
+.tenant-admin-service-accounts__empty-section.pf-v6-c-content--p {
+  margin-block-end: var(--pf-t--global--spacer--xl);
+}
+
+.tenant-admin-service-accounts__labels {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--pf-t--global--spacer--xs);
+}
+
+.tenant-admin-service-accounts__related-table {
+  margin-block-end: var(--pf-t--global--spacer--2xl);
+}
+
+.tenant-admin-service-account-details .entity-details-page__icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--pf-t--global--border--radius--medium);
+  background-color: var(--pf-t--global--background--color--secondary--default);
+  color: var(--pf-t--global--icon--color--regular);
+}
+
+.tenant-admin-service-account-details .entity-details-page__icon-wrap svg {
+  width: 1.5rem;
+  height: 1.5rem;
+  fill: currentcolor;
+}
+
+.tenant-admin-service-account-details__related-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+  min-width: 0;
+}
+
+.tenant-admin-service-account-details__related-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+  min-width: 0;
+}
+
+.tenant-admin-service-account-details .tenant-admin-service-accounts__related-table {
+  margin-block-end: 0;
+}
+
+.tenant-admin-service-account-details .tenant-admin-service-accounts__section-help,
+.tenant-admin-service-account-details .tenant-admin-service-accounts__empty-section {
+  margin: 0;
+}
+
 .tenant-admin-overview__cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));

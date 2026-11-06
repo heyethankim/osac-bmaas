@@ -30,6 +30,7 @@ export const WORKSPACE_ACTION_LAUNCH_INSTANCE = 'launch-instance'
 export const WORKSPACE_ACTION_UPGRADE_CLUSTER = 'upgrade-cluster'
 export const WORKSPACE_ACTION_CREATE_PROJECT = 'create-project'
 export const WORKSPACE_ACTION_ADD_TENANT_ADMINISTRATOR = 'add-tenant-administrator'
+export const WORKSPACE_ACTION_CREATE_SERVICE_ACCOUNT = 'create-service-account'
 export const WORKSPACE_ACTION_CREATE_VIRTUAL_NETWORK = 'create-virtual-network'
 export const WORKSPACE_ACTION_CREATE_SUBNET = 'create-subnet'
 export const WORKSPACE_ACTION_CREATE_SECURITY_GROUP = 'create-security-group'
@@ -50,6 +51,7 @@ export type WorkspaceAction =
   | typeof WORKSPACE_ACTION_UPGRADE_CLUSTER
   | typeof WORKSPACE_ACTION_CREATE_PROJECT
   | typeof WORKSPACE_ACTION_ADD_TENANT_ADMINISTRATOR
+  | typeof WORKSPACE_ACTION_CREATE_SERVICE_ACCOUNT
   | typeof WORKSPACE_ACTION_CREATE_VIRTUAL_NETWORK
   | typeof WORKSPACE_ACTION_CREATE_SUBNET
   | typeof WORKSPACE_ACTION_CREATE_SECURITY_GROUP
@@ -67,6 +69,7 @@ const WORKSPACE_ACTIONS = new Set<WorkspaceAction>([
   WORKSPACE_ACTION_UPGRADE_CLUSTER,
   WORKSPACE_ACTION_CREATE_PROJECT,
   WORKSPACE_ACTION_ADD_TENANT_ADMINISTRATOR,
+  WORKSPACE_ACTION_CREATE_SERVICE_ACCOUNT,
   WORKSPACE_ACTION_CREATE_VIRTUAL_NETWORK,
   WORKSPACE_ACTION_CREATE_SUBNET,
   WORKSPACE_ACTION_CREATE_SECURITY_GROUP,
@@ -114,6 +117,8 @@ export function getWorkspaceActionNavs(action: WorkspaceAction): readonly string
       return ['projects-teams']
     case WORKSPACE_ACTION_ADD_TENANT_ADMINISTRATOR:
       return ['administration-roles', 'administration-organizations', 'roles']
+    case WORKSPACE_ACTION_CREATE_SERVICE_ACCOUNT:
+      return ['administration-service-accounts']
     case WORKSPACE_ACTION_CREATE_VIRTUAL_NETWORK:
     case WORKSPACE_ACTION_CREATE_SUBNET:
     case WORKSPACE_ACTION_CREATE_SECURITY_GROUP:
@@ -537,6 +542,7 @@ export function syncWorkspaceActionParam(
     if (
       action === WORKSPACE_ACTION_CREATE_PROJECT ||
       action === WORKSPACE_ACTION_ADD_TENANT_ADMINISTRATOR ||
+      action === WORKSPACE_ACTION_CREATE_SERVICE_ACCOUNT ||
       action === WORKSPACE_ACTION_SETUP_IDENTITY_PROVIDER ||
       action === WORKSPACE_ACTION_CONNECT_IDENTITY_PROVIDER
     ) {
