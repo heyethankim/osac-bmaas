@@ -9,6 +9,11 @@ import {
   DEMO_CATALOG_ITEM_IDS,
 } from '../catalog/catalogItemDescriptions'
 import {
+  CLUSTER_ADDON_OPERATORS_CATALOG_ITEM_ID,
+  CLUSTER_ADDON_OPERATORS_DISPLAY_NAME,
+  CLUSTER_ADDON_OPERATORS_RATE_CARD,
+  CLUSTER_ADDON_OPERATORS_TEMPLATE_NAME,
+  CLUSTER_ADDON_OPERATORS_TEMPLATE_REF_ID,
   CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
   CLUSTER_NODE_SETS_DISPLAY_NAME,
   CLUSTER_NODE_SETS_RATE_CARD,
@@ -112,6 +117,7 @@ export const DEMO_CATALOG_ITEM_ORDER = [
   BARE_METAL_GPU_CATALOG_ITEM_ID,
   BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID,
   CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
+  CLUSTER_ADDON_OPERATORS_CATALOG_ITEM_ID,
 ] as const
 
 function demoCatalogItemOrderIndex(catalogItemId: string): number {
@@ -214,6 +220,36 @@ function createClusterNodeSetsCatalogDraft(): ProviderCatalogDraft {
       { operatorId: 'nvidia-gpu-operator', mode: 'mandatory' },
       { operatorId: 'node-feature-discovery', mode: 'mandatory' },
     ],
+    networkPolicy: createAllEditableCatalogNetworkPolicy(),
+    status: 'live',
+    createdAt: new Date().toISOString(),
+  }
+}
+
+function createClusterAddonOperatorsCatalogDraft(): ProviderCatalogDraft {
+  return {
+    catalogItemId: CLUSTER_ADDON_OPERATORS_CATALOG_ITEM_ID,
+    templateRefId: CLUSTER_ADDON_OPERATORS_TEMPLATE_REF_ID,
+    templateName: CLUSTER_ADDON_OPERATORS_TEMPLATE_NAME,
+    displayName: CLUSTER_ADDON_OPERATORS_DISPLAY_NAME,
+    description: CATALOG_ITEM_DESCRIPTIONS_BY_ID[DEMO_CATALOG_ITEM_IDS.clusterAddonOperators],
+    scope: 'global-public',
+    rateCard: CLUSTER_ADDON_OPERATORS_RATE_CARD,
+    serviceId: 'cluster',
+    instanceTypeId: 'ocp-small',
+    instanceTypeLabel: 'OpenShift small',
+    diskImageId: DEFAULT_CLUSTER_CATALOG_VERSION_ID,
+    diskImageLabel: formatClusterPlatformLabel(DEFAULT_CLUSTER_CATALOG_VERSION_ID),
+    clusterVersionMode: 'locked',
+    nodeSetId: DEFAULT_CLUSTER_NODE_SET_ID,
+    nodeSetLabel: formatClusterNodeSetLabel(DEFAULT_CLUSTER_NODE_SET_ID),
+    hostTypeId: DEFAULT_CLUSTER_HOST_TYPE_ID,
+    hostTypeLabel: formatClusterHostTypeLabel(DEFAULT_CLUSTER_HOST_TYPE_ID),
+    clusterNodeTopologyMode: 'locked',
+    clusterTopology: DEFAULT_CLUSTER_TOPOLOGY_NODE_SETS.map((row) => ({ ...row })),
+    addonOperatorsMode: 'editable',
+    // Editable offerings include nothing — tenants pick from available operators at launch.
+    addonOperators: [],
     networkPolicy: createAllEditableCatalogNetworkPolicy(),
     status: 'live',
     createdAt: new Date().toISOString(),
@@ -375,6 +411,7 @@ const DEMO_CATALOG_NETWORK_LOCK_PATTERNS: ReadonlyArray<{
   { catalogItemId: BARE_METAL_GPU_CATALOG_ITEM_ID, pattern: 'all-editable' },
   { catalogItemId: BARE_METAL_AI_INFERENCE_CATALOG_ITEM_ID, pattern: 'all-editable' },
   { catalogItemId: CLUSTER_NODE_SETS_CATALOG_ITEM_ID, pattern: 'all-editable' },
+  { catalogItemId: CLUSTER_ADDON_OPERATORS_CATALOG_ITEM_ID, pattern: 'all-editable' },
 ]
 
 function applyLockPatternToPolicy(
@@ -442,6 +479,73 @@ function hasClusterNodeSetsCatalogItem(items: ProviderCatalogDraft[]): boolean {
       item.displayName === CLUSTER_NODE_SETS_DISPLAY_NAME ||
       item.displayName === LEGACY_CLUSTER_NODE_SETS_DISPLAY_NAME,
   )
+}
+
+function hasClusterAddonOperatorsCatalogItem(items: ProviderCatalogDraft[]): boolean {
+  return items.some(
+    (item) =>
+      item.catalogItemId === CLUSTER_ADDON_OPERATORS_CATALOG_ITEM_ID ||
+      item.displayName === CLUSTER_ADDON_OPERATORS_DISPLAY_NAME,
+  )
+}
+
+/** Keep the editable-addons Cluster demo identity/config in sync. */
+function syncClusterAddonOperatorsCatalogItem(): void {
+  const items = getProviderCatalogItems()
+  const current = items.find(
+    (item) =>
+      item.catalogItemId === CLUSTER_ADDON_OPERATORS_CATALOG_ITEM_ID ||
+      item.displayName === CLUSTER_ADDON_OPERATORS_DISPLAY_NAME,
+  )
+  if (!current) {
+    return
+  }
+
+  if (
+    current.catalogItemId !== CLUSTER_ADDON_OPERATORS_CATALOG_ITEM_ID ||
+    current.templateRefId !== CLUSTER_ADDON_OPERATORS_TEMPLATE_REF_ID ||
+    current.templateName !== CLUSTER_ADDON_OPERATORS_TEMPLATE_NAME ||
+    current.displayName !== CLUSTER_ADDON_OPERATORS_DISPLAY_NAME
+  ) {
+    rewriteProviderCatalogItemIdentity(current.catalogItemId, {
+      catalogItemId: CLUSTER_ADDON_OPERATORS_CATALOG_ITEM_ID,
+      templateRefId: CLUSTER_ADDON_OPERATORS_TEMPLATE_REF_ID,
+      templateName: CLUSTER_ADDON_OPERATORS_TEMPLATE_NAME,
+      displayName: CLUSTER_ADDON_OPERATORS_DISPLAY_NAME,
+      description: CATALOG_ITEM_DESCRIPTIONS_BY_ID[DEMO_CATALOG_ITEM_IDS.clusterAddonOperators],
+    })
+  }
+
+  const synced =
+    getProviderCatalogItems().find(
+      (item) => item.catalogItemId === CLUSTER_ADDON_OPERATORS_CATALOG_ITEM_ID,
+    ) ?? current
+
+  const needsConfig =
+    synced.diskImageId !== DEFAULT_CLUSTER_CATALOG_VERSION_ID ||
+    synced.diskImageLabel !== formatClusterPlatformLabel(DEFAULT_CLUSTER_CATALOG_VERSION_ID) ||
+    synced.instanceTypeId !== 'ocp-small' ||
+    synced.instanceTypeLabel !== 'OpenShift small' ||
+    synced.rateCard.hourlyRate !== CLUSTER_ADDON_OPERATORS_RATE_CARD.hourlyRate ||
+    synced.rateCard.monthlyRate !== CLUSTER_ADDON_OPERATORS_RATE_CARD.monthlyRate ||
+    synced.clusterNodeTopologyMode !== 'locked' ||
+    synced.addonOperatorsMode !== 'editable' ||
+    (synced.addonOperators?.length ?? 0) > 0 ||
+    !synced.diskImageId ||
+    !synced.diskImageLabel
+
+  if (needsConfig) {
+    patchProviderCatalogItem(synced.catalogItemId, {
+      instanceTypeId: 'ocp-small',
+      instanceTypeLabel: 'OpenShift small',
+      diskImageId: DEFAULT_CLUSTER_CATALOG_VERSION_ID,
+      diskImageLabel: formatClusterPlatformLabel(DEFAULT_CLUSTER_CATALOG_VERSION_ID),
+      rateCard: { ...CLUSTER_ADDON_OPERATORS_RATE_CARD },
+      clusterNodeTopologyMode: 'locked',
+      addonOperatorsMode: 'editable',
+      addonOperators: [],
+    })
+  }
 }
 
 /** Keep the Cluster demo identity/config in sync without forcing publish state. */
@@ -577,9 +681,11 @@ function syncClusterCatalogVersionLabels(): void {
     const isDemoNodeSetsOffering =
       item.catalogItemId === CLUSTER_NODE_SETS_CATALOG_ITEM_ID ||
       item.catalogItemId === LEGACY_CLUSTER_NODE_SETS_CATALOG_ITEM_ID
-    if (isDemoNodeSetsOffering) {
-      // Demo cluster offering: add-ons stay locked so launch cannot add extras.
-      // Publish with Editable on a different catalog item to demo additional operators.
+    const isDemoAddonOperatorsOffering =
+      item.catalogItemId === CLUSTER_ADDON_OPERATORS_CATALOG_ITEM_ID
+    if (isDemoNodeSetsOffering || isDemoAddonOperatorsOffering) {
+      // Node-sets demo: locked included operators. Addon-operators demo: empty + editable.
+      const desiredAddonMode = isDemoAddonOperatorsOffering ? 'editable' : 'locked'
       const patch: {
         addonOperators?: Array<{
           operatorId: string
@@ -587,13 +693,16 @@ function syncClusterCatalogVersionLabels(): void {
         }>
         addonOperatorsMode?: 'locked' | 'editable'
       } = {}
-      if (!item.addonOperators?.length) {
+      if (isDemoNodeSetsOffering && !item.addonOperators?.length) {
         patch.addonOperators = DEMO_CLUSTER_TEMPLATE_ADDON_OPERATORS.map((entry) => ({
           ...entry,
         }))
       }
-      if (item.addonOperatorsMode !== 'locked') {
-        patch.addonOperatorsMode = 'locked'
+      if (isDemoAddonOperatorsOffering && (item.addonOperators?.length ?? 0) > 0) {
+        patch.addonOperators = []
+      }
+      if (item.addonOperatorsMode !== desiredAddonMode) {
+        patch.addonOperatorsMode = desiredAddonMode
       }
       if (Object.keys(patch).length > 0) {
         patchProviderCatalogItem(item.catalogItemId, patch)
@@ -680,6 +789,14 @@ export function ensureProviderCatalogDemoItems(): ProviderCatalogDraft[] {
     items = getProviderCatalogItems()
   } else {
     syncClusterNodeSetsCatalogItem()
+    items = getProviderCatalogItems()
+  }
+
+  if (!hasClusterAddonOperatorsCatalogItem(items)) {
+    addProviderCatalogItem(createClusterAddonOperatorsCatalogDraft())
+    items = getProviderCatalogItems()
+  } else {
+    syncClusterAddonOperatorsCatalogItem()
     items = getProviderCatalogItems()
   }
 

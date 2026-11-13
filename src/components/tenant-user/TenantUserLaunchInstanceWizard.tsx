@@ -570,6 +570,7 @@ export function TenantUserLaunchInstanceWizard({
         }))
       const addonCard = buildClusterLaunchAddonHeaderCard(
         catalogDraft?.addonOperators ?? catalogItem.addonOperators,
+        { accessMode: addonOperatorsMode },
       )
       return [
         ...baseRows,
@@ -619,6 +620,7 @@ export function TenantUserLaunchInstanceWizard({
     form.instanceType,
     form.diskImageId,
     catalogDetailSpecRows,
+    addonOperatorsMode,
   ])
 
   const hourlyLaunchEstimate = useMemo(() => {
@@ -660,17 +662,22 @@ export function TenantUserLaunchInstanceWizard({
   const [addonOperatorFilterQuery, setAddonOperatorFilterQuery] = useState('')
   const [addonOperatorCategory, setAddonOperatorCategory] =
     useState<ClusterAddonOperatorCategory>('All Categories')
-  const templateAddonSelections = useMemo(
-    () =>
-      resolveTemplateAddonOperatorSelections(
-        catalogDraft?.addonOperators ?? catalogItem.addonOperators,
-        {
-          fallbackToDemo: !(catalogDraft?.addonOperators ?? catalogItem.addonOperators)
-            ?.length,
-        },
-      ),
-    [catalogDraft?.addonOperators, catalogItem.addonOperators],
-  )
+  const templateAddonSelections = useMemo(() => {
+    if (isAddonOperatorsEditable) {
+      return []
+    }
+    return resolveTemplateAddonOperatorSelections(
+      catalogDraft?.addonOperators ?? catalogItem.addonOperators,
+      {
+        fallbackToDemo: !(catalogDraft?.addonOperators ?? catalogItem.addonOperators)
+          ?.length,
+      },
+    )
+  }, [
+    catalogDraft?.addonOperators,
+    catalogItem.addonOperators,
+    isAddonOperatorsEditable,
+  ])
 
   useEffect(() => {
     if (isAddonOperatorsEditable) {
@@ -1014,17 +1021,9 @@ export function TenantUserLaunchInstanceWizard({
             releaseImage: form.releaseImage.trim(),
             podCidr: form.podCidr.trim(),
             serviceCidr: form.serviceCidr.trim(),
-            addonOperatorIds: [
-              ...templateAddonSelections
-                .filter(
-                  (selection) =>
-                    !isAddonOperatorsEditable ||
-                    selection.mode === 'mandatory' ||
-                    !deselectedOptionalTemplateOperatorIds.includes(selection.operatorId),
-                )
-                .map((selection) => selection.operatorId),
-              ...(isAddonOperatorsEditable ? form.userAddonOperatorIds : []),
-            ].filter((operatorId, index, all) => all.indexOf(operatorId) === index),
+            addonOperatorIds: isAddonOperatorsEditable
+              ? [...form.userAddonOperatorIds]
+              : templateAddonSelections.map((selection) => selection.operatorId),
             catalogShortName: 'ocp-small',
             creator: 'Alex Johnson',
             upgradeStatus: 'up-to-date',
@@ -3048,19 +3047,11 @@ export function TenantUserLaunchInstanceWizard({
       }
 
       if (isClusterCatalogItem) {
-        const templateOperatorNames = templateAddonSelections
-          .filter(
-            (selection) =>
-              !isAddonOperatorsEditable ||
-              selection.mode === 'mandatory' ||
-              !deselectedOptionalTemplateOperatorIds.includes(selection.operatorId),
-          )
-          .map((selection) => getAddonOperatorShortName(selection.operatorId))
-        const userOperatorNames = isAddonOperatorsEditable
-          ? form.userAddonOperatorIds.map((operatorId) =>
-              getAddonOperatorShortName(operatorId),
-            )
-          : []
+        const selectedOperatorNames = (
+          isAddonOperatorsEditable
+            ? form.userAddonOperatorIds
+            : templateAddonSelections.map((selection) => selection.operatorId)
+        ).map((operatorId) => getAddonOperatorShortName(operatorId))
 
         return [
           renderReviewRow(
@@ -3080,17 +3071,9 @@ export function TenantUserLaunchInstanceWizard({
           renderReviewRow('Pod CIDR', form.podCidr.trim() || '—'),
           renderReviewRow('Service CIDR', form.serviceCidr.trim() || '—'),
           renderReviewRow(
-            'Included operators',
-            templateOperatorNames.length > 0 ? templateOperatorNames.join(', ') : 'None',
+            'Add-on operators',
+            selectedOperatorNames.length > 0 ? selectedOperatorNames.join(', ') : 'None',
           ),
-          ...(isAddonOperatorsEditable
-            ? [
-                renderReviewRow(
-                  'Additional operators',
-                  userOperatorNames.length > 0 ? userOperatorNames.join(', ') : 'None',
-                ),
-              ]
-            : []),
           renderReviewRow(
             'Add-on operators note',
             'Operators will be deployed and verified during cluster initialization.',

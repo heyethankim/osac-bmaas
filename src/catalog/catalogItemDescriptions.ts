@@ -4,6 +4,7 @@ export const DEMO_CATALOG_ITEM_IDS = {
   bareMetalGpuTraining: 'cat-bm-gpu-training',
   bareMetalDenseGpu: 'cat-bm-dense-gpu',
   clusterNodeSets: 'cat-node-sets-fc430',
+  clusterAddonOperators: 'cat-cluster-addon-operators',
   vmNetworkAttachments: 'cat-vm-net-attach',
 } as const
 
@@ -15,6 +16,8 @@ export const CATALOG_ITEM_DESCRIPTIONS_BY_ID: Readonly<Record<string, string>> =
     'Use this GPU server for model training or inference workloads that need accelerators.',
   [DEMO_CATALOG_ITEM_IDS.clusterNodeSets]:
     'Use this offering to launch an OpenShift cluster.',
+  [DEMO_CATALOG_ITEM_IDS.clusterAddonOperators]:
+    'Use this offering to launch an OpenShift cluster and choose additional operators.',
   [DEMO_CATALOG_ITEM_IDS.vmNetworkAttachments]:
     'Use this virtual machine for apps, testing, or development. You can adjust networking when you launch.',
 }

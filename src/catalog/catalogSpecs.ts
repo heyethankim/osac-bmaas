@@ -68,6 +68,15 @@ export const CLUSTER_NODE_SETS_RATE_CARD = {
   billingUnit: 'per-instance' as const,
 }
 
+/** Demo offering: locked node topology, editable add-on operators at launch. */
+export const CLUSTER_ADDON_OPERATORS_TEMPLATE_REF_ID = 'cl-addon-operators'
+export const CLUSTER_ADDON_OPERATORS_TEMPLATE_NAME = 'standard-cluster-template'
+export const CLUSTER_ADDON_OPERATORS_DISPLAY_NAME = 'cluster-addon-operators'
+export const CLUSTER_ADDON_OPERATORS_CATALOG_ITEM_ID = 'cat-cluster-addon-operators'
+export const CLUSTER_ADDON_OPERATORS_RATE_CARD = {
+  ...CLUSTER_NODE_SETS_RATE_CARD,
+}
+
 /** Extra detail-page rows for Cluster offerings (tenant-facing). */
 const CLUSTER_NODE_SETS_DETAIL_ROWS: CatalogSpecRow[] = []
 
@@ -371,15 +380,17 @@ function buildClusterCatalogSpecRows(
   }
 
   const addonOperators = (item.addonOperators ?? []) as ReadonlyArray<ClusterAddonOperatorSelection>
-  if (addonOperators.length > 0) {
+  const addonOperatorsMode = resolveCatalogAddonOperatorsMode(item.addonOperatorsMode)
+  if (addonOperators.length > 0 || addonOperatorsMode === 'editable') {
     rows.push({
       label: 'Add-on operators',
-      value: addonOperators
-        .map((selection) => getAddonOperatorShortName(selection.operatorId))
-        .join(', '),
-      badge: includeModeBadges
-        ? getAddonOperatorsModeBadge(item.addonOperatorsMode)
-        : undefined,
+      value:
+        addonOperators.length > 0
+          ? addonOperators
+              .map((selection) => getAddonOperatorShortName(selection.operatorId))
+              .join(', ')
+          : 'Select at launch',
+      badge: includeModeBadges ? getAddonOperatorsModeBadge(addonOperatorsMode) : undefined,
     })
   }
 

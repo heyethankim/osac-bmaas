@@ -14,11 +14,11 @@ import {
   useWizardContext,
 } from '@patternfly/react-core'
 import {
+  CLUSTER_ADDON_OPERATORS,
   CLUSTER_ADDON_OPERATOR_CATEGORY_OPTIONS,
   filterClusterAddonOperators,
   formatAddonOperatorsHeaderCard,
   getAddonOperatorShortName,
-  getLaunchAdditionalAddonOperators,
   getLaunchAddonCompatibilityBadge,
   getClusterAddonOperatorResolvedVersion,
   getLaunchAddonOperatorById,
@@ -27,6 +27,7 @@ import {
   resolveTemplateAddonOperatorSelections,
   toggleLaunchUserAddonOperator,
   type ClusterAddonOperatorCategory,
+  type ClusterAddonOperatorDefinition,
   type ClusterAddonOperatorSelection,
 } from '../../catalog/clusterAddonOperators'
 import { useCatalogCardGridMasonry } from '../../catalog/useCatalogCardGridMasonry'
@@ -46,12 +47,39 @@ export type ClusterLaunchAddonOperatorsStepProps = {
   onCategoryChange: (category: ClusterAddonOperatorCategory) => void
 }
 
+function buildConstraintChips(operator: ClusterAddonOperatorDefinition): Array<{
+  id: string
+  label: string
+  color: 'grey' | 'green'
+}> {
+  const dependencyNote = operator.dependencyNote.trim()
+  const requirementNote = operator.requirementNote.trim()
+  const constraintChips: Array<{
+    id: string
+    label: string
+    color: 'grey' | 'green'
+  }> = []
+  if (requirementNote) {
+    constraintChips.push({
+      id: 'requirement',
+      label: requirementNote,
+      color: 'grey',
+    })
+  }
+  if (dependencyNote && dependencyNote.toLowerCase() !== 'none') {
+    constraintChips.push({
+      id: 'dependency',
+      label: `Includes ${dependencyNote.replace(/\s*\(Auto-bundled\)\s*$/i, '')}`,
+      color: 'green',
+    })
+  }
+  return constraintChips
+}
+
 export function ClusterLaunchAddonOperatorsStep({
   clusterVersionId,
   accessMode = 'locked',
   templateSelections,
-  deselectedOptionalTemplateIds,
-  onDeselectedOptionalTemplateIdsChange,
   userAddonOperatorIds,
   onUserAddonOperatorIdsChange,
   filterQuery,
@@ -61,131 +89,101 @@ export function ClusterLaunchAddonOperatorsStep({
 }: ClusterLaunchAddonOperatorsStepProps) {
   const { goToStepById } = useWizardContext()
   const isEditable = accessMode === 'editable'
-  const resolvedTemplate = resolveTemplateAddonOperatorSelections(templateSelections)
-  const deselectedOptional = new Set(
-    isEditable ? deselectedOptionalTemplateIds : [],
-  )
-  const additionalOperators = getLaunchAdditionalAddonOperators(resolvedTemplate)
-  const visibleAdditional = filterClusterAddonOperators(additionalOperators, {
-    query: filterQuery,
-    category,
-  })
+  const resolvedTemplate = isEditable
+    ? []
+    : resolveTemplateAddonOperatorSelections(templateSelections)
+
+  const availableOperators = isEditable
+    ? filterClusterAddonOperators(CLUSTER_ADDON_OPERATORS, {
+        query: filterQuery,
+        category,
+      })
+    : []
 
   const templateListRef = useRef<HTMLUListElement>(null)
-  const additionalListRef = useRef<HTMLUListElement>(null)
+  const availableListRef = useRef<HTMLUListElement>(null)
   const templateMasonryKey = [
     clusterVersionId,
     resolvedTemplate.map((entry) => entry.operatorId).join(','),
-    [...deselectedOptional].join(','),
   ].join('|')
-  const additionalMasonryKey = [
+  const availableMasonryKey = [
     clusterVersionId,
     filterQuery,
     category,
     userAddonOperatorIds.join(','),
-    String(visibleAdditional.length),
+    String(availableOperators.length),
   ].join('|')
-  useCatalogCardGridMasonry(templateListRef, true, templateMasonryKey, 1)
-  useCatalogCardGridMasonry(additionalListRef, isEditable, additionalMasonryKey, 1)
+  useCatalogCardGridMasonry(templateListRef, !isEditable, templateMasonryKey, 1)
+  useCatalogCardGridMasonry(availableListRef, isEditable, availableMasonryKey, 1)
 
   return (
     <div className="tenant-user-launch-wizard__step tenant-user-launch-wizard__addon-operators-step">
       <Content component="p" className="tenant-user-launch-wizard__step-lede">
         {isEditable
-          ? 'Review included operators and select any additional ones.'
+          ? 'Select the operators to install with this cluster.'
           : 'These operators are locked by the catalog item.'}
       </Content>
 
-      <section
-        className="tenant-user-launch-wizard__addon-operators-section"
-        aria-labelledby="launch-addon-operators-template-heading"
-      >
-        <Content
-          component="h3"
-          id="launch-addon-operators-template-heading"
-          className="tenant-user-launch-wizard__addon-operators-section-title"
+      {!isEditable ? (
+        <section
+          className="tenant-user-launch-wizard__addon-operators-section"
+          aria-labelledby="launch-addon-operators-template-heading"
         >
-          Included operators
-        </Content>
-        <ul
-          ref={templateListRef}
-          className="tenant-user-launch-wizard__addon-operators-list"
-        >
-          {resolvedTemplate.map((selection) => {
-            const operator = getLaunchAddonOperatorById(selection.operatorId)
-            if (!operator) {
-              return null
-            }
-            const isMandatory = !isEditable || selection.mode === 'mandatory'
-            const isDependencyOnly =
-              isMandatory &&
-              resolvedTemplate.some(
+          <Content
+            component="h3"
+            id="launch-addon-operators-template-heading"
+            className="tenant-user-launch-wizard__addon-operators-section-title"
+          >
+            Included operators
+          </Content>
+          <ul
+            ref={templateListRef}
+            className="tenant-user-launch-wizard__addon-operators-list"
+          >
+            {resolvedTemplate.map((selection) => {
+              const operator = getLaunchAddonOperatorById(selection.operatorId)
+              if (!operator) {
+                return null
+              }
+              const isDependencyOnly = resolvedTemplate.some(
                 (parent) =>
                   parent.operatorId !== selection.operatorId &&
                   getLaunchAddonOperatorById(parent.operatorId)?.dependencyIds?.includes(
                     selection.operatorId,
                   ),
               )
-            const isSelected = isMandatory || !deselectedOptional.has(selection.operatorId)
-            const statusLabel = isDependencyOnly
-              ? 'Required Dependency'
-              : isMandatory
-                ? 'Locked by Catalog Item'
-                : 'Optional Default'
-            const checkboxId = `launch-template-addon-${selection.operatorId}`
-            const dependencyNote = operator.dependencyNote.trim()
-            const requirementNote = operator.requirementNote.trim()
-            const constraintChips: Array<{
-              id: string
-              label: string
-              color: 'grey' | 'green'
-            }> = []
-            if (requirementNote) {
-              constraintChips.push({
-                id: 'requirement',
-                label: requirementNote,
-                color: 'grey',
-              })
-            }
-            if (dependencyNote && dependencyNote.toLowerCase() !== 'none') {
-              constraintChips.push({
-                id: 'dependency',
-                label: `Includes ${dependencyNote.replace(/\s*\(Auto-bundled\)\s*$/i, '')}`,
-                color: 'green',
-              })
-            }
+              const statusLabel = isDependencyOnly
+                ? 'Required Dependency'
+                : 'Locked by Catalog Item'
+              const checkboxId = `launch-template-addon-${selection.operatorId}`
+              const constraintChips = buildConstraintChips(operator)
 
-            return (
-              <li
-                key={selection.operatorId}
-                className={`tenant-user-launch-wizard__addon-operator-card${
-                  isSelected
-                    ? ' tenant-user-launch-wizard__addon-operator-card--selected'
-                    : ''
-                }`}
-              >
-                <div className="tenant-user-launch-wizard__addon-operator-card-header">
-                  <label
-                    htmlFor={checkboxId}
-                    className="tenant-user-launch-wizard__addon-operator-label"
-                  >
-                    <img
-                      className="tenant-user-launch-wizard__addon-operator-logo"
-                      src={operator.logoSrc}
-                      alt=""
-                    />
-                    <span className="tenant-user-launch-wizard__addon-operator-title">
-                      <span className="tenant-user-launch-wizard__addon-operator-name">
-                        {operator.name}
+              return (
+                <li
+                  key={selection.operatorId}
+                  className="tenant-user-launch-wizard__addon-operator-card tenant-user-launch-wizard__addon-operator-card--selected"
+                >
+                  <div className="tenant-user-launch-wizard__addon-operator-card-header">
+                    <label
+                      htmlFor={checkboxId}
+                      className="tenant-user-launch-wizard__addon-operator-label"
+                    >
+                      <img
+                        className="tenant-user-launch-wizard__addon-operator-logo"
+                        src={operator.logoSrc}
+                        alt=""
+                      />
+                      <span className="tenant-user-launch-wizard__addon-operator-title">
+                        <span className="tenant-user-launch-wizard__addon-operator-name">
+                          {operator.name}
+                        </span>
+                        <span className="tenant-user-launch-wizard__addon-operator-version">
+                          Version:{' '}
+                          {getClusterAddonOperatorResolvedVersion(operator, clusterVersionId)}
+                        </span>
                       </span>
-                      <span className="tenant-user-launch-wizard__addon-operator-version">
-                        Version:{' '}
-                        {getClusterAddonOperatorResolvedVersion(operator, clusterVersionId)}
-                      </span>
-                    </span>
-                  </label>
-                  <div className="tenant-user-launch-wizard__addon-operator-meta">
-                    {isMandatory ? (
+                    </label>
+                    <div className="tenant-user-launch-wizard__addon-operator-meta">
                       <Tooltip content="Included with this catalog item. Cannot be deselected.">
                         <span className="tenant-user-launch-wizard__addon-operator-lock">
                           <LockIcon aria-hidden />
@@ -194,72 +192,54 @@ export function ClusterLaunchAddonOperatorsStep({
                           </Label>
                         </span>
                       </Tooltip>
-                    ) : (
-                      <Label color="blue" isCompact>
-                        {statusLabel}
-                      </Label>
-                    )}
-                    <Checkbox
-                      id={checkboxId}
-                      className="tenant-user-launch-wizard__addon-operator-checkbox"
-                      isChecked={isSelected}
-                      isDisabled={isMandatory}
-                      aria-label={operator.name}
-                      onChange={(_event, checked) => {
-                        if (isMandatory) {
-                          return
-                        }
-                        const next = new Set(deselectedOptional)
-                        if (checked) {
-                          next.delete(selection.operatorId)
-                        } else {
-                          next.add(selection.operatorId)
-                        }
-                        onDeselectedOptionalTemplateIdsChange([...next])
-                      }}
-                    />
+                      <Checkbox
+                        id={checkboxId}
+                        className="tenant-user-launch-wizard__addon-operator-checkbox"
+                        isChecked
+                        isDisabled
+                        aria-label={operator.name}
+                      />
+                    </div>
                   </div>
-                </div>
-                <Content
-                  component="p"
-                  className="tenant-user-launch-wizard__addon-operator-description"
-                >
-                  {operator.description}
-                </Content>
-                {constraintChips.length > 0 ? (
-                  <div
-                    className="tenant-user-launch-wizard__addon-operator-constraints"
-                    aria-label="Operator constraints"
+                  <Content
+                    component="p"
+                    className="tenant-user-launch-wizard__addon-operator-description"
                   >
-                    {constraintChips.map((chip) => (
-                      <Label
-                        key={chip.id}
-                        color={chip.color}
-                        isCompact
-                        className="tenant-user-launch-wizard__addon-operator-constraint"
-                      >
-                        {chip.label}
-                      </Label>
-                    ))}
-                  </div>
-                ) : null}
-              </li>
-            )
-          })}
-        </ul>
-      </section>
-
-      {isEditable ? (
+                    {operator.description}
+                  </Content>
+                  {constraintChips.length > 0 ? (
+                    <div
+                      className="tenant-user-launch-wizard__addon-operator-constraints"
+                      aria-label="Operator constraints"
+                    >
+                      {constraintChips.map((chip) => (
+                        <Label
+                          key={chip.id}
+                          color={chip.color}
+                          isCompact
+                          className="tenant-user-launch-wizard__addon-operator-constraint"
+                        >
+                          {chip.label}
+                        </Label>
+                      ))}
+                    </div>
+                  ) : null}
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      ) : (
         <section
           className="tenant-user-launch-wizard__addon-operators-section"
-          aria-labelledby="launch-addon-operators-additional-heading"
+          aria-labelledby="launch-addon-operators-available-heading"
         >
           <Content
             component="h3"
-            id="launch-addon-operators-additional-heading"
+            id="launch-addon-operators-available-heading"
             className="tenant-user-launch-wizard__addon-operators-section-title"
           >
-            Additional Available Operators
+            Available operators
           </Content>
           <div className="tenant-user-launch-wizard__addon-operators-toolbar">
             <FormSelect
@@ -312,7 +292,7 @@ export function ClusterLaunchAddonOperatorsStep({
                 <LabelGroup
                   className="tenant-user-launch-wizard__addon-operators-selection-chips"
                   numLabels={8}
-                  aria-label="Selected additional operators"
+                  aria-label="Selected operators"
                 >
                   {userAddonOperatorIds.map((operatorId) => {
                     const isAutoBundled = isLaunchUserAddonAutoBundled(
@@ -346,11 +326,11 @@ export function ClusterLaunchAddonOperatorsStep({
             )}
           </div>
           <ul
-            ref={additionalListRef}
+            ref={availableListRef}
             className="tenant-user-launch-wizard__addon-operators-list"
-            aria-label="Additional add-on operators"
+            aria-label="Available add-on operators"
           >
-            {visibleAdditional.map((operator) => {
+            {availableOperators.map((operator) => {
               const isSelected = userAddonOperatorIds.includes(operator.id)
               const isAutoBundled = isLaunchUserAddonAutoBundled(
                 userAddonOperatorIds,
@@ -366,27 +346,7 @@ export function ClusterLaunchAddonOperatorsStep({
               )
               const isCheckboxDisabled = !isCompatible || isAutoBundled
               const checkboxId = `launch-user-addon-${operator.id}`
-              const dependencyNote = operator.dependencyNote.trim()
-              const requirementNote = operator.requirementNote.trim()
-              const constraintChips: Array<{
-                id: string
-                label: string
-                color: 'grey' | 'green'
-              }> = []
-              if (requirementNote) {
-                constraintChips.push({
-                  id: 'requirement',
-                  label: requirementNote,
-                  color: 'grey',
-                })
-              }
-              if (dependencyNote && dependencyNote.toLowerCase() !== 'none') {
-                constraintChips.push({
-                  id: 'dependency',
-                  label: `Includes ${dependencyNote.replace(/\s*\(Auto-bundled\)\s*$/i, '')}`,
-                  color: 'green',
-                })
-              }
+              const constraintChips = buildConstraintChips(operator)
 
               return (
                 <li
@@ -500,18 +460,27 @@ export function ClusterLaunchAddonOperatorsStep({
               )
             })}
           </ul>
-          {visibleAdditional.length === 0 ? (
-            <Content component="p">No additional operators match this search.</Content>
+          {availableOperators.length === 0 ? (
+            <Content component="p">No operators match this search.</Content>
           ) : null}
         </section>
-      ) : null}
+      )}
     </div>
   )
 }
 
 export function buildClusterLaunchAddonHeaderCard(
   templateSelections: ReadonlyArray<ClusterAddonOperatorSelection> | undefined | null,
+  options?: { accessMode?: 'locked' | 'editable' },
 ): { label: string; value: string; detail: string } {
+  if (options?.accessMode === 'editable') {
+    return {
+      label: 'Add-on operators',
+      value: 'Select at launch',
+      detail: '',
+    }
+  }
+
   const resolved = resolveTemplateAddonOperatorSelections(templateSelections, {
     fallbackToDemo: !templateSelections?.length,
   })

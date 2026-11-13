@@ -20,6 +20,7 @@ import {
   resolveCatalogSpecRows,
 } from '../catalog/catalogSpecs'
 import {
+  CLUSTER_ADDON_OPERATORS_CATALOG_ITEM_ID,
   CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
   LEGACY_CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
 } from '../catalog/catalogSpecs'
@@ -118,10 +119,11 @@ export function getTenantCatalogProjectsLinkLabel(projectCount: number): string 
     : TENANT_CATALOG_MANAGER_DEMO.addProjectsLinkLabel
 }
 
-/** Inherited provider offerings shown on the tenant admin catalog demo (2 cards). */
+/** Inherited provider offerings shown on the tenant admin catalog demo. */
 const TENANT_ADMIN_DEMO_PROVIDER_CATALOG_ITEM_IDS = new Set([
   BARE_METAL_GPU_CATALOG_ITEM_ID,
   CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
+  CLUSTER_ADDON_OPERATORS_CATALOG_ITEM_ID,
   LEGACY_BARE_METAL_GPU_CATALOG_ITEM_ID,
   LEGACY_CLUSTER_NODE_SETS_CATALOG_ITEM_ID,
 ])

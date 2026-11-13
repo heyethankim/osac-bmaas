@@ -1475,15 +1475,13 @@ export function ProviderSetupPublishCatalogWizard({
               nodeCount: row.nodeCount,
             })),
             addonOperatorsMode: resolveCatalogAddonOperatorsMode(addonOperatorsMode),
-            ...(addonOperatorSelections.length > 0
-              ? {
-                  addonOperators: addonOperatorSelections.map((selection) => ({
+            addonOperators:
+              addonOperatorsMode === 'editable'
+                ? []
+                : addonOperatorSelections.map((selection) => ({
                     operatorId: selection.operatorId,
-                    mode:
-                      addonOperatorsMode === 'locked' ? 'mandatory' : selection.mode,
+                    mode: 'mandatory' as const,
                   })),
-                }
-              : {}),
           }
         : isBareMetalService
           ? {
@@ -2557,7 +2555,7 @@ export function ProviderSetupPublishCatalogWizard({
           <div className="provider-setup-template__publish-hardware-step">
             <Content component="p" className="provider-setup-template__publish-step-lede">
               {addonOperatorsMode === 'editable'
-                ? 'Select one or more operators to pre-install. Tenants can change these operators at provisioning.'
+                ? 'Tenants choose operators from the available list when they provision. Nothing is pre-included.'
                 : 'Select one or more operators to pre-install. Tenants cannot change these operators at provisioning.'}
             </Content>
             <TenantAccessModeCards
@@ -2566,33 +2564,46 @@ export function ProviderSetupPublishCatalogWizard({
               value={addonOperatorsMode}
               onChange={(mode) => {
                 setAddonOperatorsMode(mode)
-                if (mode === 'locked') {
-                  setAddonOperatorSelections((current) =>
-                    current.map((selection) => ({
-                      ...selection,
-                      mode: 'mandatory',
-                    })),
-                  )
+                if (mode === 'editable') {
+                  setAddonOperatorSelections([])
+                  return
                 }
+                setAddonOperatorSelections((current) =>
+                  current.map((selection) => ({
+                    ...selection,
+                    mode: 'mandatory',
+                  })),
+                )
               }}
               previous={editPrevious('addonOperatorsMode')}
             />
-            <FormGroup
-              label={addonOperatorsMode === 'editable' ? 'Default operators' : 'Operators'}
-              fieldId="publish-catalog-addon-operators"
-              className="provider-setup-template__publish-subsection"
-            >
-              <ClusterAddonOperatorsStep
-                clusterVersionId={selectedDiskImageId}
-                accessMode={addonOperatorsMode}
-                selections={addonOperatorSelections}
-                onSelectionsChange={setAddonOperatorSelections}
-                filterQuery={addonOperatorFilterQuery}
-                onFilterQueryChange={setAddonOperatorFilterQuery}
-                category={addonOperatorCategory}
-                onCategoryChange={setAddonOperatorCategory}
-              />
-            </FormGroup>
+            {addonOperatorsMode === 'editable' ? (
+              <Alert
+                variant="info"
+                isInline
+                title="No operators are included with this catalog item."
+                className="provider-setup-template__publish-subsection"
+              >
+                At launch, tenants see available operators and select what to install.
+              </Alert>
+            ) : (
+              <FormGroup
+                label="Operators"
+                fieldId="publish-catalog-addon-operators"
+                className="provider-setup-template__publish-subsection"
+              >
+                <ClusterAddonOperatorsStep
+                  clusterVersionId={selectedDiskImageId}
+                  accessMode={addonOperatorsMode}
+                  selections={addonOperatorSelections}
+                  onSelectionsChange={setAddonOperatorSelections}
+                  filterQuery={addonOperatorFilterQuery}
+                  onFilterQueryChange={setAddonOperatorFilterQuery}
+                  category={addonOperatorCategory}
+                  onCategoryChange={setAddonOperatorCategory}
+                />
+              </FormGroup>
+            )}
           </div>
         )
       case 'field-policies':
@@ -3021,7 +3032,9 @@ export function ProviderSetupPublishCatalogWizard({
                   <DescriptionListGroup>
                     <DescriptionListTerm>Add-on operators</DescriptionListTerm>
                     <DescriptionListDescription>
-                      {formatClusterAddonOperatorsSummary(addonOperatorSelections)}
+                      {addonOperatorsMode === 'editable'
+                        ? 'Select at launch'
+                        : formatClusterAddonOperatorsSummary(addonOperatorSelections)}
                     </DescriptionListDescription>
                   </DescriptionListGroup>
                 </>
