@@ -60,37 +60,37 @@ export const LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   },
 ]
 
-/** Bare metal launch flow: General → Networking → Review. */
+/** Bare metal launch flow: Details → Networking → Review. */
 export const BAREMETAL_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   id: LaunchInstanceWizardStepId
   label: string
   description: string
 }> = [
-  { id: 'general', label: 'General', description: '' },
+  { id: 'general', label: 'Details', description: '' },
   { id: 'networking', label: 'Networking', description: '' },
   { id: 'review', label: 'Review', description: '' },
 ]
 
-/** Bare metal with editable Hardware & OS: General → Hardware → OS → Networking → Review. */
+/** Bare metal with editable Hardware & OS: Details → Hardware → OS → Networking → Review. */
 export const BAREMETAL_HARDWARE_OS_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   id: LaunchInstanceWizardStepId
   label: string
   description: string
 }> = [
-  { id: 'general', label: 'General', description: '' },
+  { id: 'general', label: 'Details', description: '' },
   { id: 'hardware', label: 'Hardware', description: '' },
   { id: 'os', label: 'OS', description: '' },
   { id: 'networking', label: 'Networking', description: '' },
   { id: 'review', label: 'Review', description: '' },
 ]
 
-/** Cluster launch flow: General → Cluster version → Node topology → Networking → Add-on operators → Review. */
+/** Cluster launch flow: Details → Cluster version → Node topology → Networking → Add-on operators → Review. */
 export const CLUSTER_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   id: LaunchInstanceWizardStepId
   label: string
   description: string
 }> = [
-  { id: 'general', label: 'General', description: '' },
+  { id: 'general', label: 'Details', description: '' },
   { id: 'cluster-version', label: 'Cluster version', description: '' },
   { id: 'node-topology', label: 'Node topology', description: '' },
   { id: 'networking', label: 'Networking', description: '' },
@@ -98,13 +98,13 @@ export const CLUSTER_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   { id: 'review', label: 'Review', description: '' },
 ]
 
-/** VM launch flow: General → Configure → Networking → Review. */
+/** VM launch flow: Details → Configure → Networking → Review. */
 export const VM_LAUNCH_INSTANCE_WIZARD_STEPS: ReadonlyArray<{
   id: LaunchInstanceWizardStepId
   label: string
   description: string
 }> = [
-  { id: 'general', label: 'General', description: '' },
+  { id: 'general', label: 'Details', description: '' },
   { id: 'configure', label: 'Configure', description: '' },
   { id: 'networking', label: 'Networking', description: '' },
   { id: 'review', label: 'Review', description: '' },
@@ -162,8 +162,8 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   hardwareProfile: 'Dell PowerEdge R750',
   osImage: 'RHEL 9.4',
   networkingTitle: 'Networking',
-  networkingLede: 'Choose a network and whether to auto-attach an external IP.',
-  networkingAdminLede: 'Choose a network and whether to auto-attach an external IP.',
+  networkingLede: '',
+  networkingAdminLede: '',
   networkPathGroupLabel: 'Network placement',
   networkPathDefaultLabel: 'Tenant default',
   networkPathDefaultDescription: 'Network created with your tenant.',
@@ -207,7 +207,7 @@ export const LAUNCH_INSTANCE_WIZARD_DEMO = {
   provisioningDismissibleNote:
     'Provisioning will continue in the background—check status under Services.',
   bootLogRemaining: '~10 sec remaining',
-  launchInstanceLabel: 'Launch instance',
+  launchInstanceLabel: 'Provision instance',
   createProjectConfirmTitle: 'Create a project first',
   createProjectConfirmDescription:
     'Create the project on the Projects page — including nested projects under a parent — then return here to continue launching.',
@@ -241,10 +241,8 @@ export const CLUSTER_LAUNCH_INSTANCE_DEMO = {
   defaultHostType: 'standard-host',
   defaultNodeCount: 1,
   infrastructureNetworkingTitle: 'Network',
-  infrastructureNetworkingLede:
-    'Choose a network and whether to auto-attach an external IP.',
-  infrastructureNetworkingAdminLede:
-    'Choose a network and whether to auto-attach an external IP.',
+  infrastructureNetworkingLede: '',
+  infrastructureNetworkingAdminLede: '',
   clusterNetworkLede: 'Address ranges used inside the cluster for pods and services.',
   clusterNetworkShowToggle: 'Customize cluster network',
   clusterNetworkHideToggle: 'Hide cluster network',

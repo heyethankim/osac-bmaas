@@ -254,7 +254,7 @@ export function BmaasLandingPage() {
           >
             <Brand src={redHatHatLogoUrl} alt="Red Hat" heights={{ default: '52px' }} />
             <Title headingLevel="h1" size="4xl">
-              Red Hat OSAC Prototypes 0.3
+              Red Hat OSAC Prototypes 0.4
             </Title>
             <Content component="p">Select a role to access the customized interface.</Content>
           </Flex>

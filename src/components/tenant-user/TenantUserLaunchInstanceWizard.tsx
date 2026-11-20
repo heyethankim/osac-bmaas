@@ -1921,9 +1921,11 @@ export function TenantUserLaunchInstanceWizard({
 
   const renderVmNetworkingStep = () => (
     <div className="tenant-user-launch-wizard__step">
-      <Content component="p" className="tenant-user-launch-wizard__step-lede">
-        {networkingLede}
-      </Content>
+      {networkingLede ? (
+        <Content component="p" className="tenant-user-launch-wizard__step-lede">
+          {networkingLede}
+        </Content>
+      ) : null}
       <Form autoComplete="off" className="tenant-user-launch-wizard__form">
         {renderPlacementNetworkingFields('launch-vm')}
       </Form>
@@ -1932,9 +1934,11 @@ export function TenantUserLaunchInstanceWizard({
 
   const renderBareMetalNetworkingStep = () => (
     <div className="tenant-user-launch-wizard__step">
-      <Content component="p" className="tenant-user-launch-wizard__step-lede">
-        {networkingLede}
-      </Content>
+      {networkingLede ? (
+        <Content component="p" className="tenant-user-launch-wizard__step-lede">
+          {networkingLede}
+        </Content>
+      ) : null}
       <Form autoComplete="off" className="tenant-user-launch-wizard__form">
         {renderPlacementNetworkingFields('launch-bm')}
       </Form>
@@ -2066,9 +2070,6 @@ export function TenantUserLaunchInstanceWizard({
 
     return (
     <div className="tenant-user-launch-wizard__step provider-setup-template__publish-hardware-step">
-      <Content component="p" className="tenant-user-launch-wizard__step-lede">
-        Choose the instance type for this launch.
-      </Content>
       <FormGroup
         label="Instance type"
         fieldId="launch-bm-instance-type"
@@ -2176,9 +2177,6 @@ export function TenantUserLaunchInstanceWizard({
 
     return (
     <div className="tenant-user-launch-wizard__step provider-setup-template__publish-hardware-step">
-      <Content component="p" className="tenant-user-launch-wizard__step-lede">
-        Choose the OS image for this launch.
-      </Content>
       <FormGroup
         label="OS image"
         fieldId="launch-bm-disk-image"
@@ -2921,9 +2919,11 @@ export function TenantUserLaunchInstanceWizard({
       <Content component="h2" className="tenant-user-launch-wizard__step-title">
         {LAUNCH_INSTANCE_WIZARD_DEMO.networkingTitle}
       </Content>
-      <Content component="p" className="tenant-user-launch-wizard__step-lede">
-        {networkingLede}
-      </Content>
+      {networkingLede ? (
+        <Content component="p" className="tenant-user-launch-wizard__step-lede">
+          {networkingLede}
+        </Content>
+      ) : null}
 
       <Form autoComplete="off" className="tenant-user-launch-wizard__form">
         {renderPlacementNetworkingFields('launch-instance')}
@@ -3381,14 +3381,14 @@ export function TenantUserLaunchInstanceWizard({
 
   const isPage = presentation === 'page'
   const wizardTitle = isClusterCatalogItem
-    ? 'Launch instance for cluster'
+    ? 'Provision instance for cluster'
     : isVmCatalogItem
-      ? 'Launch instance for virtual machine'
+      ? 'Provision instance for virtual machine'
       : isBareMetalCatalogItem
-        ? 'Launch instance for bare metal'
+        ? 'Provision instance for bare metal'
         : catalogItem.serviceId === 'models'
-          ? 'Launch instance for model'
-          : 'Launch instance'
+          ? 'Provision instance for model'
+          : 'Provision instance'
 
   const wizard = isOpen ? (
     <Wizard
@@ -3424,7 +3424,7 @@ export function TenantUserLaunchInstanceWizard({
             titleId="launch-instance-wizard-title"
             description={activeStepDescription || undefined}
             onClose={requestClose}
-            closeButtonAriaLabel="Close launch instance wizard"
+            closeButtonAriaLabel="Close provision instance wizard"
           />
         )
       }
